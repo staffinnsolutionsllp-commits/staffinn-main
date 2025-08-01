@@ -1,0 +1,1226 @@
+/* InstituteDashboard.css - Updated with institute- prefix */
+.institute-dashboard {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f9fafb;
+    padding-top: 80px; /* Space for fixed navbar */
+}
+
+/* Sidebar Styles */
+.institute-dashboard-sidebar {
+    width: 250px;
+    background-color: #1e3a8a;
+    color: #fff;
+    padding: 20px 0;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 80px; /* Start below navbar */
+    height: calc(100vh - 80px); /* Full height minus navbar */
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.institute-info {
+    padding: 0 20px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.institute-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    object-fit: cover;
+    margin-bottom: 10px;
+    background: white;
+    padding: 5px;
+}
+
+.institute-sidebar-menu {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.institute-sidebar-menu li {
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    font-size: 0.95rem;
+}
+
+.institute-sidebar-menu li:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left-color: rgba(255, 255, 255, 0.5);
+}
+
+.institute-sidebar-menu li.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-left-color: #4863f7;
+    font-weight: 600;
+}
+
+/* Main Content Styles */
+.institute-dashboard-content {
+    flex: 1;
+    margin-left: 250px;
+    padding: 25px;
+    overflow-y: auto;
+    position: relative;
+    z-index: 1;
+}
+
+.institute-dashboard-content h1 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+/* Profile Tab Styles */
+.institute-profile-tab {
+    max-width: 1000px;
+}
+
+.institute-profile-details-card {
+    background-color: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+}
+
+.institute-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    margin-bottom: 30px;
+    padding-bottom: 25px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.institute-profile-logo {
+    width: 120px;
+    height: 120px;
+    border-radius: 15px;
+    object-fit: cover;
+    background: #f8fafc;
+    padding: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.institute-profile-info h2 {
+    margin: 0 0 10px 0;
+    color: #1e293b;
+    font-size: 1.8rem;
+}
+
+.institute-experience-text {
+    color: #64748b;
+    font-size: 1.1rem;
+    margin: 10px 0 15px 0;
+    font-style: italic;
+}
+
+.institute-profile-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.institute-profile-badge {
+    background-color: #4863f7;
+    color: white;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.institute-profile-contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.institute-contact-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 15px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border-left: 4px solid #4863f7;
+}
+
+.institute-contact-item strong {
+    color: #374151;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-contact-item span {
+    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Events Management Styles */
+.institute-events-management-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.institute-event-management-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-event-management-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.institute-event-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.institute-event-card-header h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+    font-weight: 600;
+    flex: 1;
+    line-height: 1.3;
+}
+
+.institute-event-type-badge {
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-event-type-badge.event {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.institute-event-type-badge.news {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.institute-event-type-badge.workshop {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.institute-event-card-details {
+    margin-bottom: 15px;
+}
+
+.institute-event-card-details p {
+    margin: 8px 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.institute-event-card-details strong {
+    color: #374151;
+    font-weight: 600;
+}
+
+.institute-verification-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.institute-verification-badge.verified {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.institute-verification-badge.pending {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.institute-event-card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Modal Styles */
+.institute-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.institute-modal-content {
+    background-color: white;
+    border-radius: 15px;
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.institute-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 30px;
+    border-bottom: 2px solid #f1f5f9;
+    background-color: #f8fafc;
+    border-radius: 15px 15px 0 0;
+}
+
+.institute-modal-header h2 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.institute-close-button {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: #64748b;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.institute-close-button:hover {
+    background-color: #f1f5f9;
+    color: #374151;
+}
+
+.institute-modal-form {
+    padding: 30px;
+}
+
+.institute-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.institute-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.institute-form-group label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-form-group input,
+.institute-form-group select,
+.institute-form-group textarea {
+    padding: 12px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background-color: #fff;
+}
+
+.institute-form-group input:focus,
+.institute-form-group select:focus,
+.institute-form-group textarea:focus {
+    outline: none;
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+    background-color: #fefefe;
+}
+
+.institute-form-group textarea {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.institute-checkbox-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+}
+
+.institute-checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.institute-checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #4863f7;
+}
+
+.institute-form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.institute-secondary-button {
+    padding: 12px 24px;
+    background-color: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.institute-secondary-button:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+/* Dashboard Overview Styles */
+.institute-dashboard-overview {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Metrics Grid */
+.institute-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.institute-metric-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.institute-metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.institute-metric-card h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.institute-metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 10px 0;
+    color: #1e293b;
+}
+
+.institute-metric-trend {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.institute-metric-trend.positive {
+    color: #10b981;
+}
+
+.institute-metric-trend.negative {
+    color: #ef4444;
+}
+
+/* Charts */
+.institute-charts-row {
+    display: flex;
+    gap: 25px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.institute-chart-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    flex: 1;
+    min-width: 300px;
+}
+
+.institute-chart-container h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+/* Stat Boxes */
+.institute-stat-boxes {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex: 1;
+    min-width: 250px;
+}
+
+.institute-stat-box {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    flex: 1;
+}
+
+.institute-stat-box h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #334155;
+    font-size: 1rem;
+}
+
+.institute-stat-box .institute-stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 5px 0;
+    color: #4863f7;
+}
+
+.institute-stat-box .institute-stat-description {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 5px 0 0;
+}
+
+/* Upcoming Events */
+.institute-upcoming-events {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+}
+
+.institute-upcoming-events h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+.institute-events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.institute-event-card {
+    background-color: #f8fafc;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+}
+
+.institute-event-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.institute-event-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    height: 70px;
+    background-color: #4863f7;
+    color: white;
+    border-radius: 8px;
+    padding: 5px;
+}
+
+.institute-event-date .institute-day {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.institute-event-date .institute-month {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.institute-event-details {
+    flex: 1;
+}
+
+.institute-event-details h4 {
+    margin: 0 0 5px;
+    color: #1e293b;
+    font-size: 1rem;
+}
+
+.institute-event-details p {
+    margin: 3px 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Tables */
+.institute-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.institute-data-table.full-width {
+    margin: 20px 0;
+}
+
+.institute-data-table th, 
+.institute-data-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.institute-data-table th {
+    font-weight: 600;
+    color: #64748b;
+    background-color: #f8fafc;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.institute-data-table tr:hover {
+    background-color: #f1f5f9;
+}
+
+.institute-data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.institute-status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.institute-status-badge.active {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+.institute-status-badge.completed {
+    background-color: #dbeafe;
+    color: #2563eb;
+}
+
+.institute-status-badge.dropped {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.institute-status-badge.placed {
+    background-color: #d1fae5;
+    color: #059669;
+}
+
+.institute-status-badge.interviewing {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.institute-status-badge.searching {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+.institute-status-badge.not-eligible-yet {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+.institute-table-action {
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    background-color: white;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    margin-right: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.institute-table-action:hover {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #374151;
+    transform: translateY(-1px);
+}
+
+.institute-table-action.delete {
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.institute-table-action.delete:hover {
+    background-color: #fef2f2;
+    border-color: #fca5a5;
+}
+
+/* Tab Header */
+.institute-tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.institute-tab-header > div {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.institute-primary-button {
+    padding: 12px 20px;
+    background-color: #4863f7;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.institute-primary-button:hover {
+    background-color: #3a4fd8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.3);
+}
+
+.institute-action-button {
+    padding: 12px 20px;
+    background-color: white;
+    color: #4863f7;
+    border: 1px solid #4863f7;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.institute-action-button:hover {
+    background-color: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Tab Section */
+.institute-tab-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+}
+
+.institute-tab-section h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+/* Students Tab */
+.institute-students-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Search & Filter Styles */
+.institute-search-section {
+    margin-bottom: 25px;
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.institute-search-row,
+.institute-filter-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.institute-search-input {
+    padding: 10px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 200px;
+    transition: all 0.3s ease;
+}
+
+.institute-search-input.large {
+    padding: 12px 15px;
+    font-size: 1rem;
+}
+
+.institute-search-input:focus {
+    outline: none;
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+}
+
+.institute-filter-select {
+    padding: 10px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background-color: white;
+    min-width: 150px;
+    font-size: 0.9rem;
+    color: #64748b;
+    transition: all 0.3s ease;
+}
+
+.institute-filter-select:focus {
+    outline: none;
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+    color: #374151;
+}
+
+/* Course Cards */
+.institute-course-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 25px;
+}
+
+.institute-course-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #f1f5f9;
+}
+
+.institute-course-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: #4863f7;
+}
+
+.institute-course-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #1e293b;
+    font-size: 1.2rem;
+    border-bottom: 2px solid #4863f7;
+    padding-bottom: 10px;
+}
+
+.institute-course-details {
+    margin-bottom: 20px;
+}
+
+.institute-detail-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 5px 0;
+}
+
+.institute-detail-item .institute-label {
+    color: #64748b;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.institute-detail-item .institute-value {
+    color: #1e293b;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.institute-course-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.institute-course-actions .institute-action-button {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+/* Events Tab */
+.institute-events-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Courses Tab */
+.institute-courses-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Placements Tab */
+.institute-placements-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Generic Tab Styles */
+.institute-collaborations-tab,
+.institute-govt-tab {
+    background-color: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    color: #64748b;
+}
+
+.institute-collaborations-tab h1,
+.institute-govt-tab h1 {
+    color: #1e293b;
+    margin-bottom: 15px;
+}
+
+/* Responsive Styles */
+@media (max-width: 1200px) {
+    .institute-dashboard-sidebar {
+        width: 220px;
+    }
+    
+    .institute-dashboard-content {
+        margin-left: 220px;
+    }
+}
+
+@media (max-width: 992px) {
+    .institute-dashboard {
+        padding-top: 60px; /* Smaller navbar on mobile */
+    }
+
+    .institute-dashboard-sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        padding: 10px 0;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        z-index: 200;
+        top: auto;
+    }
+
+    .institute-dashboard-content {
+        margin-left: 0;
+        padding: 15px;
+    }
+
+    .institute-sidebar-menu {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .institute-sidebar-menu li {
+        flex: 1;
+        min-width: 150px;
+        text-align: center;
+        padding: 10px 15px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        font-size: 0.85rem;
+    }
+
+    .institute-sidebar-menu li.active {
+        border-left-color: transparent;
+        border-bottom-color: #4863f7;
+    }
+
+    .institute-info {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .institute-logo {
+        width: 60px;
+        height: 60px;
+    }
+
+    .institute-info h3 {
+        font-size: 1rem;
+    }
+
+    .institute-modal-content {
+        max-width: 95vw;
+        margin: 10px;
+    }
+
+    .institute-modal-header {
+        padding: 20px;
+    }
+
+    .institute-modal-form {
+        padding: 20px;
+    }
+
+    .institute-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .institute-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-charts-row {
+        flex-direction: column;
+    }
+
+    .institute-chart-container {
+        overflow-x: auto;
+        min-width: auto;
+    }
+
+    .institute-tab-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .institute-data-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .institute-course-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-events-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-events-management-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-profile-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+
+    .institute-profile-contact-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-search-row,
+    .institute-filter-row {
+        flex-direction: column;
+    }
+
+    .institute-search-input,
+    .institute-filter-select {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .institute-sidebar-menu {
+        flex-direction: column;
+    }
+
+    .institute-sidebar-menu li {
+        min-width: auto;
+        text-align: left;
+        border-left: 4px solid transparent;
+        border-bottom: none;
+    }
+
+    .institute-sidebar-menu li.active {
+        border-left-color: #4863f7;
+        border-bottom-color: transparent;
+    }
+}
+
+@media (max-width: 480px) {
+    .institute-dashboard-content {
+        padding: 10px;
+    }
+
+    .institute-modal-overlay {
+        padding: 10px;
+    }
+
+    .institute-modal-header {
+        padding: 15px;
+    }
+
+    .institute-modal-form {
+        padding: 15px;
+    }
+
+    .institute-form-buttons {
+        flex-direction: column;
+    }
+
+    .institute-primary-button,
+    .institute-secondary-button,
+    .institute-action-button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .institute-event-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .institute-event-date {
+        width: 60px;
+        margin: 0 auto;
+    }
+}
+
+/* Loading and Animation Classes */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #64748b;
+    font-size: 1.1rem;
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Scrollbar Styles */
+.institute-dashboard-content::-webkit-scrollbar,
+.institute-modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.institute-dashboard-content::-webkit-scrollbar-track,
+.institute-modal-content::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+.institute-dashboard-content::-webkit-scrollbar-thumb,
+.institute-modal-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.institute-dashboard-content::-webkit-scrollbar-thumb:hover,
+.institute-modal-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
