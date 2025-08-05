@@ -275,10 +275,12 @@ const toggleProfileMode = async (req, res) => {
     console.log('Toggling profile mode for user:', userId, 'to active:', isActiveStaff);
     
     const updateData = {
-      isActiveStaff: isActiveStaff,
+      isActiveStaff: Boolean(isActiveStaff),
       profileVisibility: isActiveStaff ? 'public' : 'private',
       updatedAt: new Date().toISOString()
     };
+    
+    console.log('Updating profile with isActiveStaff:', updateData.isActiveStaff);
     
     const updatedProfile = await staffModel.updateStaffProfile(userId, updateData);
     

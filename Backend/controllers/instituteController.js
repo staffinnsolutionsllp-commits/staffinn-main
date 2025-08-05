@@ -3,9 +3,25 @@
  * Handles institute registration and management
  */
 const userModel = require('../models/userModel');
+const instituteModel = require('../models/instituteModel');
+const institutePlacementModel = require('../models/institutePlacementModel');
 const jwtUtils = require('../utils/jwtUtils');
 const { validateInstituteRegistration } = require('../utils/validation');
 const emailService = require('../services/emailService');
+const multer = require('multer');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { v4: uuidv4 } = require('uuid');
+
+// Initialize S3 client
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
+});
+
+const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'staffinn-files';
 
 // Registration number validation service
 const registrationValidationService = {
@@ -189,32 +205,23 @@ const getInstituteProfile = async (req, res) => {
 const updateInstituteProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const updateData = req.body;
+    const profileData = req.body;
     
-    // Remove sensitive fields that shouldn't be updated directly
-    delete updateData.userId;
-    delete updateData.email;
-    delete updateData.password;
-    delete updateData.role;
-    delete updateData.registrationNumber; // Registration number shouldn't be changed after creation
-    
-    // Update user profile
-    const updatedUser = await userModel.updateUser(userId, updateData);
-    
-    if (!updatedUser) {
-      return res.status(404).json({
+    // Validate required fields
+    if (!profileData.instituteName || !profileData.address || !profileData.phone || !profileData.email) {
+      return res.status(400).json({
         success: false,
-        message: 'Institute profile not found'
+        message: 'Institute name, address, phone, and email are required'
       });
     }
     
-    // Remove sensitive data
-    delete updatedUser.password;
+    // Create or update institute profile
+    const updatedProfile = await instituteModel.createOrUpdateProfile(userId, profileData);
     
     res.status(200).json({
       success: true,
       message: 'Institute profile updated successfully',
-      data: updatedUser
+      data: updatedProfile
     });
     
   } catch (error) {
@@ -222,6 +229,101 @@ const updateInstituteProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update institute profile'
+    });
+  }
+};
+
+/**
+ * Get institute profile details
+ * @route GET /api/institute/profile-details
+ */
+const getInstituteProfileDetails = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get institute profile from profiles table
+    const profile = await instituteModel.getProfileById(userId);
+    
+    // Get user data from users table (includes applications)
+    const user = await userModel.getUserById(userId);
+    
+    if (!profile && !user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Institute profile not found'
+      });
+    }
+    
+    // Combine profile data with user data (applications)
+    const combinedData = {
+      ...profile,
+      applications: user?.applications || [],
+      recentActivity: user?.recentActivity || []
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: combinedData
+    });
+    
+  } catch (error) {
+    console.error('Get institute profile details error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get institute profile details'
+    });
+  }
+};
+
+/**
+ * Get all live institutes for public display
+ * @route GET /api/institute/public/all
+ */
+const getAllLiveInstitutes = async (req, res) => {
+  try {
+    const institutes = await instituteModel.getAllLiveProfiles();
+    
+    res.status(200).json({
+      success: true,
+      data: institutes
+    });
+    
+  } catch (error) {
+    console.error('Get all live institutes error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get institutes'
+    });
+  }
+};
+
+/**
+ * Get institute by ID for public display
+ * @route GET /api/institute/public/:id
+ */
+const getInstituteById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const institute = await instituteModel.getProfileById(id);
+    
+    if (!institute) {
+      return res.status(404).json({
+        success: false,
+        message: 'Institute not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: institute
+    });
+    
+  } catch (error) {
+    console.error('Get institute by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get institute'
     });
   }
 };
@@ -386,12 +488,438 @@ const deleteInstitute = async (req, res) => {
   }
 };
 
+// Configure multer for memory storage (S3 upload)
+const storage = multer.memoryStorage();
+
+// Multer for profile images only
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(file.originalname.toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+// Multer for student uploads (allows images, PDFs, docs)
+const studentUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit for documents
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images for profile photos
+    if (file.fieldname === 'profilePhoto') {
+      const imageTypes = /jpeg|jpg|png|gif|webp/;
+      const extname = imageTypes.test(file.originalname.toLowerCase());
+      const mimetype = imageTypes.test(file.mimetype);
+      
+      if (mimetype && extname) {
+        return cb(null, true);
+      } else {
+        return cb(new Error('Profile photo must be an image file'));
+      }
+    }
+    
+    // Allow PDFs and docs for resume and certificates
+    if (file.fieldname === 'resume' || file.fieldname === 'certificates') {
+      const docTypes = /pdf|doc|docx|jpeg|jpg|png/;
+      const extname = docTypes.test(file.originalname.toLowerCase());
+      const mimetype = /application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|image\/(jpeg|jpg|png)/.test(file.mimetype);
+      
+      if (mimetype && extname) {
+        return cb(null, true);
+      } else {
+        return cb(new Error('Resume and certificates must be PDF, DOC, DOCX, or image files'));
+      }
+    }
+    
+    cb(new Error('Invalid file field'));
+  }
+});
+
+/**
+ * Upload institute profile image to S3
+ * @route POST /api/institute/upload-image
+ */
+const uploadProfileImage = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file provided'
+      });
+    }
+    
+    // Get current profile to check for existing image
+    const currentProfile = await instituteModel.getProfileById(userId);
+    
+    // Delete old image from S3 if exists
+    if (currentProfile && currentProfile.profileImage) {
+      try {
+        const oldKey = currentProfile.profileImage.split('/').pop();
+        const deleteCommand = new DeleteObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: `institute-images/${oldKey}`
+        });
+        await s3Client.send(deleteCommand);
+      } catch (deleteError) {
+        console.error('Error deleting old image from S3:', deleteError);
+      }
+    }
+    
+    // Generate unique filename
+    const fileExtension = req.file.originalname.split('.').pop();
+    const fileName = `${uuidv4()}-${Date.now()}.${fileExtension}`;
+    const key = `institute-images/${fileName}`;
+    
+    // Upload to S3
+    const uploadCommand = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      CacheControl: 'max-age=31536000'
+    });
+    
+    await s3Client.send(uploadCommand);
+    
+    // Create S3 URL
+    const imageUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    console.log('Generated S3 URL:', imageUrl);
+    
+    // Update profile with new image
+    const profileData = currentProfile ? { ...currentProfile, profileImage: imageUrl } : { profileImage: imageUrl };
+    await instituteModel.createOrUpdateProfile(userId, profileData);
+    console.log('Profile updated with image URL:', imageUrl);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Profile image uploaded successfully',
+      data: {
+        profileImage: imageUrl
+      }
+    });
+    
+  } catch (error) {
+    console.error('Upload profile image error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to upload profile image'
+    });
+  }
+};
+
+/**
+ * Delete institute profile image from S3
+ * @route DELETE /api/institute/profile-image
+ */
+const deleteProfileImage = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get current profile
+    const currentProfile = await instituteModel.getProfileById(userId);
+    
+    if (!currentProfile || !currentProfile.profileImage) {
+      return res.status(404).json({
+        success: false,
+        message: 'No profile image found'
+      });
+    }
+    
+    // Delete image from S3
+    try {
+      const key = currentProfile.profileImage.split('/').pop();
+      const deleteCommand = new DeleteObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: `institute-images/${key}`
+      });
+      await s3Client.send(deleteCommand);
+    } catch (s3Error) {
+      console.error('Error deleting image from S3:', s3Error);
+    }
+    
+    // Update profile to remove image
+    const updatedProfileData = { ...currentProfile, profileImage: null };
+    await instituteModel.createOrUpdateProfile(userId, updatedProfileData);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Profile image deleted successfully'
+    });
+    
+  } catch (error) {
+    console.error('Delete profile image error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete profile image'
+    });
+  }
+};
+
+// Multer for placement section uploads (company logos and student photos)
+const placementUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit for images
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(file.originalname.toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+/**
+ * Upload files to S3 for placement section
+ */
+const uploadPlacementFiles = async (files, type) => {
+  const uploadedFiles = [];
+  
+  for (const file of files) {
+    try {
+      const fileExtension = file.originalname.split('.').pop();
+      const fileName = `${uuidv4()}-${Date.now()}.${fileExtension}`;
+      const key = `placement-${type}/${fileName}`;
+      
+      const uploadCommand = new PutObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        CacheControl: 'max-age=31536000'
+      });
+      
+      await s3Client.send(uploadCommand);
+      
+      const fileUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+      uploadedFiles.push(fileUrl);
+    } catch (error) {
+      console.error('Error uploading file to S3:', error);
+      throw error;
+    }
+  }
+  
+  return uploadedFiles;
+};
+
+/**
+ * Update placement section data with file uploads
+ * @route PUT /api/institute/placement-section
+ */
+const updatePlacementSection = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get institute profile to get institute name
+    const user = await userModel.getUserById(userId);
+    if (!user || user.role !== 'institute') {
+      return res.status(404).json({
+        success: false,
+        message: 'Institute not found'
+      });
+    }
+    
+    const instituteName = user.name || 'Unknown Institute';
+    
+    // Parse form data
+    let placementData;
+    try {
+      placementData = JSON.parse(req.body.placementData || '{}');
+    } catch (parseError) {
+      // If parsing fails, use req.body directly
+      placementData = req.body;
+    }
+    
+    // Handle file uploads
+    const files = req.files || {};
+    
+    // Process company logos
+    if (files.companyLogos && files.companyLogos.length > 0) {
+      const logoUrls = await uploadPlacementFiles(files.companyLogos, 'company-logos');
+      
+      // Map logos to companies
+      if (placementData.topHiringCompanies && Array.isArray(placementData.topHiringCompanies)) {
+        placementData.topHiringCompanies.forEach((company, index) => {
+          if (logoUrls[index]) {
+            company.logo = logoUrls[index];
+          }
+        });
+      }
+    }
+    
+    // Process student photos
+    if (files.studentPhotos && files.studentPhotos.length > 0) {
+      const photoUrls = await uploadPlacementFiles(files.studentPhotos, 'student-photos');
+      
+      // Map photos to students
+      if (placementData.recentPlacementSuccess && Array.isArray(placementData.recentPlacementSuccess)) {
+        placementData.recentPlacementSuccess.forEach((student, index) => {
+          if (photoUrls[index]) {
+            student.photo = photoUrls[index];
+          }
+        });
+      }
+    }
+    
+    // Validate placement data
+    if (!placementData.averageSalary && !placementData.highestPackage && 
+        (!placementData.topHiringCompanies || placementData.topHiringCompanies.length === 0) &&
+        (!placementData.recentPlacementSuccess || placementData.recentPlacementSuccess.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one placement field is required'
+      });
+    }
+    
+    // Create or update placement section
+    const updatedPlacementSection = await institutePlacementModel.createOrUpdatePlacementSection(
+      userId,
+      instituteName,
+      placementData
+    );
+    
+    res.status(200).json({
+      success: true,
+      message: 'Placement section updated successfully',
+      data: updatedPlacementSection
+    });
+    
+  } catch (error) {
+    console.error('Update placement section error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update placement section'
+    });
+  }
+};
+
+/**
+ * Get placement section data
+ * @route GET /api/institute/placement-section
+ */
+const getPlacementSection = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    const placementSection = await institutePlacementModel.getPlacementSectionByInstituteId(userId);
+    
+    if (!placementSection) {
+      return res.status(404).json({
+        success: false,
+        message: 'Placement section not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: placementSection
+    });
+    
+  } catch (error) {
+    console.error('Get placement section error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get placement section'
+    });
+  }
+};
+
+/**
+ * Get public placement section data by institute ID
+ * @route GET /api/institute/public/:id/placement-section
+ */
+const getPublicPlacementSection = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const placementSection = await institutePlacementModel.getPlacementSectionByInstituteId(id);
+    
+    if (!placementSection) {
+      return res.status(404).json({
+        success: false,
+        message: 'Placement section not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: placementSection
+    });
+    
+  } catch (error) {
+    console.error('Get public placement section error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get placement section'
+    });
+  }
+};
+
+/**
+ * Get public dashboard stats by institute ID
+ * @route GET /api/institute/public/:id/dashboard-stats
+ */
+const getPublicDashboardStats = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Import the required models for fetching real-time data
+    const instituteStudentModel = require('../models/instituteStudentModel');
+    
+    // Get real-time dashboard stats for the institute using the existing method
+    const stats = await instituteStudentModel.getStudentStats(id);
+    
+    res.status(200).json({
+      success: true,
+      data: stats
+    });
+    
+  } catch (error) {
+    console.error('Get public dashboard stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get dashboard stats'
+    });
+  }
+};
+
 module.exports = {
   registerInstitute,
   getInstituteProfile,
   updateInstituteProfile,
+  getInstituteProfileDetails,
+  getAllLiveInstitutes,
+  getInstituteById,
   verifyRegistrationNumber,
   getAllInstitutes,
   searchInstitutes,
-  deleteInstitute
+  deleteInstitute,
+  uploadProfileImage,
+  deleteProfileImage,
+  updatePlacementSection,
+  getPlacementSection,
+  getPublicPlacementSection,
+  getPublicDashboardStats,
+  upload,
+  studentUpload,
+  placementUpload
 };

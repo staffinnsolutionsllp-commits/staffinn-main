@@ -1,42 +1,65 @@
-import { useEffect, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useEffect } from 'react';
 
 /**
- * Custom hook to synchronize profile photo updates across components
- * This ensures that when a recruiter uploads a new profile photo,
- * it's immediately reflected in the main header
+ * Custom hook to sync profile photos across the application
+ * This hook listens for profile photo changes and updates all relevant image elements
  */
-const useProfilePhotoSync = () => {
-  const { refreshUserProfile } = useContext(AuthContext);
-
+const useProfilePhotoSync = (profileImage, userRole = 'institute') => {
   useEffect(() => {
-    // Create a custom event listener for profile photo updates
-    const handleProfilePhotoUpdate = async () => {
-      console.log('Profile photo update detected, refreshing user data');
-      try {
-        await refreshUserProfile();
-        console.log('User profile refreshed successfully');
-      } catch (error) {
-        console.error('Failed to refresh user profile:', error);
-      }
-    };
+    if (userRole === 'institute' && profileImage) {
+      console.log('Updating all images with:', profileImage);
+      
+      // Update institute-profile-logo images
+      const profileLogos = document.querySelectorAll('img.institute-profile-logo');
+      profileLogos.forEach(img => {
+        img.src = profileImage;
+        console.log('Updated profile logo:', img.src);
+      });
+      
+      // Update institute-logo images
+      const instituteLogos = document.querySelectorAll('img.institute-logo');
+      instituteLogos.forEach(img => {
+        img.src = profileImage;
+        console.log('Updated institute logo:', img.src);
+      });
+      
+      // Update images in institute-header areas
+      const headerImages = document.querySelectorAll('.institute-header img, .institute-info img');
+      headerImages.forEach(img => {
+        img.src = profileImage;
+        console.log('Updated header image:', img.src);
+      });
+      
+      // Update any other institute-related images
+      const otherInstituteImages = document.querySelectorAll('[data-institute-image]');
+      otherInstituteImages.forEach(img => {
+        img.src = profileImage;
+        console.log('Updated other image:', img.src);
+      });
+    }
+  }, [profileImage, userRole]);
 
-    // Add event listener
-    window.addEventListener('profilePhotoUpdated', handleProfilePhotoUpdate);
-
-    // Clean up
-    return () => {
-      window.removeEventListener('profilePhotoUpdated', handleProfilePhotoUpdate);
-    };
-  }, [refreshUserProfile]);
-
-  // Helper function to dispatch the event when photo is updated
-  const notifyProfilePhotoUpdated = () => {
-    console.log('Dispatching profile photo update event');
-    window.dispatchEvent(new Event('profilePhotoUpdated'));
+  // Function to manually trigger image updates
+  const updateAllImages = (newImageUrl) => {
+    if (userRole === 'institute') {
+      const selectors = [
+        'img.institute-profile-logo',
+        'img.institute-logo',
+        '.institute-header img',
+        '.institute-info img',
+        '[data-institute-image]'
+      ];
+      
+      selectors.forEach(selector => {
+        const images = document.querySelectorAll(selector);
+        images.forEach(img => {
+          img.src = newImageUrl || '/institute-logo-placeholder.png';
+        });
+      });
+    }
   };
 
-  return { notifyProfilePhotoUpdated };
+  return { updateAllImages };
 };
 
 export default useProfilePhotoSync;

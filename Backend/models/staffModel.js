@@ -39,7 +39,8 @@ const createStaffProfile = async (staffData) => {
  */
 const getStaffProfile = async (userId) => {
   try {
-    // Use staffId as primary key but search by userId
+    console.log('Searching for staff profile with userId:', userId);
+    
     const scanParams = {
       FilterExpression: 'userId = :userId',
       ExpressionAttributeValues: {
@@ -48,7 +49,21 @@ const getStaffProfile = async (userId) => {
     };
     
     const profiles = await dynamoService.scanItems(STAFF_TABLE, scanParams);
-    return profiles.length > 0 ? profiles[0] : null;
+    console.log('Found profiles:', profiles.length);
+    
+    if (profiles.length > 0) {
+      const profile = profiles[0];
+      console.log('Retrieved profile isActiveStaff status:', profile.isActiveStaff);
+      
+      if (profile.isActiveStaff === undefined || profile.isActiveStaff === null) {
+        profile.isActiveStaff = false;
+      }
+      
+      return profile;
+    }
+    
+    console.log('No staff profile found for userId:', userId);
+    return null;
   } catch (error) {
     console.error('Get staff profile error:', error);
     throw new Error('Failed to get staff profile');

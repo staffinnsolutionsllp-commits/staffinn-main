@@ -14,6 +14,24 @@ const { validateJobPosting } = require('../utils/validation');
 const createJob = async (req, res) => {
   try {
     console.log('Job creation request:', req.body);
+    console.log('User from token:', req.user);
+    
+    // Check if user exists
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+    
+    // Verify user exists in database
+    const user = await userModel.getUserById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
     
     // Validate job posting data
     const { error, value } = validateJobPosting(req.body);

@@ -260,10 +260,240 @@ const getHiringRecord = async (req, res) => {
   }
 };
 
+/**
+ * Hire or reject institute student
+ * @route POST /api/hiring/institute-student
+ */
+const hireInstituteStudent = async (req, res) => {
+  try {
+    console.log('Hire institute student request:', req.body);
+    console.log('Request user:', req.user);
+    
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+    
+    if (req.user.role !== 'recruiter') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only recruiters can hire students'
+      });
+    }
+    
+    const { studentID, instituteID, jobID, jobTitle, status, studentSnapshot } = req.body;
+    
+    if (!studentID || !instituteID || !jobID || !jobTitle || !status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student ID, Institute ID, Job ID, Job Title, and Status are required'
+      });
+    }
+    
+    if (!['Hired', 'Rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either "Hired" or "Rejected"'
+      });
+    }
+    
+    // Get recruiter details
+    const userModel = require('../models/userModel');
+    const recruiterUser = await userModel.findUserById(req.user.userId);
+    if (!recruiterUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Recruiter profile not found'
+      });
+    }
+    
+    // Get recruiter profile for company name
+    let recruiterProfile = null;
+    try {
+      const dynamoService = require('../services/dynamoService');
+      const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE;
+      recruiterProfile = await dynamoService.getItem(USERS_TABLE, { userId: req.user.userId });
+    } catch (error) {
+      console.log('Could not fetch recruiter profile:', error.message);
+    }
+    
+    // Create/update job application record
+    const jobApplicationModel = require('../models/jobApplicationModel');
+    
+    // Check if application exists first
+    const existingApplication = await jobApplicationModel.getJobApplication(jobID, studentID);
+    
+    if (existingApplication) {
+      // Update existing application
+      await jobApplicationModel.updateJobApplicationStatus(jobID, studentID, status.toLowerCase());
+    } else {
+      // Create new application
+      await jobApplicationModel.createJobApplication({
+        studentID,
+        jobID,
+        recruiterID: req.user.userId,
+        instituteID,
+        status: status.toLowerCase()
+      });
+    }
+    
+    // Update student placement details in institute database
+    const instituteStudentModel = require('../models/instituteStudentModel');
+    const jobModel = require('../models/jobModel');
+    
+    // Get job details for placement record
+    const jobDetails = await jobModel.getJobById(jobID);
+    
+    const placementData = {
+      status: status === 'Hired' ? 'Placed' : 'Rejected',
+      recruiter: `${recruiterUser.name} (${recruiterProfile?.companyName || recruiterUser.name})`,
+      appliedJob: jobTitle
+    };
+    
+    await instituteStudentModel.updateStudentPlacementDetails(studentID, placementData);
+    
+    // Create hiring record
+    const hiringData = {
+      applicantType: 'institute',
+      studentID,
+      instituteID,
+      recruiterID: req.user.userId,
+      recruiterName: recruiterUser.name,
+      recruiterCompany: recruiterProfile?.companyName || recruiterUser.name,
+      jobID,
+      jobTitle,
+      status,
+      studentSnapshot: studentSnapshot || null
+    };
+    
+    const hiringRecord = await hiringModel.createHiringRecord(hiringData);
+    
+    res.status(201).json({
+      success: true,
+      message: `Student ${status.toLowerCase()} successfully`,
+      data: hiringRecord
+    });
+    
+  } catch (error) {
+    console.error('Hire institute student error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to process hiring action'
+    });
+  }
+};
+
+/**
+ * Get hiring history for recruiter (includes institute students)
+ * @route GET /api/hiring/recruiter-history
+ */
+const getRecruiterHiringHistory = async (req, res) => {
+  try {
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+    
+    if (req.user.role !== 'recruiter') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only recruiters can access hiring history'
+      });
+    }
+    
+    const hiringHistory = await hiringModel.getRecruiterHiringHistory(req.user.userId);
+    
+    // Group by institute for better organization
+    const groupedHistory = hiringHistory.reduce((acc, record) => {
+      if (record.applicantType === 'institute') {
+        const instituteId = record.instituteID;
+        if (!acc[instituteId]) {
+          acc[instituteId] = [];
+        }
+        acc[instituteId].push(record);
+      } else {
+        // Legacy staff records
+        if (!acc['staff']) {
+          acc['staff'] = [];
+        }
+        acc['staff'].push(record);
+      }
+      return acc;
+    }, {});
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        all: hiringHistory,
+        grouped: groupedHistory
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get recruiter hiring history error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get hiring history'
+    });
+  }
+};
+
+/**
+ * Get hiring history for a specific institute
+ * @route GET /api/hiring/institute/:instituteId/history
+ */
+const getInstituteHiringHistory = async (req, res) => {
+  try {
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+    
+    if (req.user.role !== 'recruiter') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only recruiters can access hiring history'
+      });
+    }
+    
+    const { instituteId } = req.params;
+    
+    if (!instituteId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Institute ID is required'
+      });
+    }
+    
+    const hiringHistory = await hiringModel.getInstituteHiringRecords(req.user.userId, instituteId);
+    
+    res.status(200).json({
+      success: true,
+      data: hiringHistory
+    });
+    
+  } catch (error) {
+    console.error('Get institute hiring history error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get institute hiring history'
+    });
+  }
+};
+
 module.exports = {
   hireStaff,
   getHiringHistory,
   rateHiring,
   getHiringStats,
-  getHiringRecord
+  getHiringRecord,
+  hireInstituteStudent,
+  getRecruiterHiringHistory,
+  getInstituteHiringHistory
 };

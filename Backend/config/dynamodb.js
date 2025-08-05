@@ -11,9 +11,14 @@ const dynamoClient = new DynamoDBClient(awsConfig);
 // Define table names
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'staffinn-users';
 const STAFF_TABLE = process.env.STAFF_TABLE || 'staffinn-staff-profiles';
+const INSTITUTE_PROFILES_TABLE = 'staffinn-institute-profiles';
 const CONTACT_TABLE = process.env.CONTACT_HISTORY_TABLE || 'staffinn-contact-history';
 const HIRING_TABLE = process.env.HIRING_TABLE || 'staffinn-hiring-records';
 const NOTIFICATIONS_TABLE = process.env.NOTIFICATIONS_TABLE || 'staffinn-notifications';
+const INSTITUTE_COURSES_TABLE = process.env.INSTITUTE_COURSES_TABLE || 'staffinn-institute-courses';
+const INSTITUTE_STUDENTS_TABLE = process.env.INSTITUTE_STUDENTS_TABLE || 'staffinn-institute-students';
+const JOBS_TABLE = process.env.JOBS_TABLE || 'staffinn-jobs';
+const JOB_APPLICATIONS_TABLE = process.env.JOB_APPLICATIONS_TABLE || 'staffinn-job-applications';
 
 // Define table schemas
 const usersTableSchema = {
@@ -24,7 +29,7 @@ const usersTableSchema = {
   AttributeDefinitions: [
     { AttributeName: 'userId', AttributeType: 'S' }
   ],
-  BillingMode: 'ON_DEMAND'
+  BillingMode: 'PAY_PER_REQUEST'
 };
 
 const staffTableSchema = {
@@ -35,7 +40,7 @@ const staffTableSchema = {
   AttributeDefinitions: [
     { AttributeName: 'staffId', AttributeType: 'S' }
   ],
-  BillingMode: 'ON_DEMAND'
+  BillingMode: 'PAY_PER_REQUEST'
 };
 
 const contactTableSchema = {
@@ -46,7 +51,7 @@ const contactTableSchema = {
   AttributeDefinitions: [
     { AttributeName: 'contactId', AttributeType: 'S' }
   ],
-  BillingMode: 'ON_DEMAND'
+  BillingMode: 'PAY_PER_REQUEST'
 };
 
 const hiringTableSchema = {
@@ -57,7 +62,18 @@ const hiringTableSchema = {
   AttributeDefinitions: [
     { AttributeName: 'hiringId', AttributeType: 'S' }
   ],
-  BillingMode: 'ON_DEMAND'
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const instituteProfilesTableSchema = {
+  TableName: INSTITUTE_PROFILES_TABLE,
+  KeySchema: [
+    { AttributeName: 'instituteId', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'instituteId', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
 };
 
 const notificationsTableSchema = {
@@ -68,7 +84,51 @@ const notificationsTableSchema = {
   AttributeDefinitions: [
     { AttributeName: 'notificationId', AttributeType: 'S' }
   ],
-  BillingMode: 'ON_DEMAND'
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const instituteCoursesTableSchema = {
+  TableName: INSTITUTE_COURSES_TABLE,
+  KeySchema: [
+    { AttributeName: 'instituteCourseID', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'instituteCourseID', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const instituteStudentsTableSchema = {
+  TableName: INSTITUTE_STUDENTS_TABLE,
+  KeySchema: [
+    { AttributeName: 'instituteStudntsID', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'instituteStudntsID', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const jobsTableSchema = {
+  TableName: JOBS_TABLE,
+  KeySchema: [
+    { AttributeName: 'jobId', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'jobId', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const jobApplicationsTableSchema = {
+  TableName: JOB_APPLICATIONS_TABLE,
+  KeySchema: [
+    { AttributeName: 'staffinnjob', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'staffinnjob', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
 };
 
 /**
@@ -136,6 +196,17 @@ const createTablesIfNotExist = async () => {
       console.log(`Table already exists: ${HIRING_TABLE}`);
     }
     
+    // Check if institute profiles table exists
+    const instituteProfilesExists = await tableExists(INSTITUTE_PROFILES_TABLE);
+    
+    if (!instituteProfilesExists) {
+      // Create institute profiles table
+      await dynamoClient.send(new CreateTableCommand(instituteProfilesTableSchema));
+      console.log(`Created table: ${INSTITUTE_PROFILES_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${INSTITUTE_PROFILES_TABLE}`);
+    }
+    
     // Check if notifications table exists
     const notificationsExists = await tableExists(NOTIFICATIONS_TABLE);
     
@@ -145,6 +216,50 @@ const createTablesIfNotExist = async () => {
       console.log(`Created table: ${NOTIFICATIONS_TABLE}`);
     } else {
       console.log(`Table already exists: ${NOTIFICATIONS_TABLE}`);
+    }
+    
+    // Check if institute courses table exists
+    const instituteCoursesExists = await tableExists(INSTITUTE_COURSES_TABLE);
+    
+    if (!instituteCoursesExists) {
+      // Create institute courses table
+      await dynamoClient.send(new CreateTableCommand(instituteCoursesTableSchema));
+      console.log(`Created table: ${INSTITUTE_COURSES_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${INSTITUTE_COURSES_TABLE}`);
+    }
+    
+    // Check if institute students table exists
+    const instituteStudentsExists = await tableExists(INSTITUTE_STUDENTS_TABLE);
+    
+    if (!instituteStudentsExists) {
+      // Create institute students table
+      await dynamoClient.send(new CreateTableCommand(instituteStudentsTableSchema));
+      console.log(`Created table: ${INSTITUTE_STUDENTS_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${INSTITUTE_STUDENTS_TABLE}`);
+    }
+    
+    // Check if jobs table exists
+    const jobsExists = await tableExists(JOBS_TABLE);
+    
+    if (!jobsExists) {
+      // Create jobs table
+      await dynamoClient.send(new CreateTableCommand(jobsTableSchema));
+      console.log(`Created table: ${JOBS_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${JOBS_TABLE}`);
+    }
+    
+    // Check if job applications table exists
+    const jobApplicationsExists = await tableExists(JOB_APPLICATIONS_TABLE);
+    
+    if (!jobApplicationsExists) {
+      // Create job applications table
+      await dynamoClient.send(new CreateTableCommand(jobApplicationsTableSchema));
+      console.log(`Created table: ${JOB_APPLICATIONS_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${JOB_APPLICATIONS_TABLE}`);
     }
   } catch (error) {
     // ResourceInUseException means table already exists
@@ -161,8 +276,13 @@ module.exports = {
   dynamoClient,
   USERS_TABLE,
   STAFF_TABLE,
+  INSTITUTE_PROFILES_TABLE,
   CONTACT_TABLE,
   HIRING_TABLE,
   NOTIFICATIONS_TABLE,
+  INSTITUTE_COURSES_TABLE,
+  INSTITUTE_STUDENTS_TABLE,
+  JOBS_TABLE,
+  JOB_APPLICATIONS_TABLE,
   createTablesIfNotExist
 };

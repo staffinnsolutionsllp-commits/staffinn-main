@@ -8,9 +8,7 @@ const dynamoService = require('../services/dynamoService');
 const userModel = require('./userModel');
 
 // Get table names from environment variables
-const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE;
-// For now, we'll store jobs in the users table as job documents
-// Later this can be moved to a separate jobs table
+const JOBS_TABLE = 'staffinn-jobs';
 
 /**
  * Create a new job
@@ -24,9 +22,7 @@ const createJob = async (jobData) => {
     
     // Create job object
     const job = {
-      userId: jobId, // Use jobId as userId for DynamoDB primary key
       jobId,
-      type: 'job', // To distinguish from user records
       recruiterId: jobData.recruiterId,
       title: jobData.title,
       department: jobData.department,
@@ -43,8 +39,8 @@ const createJob = async (jobData) => {
       updatedAt: new Date().toISOString()
     };
     
-    // Store job in DynamoDB (using jobId as primary key)
-    await dynamoService.putItem(USERS_TABLE, job);
+    // Store job in DynamoDB jobs table
+    await dynamoService.putItem(JOBS_TABLE, job);
     
     return job;
   } catch (error) {
@@ -60,9 +56,9 @@ const createJob = async (jobData) => {
  */
 const getJobById = async (jobId) => {
   try {
-    const job = await dynamoService.getItem(USERS_TABLE, { userId: jobId });
+    const job = await dynamoService.getItem(JOBS_TABLE, { jobId });
     
-    if (!job || job.type !== 'job') {
+    if (!job) {
       return null;
     }
     
@@ -81,18 +77,16 @@ const getJobById = async (jobId) => {
 const getJobsByRecruiter = async (recruiterId) => {
   try {
     const params = {
-      FilterExpression: '#type = :type AND #recruiterId = :recruiterId',
+      FilterExpression: '#recruiterId = :recruiterId',
       ExpressionAttributeNames: {
-        '#type': 'type',
         '#recruiterId': 'recruiterId'
       },
       ExpressionAttributeValues: {
-        ':type': 'job',
         ':recruiterId': recruiterId
       }
     };
     
-    const jobs = await dynamoService.scanItems(USERS_TABLE, params);
+    const jobs = await dynamoService.scanItems(JOBS_TABLE, params);
     
     // Sort by creation date (newest first)
     return jobs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -110,18 +104,16 @@ const getAllActiveJobsWithRecruiters = async () => {
   try {
     // Get all active jobs
     const params = {
-      FilterExpression: '#type = :type AND #status = :status',
+      FilterExpression: '#status = :status',
       ExpressionAttributeNames: {
-        '#type': 'type',
         '#status': 'status'
       },
       ExpressionAttributeValues: {
-        ':type': 'job',
         ':status': 'Active'
       }
     };
     
-    const jobs = await dynamoService.scanItems(USERS_TABLE, params);
+    const jobs = await dynamoService.scanItems(JOBS_TABLE, params);
     
     // Get recruiter information for each job
     const jobsWithRecruiters = await Promise.all(
@@ -220,7 +212,7 @@ const updateJob = async (jobId, updateData) => {
     }
 
     // Update the job in DynamoDB
-    await dynamoService.putItem(USERS_TABLE, updatedJobData);
+    await dynamoService.putItem(JOBS_TABLE, updatedJobData);
     
     return updatedJobData;
   } catch (error) {
@@ -236,7 +228,7 @@ const updateJob = async (jobId, updateData) => {
  */
 const deleteJob = async (jobId) => {
   try {
-    await dynamoService.deleteItem(USERS_TABLE, { userId: jobId });
+    await dynamoService.deleteItem(JOBS_TABLE, { jobId });
     return true;
   } catch (error) {
     console.error('Error deleting job:', error);
@@ -251,42 +243,42 @@ const deleteJob = async (jobId) => {
  */
 const searchJobs = async (searchCriteria = {}) => {
   try {
-    let filterExpression = '#type = :type';
-    const expressionAttributeNames = { '#type': 'type' };
-    const expressionAttributeValues = { ':type': 'job' };
+    let filterExpression = '';
+    const expressionAttributeNames = {};
+    const expressionAttributeValues = {};
     
     // Add search filters
     if (searchCriteria.status) {
-      filterExpression += ' AND #status = :status';
+      filterExpression += filterExpression ? ' AND #status = :status' : '#status = :status';
       expressionAttributeNames['#status'] = 'status';
       expressionAttributeValues[':status'] = searchCriteria.status;
     }
     
     if (searchCriteria.location) {
-      filterExpression += ' AND contains(#location, :location)';
+      filterExpression += filterExpression ? ' AND contains(#location, :location)' : 'contains(#location, :location)';
       expressionAttributeNames['#location'] = 'location';
       expressionAttributeValues[':location'] = searchCriteria.location;
     }
     
     if (searchCriteria.department) {
-      filterExpression += ' AND #department = :department';
+      filterExpression += filterExpression ? ' AND #department = :department' : '#department = :department';
       expressionAttributeNames['#department'] = 'department';
       expressionAttributeValues[':department'] = searchCriteria.department;
     }
     
     if (searchCriteria.jobType) {
-      filterExpression += ' AND #jobType = :jobType';
+      filterExpression += filterExpression ? ' AND #jobType = :jobType' : '#jobType = :jobType';
       expressionAttributeNames['#jobType'] = 'jobType';
       expressionAttributeValues[':jobType'] = searchCriteria.jobType;
     }
     
-    const params = {
+    const params = filterExpression ? {
       FilterExpression: filterExpression,
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues
-    };
+    } : {};
     
-    const jobs = await dynamoService.scanItems(USERS_TABLE, params);
+    const jobs = await dynamoService.scanItems(JOBS_TABLE, params);
     
     // Sort by posted date (newest first)
     return jobs.sort((a, b) => new Date(b.postedDate) - new Date(a.postedDate));
@@ -314,7 +306,7 @@ const incrementApplicationCount = async (jobId) => {
       updatedAt: new Date().toISOString()
     };
 
-    await dynamoService.putItem(USERS_TABLE, updatedJob);
+    await dynamoService.putItem(JOBS_TABLE, updatedJob);
     
     return updatedJob;
   } catch (error) {

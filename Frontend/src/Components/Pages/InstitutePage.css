@@ -1598,6 +1598,60 @@ button {
   text-decoration: none;
 }
 
+/* Empty Section Styles */
+.empty-section {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 2px dashed #d1d5db;
+}
+
+.empty-section p {
+  margin: 0;
+  font-style: italic;
+}
+
+/* Image Preview Styles */
+.image-preview-container {
+  position: relative;
+  display: inline-block;
+  margin: 0.5rem 0;
+}
+
+.image-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+}
+
+.image-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.image-remove-btn:hover {
+  background-color: #dc2626;
+  transform: scale(1.1);
+}
+
 /* Responsive Styles */
 @media (max-width: 1200px) {
   .institute-header-content {

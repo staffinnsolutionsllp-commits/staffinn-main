@@ -93,6 +93,32 @@ router.post('/test-with-userid', async (req, res) => {
 router.get('/profile', authenticate, staffController.getStaffProfile);
 
 /**
+ * @route GET /api/staff/debug-profile
+ * @desc Debug endpoint to check staff profile status
+ * @access Private
+ */
+router.get('/debug-profile', authenticate, async (req, res) => {
+  try {
+    const staffModel = require('../models/staffModel');
+    const profile = await staffModel.getStaffProfile(req.user.userId);
+    
+    res.json({
+      success: true,
+      debug: {
+        userId: req.user.userId,
+        userRole: req.user.role,
+        profileExists: !!profile,
+        isActiveStaff: profile ? profile.isActiveStaff : null,
+        isActiveStaffType: profile ? typeof profile.isActiveStaff : null,
+        fullProfile: profile
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * @route PUT /api/staff/profile
  * @desc Update current user's staff profile
  * @access Private

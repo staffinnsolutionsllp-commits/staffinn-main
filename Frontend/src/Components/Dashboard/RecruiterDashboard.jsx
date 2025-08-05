@@ -1,9 +1,11 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useContext } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import * as XLSX from 'xlsx';
 import './RecruiterDashboard.css';
 import './ProfileModal.css';
 import '../Pages/StaffPage.css';
+import './HiringStyles.css';
 import apiService from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
@@ -126,6 +128,25 @@ const RecruiterDashboard = () => {
     // Real candidates from applications
     const [candidates, setCandidates] = useState([]);
     const [candidatesLoading, setCandidatesLoading] = useState(false);
+    
+    // Applied institutes state
+    const [appliedInstitutes, setAppliedInstitutes] = useState([]);
+    const [institutesLoading, setInstitutesLoading] = useState(false);
+    const [selectedInstituteStudents, setSelectedInstituteStudents] = useState([]);
+    const [studentsLoading, setStudentsLoading] = useState(false);
+    const [showStudentsModal, setShowStudentsModal] = useState(false);
+    const [selectedInstitute, setSelectedInstitute] = useState(null);
+    const [selectedJob, setSelectedJob] = useState(null);
+    const [selectedJobFilter, setSelectedJobFilter] = useState('all');
+    const [hiringHistory, setHiringHistory] = useState([]);
+    const [showHiringHistoryModal, setShowHiringHistoryModal] = useState(false);
+    // Removed processedStudents state as backend now handles filtering
+    
+    // Filter institutes based on selected job
+    const filteredInstitutes = appliedInstitutes.filter(institute => {
+        if (selectedJobFilter === 'all') return true;
+        return institute.appliedJobs.some(job => job.jobId === selectedJobFilter);
+    });
 
 
     
@@ -174,6 +195,8 @@ const RecruiterDashboard = () => {
             loadJobPostings();
             loadCandidates();
             loadDashboardStats();
+            loadAppliedInstitutes();
+            loadHiringHistory();
         }
     }, [currentUser]);
     
@@ -203,6 +226,89 @@ const RecruiterDashboard = () => {
         } finally {
             setCandidatesLoading(false);
         }
+    };
+    
+    // Load applied institutes
+    const loadAppliedInstitutes = async () => {
+        try {
+            setInstitutesLoading(true);
+            const response = await apiService.getAppliedInstitutes();
+            
+            if (response.success) {
+                setAppliedInstitutes(response.data || []);
+            }
+        } catch (error) {
+            console.error('Error loading applied institutes:', error);
+        } finally {
+            setInstitutesLoading(false);
+        }
+    };
+    
+    // Load students of an institute
+    const loadInstituteStudents = async (instituteId) => {
+        try {
+            setStudentsLoading(true);
+            const response = await apiService.getInstituteStudents(instituteId);
+            
+            if (response.success) {
+                setSelectedInstituteStudents(response.data || []);
+            } else {
+                alert('Failed to load students: ' + response.message);
+            }
+        } catch (error) {
+            console.error('Error loading institute students:', error);
+            alert('Failed to load students');
+        } finally {
+            setStudentsLoading(false);
+        }
+    };
+    
+    // Handle view students for specific job
+    const handleViewJobStudents = async (institute, job) => {
+        setSelectedInstitute(institute);
+        setSelectedJob(job);
+        setShowStudentsModal(true);
+        await loadJobApplicationStudents(institute.instituteId, job.jobId);
+    };
+    
+    // Load students for specific job application
+    const loadJobApplicationStudents = async (instituteId, jobId) => {
+        try {
+            setStudentsLoading(true);
+            const response = await apiService.getJobApplicationStudents(instituteId, jobId);
+            
+            if (response.success) {
+                // Backend now filters out hired/rejected students automatically
+                setSelectedInstituteStudents(response.data || []);
+            } else {
+                alert('Failed to load students: ' + response.message);
+            }
+        } catch (error) {
+            console.error('Error loading job application students:', error);
+            alert('Failed to load students');
+        } finally {
+            setStudentsLoading(false);
+        }
+    };
+    
+    // Handle view institute details
+    const handleViewInstituteDetails = (institute) => {
+        // For now, show basic info in alert - can be enhanced to show modal
+        alert(`Institute: ${institute.instituteName}\nEmail: ${institute.email}\nPhone: ${institute.phone || 'Not provided'}\nRegistration: ${institute.registrationNumber || 'Not provided'}\nTotal Applications: ${institute.totalApplications}`);
+    };
+    
+    // Handle view student profile - use consistent modal
+    const [showStudentProfileModal, setShowStudentProfileModal] = useState(false);
+    const [selectedStudentProfile, setSelectedStudentProfile] = useState(null);
+    
+    const handleViewStudentProfile = (student) => {
+        setSelectedStudentProfile(student);
+        setShowStudentProfileModal(true);
+    };
+    
+    const closeStudentProfileModal = () => {
+        setShowStudentProfileModal(false);
+        setSelectedStudentProfile(null);
     };
 
     // Load recruiter profile from backend
@@ -835,6 +941,179 @@ const RecruiterDashboard = () => {
         if (diffDays <= 30) return '3 weeks ago';
         return date.toLocaleDateString();
     };
+    
+    // Close students modal
+    const closeStudentsModal = () => {
+        setShowStudentsModal(false);
+        setSelectedInstitute(null);
+        setSelectedJob(null);
+        setSelectedInstituteStudents([]);
+    };
+    
+    // Handle hiring/rejecting institute student
+    const handleHireInstituteStudent = async (student, status) => {
+        if (!selectedJob || !selectedInstitute) {
+            alert('Missing job or institute information');
+            return;
+        }
+        
+        const action = status === 'Hired' ? 'hire' : 'reject';
+        if (window.confirm(`Are you sure you want to ${action} ${student.fullName}?`)) {
+            try {
+                setLoading(true);
+                const response = await apiService.hireInstituteStudent(
+                    student.instituteStudntsID,
+                    selectedInstitute.instituteId,
+                    selectedJob.jobId,
+                    selectedJob.jobTitle,
+                    status,
+                    student // Pass student snapshot
+                );
+                
+                if (response.success) {
+                    // Remove student from current list immediately
+                    setSelectedInstituteStudents(prev => 
+                        prev.filter(s => s.instituteStudntsID !== student.instituteStudntsID)
+                    );
+                    
+                    alert(`${student.fullName} has been ${status.toLowerCase()} successfully!`);
+                    
+                    // Reload hiring history and dashboard stats
+                    await loadHiringHistory();
+                    await loadDashboardStats();
+                    
+                    // If hiring history modal is open for this institute, refresh it
+                    if (showHiringHistoryModal && selectedInstitute && selectedInstitute.instituteId === selectedInstitute.instituteId) {
+                        await loadInstituteSpecificHiringHistory(selectedInstitute.instituteId);
+                    }
+                } else {
+                    alert(`Failed to ${action} student: ` + response.message);
+                }
+            } catch (error) {
+                console.error(`Error ${action}ing student:`, error);
+                alert(`Failed to ${action} student`);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+    
+    // Load hiring history
+    const loadHiringHistory = async () => {
+        try {
+            const response = await apiService.getRecruiterHiringHistory();
+            if (response.success) {
+                setHiringHistory(response.data.all || []);
+            }
+        } catch (error) {
+            console.error('Error loading hiring history:', error);
+        }
+    };
+    
+    // Handle view hiring history for institute
+    const handleViewHiringHistory = async (institute) => {
+        setSelectedInstitute(institute);
+        setShowHiringHistoryModal(true);
+        await loadInstituteSpecificHiringHistory(institute.instituteId);
+    };
+    
+    // Load hiring history for specific institute
+    const loadInstituteSpecificHiringHistory = async (instituteId) => {
+        try {
+            const response = await apiService.getInstituteHiringHistory(instituteId);
+            if (response.success) {
+                setHiringHistory(response.data || []);
+            }
+        } catch (error) {
+            console.error('Error loading institute hiring history:', error);
+        }
+    };
+    
+    // Download all students details as Excel
+    const downloadStudentsExcel = () => {
+        if (!selectedInstituteStudents || selectedInstituteStudents.length === 0) {
+            alert('No students data available to download.');
+            return;
+        }
+        
+        try {
+            // Prepare data for Excel
+            const excelData = selectedInstituteStudents.map((student, index) => {
+                return {
+                    'S.No': index + 1,
+                    'Full Name': student.fullName || 'N/A',
+                    'Email': student.email || 'N/A',
+                    'Phone Number': student.phoneNumber || 'N/A',
+                    'Date of Birth': student.dateOfBirth || 'N/A',
+                    'Gender': student.gender || 'N/A',
+                    'Address': student.address || 'N/A',
+                    'Degree Name': student.degreeName || 'N/A',
+                    'Specialization': student.specialization || 'N/A',
+                    'Expected Year of Passing': student.expectedYearOfPassing || 'N/A',
+                    'Currently Pursuing': student.currentlyPursuing ? 'Yes' : 'No',
+                    '10th Grade Details': student.tenthGradeDetails || 'N/A',
+                    '10th Percentage': student.tenthPercentage || 'N/A',
+                    '10th Year of Passing': student.tenthYearOfPassing || 'N/A',
+                    '12th Grade Details': student.twelfthGradeDetails || 'N/A',
+                    '12th Percentage': student.twelfthPercentage || 'N/A',
+                    '12th Year of Passing': student.twelfthYearOfPassing || 'N/A',
+                    'Skills': student.skills && Array.isArray(student.skills) ? student.skills.join(', ') : 'N/A',
+                    'Profile Photo URL': student.profilePhoto || 'N/A',
+                    'Resume URL': student.resume || 'N/A',
+                    'Certificates Count': student.certificates && Array.isArray(student.certificates) ? student.certificates.length : 0,
+                    'Certificate URLs': student.certificates && Array.isArray(student.certificates) ? student.certificates.join(', ') : 'N/A'
+                };
+            });
+            
+            // Create workbook and worksheet
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            
+            // Set column widths for better readability
+            const columnWidths = [
+                { wch: 5 },   // S.No
+                { wch: 20 },  // Full Name
+                { wch: 25 },  // Email
+                { wch: 15 },  // Phone Number
+                { wch: 12 },  // Date of Birth
+                { wch: 8 },   // Gender
+                { wch: 30 },  // Address
+                { wch: 20 },  // Degree Name
+                { wch: 20 },  // Specialization
+                { wch: 15 },  // Expected Year
+                { wch: 12 },  // Currently Pursuing
+                { wch: 20 },  // 10th Grade Details
+                { wch: 12 },  // 10th Percentage
+                { wch: 15 },  // 10th Year
+                { wch: 20 },  // 12th Grade Details
+                { wch: 12 },  // 12th Percentage
+                { wch: 15 },  // 12th Year
+                { wch: 30 },  // Skills
+                { wch: 40 },  // Profile Photo URL
+                { wch: 40 },  // Resume URL
+                { wch: 15 },  // Certificates Count
+                { wch: 50 }   // Certificate URLs
+            ];
+            worksheet['!cols'] = columnWidths;
+            
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Students Details');
+            
+            // Generate filename with institute name and job title
+            const instituteName = selectedInstitute?.instituteName || 'Institute';
+            const jobTitle = selectedJob?.jobTitle || 'Job';
+            const timestamp = new Date().toISOString().split('T')[0];
+            const filename = `${instituteName}_${jobTitle}_Students_${timestamp}.xlsx`;
+            
+            // Download the file
+            XLSX.writeFile(workbook, filename);
+            
+            console.log(`Excel file downloaded: ${filename}`);
+        } catch (error) {
+            console.error('Error generating Excel file:', error);
+            alert('Failed to generate Excel file. Please try again.');
+        }
+    };
 
     return (
         <div className="recruiter-dashboard">
@@ -862,6 +1141,9 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'hiring' ? 'active' : ''} onClick={() => setActiveTab('hiring')}>
                         Hiring History
                     </li>
+                    <li className={activeTab === 'institutes' ? 'active' : ''} onClick={() => setActiveTab('institutes')}>
+                        Institutes
+                    </li>
                     <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>
                         My Profile
                     </li>
@@ -876,6 +1158,7 @@ const RecruiterDashboard = () => {
                     {activeTab === 'jobs' && 'Job Management'}
                     {activeTab === 'candidates' && 'Candidate Search'}
                     {activeTab === 'hiring' && 'Hiring History'}
+                    {activeTab === 'institutes' && 'Institutes'}
                     {activeTab === 'profile' && 'My Profile'}
                 </h1>
                 {/* Job Form Modal */}
@@ -1647,48 +1930,50 @@ const RecruiterDashboard = () => {
 
                 {activeTab === 'hiring' && (
                     <div className="recruiter-hiring-tab">
-                        
                         {(() => {
                             const hiredCandidatesFromApplications = candidates.filter(c => c.status === 'Hired');
                             const allHiredCandidates = [...hiredCandidates, ...hiredCandidatesFromApplications];
                             
                             return allHiredCandidates.length > 0 ? (
                                 <div className="recruiter-hiring-content">
-                                    <h3>Recently Hired</h3>
-                                    <table className="recruiter-data-table full-width">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Position</th>
-                                                <th>Hire Date</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {allHiredCandidates.map((hired, index) => (
-                                                <tr key={hired.id || index}>
-                                                    <td>{hired.name}</td>
-                                                    <td>{hired.position}</td>
-                                                    <td>{hired.hireDate || new Date(hired.date).toLocaleDateString()}</td>
-                                                    <td>
-                                                        <button 
-                                                            className="recruiter-table-action"
-                                                            onClick={() => {
-                                                                if (hired.staffId) {
-                                                                    const candidate = candidates.find(c => c.staffId === hired.staffId);
-                                                                    if (candidate) {
-                                                                        handleViewProfile(candidate);
-                                                                    }
-                                                                }
-                                                            }}
-                                                        >
-                                                            View Details
-                                                        </button>
-                                                    </td>
+                                    {/* Staff Candidates */}
+                                    <div className="hiring-section">
+                                        <h3>Hired Staff Candidates</h3>
+                                        <table className="recruiter-data-table full-width">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Position</th>
+                                                    <th>Hire Date</th>
+                                                    <th>Actions</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {allHiredCandidates.map((hired, index) => (
+                                                    <tr key={hired.id || index}>
+                                                        <td>{hired.name}</td>
+                                                        <td>{hired.position}</td>
+                                                        <td>{hired.hireDate || new Date(hired.date).toLocaleDateString()}</td>
+                                                        <td>
+                                                            <button 
+                                                                className="recruiter-table-action"
+                                                                onClick={() => {
+                                                                    if (hired.staffId) {
+                                                                        const candidate = candidates.find(c => c.staffId === hired.staffId);
+                                                                        if (candidate) {
+                                                                            handleViewProfile(candidate);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            >
+                                                                View Details
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="recruiter-empty-state">
@@ -1697,6 +1982,110 @@ const RecruiterDashboard = () => {
                             );
                         })()
                         }
+                    </div>
+                )}
+
+                {activeTab === 'institutes' && (
+                    <div className="recruiter-institutes-tab">
+                        <div className="institutes-filter-section">
+                            <select 
+                                className="recruiter-filter-select"
+                                value={selectedJobFilter}
+                                onChange={(e) => setSelectedJobFilter(e.target.value)}
+                            >
+                                <option value="all">All Applied Jobs</option>
+                                {jobPostings.map(job => (
+                                    <option key={job.jobId} value={job.jobId}>{job.title}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        {institutesLoading ? (
+                            <div className="loading-section">
+                                <p>Loading applied institutes...</p>
+                            </div>
+                        ) : filteredInstitutes.length > 0 ? (
+                            <div className="institutes-grid">
+                                {filteredInstitutes.map((institute) => (
+                                    <div key={institute.instituteId} className="institute-card">
+                                        <div className="institute-header">
+                                            <h3 className="institute-name">
+                                                {institute.instituteName}
+                                            </h3>
+                                        </div>
+                                        
+                                        <div className="institute-contact">
+                                            <div className="contact-item">
+                                                <span className="contact-icon">📞</span>
+                                                <span>{institute.phone || 'Phone Available'}</span>
+                                            </div>
+                                            <div className="contact-item">
+                                                <span className="contact-icon">📧</span>
+                                                <span>{institute.email}</span>
+                                            </div>
+                                            <div className="contact-item">
+                                                <span className="contact-icon">🌐</span>
+                                                <span>{institute.website || 'Website Available'}</span>
+                                            </div>
+                                        </div>
+
+                                        
+                                        <div className="applied-jobs-section">
+                                            <h4>Applied Jobs ({institute.totalApplications})</h4>
+                                            <div className="applied-jobs-list">
+                                                {institute.appliedJobs.map((job, index) => (
+                                                    <div key={index} className="applied-job-item">
+                                                        <div className="job-info">
+                                                            <span className="job-title">{job.jobTitle}</span>
+                                                            <span className="applied-date">[{formatDate(job.appliedAt)}]</span>
+                                                        </div>
+                                                        <button 
+                                                            className="view-students-btn"
+                                                            onClick={() => handleViewJobStudents(institute, job)}
+                                                        >
+                                                            View Students
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="institute-actions">
+                                            <button 
+                                                className="view-details-btn"
+                                                onClick={() => window.open(`/institute/${institute.instituteId}`, '_blank')}
+                                            >
+                                                View Details
+                                            </button>
+                                        </div>
+                                        
+                                        <div className="institute-hiring-history-section" style={{marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e0e0e0'}}>
+                                            <button 
+                                                className="hiring-history-btn"
+                                                onClick={() => handleViewHiringHistory(institute)}
+                                                style={{
+                                                    width: '100%',
+                                                    backgroundColor: '#28a745',
+                                                    color: 'white',
+                                                    padding: '10px 16px',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '14px',
+                                                    fontWeight: '500'
+                                                }}
+                                            >
+                                                📋 Hiring History
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="recruiter-empty-state">
+                                <p>No institutes have applied to your jobs yet.</p>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -2115,6 +2504,457 @@ const RecruiterDashboard = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                )}
+                
+                {/* Students Modal */}
+                {showStudentsModal && selectedInstitute && (
+                    <div className="recruiter-modal-overlay">
+                        <div className="recruiter-students-modal">
+                            <div className="recruiter-modal-header">
+                                <h2>Students from {selectedInstitute.instituteName}</h2>
+                                <button 
+                                    className="recruiter-close-modal"
+                                    onClick={closeStudentsModal}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            
+                            <div className="students-modal-content">
+                                {studentsLoading ? (
+                                    <div className="loading-section">
+                                        <p>Loading students...</p>
+                                    </div>
+                                ) : selectedInstituteStudents.length > 0 ? (
+                                    <>
+                                        <div className="students-table-container">
+                                            <table className="students-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Email</th>
+                                                        <th>Degree</th>
+                                                        <th>Specialization</th>
+                                                        <th>Graduation Year</th>
+                                                        <th>Hiring</th>
+                                                        <th>Skills</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {selectedInstituteStudents.map((student) => (
+                                                        <tr key={student.instituteStudntsID}>
+                                                            <td>{student.fullName}</td>
+                                                            <td>{student.email}</td>
+                                                            <td>{student.degreeName}</td>
+                                                            <td>{student.specialization}</td>
+                                                            <td>{student.expectedYearOfPassing}</td>
+                                                            <td>
+                                                                <div className="hiring-buttons" style={{display: 'flex', gap: '5px'}}>
+                                                                    <button 
+                                                                        className="hire-btn"
+                                                                        onClick={() => handleHireInstituteStudent(student, 'Hired')}
+                                                                        disabled={loading}
+                                                                        style={{
+                                                                            backgroundColor: '#28a745',
+                                                                            color: 'white',
+                                                                            border: 'none',
+                                                                            padding: '6px 12px',
+                                                                            borderRadius: '4px',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: '12px'
+                                                                        }}
+                                                                    >
+                                                                        ✅ Hired
+                                                                    </button>
+                                                                    <button 
+                                                                        className="reject-btn"
+                                                                        onClick={() => handleHireInstituteStudent(student, 'Rejected')}
+                                                                        disabled={loading}
+                                                                        style={{
+                                                                            backgroundColor: '#dc3545',
+                                                                            color: 'white',
+                                                                            border: 'none',
+                                                                            padding: '6px 12px',
+                                                                            borderRadius: '4px',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: '12px'
+                                                                        }}
+                                                                    >
+                                                                        ❌ Rejected
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div className="skills-compact">
+                                                                    {student.skills && student.skills.length > 0 ? (
+                                                                        student.skills.slice(0, 2).map((skill, index) => (
+                                                                            <span key={index} className="skill-tag-small">{skill}</span>
+                                                                        ))
+                                                                    ) : (
+                                                                        <span className="no-skills">No skills</span>
+                                                                    )}
+                                                                    {student.skills && student.skills.length > 2 && (
+                                                                        <span className="more-skills">+{student.skills.length - 2}</span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button 
+                                                                    className="view-profile-btn-small"
+                                                                    onClick={() => handleViewStudentProfile(student)}
+                                                                >
+                                                                    View Profile
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        {/* Download All Students Detail Button */}
+                                        <div className="download-students-section">
+                                            <button 
+                                                className="download-all-students-btn"
+                                                onClick={downloadStudentsExcel}
+                                                disabled={loading}
+                                            >
+                                                📥 Download All Students Detail
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="no-students">
+                                        <p>This institute has not added any students yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Student Profile Modal - Enhanced with actual document display */}
+                {showStudentProfileModal && selectedStudentProfile && (
+                    <div className="institute-modal-overlay" onClick={closeStudentProfileModal}>
+                        <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="institute-modal-header">
+                                <h2>Student Profile</h2>
+                                <button className="institute-close-button" onClick={closeStudentProfileModal}>×</button>
+                            </div>
+                            
+                            <div className="institute-student-profile-view">
+                                {loading ? (
+                                    <div style={{textAlign: 'center', padding: '40px'}}>
+                                        <p>Loading student details...</p>
+                                    </div>
+                                ) : selectedStudentProfile ? (
+                                    <>
+                                        <div className="institute-profile-section">
+                                            <h4>Basic Details</h4>
+                                            <div className="institute-profile-grid">
+                                                <div className="institute-profile-item">
+                                                    <strong>Full Name:</strong>
+                                                    <span>{selectedStudentProfile.fullName || 'Not provided'}</span>
+                                                </div>
+                                                <div className="institute-profile-item">
+                                                    <strong>Email:</strong>
+                                                    <span>{selectedStudentProfile.email || 'Not provided'}</span>
+                                                </div>
+                                                <div className="institute-profile-item">
+                                                    <strong>Phone:</strong>
+                                                    <span>{selectedStudentProfile.phoneNumber || 'Not provided'}</span>
+                                                </div>
+                                                <div className="institute-profile-item">
+                                                    <strong>Date of Birth:</strong>
+                                                    <span>{selectedStudentProfile.dateOfBirth || 'Not provided'}</span>
+                                                </div>
+                                                <div className="institute-profile-item">
+                                                    <strong>Gender:</strong>
+                                                    <span>{selectedStudentProfile.gender || 'Not provided'}</span>
+                                                </div>
+                                                <div className="institute-profile-item">
+                                                    <strong>Address:</strong>
+                                                    <span>{selectedStudentProfile.address || 'Not provided'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="institute-profile-section">
+                                            <h4>Academic Information</h4>
+                                            <div className="institute-academic-grid">
+                                                <div className="institute-academic-section">
+                                                    <h5>10th Grade</h5>
+                                                    <p><strong>Board:</strong> {selectedStudentProfile.tenthGradeDetails || 'Not provided'}</p>
+                                                    <p><strong>Percentage/Grade:</strong> {selectedStudentProfile.tenthPercentage || 'Not provided'}</p>
+                                                    <p><strong>Year of Passing:</strong> {selectedStudentProfile.tenthYearOfPassing || 'Not provided'}</p>
+                                                </div>
+                                                <div className="institute-academic-section">
+                                                    <h5>12th Grade</h5>
+                                                    <p><strong>Board:</strong> {selectedStudentProfile.twelfthGradeDetails || 'Not provided'}</p>
+                                                    <p><strong>Percentage/Grade:</strong> {selectedStudentProfile.twelfthPercentage || 'Not provided'}</p>
+                                                    <p><strong>Year of Passing:</strong> {selectedStudentProfile.twelfthYearOfPassing || 'Not provided'}</p>
+                                                </div>
+                                                <div className="institute-academic-section">
+                                                    <h5>Graduation</h5>
+                                                    <p><strong>Degree:</strong> {selectedStudentProfile.degreeName || 'Not provided'}</p>
+                                                    <p><strong>Specialization:</strong> {selectedStudentProfile.specialization || 'Not provided'}</p>
+                                                    <p><strong>Expected Year:</strong> {selectedStudentProfile.expectedYearOfPassing || 'Not provided'}</p>
+                                                    <p><strong>Currently Pursuing:</strong> {selectedStudentProfile.currentlyPursuing ? 'Yes' : 'No'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="institute-profile-section">
+                                            <h4>Additional Information</h4>
+                                            <div className="institute-profile-item">
+                                                <strong>Skills:</strong>
+                                                <div className="institute-skills-display">
+                                                    {selectedStudentProfile.skills && Array.isArray(selectedStudentProfile.skills) && selectedStudentProfile.skills.length > 0 ? 
+                                                        selectedStudentProfile.skills.map((skill, index) => (
+                                                            <span key={index} className="institute-skill-tag">{skill}</span>
+                                                        )) : 
+                                                        <span>No skills listed</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="institute-profile-section">
+                                            <h4>Documents</h4>
+                                            <div className="institute-documents-grid">
+                                                <div className="institute-document-item">
+                                                    <strong>Profile Photo:</strong>
+                                                    {selectedStudentProfile.profilePhoto ? (
+                                                        <div className="document-preview">
+                                                            <img 
+                                                                src={selectedStudentProfile.profilePhoto} 
+                                                                alt="Profile Photo" 
+                                                                style={{
+                                                                    maxWidth: '150px', 
+                                                                    maxHeight: '150px', 
+                                                                    borderRadius: '8px',
+                                                                    cursor: 'pointer',
+                                                                    border: '2px solid #ddd'
+                                                                }}
+                                                                onClick={() => window.open(selectedStudentProfile.profilePhoto, '_blank')}
+                                                            />
+                                                            <br />
+                                                            <button 
+                                                                onClick={() => window.open(selectedStudentProfile.profilePhoto, '_blank')}
+                                                                style={{
+                                                                    marginTop: '8px',
+                                                                    padding: '4px 8px',
+                                                                    backgroundColor: '#007bff',
+                                                                    color: 'white',
+                                                                    border: 'none',
+                                                                    borderRadius: '4px',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '12px'
+                                                                }}
+                                                            >
+                                                                View Full Size
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span>Not uploaded</span>
+                                                    )}
+                                                </div>
+                                                <div className="institute-document-item">
+                                                    <strong>Resume:</strong>
+                                                    {selectedStudentProfile.resume ? (
+                                                        <div className="document-preview">
+                                                            <div style={{
+                                                                padding: '12px',
+                                                                border: '2px solid #28a745',
+                                                                borderRadius: '8px',
+                                                                backgroundColor: '#f8f9fa',
+                                                                textAlign: 'center',
+                                                                maxWidth: '200px'
+                                                            }}>
+                                                                <div style={{fontSize: '24px', marginBottom: '8px'}}>📄</div>
+                                                                <div style={{fontSize: '14px', fontWeight: 'bold', marginBottom: '8px'}}>Resume Document</div>
+                                                                <button 
+                                                                    onClick={() => window.open(selectedStudentProfile.resume, '_blank')}
+                                                                    style={{
+                                                                        padding: '6px 12px',
+                                                                        backgroundColor: '#28a745',
+                                                                        color: 'white',
+                                                                        border: 'none',
+                                                                        borderRadius: '4px',
+                                                                        cursor: 'pointer',
+                                                                        fontSize: '12px'
+                                                                    }}
+                                                                >
+                                                                    📥 View Resume
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span>Not uploaded</span>
+                                                    )}
+                                                </div>
+                                                <div className="institute-document-item">
+                                                    <strong>Certificates:</strong>
+                                                    {selectedStudentProfile.certificates && selectedStudentProfile.certificates.length > 0 ? (
+                                                        <div className="certificates-preview">
+                                                            {selectedStudentProfile.certificates.map((cert, index) => (
+                                                                <div key={index} style={{
+                                                                    padding: '8px',
+                                                                    border: '2px solid #ffc107',
+                                                                    borderRadius: '6px',
+                                                                    backgroundColor: '#fff3cd',
+                                                                    margin: '4px 0',
+                                                                    textAlign: 'center',
+                                                                    maxWidth: '180px'
+                                                                }}>
+                                                                    <div style={{fontSize: '20px', marginBottom: '4px'}}>🏆</div>
+                                                                    <div style={{fontSize: '12px', fontWeight: 'bold', marginBottom: '6px'}}>Certificate {index + 1}</div>
+                                                                    <button 
+                                                                        onClick={() => window.open(cert, '_blank')}
+                                                                        style={{
+                                                                            padding: '4px 8px',
+                                                                            backgroundColor: '#ffc107',
+                                                                            color: '#212529',
+                                                                            border: 'none',
+                                                                            borderRadius: '3px',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: '11px'
+                                                                        }}
+                                                                    >
+                                                                        📜 View Certificate
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span>No certificates uploaded</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="institute-form-buttons">
+                                            <button 
+                                                type="button" 
+                                                className="institute-secondary-button" 
+                                                onClick={closeStudentProfileModal}
+                                            >
+                                                Close
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="institute-modal-error">
+                                        <h3>Error Loading Student</h3>
+                                        <p>Unable to load student details. Please try again.</p>
+                                        <div className="institute-form-buttons">
+                                            <button type="button" className="institute-secondary-button" onClick={closeStudentProfileModal}>Close</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Hiring History Modal */}
+                {showHiringHistoryModal && selectedInstitute && (
+                    <div className="recruiter-modal-overlay">
+                        <div className="recruiter-hiring-history-modal">
+                            <div className="recruiter-modal-header">
+                                <h2>Hiring History - {selectedInstitute.instituteName}</h2>
+                                <button 
+                                    className="recruiter-close-modal"
+                                    onClick={() => {
+                                        setShowHiringHistoryModal(false);
+                                        setSelectedInstitute(null);
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            
+                            <div className="hiring-history-content">
+                                {(() => {
+                                    if (hiringHistory.length === 0) {
+                                        return (
+                                            <div className="no-hiring-history">
+                                                <p>No hiring records found for this institute.</p>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    // Group by job title
+                                    const groupedByJob = hiringHistory.reduce((acc, record) => {
+                                        const jobTitle = record.jobTitle;
+                                        if (!acc[jobTitle]) {
+                                            acc[jobTitle] = [];
+                                        }
+                                        acc[jobTitle].push(record);
+                                        return acc;
+                                    }, {});
+                                    
+                                    return (
+                                        <div className="hiring-history-by-job">
+                                            {Object.entries(groupedByJob).map(([jobTitle, records]) => (
+                                                <div key={jobTitle} className="job-hiring-section">
+                                                    <h3 className="job-title-header">{jobTitle}</h3>
+                                                    <table className="recruiter-data-table full-width">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Student Name</th>
+                                                                <th>Email</th>
+                                                                <th>Status</th>
+                                                                <th>Date</th>
+                                                                <th>Degree</th>
+                                                                <th>Skills</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {records.map((record) => (
+                                                                <tr key={record.hiringRecordID || record.hiringId}>
+                                                                    <td>{record.studentSnapshot?.fullName || 'Student Name'}</td>
+                                                                    <td>{record.studentSnapshot?.email || 'N/A'}</td>
+                                                                    <td>
+                                                                        <span className={`recruiter-status-badge ${record.status.toLowerCase()}`}>
+                                                                            {record.status}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td>{new Date(record.timestamp || record.createdAt).toLocaleDateString()}</td>
+                                                                    <td>
+                                                                        {record.studentSnapshot?.degreeName ? 
+                                                                            `${record.studentSnapshot.degreeName} - ${record.studentSnapshot.specialization || 'N/A'}` : 
+                                                                            'N/A'
+                                                                        }
+                                                                    </td>
+                                                                    <td>
+                                                                        {record.studentSnapshot?.skills && record.studentSnapshot.skills.length > 0 ? (
+                                                                            <div className="skills-compact">
+                                                                                {record.studentSnapshot.skills.slice(0, 2).map((skill, index) => (
+                                                                                    <span key={index} className="skill-tag-small">{skill}</span>
+                                                                                ))}
+                                                                                {record.studentSnapshot.skills.length > 2 && (
+                                                                                    <span className="more-skills">+{record.studentSnapshot.skills.length - 2}</span>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span>No skills</span>
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()
+                                }
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

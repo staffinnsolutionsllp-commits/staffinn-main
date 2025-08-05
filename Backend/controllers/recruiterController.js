@@ -655,8 +655,8 @@ const uploadProfilePhoto = async (req, res) => {
       });
     }
 
-    // For now, we'll store the file path. In production, you'd upload to S3
-    const photoUrl = `/uploads/${req.file.filename}`;
+    // Store the file path with proper URL format
+    const photoUrl = `http://localhost:4000/uploads/${req.file.filename}`;
     
     // Update recruiter profile with photo URL in recruiter-profiles table
     const dynamoService = require('../services/dynamoService');
@@ -906,6 +906,9 @@ const followRecruiter = async (req, res) => {
     // Get recruiter profile
     const recruiterProfile = await dynamoService.getItem(RECRUITER_PROFILES_TABLE, { recruiterId }) || {};
     const currentFollowers = recruiterProfile.followers || [];
+    
+    // Log followers count instead of full array
+    console.log(`Followers count for recruiter ${recruiterId}:`, currentFollowers.length);
     
     // Check if already following
     if (currentFollowers.includes(userId)) {

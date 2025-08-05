@@ -59,6 +59,12 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+/**
+ * Protect middleware (alias for authenticate)
+ */
+const protect = authenticate;
+
 module.exports = {
-  authenticate
+  authenticate,
+  protect
 };

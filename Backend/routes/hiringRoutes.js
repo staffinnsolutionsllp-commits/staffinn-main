@@ -10,7 +10,10 @@ const {
   getHiringHistory,
   rateHiring,
   getHiringStats,
-  getHiringRecord
+  getHiringRecord,
+  hireInstituteStudent,
+  getRecruiterHiringHistory,
+  getInstituteHiringHistory
 } = require('../controllers/hiringController');
 
 // All hiring routes require authentication
@@ -30,5 +33,14 @@ router.get('/:hiringId', getHiringRecord);
 
 // PUT /api/hiring/:hiringId/rate - Rate a hiring record
 router.put('/:hiringId/rate', rateHiring);
+
+// POST /api/hiring/institute-student - Hire or reject institute student
+router.post('/institute-student', hireInstituteStudent);
+
+// GET /api/hiring/recruiter-history - Get recruiter hiring history
+router.get('/recruiter-history', getRecruiterHiringHistory);
+
+// GET /api/hiring/institute/:instituteId/history - Get institute hiring history
+router.get('/institute/:instituteId/history', getInstituteHiringHistory);
 
 module.exports = router;

@@ -26,6 +26,8 @@ const authRoutes = require('./routes/authRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const recruiterRoutes = require('./routes/recruiterRoutes');
 const staffRoutes = require('./routes/staffRoutes');
+const instituteRoutes = require('./routes/instituteRoutes');
+const instituteManagementRoutes = require('./routes/instituteManagementRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const hiringRoutes = require('./routes/hiringRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
@@ -57,6 +59,9 @@ app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/jobs`, jobRoutes);
 app.use(`${API_PREFIX}/recruiter`, recruiterRoutes);
 app.use(`${API_PREFIX}/staff`, staffRoutes);
+app.use(`${API_PREFIX}/institute`, instituteRoutes);
+app.use(`${API_PREFIX}/institutes`, instituteRoutes); // Add plural route for frontend compatibility
+app.use(`${API_PREFIX}/institute-management`, instituteManagementRoutes);
 app.use(`${API_PREFIX}/contact`, contactRoutes);
 app.use(`${API_PREFIX}/hiring`, hiringRoutes);
 app.use(`${API_PREFIX}/reviews`, reviewRoutes);
@@ -78,31 +83,42 @@ app.get('/', (req, res) => {
 // Debug route to check DynamoDB connection
 app.get('/debug/dynamodb', async (req, res) => {
     try {
-        const { dynamoClient } = require('./config/dynamodb');
-        const { ListTablesCommand, ScanCommand } = require('@aws-sdk/client-dynamodb');
-        const { unmarshall } = require('@aws-sdk/util-dynamodb');
+        const { dynamoClient, mockDB, isUsingMockDB, USERS_TABLE } = require('./config/dynamodb-wrapper');
         
-        const command = new ListTablesCommand({});
-        const response = await dynamoClient.send(command);
-        
-        // Get users from the table
-        const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'staffinn-users';
-        const scanCommand = new ScanCommand({
-            TableName: USERS_TABLE,
-            Limit: 10
-        });
-        
-        const scanResponse = await dynamoClient.send(scanCommand);
-        const users = scanResponse.Items ? scanResponse.Items.map(item => unmarshall(item)) : [];
-        
-        res.json({
-            success: true,
-            message: 'DynamoDB connection successful',
-            tables: response.TableNames,
-            region: process.env.AWS_REGION,
-            usersTable: process.env.DYNAMODB_USERS_TABLE,
-            users: users
-        });
+        if (isUsingMockDB()) {
+            const users = mockDB().scan(USERS_TABLE, 10);
+            res.json({
+                success: true,
+                message: 'Mock DynamoDB connection successful',
+                database: 'mock',
+                usersTable: USERS_TABLE,
+                users: users
+            });
+        } else {
+            const { ListTablesCommand, ScanCommand } = require('@aws-sdk/client-dynamodb');
+            const { unmarshall } = require('@aws-sdk/util-dynamodb');
+            
+            const command = new ListTablesCommand({});
+            const response = await dynamoClient.send(command);
+            
+            const scanCommand = new ScanCommand({
+                TableName: USERS_TABLE,
+                Limit: 10
+            });
+            
+            const scanResponse = await dynamoClient.send(scanCommand);
+            const users = scanResponse.Items ? scanResponse.Items.map(item => unmarshall(item)) : [];
+            
+            res.json({
+                success: true,
+                message: 'DynamoDB connection successful',
+                database: 'real',
+                tables: response.TableNames,
+                region: process.env.AWS_REGION,
+                usersTable: USERS_TABLE,
+                users: users
+            });
+        }
     } catch (error) {
         console.error('DynamoDB debug error:', error);
         res.status(500).json({
@@ -115,24 +131,35 @@ app.get('/debug/dynamodb', async (req, res) => {
 
 app.get('/debug/staff-profiles', async (req, res) => {
     try {
-        const { dynamoClient } = require('./config/dynamodb');
-        const { ScanCommand } = require('@aws-sdk/client-dynamodb');
-        const { unmarshall } = require('@aws-sdk/util-dynamodb');
+        const { dynamoClient, mockDB, isUsingMockDB, STAFF_TABLE } = require('./config/dynamodb-wrapper');
         
-        const scanCommand = new ScanCommand({
-            TableName: 'staffinn-staff-profiles',
-            Limit: 10
-        });
-        
-        const scanResponse = await dynamoClient.send(scanCommand);
-        const staffProfiles = scanResponse.Items ? scanResponse.Items.map(item => unmarshall(item)) : [];
-        
-        res.json({
-            success: true,
-            message: 'Staff profiles retrieved successfully',
-            count: staffProfiles.length,
-            profiles: staffProfiles
-        });
+        if (isUsingMockDB()) {
+            const staffProfiles = mockDB().scan(STAFF_TABLE, 10);
+            res.json({
+                success: true,
+                message: 'Staff profiles retrieved successfully (mock)',
+                count: staffProfiles.length,
+                profiles: staffProfiles
+            });
+        } else {
+            const { ScanCommand } = require('@aws-sdk/client-dynamodb');
+            const { unmarshall } = require('@aws-sdk/util-dynamodb');
+            
+            const scanCommand = new ScanCommand({
+                TableName: STAFF_TABLE,
+                Limit: 10
+            });
+            
+            const scanResponse = await dynamoClient.send(scanCommand);
+            const staffProfiles = scanResponse.Items ? scanResponse.Items.map(item => unmarshall(item)) : [];
+            
+            res.json({
+                success: true,
+                message: 'Staff profiles retrieved successfully',
+                count: staffProfiles.length,
+                profiles: staffProfiles
+            });
+        }
     } catch (error) {
         console.error('Staff profiles debug error:', error);
         res.status(500).json({
@@ -164,7 +191,7 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Import DynamoDB configuration
-const { createTablesIfNotExist } = require('./config/dynamodb');
+const { createTablesIfNotExist } = require('./config/dynamodb-wrapper');
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -186,6 +213,26 @@ server.listen(PORT, async () => {
     try {
         await createTablesIfNotExist();
         console.log('✅ DynamoDB tables initialized');
+        
+        // Run job migration from users table to jobs table
+        try {
+            const { migrateJobs } = require('./scripts/migrateJobsToJobsTable');
+            await migrateJobs();
+        } catch (migrationError) {
+            console.log('ℹ️  Job migration completed or no jobs to migrate');
+        }
+        
+        // Run job applications migration
+        try {
+            const { migrateJobApplications } = require('./scripts/migrateJobApplications');
+            await migrateJobApplications();
+        } catch (migrationError) {
+            console.log('ℹ️  Job applications migration completed or no applications to migrate');
+        }
+        
+        // Reset institute courses cache after table creation
+        const instituteCourseModel = require('./models/instituteCourseModel');
+        instituteCourseModel.resetCache();
     } catch (error) {
         console.error('❌ Error initializing DynamoDB tables:', error);
     }

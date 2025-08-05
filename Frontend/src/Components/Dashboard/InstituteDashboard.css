@@ -286,6 +286,7 @@
     align-items: center;
     z-index: 1000;
     padding: 20px;
+    backdrop-filter: blur(2px);
 }
 
 .institute-modal-content {
@@ -308,6 +309,23 @@
         opacity: 1;
         transform: translateY(0) scale(1);
     }
+}
+
+/* Modal Error State */
+.institute-modal-error {
+    padding: 30px;
+    text-align: center;
+    color: #dc2626;
+}
+
+.institute-modal-error h3 {
+    margin: 0 0 10px 0;
+    color: #dc2626;
+}
+
+.institute-modal-error p {
+    margin: 0 0 20px 0;
+    color: #64748b;
 }
 
 .institute-modal-header {
@@ -721,6 +739,61 @@
     color: #64748b;
 }
 
+.institute-status-badge.pending {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.institute-status-badge.hired {
+    background-color: #d1fae5;
+    color: #059669;
+}
+
+.institute-status-badge.rejected {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.institute-status-badge.applied {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+.institute-status-badge.not-placed {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+/* Placement History Modal Styles */
+.institute-placement-history-content {
+    padding: 0;
+    min-height: 200px;
+}
+
+.institute-placement-history-content .institute-data-table {
+    margin: 0;
+}
+
+.institute-placement-history-content .institute-data-table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 15px;
+}
+
+.institute-placement-history-content .institute-data-table td {
+    padding: 15px;
+    vertical-align: middle;
+}
+
+.institute-placement-history-content .institute-status-badge {
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
 .institute-table-action {
     padding: 6px 12px;
     border: 1px solid #e2e8f0;
@@ -734,11 +807,39 @@
     font-weight: 500;
 }
 
-.institute-table-action:hover {
+.institute-table-action:hover:not(:disabled) {
     background-color: #f8fafc;
     border-color: #cbd5e1;
     color: #374151;
     transform: translateY(-1px);
+}
+
+.institute-table-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.institute-table-action.view {
+    color: #2563eb;
+    border-color: #dbeafe;
+}
+
+.institute-table-action.view:hover:not(:disabled) {
+    background-color: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.institute-table-action.edit {
+    color: #059669;
+    border-color: #d1fae5;
+}
+
+.institute-table-action.edit:hover:not(:disabled) {
+    background-color: #ecfdf5;
+    border-color: #86efac;
+    color: #047857;
 }
 
 .institute-table-action.delete {
@@ -746,7 +847,7 @@
     border-color: #fecaca;
 }
 
-.institute-table-action.delete:hover {
+.institute-table-action.delete:hover:not(:disabled) {
     background-color: #fef2f2;
     border-color: #fca5a5;
 }
@@ -1188,6 +1289,32 @@
     font-size: 1.1rem;
 }
 
+/* Modal Loading State */
+.institute-modal-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    color: #64748b;
+    font-size: 1rem;
+}
+
+.institute-modal-loading::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e2e8f0;
+    border-top: 2px solid #4863f7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 .fade-in {
     animation: fadeIn 0.5s ease-in;
 }
@@ -1223,4 +1350,405 @@
 .institute-dashboard-content::-webkit-scrollbar-thumb:hover,
 .institute-modal-content::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
+}
+
+/* Student Profile View Modal Styles */
+.institute-student-profile-view {
+    padding: 0;
+    min-height: 200px;
+    position: relative;
+}
+
+.institute-student-profile-view .loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 10;
+}
+
+.institute-profile-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border-left: 4px solid #4863f7;
+}
+
+.institute-profile-section:last-child {
+    margin-bottom: 0;
+}
+
+.institute-profile-section h4 {
+    margin: 0 0 15px 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-profile-section h5 {
+    margin: 0 0 10px 0;
+    color: #374151;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.institute-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.institute-profile-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 12px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-profile-item strong {
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.institute-profile-item span {
+    color: #1e293b;
+    font-size: 0.95rem;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.institute-academic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.institute-academic-section {
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-academic-section h5 {
+    margin: 0 0 10px 0;
+    color: #4863f7;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 5px;
+}
+
+.institute-academic-section p {
+    margin: 5px 0;
+    font-size: 0.85rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.institute-academic-section p strong {
+    color: #374151;
+    font-weight: 600;
+}
+
+.institute-skills-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.institute-skill-tag {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid #93c5fd;
+}
+
+.institute-documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.institute-document-item {
+    padding: 12px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.institute-document-item strong {
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.institute-document-item a {
+    color: #4863f7;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.institute-document-item a:hover {
+    color: #3a4fd8;
+    text-decoration: underline;
+}
+
+.institute-certificates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.institute-certificates-list a {
+    color: #4863f7;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.institute-certificates-list a:hover {
+    background-color: #eff6ff;
+    color: #3a4fd8;
+    text-decoration: underline;
+}
+
+/* Skills Input Styles */
+.institute-skills-input-container {
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 50px;
+    background-color: #fff;
+    transition: border-color 0.3s ease;
+}
+
+.institute-skills-input-container:focus-within {
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+}
+
+.institute-skills-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.institute-skill-tag-input {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #93c5fd;
+}
+
+.institute-remove-skill-btn {
+    background: none;
+    border: none;
+    color: #1d4ed8;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.institute-remove-skill-btn:hover {
+    background-color: rgba(29, 78, 216, 0.1);
+}
+
+.institute-skills-input-container input {
+    border: none;
+    outline: none;
+    padding: 8px 0;
+    font-size: 0.95rem;
+    width: 100%;
+    background: transparent;
+}
+
+/* Image Preview Styles for Placement Section */
+.image-preview-container {
+    position: relative;
+    display: inline-block;
+    margin: 0.5rem 0;
+}
+
+.image-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 2px solid #e5e7eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.image-remove-btn:hover {
+    background-color: #dc2626;
+    transform: scale(1.1);
+}
+
+.institute-company-item,
+.institute-placement-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 15px;
+}
+
+.institute-company-item input,
+.institute-placement-item input {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.institute-company-item input[type="file"],
+.institute-placement-item input[type="file"] {
+    padding: 6px;
+    font-size: 0.85rem;
+}
+
+.institute-add-btn {
+    padding: 10px 16px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 10px;
+}
+
+.institute-add-btn:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+}
+
+.institute-remove-btn {
+    padding: 8px 12px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    align-self: flex-start;
+}
+
+.institute-remove-btn:hover {
+    background-color: #dc2626;
+}
+
+.institute-placement-form {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.institute-companies-section,
+.institute-placements-section {
+    margin-top: 10px;
+}
+
+.file-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.file-input-container input[type="file"] {
+    padding: 6px;
+    font-size: 0.85rem;
+}
+
+.file-input-container .image-preview-container {
+    align-self: flex-start;
+}
+
+/* Responsive styles for profile view */
+@media (max-width: 768px) {
+    .institute-profile-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-academic-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-documents-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-profile-section {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
 }

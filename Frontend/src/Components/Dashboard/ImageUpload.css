@@ -1,0 +1,117 @@
+/* Profile Image Upload Styles */
+.image-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.image-preview-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.image-preview {
+  position: relative;
+  display: inline-block;
+}
+
+.image-preview img {
+  border: 3px solid #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.delete-image-btn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background-color: #ff4757;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease;
+}
+
+.delete-image-btn:hover {
+  background-color: #ff3742;
+}
+
+.image-upload-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.image-upload-controls input[type="file"] {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  width: 100%;
+  max-width: 300px;
+}
+
+.upload-image-btn {
+  background-color: #2ecc71;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
+}
+
+.upload-image-btn:hover {
+  background-color: #27ae60;
+}
+
+.upload-image-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* Real-time update indicator */
+.image-update-indicator {
+  color: #27ae60;
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+  margin-top: 5px;
+}
+
+/* Loading state for image operations */
+.image-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Responsive design for image upload */
+@media (max-width: 768px) {
+  .image-upload-container {
+    padding: 10px;
+  }
+  
+  .image-preview img {
+    width: 120px !important;
+    height: 120px !important;
+  }
+  
+  .image-upload-controls input[type="file"] {
+    font-size: 12px;
+  }
+}

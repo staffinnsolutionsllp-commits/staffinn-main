@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import apiService from '../../services/api';
 import './InstitutePage.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaSearch, FaGraduationCap, FaBriefcase, FaHandshake, FaChalkboardTeacher, FaCalendarAlt, FaUsers, FaCheckCircle } from 'react-icons/fa';
 import InstitutepageImage from '../../assets/Institutepage.jpg';
@@ -15,6 +16,8 @@ const InstitutePage = () => {
     certification: 'all'
   });
   const [instituteData, setInstituteData] = useState(null);
+  const [placementData, setPlacementData] = useState(null);
+  const [instituteDashboardStats, setInstituteDashboardStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [newReview, setNewReview] = useState({
@@ -24,34 +27,7 @@ const InstitutePage = () => {
     comment: ''
   });
 
-  // Sample data for institutes - In a real app, this would come from an API
-  const institutes = [
-    {
-      id: '1',
-      name: 'JECRC Foundation',
-      location: 'Jaipur, Rajasthan',
-      address: '123 Education Lane, Tech Park, Jaipur - 302022',
-      phone: '+91 141 2770120',
-      email: 'info@jecrc.ac.in',
-      website: 'www.jecrc.ac.in',
-      experience: '25+ Years of Excellence in Education',
-      badges: ['AICTE Approved', 'ISO 9001:2015', 'NSDC Partner'],
-      isBrainaryVerified: true
-    },
-    {
-      id: '2',
-      name: 'Tech Skills Academy',
-      location: 'Bangalore, Karnataka',
-      address: '123 Education Lane, Tech Park, Bangalore - 560001',
-      phone: '+91 80 12345678',
-      email: 'info@techskillsacademy.edu',
-      website: 'www.techskillsacademy.edu',
-      experience: '15+ Years of Excellence in Training',
-      badges: ['AICTE Approved', 'ISO 9001:2015', 'NSDC Partner'],
-      isBrainaryVerified: true
-    }
-    // Other institutes would be here
-  ];
+
 
   // Sample data - would come from API in real implementation
   const courses = [
@@ -115,18 +91,90 @@ const InstitutePage = () => {
 
   // Fetch institute data based on ID
   useEffect(() => {
-    // In a real app, this would be an API call
-    // For demonstration, we're using the local data
-    const fetchInstitute = () => {
-      setLoading(true);
-      // Find the institute with the matching ID
-      const foundInstitute = institutes.find(institute => institute.id === id);
-      setInstituteData(foundInstitute || institutes[0]); // Default to first institute if not found
-      setLoading(false);
-    };
-
-    fetchInstitute();
+    if (id) {
+      fetchInstitute();
+      fetchPlacementData();
+      fetchInstituteDashboardStats();
+    }
   }, [id]);
+
+  const fetchInstitute = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getInstituteById(id);
+      
+      if (response.success && response.data) {
+        // Transform API data to match component expectations
+        const transformedData = {
+          id: response.data.instituteId,
+          name: response.data.instituteName,
+          location: response.data.address,
+          address: response.data.address,
+          phone: response.data.phone,
+          email: response.data.email,
+          website: response.data.website,
+          experience: response.data.experience,
+          badges: response.data.badges || [],
+          profileImage: response.data.profileImage,
+          isBrainaryVerified: response.data.isLive || false
+        };
+        setInstituteData(transformedData);
+      } else {
+        // Fallback to sample data if API fails
+        setInstituteData({
+          id: id,
+          name: 'Sample Institute',
+          location: 'Sample Location',
+          address: 'Sample Address',
+          phone: '+91 12345 67890',
+          email: 'info@sample.edu',
+          website: 'www.sample.edu',
+          experience: 'Sample Experience',
+          badges: ['Sample Badge'],
+          isBrainaryVerified: false
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching institute:', error);
+      // Set fallback data on error
+      setInstituteData({
+        id: id,
+        name: 'Institute Not Found',
+        location: 'Location Not Available',
+        address: 'Address Not Available',
+        phone: 'Phone Not Available',
+        email: 'Email Not Available',
+        website: 'Website Not Available',
+        experience: 'Experience Not Available',
+        badges: [],
+        isBrainaryVerified: false
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPlacementData = async () => {
+    try {
+      const response = await apiService.getPublicPlacementSection(id);
+      if (response.success && response.data) {
+        setPlacementData(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching placement data:', error);
+    }
+  };
+
+  const fetchInstituteDashboardStats = async () => {
+    try {
+      const response = await apiService.getPublicDashboardStats(id);
+      if (response.success && response.data) {
+        setInstituteDashboardStats(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching institute dashboard stats:', error);
+    }
+  };
 
   // Filter courses based on search and filter criteria
   const filteredCourses = courses.filter(course => {
@@ -244,12 +292,16 @@ const InstitutePage = () => {
         <div className="institute-header-content">
           <div className="institute-logo-section">
             <div className="institute-logo">
-              <img src={`https://via.placeholder.com/150?text=${instituteData?.name.charAt(0)}`} alt="Institute Logo" />
+              <img 
+                src={instituteData?.profileImage || `https://via.placeholder.com/150?text=${instituteData?.name.charAt(0)}`} 
+                alt="Institute Logo"
+                data-institute-image
+              />
             </div>
             <div className="institute-name">
               <h1>{instituteData?.name}</h1>
               <div className="institute-badges">
-                {instituteData?.badges.map((badge, index) => (
+                {instituteData?.badges && instituteData.badges.map((badge, index) => (
                   <div key={index} className="badge">{badge}</div>
                 ))}
               </div>
@@ -423,19 +475,19 @@ const InstitutePage = () => {
 
             <div className="placement-stats-container">
               <div className="stat-card">
-                <div className="stat-value">{placements.statistics.totalPlaced}+</div>
+                <div className="stat-value">{instituteDashboardStats?.placedStudents || placements.statistics.totalPlaced}</div>
                 <div className="stat-label">Students Placed</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value">{placements.statistics.placementRate}%</div>
+                <div className="stat-value">{instituteDashboardStats?.placementRate || placements.statistics.placementRate}%</div>
                 <div className="stat-label">Placement Rate</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value">{placements.statistics.avgSalary}</div>
+                <div className="stat-value">{placementData?.averageSalary || placements.statistics.avgSalary}</div>
                 <div className="stat-label">Average Salary</div>
               </div>
               <div className="stat-card">
-                <div className="stat-value">{placements.statistics.highestSalary}</div>
+                <div className="stat-value">{placementData?.highestPackage || placements.statistics.highestSalary}</div>
                 <div className="stat-label">Highest Package</div>
               </div>
             </div>
@@ -444,56 +496,52 @@ const InstitutePage = () => {
               <div className="top-companies">
                 <h3>Top Hiring Companies</h3>
                 <div className="company-logos">
-                  {placements.topCompanies.map((company, index) => (
-                    <div key={index} className="company-logo">
-                      <img src={`https://via.placeholder.com/100?text=${company}`} alt={company} />
-                      <span>{company}</span>
+                  {placementData?.topHiringCompanies && placementData.topHiringCompanies.length > 0 ? (
+                    placementData.topHiringCompanies.map((company, index) => (
+                      <div key={index} className="company-logo">
+                        <img 
+                          src={company.logo || `https://via.placeholder.com/100?text=${company.name}`} 
+                          alt={company.name} 
+                        />
+                        <span>{company.name}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="empty-section">
+                      <p>No hiring companies data available yet.</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
               <div className="recent-placements">
                 <h3>Recent Placement Success</h3>
                 <div className="placement-list">
-                  {placements.recentPlacements.map((placement, index) => (
-                    <div key={index} className="placement-item">
-                      <div className="student-profile">
-                        <div className="student-avatar">
-                          <img src={`https://via.placeholder.com/50?text=${placement.student.charAt(0)}`} alt={placement.student} />
+                  {placementData?.recentPlacementSuccess && placementData.recentPlacementSuccess.length > 0 ? (
+                    placementData.recentPlacementSuccess.map((placement, index) => (
+                      <div key={index} className="placement-item">
+                        <div className="student-profile">
+                          <div className="student-avatar">
+                            <img 
+                              src={placement.photo || `https://via.placeholder.com/50?text=${placement.name.charAt(0)}`} 
+                              alt={placement.name} 
+                            />
+                          </div>
+                          <div className="student-details">
+                            <h4>{placement.name}</h4>
+                          </div>
                         </div>
-                        <div className="student-details">
-                          <h4>{placement.student}</h4>
-                          <p>{placement.course}</p>
+                        <div className="placement-details">
+                          <div className="company-name">{placement.company}</div>
+                          <div className="job-role">{placement.position}</div>
                         </div>
                       </div>
-                      <div className="placement-details">
-                        <div className="company-name">{placement.company}</div>
-                        <div className="job-role">{placement.role}</div>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="empty-section">
+                      <p>No recent placement success stories available yet.</p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="recruiter-testimonials">
-                <h3>What Recruiters Say</h3>
-                <div className="testimonial-container">
-                  {allReviews.filter(review => review.role === 'Recruiter').map(review => (
-                    <div key={review.id} className="testimonial-card">
-                      <div className="reviewer-info">
-                        <div className="reviewer-avatar">
-                          <img src={`https://via.placeholder.com/60?text=${review.name.charAt(0)}`} alt={review.name} />
-                        </div>
-                        <div className="reviewer-details">
-                          <h4>{review.name}</h4>
-                          <p>{review.role}</p>
-                        </div>
-                      </div>
-                      <div className="stars">{renderStars(review.rating)}</div>
-                      <p className="testimonial-text">"{review.comment}"</p>
-                    </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>

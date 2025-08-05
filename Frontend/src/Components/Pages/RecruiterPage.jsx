@@ -5,6 +5,7 @@ import './RecruiterPage.css';
 import './AppliedButton.css';
 import apiService from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
+import StudentSelectionModal from '../common/StudentSelectionModal';
 
 const RecruiterPage = () => {
   const { user } = useContext(AuthContext);
@@ -20,6 +21,12 @@ const RecruiterPage = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  
+  // Student selection modal state
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [studentsForModal, setStudentsForModal] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   // Load recruiters from backend on component mount
   useEffect(() => {
@@ -28,6 +35,13 @@ const RecruiterPage = () => {
       loadUserProfile();
     }
   }, []);
+  
+  // Reload applied jobs when user changes
+  useEffect(() => {
+    if (user) {
+      loadAppliedJobs();
+    }
+  }, [user]);
   
   // Handle URL parameter for direct recruiter access
   useEffect(() => {
@@ -46,20 +60,62 @@ const RecruiterPage = () => {
     }
   }, [selectedRecruiter, user]);
   
-  // Load user profile to check if they are active staff
+  // Load user profile to check if they are active staff or institute
   const loadUserProfile = async () => {
     try {
-      const response = await apiService.getStaffProfile();
-      if (response.success) {
+      let response;
+      if (user.role === 'staff') {
+        response = await apiService.getStaffProfile();
+        console.log('Staff profile API response:', response);
+      } else if (user.role === 'institute') {
+        response = await apiService.getInstituteProfile();
+        console.log('Institute profile API response:', response);
+      }
+      
+      if (response && response.success && response.data) {
+        console.log('Setting user profile:', response.data);
         setUserProfile(response.data);
         
-        // Load applied jobs to prevent duplicates
-        const applications = response.data.applications || [];
-        const appliedJobKeys = applications.map(app => `${app.recruiterId}-${app.jobId}`);
-        setAppliedJobs(new Set(appliedJobKeys));
+        // Load applied jobs separately to ensure persistent state
+        await loadAppliedJobs();
+      } else {
+        console.error('Failed to load user profile:', response);
+        // Set a default profile to prevent null checks from failing
+        if (user.role === 'staff') {
+          setUserProfile({ isActiveStaff: false });
+        } else {
+          setUserProfile({ role: user.role });
+        }
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
+      // Set a default profile to prevent null checks from failing
+      if (user.role === 'staff') {
+        setUserProfile({ isActiveStaff: false });
+      } else {
+        setUserProfile({ role: user.role });
+      }
+    }
+  };
+  
+  // Load applied jobs separately to maintain persistent state
+  const loadAppliedJobs = async () => {
+    try {
+      console.log('Loading applied jobs for user:', user?.role);
+      const response = await apiService.getAppliedJobs();
+      console.log('Applied jobs API response:', response);
+      
+      if (response && response.success) {
+        const applications = response.data || [];
+        console.log('Applications data:', applications);
+        const appliedJobKeys = applications.map(app => `${app.recruiterId}-${app.jobId}`);
+        setAppliedJobs(new Set(appliedJobKeys));
+        console.log('Set applied job keys:', appliedJobKeys);
+      } else {
+        console.log('Failed to load applied jobs:', response?.message);
+      }
+    } catch (error) {
+      console.error('Error loading applied jobs:', error);
     }
   };
   
@@ -73,40 +129,156 @@ const RecruiterPage = () => {
       return;
     }
     
-    if (!userProfile || !userProfile.isActiveStaff) {
-      alert('First register yourself as an active staff.');
+    console.log('Apply Now clicked - User:', user);
+    console.log('Apply Now clicked - UserProfile:', userProfile);
+    
+    // For staff members, verify their profile status
+    if (user.role === 'staff') {
+      // If profile is not loaded or status is unclear, debug and reload
+      if (!userProfile || userProfile.isActiveStaff === undefined) {
+        console.log('Profile not loaded or unclear, debugging...');
+        
+        try {
+          const debugResponse = await apiService.debugStaffProfile();
+          console.log('Debug response:', debugResponse);
+          
+          if (debugResponse.success) {
+            const debug = debugResponse.debug;
+            
+            if (!debug.profileExists) {
+              alert('Your staff profile was not found. Please complete your profile setup first.');
+              return;
+            }
+            
+            if (debug.isActiveStaff === false) {
+              alert('Please activate your staff profile to apply for jobs. Go to your dashboard and toggle to "Active Staff" mode.');
+              return;
+            }
+            
+            if (debug.isActiveStaff !== true) {
+              alert('Unable to verify your active staff status. Please contact support.');
+              return;
+            }
+            
+            // Update local profile state with debug info
+            setUserProfile(debug.fullProfile);
+          } else {
+            alert('Unable to verify your profile status. Please try again.');
+            return;
+          }
+        } catch (error) {
+          console.error('Debug profile error:', error);
+          alert('Unable to verify your profile status. Please refresh the page and try again.');
+          return;
+        }
+      } else if (userProfile.isActiveStaff === false) {
+        alert('Please activate your staff profile to apply for jobs. Go to your dashboard and toggle to "Active Staff" mode.');
+        return;
+      } else if (userProfile.isActiveStaff !== true) {
+        alert('Unable to verify your active staff status. Please refresh the page and try again.');
+        return;
+      }
+      
+      // For staff, use the old direct application method
+      const jobKey = `${selectedRecruiter.id}-${job.id}`;
+      if (appliedJobs.has(jobKey)) {
+        return; // Already applied, do nothing
+      }
+      
+      try {
+        const response = await apiService.applyForJob(
+          selectedRecruiter.id,
+          job.id,
+          job.title,
+          selectedRecruiter.companyName
+        );
+        
+        if (response.success) {
+          if (response.data.alreadyApplied) {
+            // Mark as applied in UI
+            setAppliedJobs(prev => new Set([...prev, jobKey]));
+          } else {
+            // Mark as applied and show success
+            setAppliedJobs(prev => new Set([...prev, jobKey]));
+            alert('Application submitted successfully!');
+          }
+        } else {
+          alert('Failed to apply: ' + response.message);
+        }
+      } catch (error) {
+        console.error('Error applying for job:', error);
+        alert('Failed to apply for job');
+      }
+    } else if (user.role === 'institute') {
+      // For institutes, show student selection modal
+      await handleInstituteJobApplication(job);
+    } else {
+      alert('Only staff members and institutes can apply for jobs.');
+      return;
+    }
+  };
+  
+  // Handle institute job application with student selection
+  const handleInstituteJobApplication = async (job) => {
+    setSelectedJob(job);
+    setModalLoading(true);
+    setShowStudentModal(true);
+    
+    try {
+      // Get students with application status for this job
+      const response = await apiService.getStudentsApplicationStatus(job.id);
+      
+      if (response.success) {
+        setStudentsForModal(response.data || []);
+      } else {
+        console.error('Failed to get students:', response.message);
+        setStudentsForModal([]);
+      }
+    } catch (error) {
+      console.error('Error loading students:', error);
+      setStudentsForModal([]);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+  
+  // Handle student application submission
+  const handleStudentApplication = async (selectedStudentIds) => {
+    if (!selectedJob || selectedStudentIds.length === 0) {
       return;
     }
     
-    const jobKey = `${selectedRecruiter.id}-${job.id}`;
-    if (appliedJobs.has(jobKey)) {
-      return; // Already applied, do nothing
-    }
-    
     try {
-      const response = await apiService.applyForJob(
+      const response = await apiService.applyStudentsToJob(
+        selectedJob.id,
         selectedRecruiter.id,
-        job.id,
-        job.title,
-        selectedRecruiter.companyName
+        selectedStudentIds
       );
       
       if (response.success) {
-        if (response.data.alreadyApplied) {
-          // Mark as applied in UI
-          setAppliedJobs(prev => new Set([...prev, jobKey]));
-        } else {
-          // Mark as applied and show success
-          setAppliedJobs(prev => new Set([...prev, jobKey]));
-          alert('Application submitted successfully!');
-        }
+        alert(`Successfully applied ${selectedStudentIds.length} student${selectedStudentIds.length !== 1 ? 's' : ''} to ${selectedJob.title}!`);
+        
+        // Update the applied jobs state to show "Already Applied"
+        const jobKey = `${selectedRecruiter.id}-${selectedJob.id}`;
+        setAppliedJobs(prev => new Set([...prev, jobKey]));
+        
+        // Reset modal state
+        setSelectedJob(null);
+        setStudentsForModal([]);
       } else {
-        alert('Failed to apply: ' + response.message);
+        alert('Failed to apply students: ' + response.message);
       }
     } catch (error) {
-      console.error('Error applying for job:', error);
-      alert('Failed to apply for job');
+      console.error('Error applying students:', error);
+      alert('Failed to apply students to job');
     }
+  };
+  
+  // Close student selection modal
+  const closeStudentModal = () => {
+    setShowStudentModal(false);
+    setSelectedJob(null);
+    setStudentsForModal([]);
   };
 
   // Load recruiter jobs when a recruiter is selected
@@ -668,6 +840,18 @@ const RecruiterPage = () => {
                           const jobKey = `${selectedRecruiter.id}-${job.id}`;
                           const hasApplied = appliedJobs.has(jobKey);
                           
+                          // For institutes, check if they can reapply (if they have new students)
+                          if (user && user.role === 'institute' && hasApplied) {
+                            return (
+                              <button 
+                                className="apply-btn"
+                                onClick={() => handleApplyNow(job)}
+                              >
+                                Apply Students
+                              </button>
+                            );
+                          }
+                          
                           return hasApplied ? (
                             <button className="apply-btn applied" disabled>
                               <span className="checkmark">✓</span> Already Applied
@@ -677,11 +861,10 @@ const RecruiterPage = () => {
                               className="apply-btn"
                               onClick={() => handleApplyNow(job)}
                             >
-                              Apply Now
+                              {user && user.role === 'institute' ? 'Apply Students' : 'Apply Now'}
                             </button>
                           );
-                        })()
-                        }
+                        })()}
                       </div>
                     </div>
                   ))}
@@ -878,6 +1061,17 @@ const RecruiterPage = () => {
             </section>
           </div>
         </div>
+        
+        {/* Student Selection Modal */}
+        <StudentSelectionModal
+          isOpen={showStudentModal}
+          onClose={closeStudentModal}
+          onApply={handleStudentApplication}
+          jobTitle={selectedJob?.title || ''}
+          companyName={selectedRecruiter?.companyName || ''}
+          students={studentsForModal}
+          loading={modalLoading}
+        />
       </div>
     );
   }

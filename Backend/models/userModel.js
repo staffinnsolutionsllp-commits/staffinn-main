@@ -134,6 +134,122 @@ const findUserByEmail = async (email) => {
 };
 
 /**
+ * Get user by email (alias for findUserByEmail)
+ */
+const getUserByEmail = async (email) => {
+  return await findUserByEmail(email);
+};
+
+/**
+ * Get user by ID (alias for findUserById)
+ */
+const getUserById = async (userId) => {
+  return await findUserById(userId);
+};
+
+/**
+ * Get user by registration number
+ */
+const getUserByRegistrationNumber = async (registrationNumber) => {
+  try {
+    const params = {
+      FilterExpression: 'registrationNumber = :regNum',
+      ExpressionAttributeValues: {
+        ':regNum': registrationNumber
+      }
+    };
+    
+    const users = await dynamoService.scanItems(USERS_TABLE, params);
+    return users.length > 0 ? users[0] : null;
+  } catch (error) {
+    console.error('Error finding user by registration number:', error);
+    return null;
+  }
+};
+
+/**
+ * Update user
+ */
+const updateUser = async (userId, updateData) => {
+  try {
+    const user = await findUserById(userId);
+    if (!user) {
+      return null;
+    }
+    
+    const updatedUser = { ...user, ...updateData, updatedAt: new Date().toISOString() };
+    await dynamoService.putItem(USERS_TABLE, updatedUser);
+    
+    // Return without password
+    const { password, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get users by role
+ */
+const getUsersByRole = async (role) => {
+  try {
+    const params = {
+      FilterExpression: '#role = :role',
+      ExpressionAttributeNames: {
+        '#role': 'role'
+      },
+      ExpressionAttributeValues: {
+        ':role': role
+      }
+    };
+    
+    const users = await dynamoService.scanItems(USERS_TABLE, params);
+    return users;
+  } catch (error) {
+    console.error('Error getting users by role:', error);
+    return [];
+  }
+};
+
+/**
+ * Search users by role and query
+ */
+const searchUsersByRoleAndQuery = async (role, query) => {
+  try {
+    const params = {
+      FilterExpression: '#role = :role AND (contains(instituteName, :query) OR contains(registrationNumber, :query))',
+      ExpressionAttributeNames: {
+        '#role': 'role'
+      },
+      ExpressionAttributeValues: {
+        ':role': role,
+        ':query': query
+      }
+    };
+    
+    const users = await dynamoService.scanItems(USERS_TABLE, params);
+    return users;
+  } catch (error) {
+    console.error('Error searching users:', error);
+    return [];
+  }
+};
+
+/**
+ * Delete user
+ */
+const deleteUser = async (userId) => {
+  try {
+    await dynamoService.deleteItem(USERS_TABLE, { userId });
+    return true;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return false;
+  }
+};
+
+/**
  * Find user by ID
  * @param {string} userId - User ID
  * @returns {Promise<object|null>} - User object or null
@@ -277,6 +393,13 @@ module.exports = {
   createUser,
   findUserByEmail,
   findUserById,
+  getUserByEmail,
+  getUserById,
+  getUserByRegistrationNumber,
+  updateUser,
+  getUsersByRole,
+  searchUsersByRoleAndQuery,
+  deleteUser,
   authenticateUser,
   changePassword
 };

@@ -7,8 +7,8 @@
 const awsConfig = {
   region: process.env.AWS_REGION || 'ap-south-1',
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'dummy',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'dummy'
   },
   // Additional S3 specific configuration
   s3: {
@@ -20,6 +20,20 @@ const awsConfig = {
     apiVersion: '2012-08-10'
   }
 };
+
+// For local development, use DynamoDB Local only if explicitly enabled
+if (process.env.USE_LOCAL_DYNAMODB === 'true') {
+  awsConfig.endpoint = 'http://localhost:8000';
+  awsConfig.credentials = {
+    accessKeyId: 'dummy',
+    secretAccessKey: 'dummy'
+  };
+  console.log('Using local DynamoDB endpoint');
+} else if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+  console.log('Using real AWS DynamoDB');
+} else {
+  console.warn('AWS credentials not found, will fall back to mock database');
+}
 
 // Validate required environment variables
 const requiredEnvVars = [

@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import apiService from '../../services/api';
 import './InstitutePageList.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCheckCircle, FaSearch } from 'react-icons/fa';
 import InstitutepageImage from '../../assets/Institutepage.jpg';
@@ -8,112 +9,64 @@ import InstitutepageImage from '../../assets/Institutepage.jpg';
 const InstitutePageList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('');
+  const [institutes, setInstitutes] = useState([]);
   const [filteredInstitutes, setFilteredInstitutes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Sample data for institutes
-  const institutes = [
-    {
-      id: 1,
-      name: 'JECRC Foundation',
-      location: 'Jaipur, Rajasthan',
-      phone: '+91 141 2770120',
-      email: 'info@jecrc.ac.in',
-      website: 'www.jecrc.ac.in',
-      experience: '25+ Years of Excellence in Education',
-      badges: ['AICTE Approved', 'ISO 9001:2015', 'NSDC Partner'],
-      isBrainaryVerified: true,
-      isTrendingAchiever: true
-    },
-    {
-      id: 2,
-      name: 'Tech Skills Academy',
-      location: 'Bangalore, Karnataka',
-      phone: '+91 80 12345678',
-      email: 'info@techskillsacademy.edu',
-      website: 'www.techskillsacademy.edu',
-      experience: '15+ Years of Excellence in Training',
-      badges: ['AICTE Approved', 'ISO 9001:2015', 'NSDC Partner'],
-      isBrainaryVerified: true,
-      isTrendingAchiever: false
-    },
-    {
-      id: 3,
-      name: 'Digital Engineering Institute',
-      location: 'Mumbai, Maharashtra',
-      phone: '+91 22 98765432',
-      email: 'info@digitalengineering.edu',
-      website: 'www.digitalengineering.edu',
-      experience: '10+ Years of Digital Excellence',
-      badges: ['AICTE Approved', 'NAAC A++'],
-      isBrainaryVerified: false,
-      isTrendingAchiever: true
-    },
-    {
-      id: 4,
-      name: 'National Institute of Technology',
-      location: 'Delhi, New Delhi',
-      phone: '+91 11 87654321',
-      email: 'info@nationaltech.edu',
-      website: 'www.nationaltech.edu',
-      experience: '30+ Years of Academic Excellence',
-      badges: ['UGC Recognized', 'NAAC A++', 'NBA Accredited'],
-      isBrainaryVerified: true,
-      isTrendingAchiever: true
-    },
-    {
-      id: 5,
-      name: 'Pinnacle Management College',
-      location: 'Chennai, Tamil Nadu',
-      phone: '+91 44 56789012',
-      email: 'info@pinnaclemgmt.edu',
-      website: 'www.pinnaclemgmt.edu',
-      experience: '12+ Years in Management Education',
-      badges: ['AICTE Approved', 'AACSB Accredited'],
-      isBrainaryVerified: false,
-      isTrendingAchiever: false
-    },
-    {
-      id: 6,
-      name: 'Global Institute of Engineering',
-      location: 'Hyderabad, Telangana',
-      phone: '+91 40 23456789',
-      email: 'info@globalengineering.edu',
-      website: 'www.globalengineering.edu',
-      experience: '20+ Years of Engineering Excellence',
-      badges: ['NBA Accredited', 'ISO 9001:2015'],
-      isBrainaryVerified: true,
-      isTrendingAchiever: false
-    },
-    {
-      id: 7,
-      name: 'Innovate Design School',
-      location: 'Pune, Maharashtra',
-      phone: '+91 20 34567890',
-      email: 'info@innovatedesign.edu',
-      website: 'www.innovatedesign.edu',
-      experience: '8+ Years of Creative Excellence',
-      badges: ['Design Council Certified', 'International Design Association Member'],
-      isBrainaryVerified: false,
-      isTrendingAchiever: true
-    },
-    {
-      id: 8,
-      name: 'Advanced Computing Academy',
-      location: 'Bangalore, Karnataka',
-      phone: '+91 80 45678901',
-      email: 'info@advancedcomputing.edu',
-      website: 'www.advancedcomputing.edu',
-      experience: '10+ Years in Computer Science Education',
-      badges: ['AICTE Approved', 'NASSCOM Partnership'],
-      isBrainaryVerified: true,
-      isTrendingAchiever: true
-    }
-  ];
-
-  // Initialize filteredInstitutes with all institutes when component mounts
+  // Load institutes from API
   useEffect(() => {
-    setFilteredInstitutes(institutes);
+    loadInstitutes();
   }, []);
+
+  const loadInstitutes = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getAllInstitutes();
+      
+      if (response.success && response.data) {
+        // Transform API data to match component expectations
+        const transformedInstitutes = response.data.map(institute => ({
+          id: institute.instituteId,
+          name: institute.instituteName,
+          location: institute.address,
+          phone: institute.phone,
+          email: institute.email,
+          website: institute.website,
+          experience: institute.experience,
+          badges: institute.badges || [],
+          profileImage: institute.profileImage,
+          isBrainaryVerified: institute.isLive || false,
+          isTrendingAchiever: institute.isLive || false
+        }));
+        setInstitutes(transformedInstitutes);
+        setFilteredInstitutes(transformedInstitutes);
+      } else {
+        // Fallback to sample data if API fails
+        const sampleInstitutes = [
+          {
+            id: 'sample-1',
+            name: 'Sample Institute',
+            location: 'Sample Location',
+            phone: '+91 12345 67890',
+            email: 'info@sample.edu',
+            website: 'www.sample.edu',
+            experience: 'Sample Experience',
+            badges: ['Sample Badge'],
+            isBrainaryVerified: false,
+            isTrendingAchiever: false
+          }
+        ];
+        setInstitutes(sampleInstitutes);
+        setFilteredInstitutes(sampleInstitutes);
+      }
+    } catch (error) {
+      console.error('Error loading institutes:', error);
+      setInstitutes([]);
+      setFilteredInstitutes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter institutes based on search term and selected filter
   useEffect(() => {
@@ -196,24 +149,31 @@ const InstitutePageList = () => {
 
       {/* Institutes Grid */}
       <div className="institutes-grid">
-        {filteredInstitutes.length > 0 ? (
+        {loading ? (
+          <div className="loading-message">
+            <p>Loading institutes...</p>
+          </div>
+        ) : filteredInstitutes.length > 0 ? (
           filteredInstitutes.map(institute => (
             <div key={institute.id} className="institute-card">
               <div className="institute-header">
                 <div className="institute-logo">
-                  <img src={`https://via.placeholder.com/80?text=${institute.name.charAt(0)}`} alt={`${institute.name} Logo`} />
+                  <img 
+                    src={institute.profileImage || `https://via.placeholder.com/80?text=${institute.name.charAt(0)}`} 
+                    alt={`${institute.name} Logo`} 
+                  />
                 </div>
                 <div className="institute-name">
                   <h2>{institute.name}</h2>
                   {institute.isBrainaryVerified && (
                     <div className="brainary-verified">
-                      <FaCheckCircle /> Brainary Verified
+                      <FaCheckCircle /> Staffinn Verified
                     </div>
                   )}
                 </div>
               </div>
               <div className="institute-badges">
-                {institute.badges.map((badge, index) => (
+                {institute.badges && institute.badges.map((badge, index) => (
                   <span key={index} className="badge">{badge}</span>
                 ))}
               </div>
