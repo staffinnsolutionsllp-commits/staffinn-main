@@ -17,6 +17,7 @@ const HIRING_TABLE = process.env.HIRING_TABLE || 'staffinn-hiring-records';
 const NOTIFICATIONS_TABLE = process.env.NOTIFICATIONS_TABLE || 'staffinn-notifications';
 const INSTITUTE_COURSES_TABLE = process.env.INSTITUTE_COURSES_TABLE || 'staffinn-institute-courses';
 const INSTITUTE_STUDENTS_TABLE = process.env.INSTITUTE_STUDENTS_TABLE || 'staffinn-institute-students';
+const INDUSTRY_COLLAB_TABLE = process.env.INDUSTRY_COLLAB_TABLE || 'institute-industrycollab-section';
 const JOBS_TABLE = process.env.JOBS_TABLE || 'staffinn-jobs';
 const JOB_APPLICATIONS_TABLE = process.env.JOB_APPLICATIONS_TABLE || 'staffinn-job-applications';
 
@@ -105,6 +106,17 @@ const instituteStudentsTableSchema = {
   ],
   AttributeDefinitions: [
     { AttributeName: 'instituteStudntsID', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const industryCollabTableSchema = {
+  TableName: INDUSTRY_COLLAB_TABLE,
+  KeySchema: [
+    { AttributeName: 'instituteinduscollab', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'instituteinduscollab', AttributeType: 'S' }
   ],
   BillingMode: 'PAY_PER_REQUEST'
 };
@@ -261,6 +273,17 @@ const createTablesIfNotExist = async () => {
     } else {
       console.log(`Table already exists: ${JOB_APPLICATIONS_TABLE}`);
     }
+    
+    // Check if industry collaboration table exists
+    const industryCollabExists = await tableExists(INDUSTRY_COLLAB_TABLE);
+    
+    if (!industryCollabExists) {
+      // Create industry collaboration table
+      await dynamoClient.send(new CreateTableCommand(industryCollabTableSchema));
+      console.log(`Created table: ${INDUSTRY_COLLAB_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${INDUSTRY_COLLAB_TABLE}`);
+    }
   } catch (error) {
     // ResourceInUseException means table already exists
     if (error.name === 'ResourceInUseException') {
@@ -282,6 +305,7 @@ module.exports = {
   NOTIFICATIONS_TABLE,
   INSTITUTE_COURSES_TABLE,
   INSTITUTE_STUDENTS_TABLE,
+  INDUSTRY_COLLAB_TABLE,
   JOBS_TABLE,
   JOB_APPLICATIONS_TABLE,
   createTablesIfNotExist

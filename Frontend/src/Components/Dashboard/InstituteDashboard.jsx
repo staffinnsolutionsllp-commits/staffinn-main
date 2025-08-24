@@ -8,6 +8,7 @@ import './BadgeStyles.css';
 import './ImageUpload.css';
 import './HiringStyles.css';
 import './PlacementSection.css';
+import './EventNewsStyles.css';
 
 const InstituteDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
@@ -54,6 +55,8 @@ const InstituteDashboard = () => {
         loadStudents();
         loadCourses();
         loadPlacementSectionData();
+        loadIndustryCollabData();
+        loadEventNewsData();
     }, []);
     
     // Refresh dashboard data when switching to overview or placements tab
@@ -128,26 +131,148 @@ const InstituteDashboard = () => {
         try {
             const response = await apiService.getPlacementSection();
             if (response.success && response.data) {
+                console.log('Setting placement section data:', response.data);
                 setPlacementSectionData(response.data);
-                setPlacementSectionForm({
+                
+                const newFormData = {
                     averageSalary: response.data.averageSalary || '',
                     highestPackage: response.data.highestPackage || '',
-                    topHiringCompanies: (response.data.topHiringCompanies || []).map(company => ({
-                        name: company.name || '',
-                        logo: null, // Reset file object
-                        logoPreview: company.logo || null // Show existing image URL as preview
-                    })),
-                    recentPlacementSuccess: (response.data.recentPlacementSuccess || []).map(placement => ({
-                        name: placement.name || '',
-                        company: placement.company || '',
-                        position: placement.position || '',
-                        photo: null, // Reset file object
-                        photoPreview: placement.photo || null // Show existing image URL as preview
-                    }))
+                    topHiringCompanies: (response.data.topHiringCompanies || []).map((company, index) => {
+                        // Check if logo is a valid URL string
+                        const validLogo = company.logo && typeof company.logo === 'string' && company.logo.includes('http') ? company.logo : null;
+                        return {
+                            id: `existing_company_${index}_${Date.now()}`,
+                            name: company.name || '',
+                            logo: validLogo,
+                            logoPreview: validLogo,
+                            isExisting: true,
+                            hasNewFile: false,
+                            isRemoved: false
+                        };
+                    }),
+                    recentPlacementSuccess: (response.data.recentPlacementSuccess || []).map((placement, index) => {
+                        // Check if photo is a valid URL string
+                        const validPhoto = placement.photo && typeof placement.photo === 'string' && placement.photo.includes('http') ? placement.photo : null;
+                        return {
+                            id: `existing_student_${index}_${Date.now()}`,
+                            name: placement.name || '',
+                            company: placement.company || '',
+                            position: placement.position || '',
+                            photo: validPhoto,
+                            photoPreview: validPhoto,
+                            isExisting: true,
+                            hasNewFile: false,
+                            isRemoved: false
+                        };
+                    })
+                };
+                
+                console.log('Setting placement form data:', newFormData);
+                setPlacementSectionForm(newFormData);
+            } else {
+                // Initialize with empty form if no data exists
+                setPlacementSectionForm({
+                    averageSalary: '',
+                    highestPackage: '',
+                    topHiringCompanies: [],
+                    recentPlacementSuccess: []
                 });
             }
         } catch (error) {
             console.error('Error loading placement section data:', error);
+            // Initialize with empty form on error
+            setPlacementSectionForm({
+                averageSalary: '',
+                highestPackage: '',
+                topHiringCompanies: [],
+                recentPlacementSuccess: []
+            });
+        }
+    };
+
+    const loadIndustryCollabData = async () => {
+        try {
+            const response = await apiService.getIndustryCollaborations();
+            if (response.success && response.data) {
+                console.log('Setting industry collaboration data:', response.data);
+                setIndustryCollabData(response.data);
+                
+                const newFormData = {
+                    collaborationCards: (response.data.collaborationCards || []).map((card, index) => {
+                        // Check if image is a valid URL string
+                        const validImage = card.image && typeof card.image === 'string' && card.image.includes('http') ? card.image : null;
+                        return {
+                            id: `existing_card_${index}_${Date.now()}`,
+                            title: card.title || '',
+                            company: card.company || '',
+                            type: card.type || '',
+                            description: card.description || '',
+                            image: validImage,
+                            imagePreview: validImage,
+                            isExisting: true,
+                            hasNewFile: false,
+                            isRemoved: false
+                        };
+                    }),
+                    mouItems: (response.data.mouItems || []).map((mou, index) => {
+                        // Check if PDF URL is valid - accept any non-empty string URL
+                        const validPdf = mou.pdfUrl && typeof mou.pdfUrl === 'string' && mou.pdfUrl.trim() !== '' ? mou.pdfUrl : '';
+                        return {
+                            id: `existing_mou_${index}_${Date.now()}`,
+                            title: mou.title || '',
+                            description: mou.description || '',
+                            pdfUrl: validPdf,
+                            pdfFile: null,
+                            isExisting: true,
+                            hasNewFile: false,
+                            isRemoved: false
+                        };
+                    })
+                };
+                
+                console.log('Setting industry collaboration form data:', newFormData);
+                setIndustryCollabForm(newFormData);
+            } else {
+                // Initialize with empty form if no data exists
+                setIndustryCollabForm({
+                    collaborationCards: [],
+                    mouItems: []
+                });
+            }
+        } catch (error) {
+            console.error('Error loading industry collaboration data:', error);
+            // Initialize with empty form on error
+            setIndustryCollabForm({
+                collaborationCards: [],
+                mouItems: []
+            });
+        }
+    };
+
+    const loadEventNewsData = async () => {
+        try {
+            console.log('Loading event/news data...');
+            const response = await apiService.getEventNews();
+            console.log('Event/news API response:', response);
+            if (response.success && response.data) {
+                console.log('Setting event/news data:', response.data);
+                setEventNewsData({
+                    events: response.data.events || [],
+                    news: response.data.news || []
+                });
+            } else {
+                console.log('No event/news data found, setting empty arrays');
+                setEventNewsData({
+                    events: [],
+                    news: []
+                });
+            }
+        } catch (error) {
+            console.error('Error loading event/news data:', error);
+            setEventNewsData({
+                events: [],
+                news: []
+            });
         }
     };
 
@@ -241,11 +366,33 @@ const InstituteDashboard = () => {
         title: '',
         date: '',
         company: '',
+        venue: '',
+        expectedParticipants: '',
         details: '',
-        participants: '',
         type: 'Event',
-        verified: false
+        verified: false,
+        bannerImage: null
     });
+
+    const [newsForm, setNewsForm] = useState({
+        title: '',
+        date: '',
+        company: '',
+        venue: '',
+        expectedParticipants: '',
+        details: '',
+        type: 'News',
+        verified: false,
+        bannerImage: null
+    });
+
+    const [eventNewsData, setEventNewsData] = useState({
+        events: [],
+        news: []
+    });
+
+    const [selectedEventNews, setSelectedEventNews] = useState(null);
+    const [showEventNewsModal, setShowEventNewsModal] = useState(false);
 
     const [placementSectionForm, setPlacementSectionForm] = useState({
         averageSalary: '',
@@ -255,6 +402,14 @@ const InstituteDashboard = () => {
     });
 
     const [placementSectionData, setPlacementSectionData] = useState(null);
+
+    // Industry Collaboration form state
+    const [industryCollabForm, setIndustryCollabForm] = useState({
+        collaborationCards: [],
+        mouItems: []
+    });
+
+    const [industryCollabData, setIndustryCollabData] = useState(null);
 
     // Student view/edit states
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -389,7 +544,10 @@ const InstituteDashboard = () => {
             mode: 'Offline', prerequisites: '', syllabus: '', certification: ''
         });
         setEventForm({
-            title: '', date: '', company: '', details: '', participants: '', type: 'Event', verified: false
+            title: '', date: '', company: '', venue: '', expectedParticipants: '', details: '', type: 'Event', verified: false, bannerImage: null
+        });
+        setNewsForm({
+            title: '', date: '', company: '', venue: '', expectedParticipants: '', details: '', type: 'News', verified: false, bannerImage: null
         });
     };
     
@@ -516,16 +674,127 @@ const InstituteDashboard = () => {
         }
     };
 
-    const handleEventSubmit = (e) => {
+    const handleEventSubmit = async (e) => {
         e.preventDefault();
-        const newEvent = {
-            id: events.length + 1,
-            ...eventForm,
-            participants: parseInt(eventForm.participants) || 0
-        };
-        setEvents([...events, newEvent]);
-        alert('Event/News added successfully!');
-        closeModal();
+        
+        try {
+            setLoading(true);
+            
+            const formData = {
+                ...eventForm,
+                expectedParticipants: eventForm.expectedParticipants ? parseInt(eventForm.expectedParticipants) : null
+            };
+            
+            let response;
+            if (modalType === 'editEvent' && selectedEventNews) {
+                response = await apiService.updateEventNews(selectedEventNews.eventNewsId, formData);
+            } else {
+                response = await apiService.addEventNews(formData);
+            }
+            
+            if (response.success) {
+                alert(`${eventForm.type} ${modalType === 'editEvent' ? 'updated' : 'added'} successfully!`);
+                await loadEventNewsData(); // Refresh data
+                closeModal();
+            } else {
+                alert(response.message || `Failed to ${modalType === 'editEvent' ? 'update' : 'add'} ${eventForm.type.toLowerCase()}`);
+            }
+        } catch (error) {
+            console.error(`Error ${modalType === 'editEvent' ? 'updating' : 'adding'} ${eventForm.type.toLowerCase()}:`, error);
+            alert(`Failed to ${modalType === 'editEvent' ? 'update' : 'add'} ${eventForm.type.toLowerCase()}. Please try again.`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleNewsSubmit = async (e) => {
+        e.preventDefault();
+        
+        try {
+            setLoading(true);
+            
+            const formData = {
+                ...newsForm,
+                expectedParticipants: newsForm.expectedParticipants ? parseInt(newsForm.expectedParticipants) : null
+            };
+            
+            let response;
+            if (modalType === 'editNews' && selectedEventNews) {
+                response = await apiService.updateEventNews(selectedEventNews.eventNewsId, formData);
+            } else {
+                response = await apiService.addEventNews(formData);
+            }
+            
+            if (response.success) {
+                alert(`${newsForm.type} ${modalType === 'editNews' ? 'updated' : 'added'} successfully!`);
+                await loadEventNewsData(); // Refresh data
+                closeModal();
+            } else {
+                alert(response.message || `Failed to ${modalType === 'editNews' ? 'update' : 'add'} ${newsForm.type.toLowerCase()}`);
+            }
+        } catch (error) {
+            console.error(`Error ${modalType === 'editNews' ? 'updating' : 'adding'} ${newsForm.type.toLowerCase()}:`, error);
+            alert(`Failed to ${modalType === 'editNews' ? 'update' : 'add'} ${newsForm.type.toLowerCase()}. Please try again.`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteEventNews = async (eventNewsId, title, type) => {
+        if (window.confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+            try {
+                setLoading(true);
+                const response = await apiService.deleteEventNews(eventNewsId);
+                if (response.success) {
+                    alert(`${type} deleted successfully!`);
+                    await loadEventNewsData(); // Refresh data
+                } else {
+                    alert(response.message || `Failed to delete ${type.toLowerCase()}`);
+                }
+            } catch (error) {
+                console.error(`Error deleting ${type.toLowerCase()}:`, error);
+                alert(`Failed to delete ${type.toLowerCase()}`);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    const handleViewEventNews = (item) => {
+        setSelectedEventNews(item);
+        setShowEventNewsModal(true);
+    };
+
+    const handleEditEventNews = (item) => {
+        if (item.type === 'Event') {
+            setEventForm({
+                title: item.title || '',
+                date: item.date || '',
+                company: item.company || '',
+                venue: item.venue || '',
+                expectedParticipants: item.expectedParticipants || '',
+                details: item.details || '',
+                type: 'Event',
+                verified: item.verified || false,
+                bannerImage: null
+            });
+            setSelectedEventNews(item);
+            openModal('editEvent');
+        } else {
+            setNewsForm({
+                title: item.title || '',
+                date: item.date || '',
+                company: item.company || '',
+                venue: item.venue || '',
+                expectedParticipants: item.expectedParticipants || '',
+                details: item.details || '',
+                type: 'News',
+                verified: item.verified || false,
+                bannerImage: null
+            });
+            setSelectedEventNews(item);
+            openModal('editNews');
+        }
     };
 
     const handlePlacementSectionSubmit = async (e) => {
@@ -534,43 +803,127 @@ const InstituteDashboard = () => {
         try {
             setLoading(true);
             
-            // Prepare data for API - keep file objects for upload
+            // Create a deep copy of the form data for submission
             const placementData = {
                 averageSalary: placementSectionForm.averageSalary,
                 highestPackage: placementSectionForm.highestPackage,
                 topHiringCompanies: placementSectionForm.topHiringCompanies.map(company => ({
+                    id: company.id,
                     name: company.name,
-                    logo: company.logo // Keep the File object for upload
+                    logo: company.logo, // Keep the File object for upload
+                    logoPreview: company.logoPreview,
+                    hasNewFile: company.hasNewFile,
+                    isExisting: company.isExisting,
+                    isRemoved: company.isRemoved
                 })),
                 recentPlacementSuccess: placementSectionForm.recentPlacementSuccess.map(placement => ({
+                    id: placement.id,
                     name: placement.name,
                     company: placement.company,
                     position: placement.position,
-                    photo: placement.photo // Keep the File object for upload
+                    photo: placement.photo, // Keep the File object for upload
+                    photoPreview: placement.photoPreview,
+                    hasNewFile: placement.hasNewFile,
+                    isExisting: placement.isExisting,
+                    isRemoved: placement.isRemoved
                 }))
             };
+            
+            console.log('Submitting placement data:', placementData);
             
             const response = await apiService.updatePlacementSection(placementData);
             
             if (response.success) {
                 alert('Placement section updated successfully!');
-                // Reload placement section data
+                
+                // Wait a moment for the backend to process
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Reload placement section data to get the updated URLs
                 await loadPlacementSectionData();
+                
                 // Refresh dashboard stats to ensure real-time sync
                 await loadDashboardData();
+                
                 // Force refresh of placement tab data if currently active
                 if (activeTab === 'placements') {
                     await refreshPlacementData();
                 }
                 
-                // Maintain existing redirect behavior - redirect to overview tab
-                setActiveTab('overview');
+                console.log('Placement section updated and data reloaded');
             } else {
                 alert(response.message || 'Failed to update placement section');
             }
         } catch (error) {
             console.error('Error updating placement section:', error);
             alert('Failed to update placement section. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleIndustryCollabSubmit = async (e) => {
+        e.preventDefault();
+        
+        try {
+            setLoading(true);
+            
+            // Create a deep copy of the form data for submission
+            const collabData = {
+                collaborationCards: industryCollabForm.collaborationCards.map(card => ({
+                    id: card.id,
+                    title: card.title,
+                    company: card.company,
+                    type: card.type,
+                    description: card.description,
+                    image: card.image, // Keep the File object for upload
+                    imagePreview: card.imagePreview,
+                    hasNewFile: card.hasNewFile,
+                    isExisting: card.isExisting,
+                    isRemoved: card.isRemoved
+                })),
+                mouItems: industryCollabForm.mouItems.map(mou => ({
+                    id: mou.id,
+                    title: mou.title,
+                    description: mou.description,
+                    pdfUrl: mou.pdfUrl,
+                    pdfFile: mou.pdfFile, // Direct File object reference
+                    hasNewFile: !!mou.pdfFile,
+                    isExisting: mou.isExisting,
+                    isRemoved: mou.isRemoved
+                }))
+            };
+            
+            console.log('🚀 Submitting industry collaboration data:', {
+                collaborationCards: collabData.collaborationCards.length,
+                mouItems: collabData.mouItems.length,
+                mouItemsWithFiles: collabData.mouItems.filter(mou => mou.pdfFile).length,
+                mouDetails: collabData.mouItems.map(mou => ({
+                    title: mou.title,
+                    hasFile: !!mou.pdfFile,
+                    hasNewFile: mou.hasNewFile,
+                    fileName: mou.pdfFile?.name
+                }))
+            });
+            
+            const response = await apiService.updateIndustryCollaborations(collabData);
+            
+            if (response.success) {
+                alert('Industry collaborations updated successfully!');
+                
+                // Wait a moment for the backend to process
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Reload industry collaboration data to get the updated URLs
+                await loadIndustryCollabData();
+                
+                console.log('Industry collaborations updated and data reloaded');
+            } else {
+                alert(response.message || 'Failed to update industry collaborations');
+            }
+        } catch (error) {
+            console.error('Error updating industry collaborations:', error);
+            alert('Failed to update industry collaborations. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -892,31 +1245,137 @@ const InstituteDashboard = () => {
                         </div>
 
                         <div className="institute-events-management-grid">
-                            {events.map(event => (
-                                <div className="institute-event-management-card" key={event.id}>
-                                    <div className="institute-event-card-header">
-                                        <h3>{event.title}</h3>
-                                        <span className={`institute-event-type-badge ${event.type.toLowerCase()}`}>
-                                            {event.type}
-                                        </span>
+                            {/* Events Section */}
+                            <div className="institute-events-section">
+                                <h3>Events ({eventNewsData.events.length})</h3>
+                                {eventNewsData.events.length > 0 ? (
+                                    <div className="institute-events-grid">
+                                        {eventNewsData.events.map(event => (
+                                            <div className="institute-event-management-card" key={event.eventNewsId}>
+                                                {event.bannerImage && (
+                                                    <div className="institute-event-banner">
+                                                        <img src={event.bannerImage} alt={event.title} />
+                                                    </div>
+                                                )}
+                                                <div className="institute-event-card-header">
+                                                    <h3>{event.title}</h3>
+                                                    <span className={`institute-event-type-badge ${event.type.toLowerCase()}`}>
+                                                        {event.type}
+                                                    </span>
+                                                </div>
+                                                <div className="institute-event-card-details">
+                                                    <p><strong>Company:</strong> {event.company}</p>
+                                                    <p><strong>Date:</strong> {new Date(event.date).toLocaleDateString()}</p>
+                                                    {event.venue && (
+                                                        <p><strong>Venue:</strong> {event.venue}</p>
+                                                    )}
+                                                    {event.expectedParticipants && (
+                                                        <p><strong>Expected Participants:</strong> {event.expectedParticipants}</p>
+                                                    )}
+                                                    <p><strong>Details:</strong> {event.details.substring(0, 100)}...</p>
+                                                    <p><strong>Status:</strong> 
+                                                        <span className={`institute-verification-badge ${event.verified ? 'verified' : 'pending'}`}>
+                                                            {event.verified ? '✓ Verified' : '⏳ Pending'}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                                <div className="institute-event-card-actions">
+                                                    <button 
+                                                        className="institute-table-action view" 
+                                                        onClick={() => handleViewEventNews(event)}
+                                                    >
+                                                        View
+                                                    </button>
+                                                    <button 
+                                                        className="institute-table-action edit" 
+                                                        onClick={() => handleEditEventNews(event)}
+                                                        style={{backgroundColor: '#28a745', color: 'white', marginRight: '5px'}}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button 
+                                                        className="institute-table-action delete" 
+                                                        onClick={() => handleDeleteEventNews(event.eventNewsId, event.title, event.type)}
+                                                        disabled={loading}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="institute-event-card-details">
-                                        <p><strong>Company:</strong> {event.company}</p>
-                                        <p><strong>Date:</strong> {event.date}</p>
-                                        <p><strong>Participants:</strong> {event.participants}</p>
-                                        <p><strong>Details:</strong> {event.details}</p>
-                                        <p><strong>Status:</strong> 
-                                            <span className={`institute-verification-badge ${event.verified ? 'verified' : 'pending'}`}>
-                                                {event.verified ? '✓ Verified' : '⏳ Pending'}
-                                            </span>
-                                        </p>
+                                ) : (
+                                    <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                        <p>No events added yet. Click "Add Event" to get started.</p>
                                     </div>
-                                    <div className="institute-event-card-actions">
-                                        <button className="institute-table-action">Edit</button>
-                                        <button className="institute-table-action delete">Delete</button>
+                                )}
+                            </div>
+
+                            {/* News Section */}
+                            <div className="institute-news-section">
+                                <h3>News ({eventNewsData.news.length})</h3>
+                                {eventNewsData.news.length > 0 ? (
+                                    <div className="institute-news-grid">
+                                        {eventNewsData.news.map(newsItem => (
+                                            <div className="institute-event-management-card" key={newsItem.eventNewsId}>
+                                                {newsItem.bannerImage && (
+                                                    <div className="institute-event-banner">
+                                                        <img src={newsItem.bannerImage} alt={newsItem.title} />
+                                                    </div>
+                                                )}
+                                                <div className="institute-event-card-header">
+                                                    <h3>{newsItem.title}</h3>
+                                                    <span className={`institute-event-type-badge ${newsItem.type.toLowerCase()}`}>
+                                                        {newsItem.type}
+                                                    </span>
+                                                </div>
+                                                <div className="institute-event-card-details">
+                                                    <p><strong>Company:</strong> {newsItem.company}</p>
+                                                    <p><strong>Date:</strong> {new Date(newsItem.date).toLocaleDateString()}</p>
+                                                    {newsItem.venue && (
+                                                        <p><strong>Venue:</strong> {newsItem.venue}</p>
+                                                    )}
+                                                    {newsItem.expectedParticipants && (
+                                                        <p><strong>Expected Participants:</strong> {newsItem.expectedParticipants}</p>
+                                                    )}
+                                                    <p><strong>Details:</strong> {newsItem.details.substring(0, 100)}...</p>
+                                                    <p><strong>Status:</strong> 
+                                                        <span className={`institute-verification-badge ${newsItem.verified ? 'verified' : 'pending'}`}>
+                                                            {newsItem.verified ? '✓ Verified' : '⏳ Pending'}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                                <div className="institute-event-card-actions">
+                                                    <button 
+                                                        className="institute-table-action view" 
+                                                        onClick={() => handleViewEventNews(newsItem)}
+                                                    >
+                                                        View
+                                                    </button>
+                                                    <button 
+                                                        className="institute-table-action edit" 
+                                                        onClick={() => handleEditEventNews(newsItem)}
+                                                        style={{backgroundColor: '#28a745', color: 'white', marginRight: '5px'}}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button 
+                                                        className="institute-table-action delete" 
+                                                        onClick={() => handleDeleteEventNews(newsItem.eventNewsId, newsItem.title, newsItem.type)}
+                                                        disabled={loading}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </div>
-                            ))}
+                                ) : (
+                                    <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                        <p>No news added yet. Click "Add News" to get started.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1269,31 +1728,67 @@ const InstituteDashboard = () => {
                                                         onChange={(e) => {
                                                             const file = e.target.files[0];
                                                             if (file) {
+                                                                // Validate file size (max 5MB)
+                                                                if (file.size > 5 * 1024 * 1024) {
+                                                                    alert('Image size should be less than 5MB');
+                                                                    return;
+                                                                }
+                                                                
+                                                                // Validate file type
+                                                                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                                                                if (!allowedTypes.includes(file.type)) {
+                                                                    alert('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+                                                                    return;
+                                                                }
+                                                                
                                                                 const updatedCompanies = [...placementSectionForm.topHiringCompanies];
+                                                                // Clean up previous blob URL if it exists
+                                                                if (updatedCompanies[index].logoPreview && updatedCompanies[index].logoPreview.startsWith('blob:')) {
+                                                                    URL.revokeObjectURL(updatedCompanies[index].logoPreview);
+                                                                }
                                                                 updatedCompanies[index].logo = file;
                                                                 updatedCompanies[index].logoPreview = URL.createObjectURL(file);
+                                                                updatedCompanies[index].hasNewFile = true; // Mark as having new file
                                                                 setPlacementSectionForm({...placementSectionForm, topHiringCompanies: updatedCompanies});
                                                             }
                                                         }}
                                                     />
                                                     {company.logoPreview && (
                                                         <div className="image-preview-container">
-                                                            <img src={company.logoPreview} alt="Company Logo" className="image-preview" />
+                                                            <img 
+                                                                src={company.logoPreview} 
+                                                                alt="Company Logo" 
+                                                                className="image-preview"
+                                                                onError={(e) => {
+                                                                    console.error('Image load error:', e.target.src);
+                                                                    e.target.style.display = 'none';
+                                                                }}
+                                                                onLoad={() => console.log('Company logo loaded successfully:', company.logoPreview)}
+                                                            />
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
                                                                     const updatedCompanies = [...placementSectionForm.topHiringCompanies];
-                                                                    if (updatedCompanies[index].logoPreview) {
+                                                                    // Only revoke blob URLs, not server URLs
+                                                                    if (updatedCompanies[index].logoPreview && updatedCompanies[index].logoPreview.startsWith('blob:')) {
                                                                         URL.revokeObjectURL(updatedCompanies[index].logoPreview);
                                                                     }
                                                                     updatedCompanies[index].logo = null;
                                                                     updatedCompanies[index].logoPreview = null;
+                                                                    updatedCompanies[index].hasNewFile = false;
+                                                                    updatedCompanies[index].isRemoved = true; // Mark for removal
                                                                     setPlacementSectionForm({...placementSectionForm, topHiringCompanies: updatedCompanies});
                                                                 }}
                                                                 className="image-remove-btn"
+                                                                title="Remove Image"
                                                             >
                                                                 ×
                                                             </button>
+                                                        </div>
+                                                    )}
+                                                    {!company.logoPreview && (
+                                                        <div className="image-placeholder">
+                                                            <span>No image selected</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1301,7 +1796,8 @@ const InstituteDashboard = () => {
                                                     type="button"
                                                     onClick={() => {
                                                         const updatedCompanies = placementSectionForm.topHiringCompanies.filter((_, i) => i !== index);
-                                                        if (company.logoPreview) {
+                                                        // Only revoke blob URLs, not server URLs
+                                                        if (company.logoPreview && company.logoPreview.startsWith('blob:')) {
                                                             URL.revokeObjectURL(company.logoPreview);
                                                         }
                                                         setPlacementSectionForm({...placementSectionForm, topHiringCompanies: updatedCompanies});
@@ -1317,7 +1813,15 @@ const InstituteDashboard = () => {
                                             onClick={() => {
                                                 setPlacementSectionForm({
                                                     ...placementSectionForm,
-                                                    topHiringCompanies: [...placementSectionForm.topHiringCompanies, { name: '', logo: null, logoPreview: null }]
+                                                    topHiringCompanies: [...placementSectionForm.topHiringCompanies, { 
+                                                        id: `new_company_${Date.now()}_${Math.random()}`,
+                                                        name: '', 
+                                                        logo: null, 
+                                                        logoPreview: null,
+                                                        hasNewFile: false,
+                                                        isExisting: false,
+                                                        isRemoved: false
+                                                    }]
                                                 });
                                             }}
                                             className="institute-add-btn"
@@ -1369,31 +1873,67 @@ const InstituteDashboard = () => {
                                                         onChange={(e) => {
                                                             const file = e.target.files[0];
                                                             if (file) {
+                                                                // Validate file size (max 5MB)
+                                                                if (file.size > 5 * 1024 * 1024) {
+                                                                    alert('Image size should be less than 5MB');
+                                                                    return;
+                                                                }
+                                                                
+                                                                // Validate file type
+                                                                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                                                                if (!allowedTypes.includes(file.type)) {
+                                                                    alert('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+                                                                    return;
+                                                                }
+                                                                
                                                                 const updatedPlacements = [...placementSectionForm.recentPlacementSuccess];
+                                                                // Clean up previous blob URL if it exists
+                                                                if (updatedPlacements[index].photoPreview && updatedPlacements[index].photoPreview.startsWith('blob:')) {
+                                                                    URL.revokeObjectURL(updatedPlacements[index].photoPreview);
+                                                                }
                                                                 updatedPlacements[index].photo = file;
                                                                 updatedPlacements[index].photoPreview = URL.createObjectURL(file);
+                                                                updatedPlacements[index].hasNewFile = true; // Mark as having new file
                                                                 setPlacementSectionForm({...placementSectionForm, recentPlacementSuccess: updatedPlacements});
                                                             }
                                                         }}
                                                     />
                                                     {placement.photoPreview && (
                                                         <div className="image-preview-container">
-                                                            <img src={placement.photoPreview} alt="Student Photo" className="image-preview" />
+                                                            <img 
+                                                                src={placement.photoPreview} 
+                                                                alt="Student Photo" 
+                                                                className="image-preview"
+                                                                onError={(e) => {
+                                                                    console.error('Image load error:', e.target.src);
+                                                                    e.target.style.display = 'none';
+                                                                }}
+                                                                onLoad={() => console.log('Student photo loaded successfully:', placement.photoPreview)}
+                                                            />
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
                                                                     const updatedPlacements = [...placementSectionForm.recentPlacementSuccess];
-                                                                    if (updatedPlacements[index].photoPreview) {
+                                                                    // Only revoke blob URLs, not server URLs
+                                                                    if (updatedPlacements[index].photoPreview && updatedPlacements[index].photoPreview.startsWith('blob:')) {
                                                                         URL.revokeObjectURL(updatedPlacements[index].photoPreview);
                                                                     }
                                                                     updatedPlacements[index].photo = null;
                                                                     updatedPlacements[index].photoPreview = null;
+                                                                    updatedPlacements[index].hasNewFile = false;
+                                                                    updatedPlacements[index].isRemoved = true; // Mark for removal
                                                                     setPlacementSectionForm({...placementSectionForm, recentPlacementSuccess: updatedPlacements});
                                                                 }}
                                                                 className="image-remove-btn"
+                                                                title="Remove Image"
                                                             >
                                                                 ×
                                                             </button>
+                                                        </div>
+                                                    )}
+                                                    {!placement.photoPreview && (
+                                                        <div className="image-placeholder">
+                                                            <span>No image selected</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1401,7 +1941,8 @@ const InstituteDashboard = () => {
                                                     type="button"
                                                     onClick={() => {
                                                         const updatedPlacements = placementSectionForm.recentPlacementSuccess.filter((_, i) => i !== index);
-                                                        if (placement.photoPreview) {
+                                                        // Only revoke blob URLs, not server URLs
+                                                        if (placement.photoPreview && placement.photoPreview.startsWith('blob:')) {
                                                             URL.revokeObjectURL(placement.photoPreview);
                                                         }
                                                         setPlacementSectionForm({...placementSectionForm, recentPlacementSuccess: updatedPlacements});
@@ -1417,7 +1958,17 @@ const InstituteDashboard = () => {
                                             onClick={() => {
                                                 setPlacementSectionForm({
                                                     ...placementSectionForm,
-                                                    recentPlacementSuccess: [...placementSectionForm.recentPlacementSuccess, { name: '', company: '', position: '', photo: null, photoPreview: null }]
+                                                    recentPlacementSuccess: [...placementSectionForm.recentPlacementSuccess, { 
+                                                        id: `new_student_${Date.now()}_${Math.random()}`,
+                                                        name: '', 
+                                                        company: '', 
+                                                        position: '', 
+                                                        photo: null, 
+                                                        photoPreview: null,
+                                                        hasNewFile: false,
+                                                        isExisting: false,
+                                                        isRemoved: false
+                                                    }]
                                                 });
                                             }}
                                             className="institute-add-btn"
@@ -1437,11 +1988,329 @@ const InstituteDashboard = () => {
                     </div>
                 )}
 
-                {/* Additional tabs would be implemented similarly */}
+                {/* Industry Collaborations Tab */}
                 {activeTab === 'collaborations' && (
                     <div className="institute-collaborations-tab">
-                        <h1>Industry Collaborations</h1>
-                        <p>Manage your industry partnerships and collaboration initiatives here.</p>
+                        <div className="institute-tab-header">
+                            <h1>Industry Collaborations</h1>
+                            <p>Manage your industry partnerships and collaboration initiatives</p>
+                        </div>
+
+                        <div className="institute-tab-section">
+                            <form onSubmit={handleIndustryCollabSubmit} className="institute-collaboration-form">
+                                {/* Collaboration Cards Section */}
+                                <div className="institute-form-group">
+                                    <label>Collaboration Cards</label>
+                                    <div className="institute-collaboration-cards-section">
+                                        {industryCollabForm.collaborationCards.map((card, index) => (
+                                            <div key={index} className="institute-collaboration-card-item">
+                                                <input
+                                                    type="text"
+                                                    value={card.title}
+                                                    onChange={(e) => {
+                                                        const updatedCards = [...industryCollabForm.collaborationCards];
+                                                        updatedCards[index].title = e.target.value;
+                                                        setIndustryCollabForm({...industryCollabForm, collaborationCards: updatedCards});
+                                                    }}
+                                                    placeholder="Collaboration Title"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={card.company}
+                                                    onChange={(e) => {
+                                                        const updatedCards = [...industryCollabForm.collaborationCards];
+                                                        updatedCards[index].company = e.target.value;
+                                                        setIndustryCollabForm({...industryCollabForm, collaborationCards: updatedCards});
+                                                    }}
+                                                    placeholder="Company Name"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={card.type}
+                                                    onChange={(e) => {
+                                                        const updatedCards = [...industryCollabForm.collaborationCards];
+                                                        updatedCards[index].type = e.target.value;
+                                                        setIndustryCollabForm({...industryCollabForm, collaborationCards: updatedCards});
+                                                    }}
+                                                    placeholder="Collaboration Type (e.g., Training Partner)"
+                                                />
+                                                <textarea
+                                                    value={card.description}
+                                                    onChange={(e) => {
+                                                        const updatedCards = [...industryCollabForm.collaborationCards];
+                                                        updatedCards[index].description = e.target.value;
+                                                        setIndustryCollabForm({...industryCollabForm, collaborationCards: updatedCards});
+                                                    }}
+                                                    placeholder="Description"
+                                                    rows="3"
+                                                />
+                                                <div className="file-input-container">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                if (file.size > 5 * 1024 * 1024) {
+                                                                    alert('Image size should be less than 5MB');
+                                                                    return;
+                                                                }
+                                                                
+                                                                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                                                                if (!allowedTypes.includes(file.type)) {
+                                                                    alert('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+                                                                    return;
+                                                                }
+                                                                
+                                                                const updatedCards = [...industryCollabForm.collaborationCards];
+                                                                // Clean up previous blob URL if it exists
+                                                                if (updatedCards[index].imagePreview && updatedCards[index].imagePreview.startsWith('blob:')) {
+                                                                    URL.revokeObjectURL(updatedCards[index].imagePreview);
+                                                                }
+                                                                updatedCards[index].image = file;
+                                                                updatedCards[index].imagePreview = URL.createObjectURL(file);
+                                                                updatedCards[index].hasNewFile = true;
+                                                                updatedCards[index].isRemoved = false;
+                                                                console.log(`Image selected for collaboration card: ${file.name}`);
+                                                                setIndustryCollabForm({...industryCollabForm, collaborationCards: updatedCards});
+                                                            }
+                                                        }}
+                                                    />
+                                                    {card.imagePreview && (
+                                                        <div className="image-preview-container">
+                                                            <img 
+                                                                src={card.imagePreview} 
+                                                                alt="Collaboration Image" 
+                                                                className="image-preview"
+                                                                onError={(e) => {
+                                                                    console.error('Image load error:', e.target.src);
+                                                                    e.target.style.display = 'none';
+                                                                }}
+                                                                onLoad={() => console.log('Collaboration image loaded successfully:', card.imagePreview)}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const updatedCards = [...industryCollabForm.collaborationCards];
+                                                                    // Only revoke blob URLs, not server URLs
+                                                                    if (updatedCards[index].imagePreview && updatedCards[index].imagePreview.startsWith('blob:')) {
+                                                                        URL.revokeObjectURL(updatedCards[index].imagePreview);
+                                                                    }
+                                                                    updatedCards[index].image = null;
+                                                                    updatedCards[index].imagePreview = null;
+                                                                    updatedCards[index].hasNewFile = false;
+                                                                    updatedCards[index].isRemoved = true;
+                                                                    console.log(`Image removed for collaboration card: ${card.title}`);
+                                                                    setIndustryCollabForm({...industryCollabForm, collaborationCards: updatedCards});
+                                                                }}
+                                                                className="image-remove-btn"
+                                                                title="Remove Image"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {!card.imagePreview && (
+                                                        <div className="image-placeholder">
+                                                            <span>No image selected</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updatedCards = industryCollabForm.collaborationCards.filter((_, i) => i !== index);
+                                                        if (card.imagePreview && card.imagePreview.startsWith('blob:')) {
+                                                            URL.revokeObjectURL(card.imagePreview);
+                                                        }
+                                                        setIndustryCollabForm({...industryCollabForm, collaborationCards: updatedCards});
+                                                    }}
+                                                    className="institute-remove-btn"
+                                                >
+                                                    Remove Card
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIndustryCollabForm({
+                                                    ...industryCollabForm,
+                                                    collaborationCards: [...industryCollabForm.collaborationCards, { 
+                                                        id: `new_card_${Date.now()}_${Math.random()}`,
+                                                        title: '',
+                                                        company: '',
+                                                        type: '',
+                                                        description: '',
+                                                        image: null,
+                                                        imagePreview: null,
+                                                        hasNewFile: false,
+                                                        isExisting: false,
+                                                        isRemoved: false
+                                                    }]
+                                                });
+                                            }}
+                                            className="institute-add-btn"
+                                        >
+                                            Add Collaboration Card
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* MOU Items Section */}
+                                <div className="institute-form-group">
+                                    <label>MOU (Memorandum of Understanding) Items</label>
+                                    <div className="institute-mou-items-section">
+                                        {industryCollabForm.mouItems.map((mou, index) => (
+                                            <div key={index} className="institute-mou-item">
+                                                <input
+                                                    type="text"
+                                                    value={mou.title}
+                                                    onChange={(e) => {
+                                                        const updatedMous = [...industryCollabForm.mouItems];
+                                                        updatedMous[index].title = e.target.value;
+                                                        setIndustryCollabForm({...industryCollabForm, mouItems: updatedMous});
+                                                    }}
+                                                    placeholder="MOU Title"
+                                                />
+                                                <textarea
+                                                    value={mou.description}
+                                                    onChange={(e) => {
+                                                        const updatedMous = [...industryCollabForm.mouItems];
+                                                        updatedMous[index].description = e.target.value;
+                                                        setIndustryCollabForm({...industryCollabForm, mouItems: updatedMous});
+                                                    }}
+                                                    placeholder="MOU Description"
+                                                    rows="3"
+                                                />
+                                                <div className="file-input-container">
+                                                    <input
+                                                        type="file"
+                                                        accept=".pdf"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                console.log(`📄 PDF file selected:`, {
+                                                                    name: file.name,
+                                                                    size: file.size,
+                                                                    type: file.type
+                                                                });
+                                                                
+                                                                if (file.size > 10 * 1024 * 1024) {
+                                                                    alert('PDF size should be less than 10MB');
+                                                                    return;
+                                                                }
+                                                                
+                                                                if (file.type !== 'application/pdf') {
+                                                                    alert('Please select a valid PDF file');
+                                                                    return;
+                                                                }
+                                                                
+                                                                const updatedMous = [...industryCollabForm.mouItems];
+                                                                // Store the actual File object directly and ensure proper state update
+                                                                updatedMous[index] = {
+                                                                    ...updatedMous[index],
+                                                                    pdfFile: file, // Direct File object assignment
+                                                                    hasNewFile: true,
+                                                                    isRemoved: false,
+                                                                    pdfUrl: '' // Clear any existing URL
+                                                                };
+                                                                console.log(`📁 PDF file selected for MOU:`, {
+                                                                    mouTitle: updatedMous[index].title,
+                                                                    fileName: file.name,
+                                                                    fileSize: file.size,
+                                                                    fileType: file.type,
+                                                                    hasNewFile: true,
+                                                                    index: index
+                                                                });
+                                                                setIndustryCollabForm({...industryCollabForm, mouItems: updatedMous});
+                                                            }
+                                                        }}
+                                                    />
+                                                    {(mou.pdfFile || (mou.pdfUrl && mou.pdfUrl.trim() !== '')) && (
+                                                        <div className="pdf-preview-container">
+                                                            <span className="pdf-indicator">📄 {mou.pdfFile ? mou.pdfFile.name : 'Existing PDF'}</span>
+                                                            {mou.pdfUrl && mou.pdfUrl.trim() !== '' && !mou.pdfFile && (
+                                                                <a 
+                                                                    href={mou.pdfUrl} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="pdf-view-link"
+                                                                    style={{marginLeft: '10px', color: '#007bff', textDecoration: 'none', cursor: 'pointer'}}
+                                                                    onClick={(e) => {
+                                                                        console.log('Dashboard PDF link clicked:', mou.pdfUrl);
+                                                                    }}
+                                                                >
+                                                                    View PDF
+                                                                </a>
+                                                            )}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const updatedMous = [...industryCollabForm.mouItems];
+                                                                    updatedMous[index].pdfFile = null;
+                                                                    updatedMous[index].pdfUrl = null;
+                                                                    updatedMous[index].hasNewFile = false;
+                                                                    updatedMous[index].isRemoved = true;
+                                                                    console.log(`PDF removed for MOU: ${mou.title}`);
+                                                                    setIndustryCollabForm({...industryCollabForm, mouItems: updatedMous});
+                                                                }}
+                                                                className="pdf-remove-btn"
+                                                                title="Remove PDF"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {!mou.pdfFile && (!mou.pdfUrl || mou.pdfUrl.trim() === '') && (
+                                                        <div className="pdf-placeholder">
+                                                            <span>No PDF selected</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updatedMous = industryCollabForm.mouItems.filter((_, i) => i !== index);
+                                                        setIndustryCollabForm({...industryCollabForm, mouItems: updatedMous});
+                                                    }}
+                                                    className="institute-remove-btn"
+                                                >
+                                                    Remove MOU
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIndustryCollabForm({
+                                                    ...industryCollabForm,
+                                                    mouItems: [...industryCollabForm.mouItems, { 
+                                                        id: `new_mou_${Date.now()}_${Math.random()}`,
+                                                        title: '',
+                                                        description: '',
+                                                        pdfUrl: '',
+                                                        pdfFile: null,
+                                                        hasNewFile: false,
+                                                        isExisting: false,
+                                                        isRemoved: false
+                                                    }]
+                                                });
+                                            }}
+                                            className="institute-add-btn"
+                                        >
+                                            Add MOU Item
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="institute-form-buttons">
+                                    <button type="submit" className="institute-primary-button" disabled={loading}>
+                                        {loading ? 'Updating...' : 'Update Industry Collaborations'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 )}
 
@@ -1515,6 +2384,61 @@ const InstituteDashboard = () => {
                 </div>
             )}
 
+            {/* Event/News View Modal */}
+            {showEventNewsModal && selectedEventNews && (
+                <div className="institute-modal-overlay" onClick={() => setShowEventNewsModal(false)}>
+                    <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="institute-modal-header">
+                            <h2>{selectedEventNews.type} Details</h2>
+                            <button className="institute-close-button" onClick={() => setShowEventNewsModal(false)}>×</button>
+                        </div>
+                        
+                        <div className="institute-event-news-details">
+                            {selectedEventNews.bannerImage && (
+                                <div className="institute-event-news-banner">
+                                    <img src={selectedEventNews.bannerImage} alt={selectedEventNews.title} />
+                                </div>
+                            )}
+                            
+                            <div className="institute-event-news-info">
+                                <h3>{selectedEventNews.title}</h3>
+                                <div className="institute-event-news-meta">
+                                    <p><strong>Type:</strong> {selectedEventNews.type}</p>
+                                    <p><strong>Date:</strong> {new Date(selectedEventNews.date).toLocaleDateString()}</p>
+                                    <p><strong>Company/Organizer:</strong> {selectedEventNews.company}</p>
+                                    {selectedEventNews.venue && (
+                                        <p><strong>Venue:</strong> {selectedEventNews.venue}</p>
+                                    )}
+                                    {selectedEventNews.expectedParticipants && (
+                                        <p><strong>Expected Participants:</strong> {selectedEventNews.expectedParticipants}</p>
+                                    )}
+                                    <p><strong>Status:</strong> 
+                                        <span className={`institute-verification-badge ${selectedEventNews.verified ? 'verified' : 'pending'}`}>
+                                            {selectedEventNews.verified ? '✓ Verified' : '⏳ Pending'}
+                                        </span>
+                                    </p>
+                                </div>
+                                
+                                <div className="institute-event-news-description">
+                                    <h4>Details:</h4>
+                                    <p>{selectedEventNews.details}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="institute-form-buttons">
+                            <button 
+                                type="button" 
+                                className="institute-secondary-button" 
+                                onClick={() => setShowEventNewsModal(false)}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modal for forms */}
             {showModal && (
                 <div className="institute-modal-overlay" onClick={closeModal}>
@@ -1526,7 +2450,9 @@ const InstituteDashboard = () => {
                                 {modalType === 'viewStudent' && 'Student Profile'}
                                 {modalType === 'course' && 'Add New Course'}
                                 {modalType === 'event' && 'Add New Event'}
+                                {modalType === 'editEvent' && 'Edit Event'}
                                 {modalType === 'news' && 'Add News'}
+                                {modalType === 'editNews' && 'Edit News'}
                                 {modalType === 'profile' && 'Edit Profile'}
                             </h2>
                             <button className="institute-close-button" onClick={closeModal}>×</button>
@@ -2052,8 +2978,8 @@ const InstituteDashboard = () => {
                             </form>
                         )}
 
-                        {/* Event/News Form */}
-                        {(modalType === 'event' || modalType === 'news') && (
+                        {/* Event Form */}
+                        {(modalType === 'event' || modalType === 'editEvent') && (
                             <form onSubmit={handleEventSubmit} className="institute-modal-form">
                                 <div className="institute-form-grid">
                                     <div className="institute-form-group">
@@ -2066,7 +2992,7 @@ const InstituteDashboard = () => {
                                         />
                                     </div>
                                     <div className="institute-form-group">
-                                        <label>Date *</label>
+                                        <label>Date * (dd-mm-yyyy)</label>
                                         <input
                                             type="date"
                                             value={eventForm.date}
@@ -2084,37 +3010,59 @@ const InstituteDashboard = () => {
                                         />
                                     </div>
                                     <div className="institute-form-group">
-                                        <label>Expected Participants</label>
+                                        <label>Venue</label>
+                                        <input
+                                            type="text"
+                                            value={eventForm.venue}
+                                            onChange={(e) => setEventForm({...eventForm, venue: e.target.value})}
+                                            placeholder="Event venue/location"
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Venue</label>
+                                        <input
+                                            type="text"
+                                            value={eventForm.venue}
+                                            onChange={(e) => setEventForm({...eventForm, venue: e.target.value})}
+                                            placeholder="Event venue/location"
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Expected Participants (Number of participants)</label>
                                         <input
                                             type="number"
-                                            value={eventForm.participants}
-                                            onChange={(e) => setEventForm({...eventForm, participants: e.target.value})}
+                                            value={eventForm.expectedParticipants}
+                                            onChange={(e) => setEventForm({...eventForm, expectedParticipants: e.target.value})}
                                             placeholder="Number of participants"
                                         />
                                     </div>
                                 </div>
                                 <div className="institute-form-group">
-                                    <label>Details *</label>
+                                    <label>Details * (Event details and description)</label>
                                     <textarea
                                         value={eventForm.details}
                                         onChange={(e) => setEventForm({...eventForm, details: e.target.value})}
                                         rows="4"
-                                        placeholder="Event/News details and description"
+                                        placeholder="Event details and description"
                                         required
                                     />
                                 </div>
                                 <div className="institute-form-group">
-                                    <label>Type</label>
-                                    <select
-                                        value={eventForm.type}
-                                        onChange={(e) => setEventForm({...eventForm, type: e.target.value})}
-                                    >
-                                        <option value="Event">Event</option>
-                                        <option value="News">News</option>
-                                        <option value="Job Fair">Job Fair</option>
-                                        <option value="Workshop">Workshop</option>
-                                        <option value="Announcement">Announcement</option>
-                                    </select>
+                                    <label>Banner Image</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setEventForm({...eventForm, bannerImage: e.target.files[0]})}
+                                    />
+                                    {eventForm.bannerImage && (
+                                        <div className="image-preview" style={{marginTop: '10px'}}>
+                                            <img 
+                                                src={URL.createObjectURL(eventForm.bannerImage)} 
+                                                alt="Banner Preview" 
+                                                style={{width: '200px', height: '120px', objectFit: 'cover', borderRadius: '4px'}}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="institute-form-group institute-checkbox-group">
                                     <label>
@@ -2127,8 +3075,113 @@ const InstituteDashboard = () => {
                                     </label>
                                 </div>
                                 <div className="institute-form-buttons">
-                                    <button type="submit" className="institute-primary-button">
-                                        Add {modalType === 'event' ? 'Event' : 'News'}
+                                    <button type="submit" className="institute-primary-button" disabled={loading}>
+                                        {loading ? (modalType === 'editEvent' ? 'Updating...' : 'Adding...') : (modalType === 'editEvent' ? 'Update Event' : 'Add Event')}
+                                    </button>
+                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* News Form */}
+                        {(modalType === 'news' || modalType === 'editNews') && (
+                            <form onSubmit={handleNewsSubmit} className="institute-modal-form">
+                                <div className="institute-form-grid">
+                                    <div className="institute-form-group">
+                                        <label>Title *</label>
+                                        <input
+                                            type="text"
+                                            value={newsForm.title}
+                                            onChange={(e) => setNewsForm({...newsForm, title: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Date * (dd-mm-yyyy)</label>
+                                        <input
+                                            type="date"
+                                            value={newsForm.date}
+                                            onChange={(e) => setNewsForm({...newsForm, date: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Company/Organizer *</label>
+                                        <input
+                                            type="text"
+                                            value={newsForm.company}
+                                            onChange={(e) => setNewsForm({...newsForm, company: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Venue</label>
+                                        <input
+                                            type="text"
+                                            value={newsForm.venue}
+                                            onChange={(e) => setNewsForm({...newsForm, venue: e.target.value})}
+                                            placeholder="News venue/location (if applicable)"
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Venue</label>
+                                        <input
+                                            type="text"
+                                            value={newsForm.venue}
+                                            onChange={(e) => setNewsForm({...newsForm, venue: e.target.value})}
+                                            placeholder="News venue/location (if applicable)"
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Expected Participants (Number of participants)</label>
+                                        <input
+                                            type="number"
+                                            value={newsForm.expectedParticipants}
+                                            onChange={(e) => setNewsForm({...newsForm, expectedParticipants: e.target.value})}
+                                            placeholder="Number of participants"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="institute-form-group">
+                                    <label>Details * (News details and description)</label>
+                                    <textarea
+                                        value={newsForm.details}
+                                        onChange={(e) => setNewsForm({...newsForm, details: e.target.value})}
+                                        rows="4"
+                                        placeholder="News details and description"
+                                        required
+                                    />
+                                </div>
+                                <div className="institute-form-group">
+                                    <label>Banner Image</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setNewsForm({...newsForm, bannerImage: e.target.files[0]})}
+                                    />
+                                    {newsForm.bannerImage && (
+                                        <div className="image-preview" style={{marginTop: '10px'}}>
+                                            <img 
+                                                src={URL.createObjectURL(newsForm.bannerImage)} 
+                                                alt="Banner Preview" 
+                                                style={{width: '200px', height: '120px', objectFit: 'cover', borderRadius: '4px'}}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="institute-form-group institute-checkbox-group">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={newsForm.verified}
+                                            onChange={(e) => setNewsForm({...newsForm, verified: e.target.checked})}
+                                        />
+                                        Mark as Verified (Institute Verified)
+                                    </label>
+                                </div>
+                                <div className="institute-form-buttons">
+                                    <button type="submit" className="institute-primary-button" disabled={loading}>
+                                        {loading ? (modalType === 'editNews' ? 'Updating...' : 'Adding...') : (modalType === 'editNews' ? 'Update News' : 'Add News')}
                                     </button>
                                     <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                                 </div>

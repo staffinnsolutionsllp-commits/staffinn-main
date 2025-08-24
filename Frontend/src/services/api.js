@@ -1963,56 +1963,110 @@ const apiService = {
         throw new Error('No authentication token found. Please login again.');
       }
 
+      console.log('Starting placement section update with data:', placementData);
+
       // Create FormData for file uploads
       const formData = new FormData();
       
-      // Collect all files
-      const companyLogos = [];
-      const studentPhotos = [];
+      // Create a mapping system to preserve file associations
+      const fileMapping = {
+        companyLogos: {},
+        studentPhotos: {}
+      };
       
-      // Extract files from company data
-      if (placementData.topHiringCompanies) {
-        placementData.topHiringCompanies.forEach((company, index) => {
+      // Deep clone placement data to avoid modifying original
+      const processedData = JSON.parse(JSON.stringify(placementData));
+      
+      // Process company data with unique identifiers
+      if (processedData.topHiringCompanies) {
+        processedData.topHiringCompanies.forEach((company, index) => {
+          // Use the company's existing ID or create one
+          const companyId = company.id || `company_${index}_${Date.now()}`;
+          
+          console.log(`Processing company ${index}:`, {
+            name: company.name,
+            hasLogo: !!company.logo,
+            hasPreview: !!company.logoPreview,
+            hasNewFile: company.hasNewFile,
+            isRemoved: company.isRemoved
+          });
+          
           if (company.logo && company.logo instanceof File) {
-            companyLogos.push(company.logo);
-            // Remove file object from data to be sent as JSON
+            // Add file with unique identifier
+            formData.append(`companyLogo_${companyId}`, company.logo);
+            fileMapping.companyLogos[companyId] = index;
+            // Mark that this company has a new file
+            company.hasNewFile = true;
+            company.fileId = companyId;
+            // Remove the File object from the data (will be handled by backend)
             company.logo = null;
-          } else if (company.logoPreview && !company.logoPreview.startsWith('blob:')) {
-            // Keep existing URL if it's not a blob URL
+            console.log(`Added company logo file for ${company.name}`);
+          } else if (company.logoPreview && typeof company.logoPreview === 'string' && company.logoPreview.includes('http') && !company.isRemoved) {
+            // Keep existing URL if it's a valid URL and not marked for removal
             company.logo = company.logoPreview;
+            console.log(`Keeping existing logo URL for ${company.name}:`, company.logoPreview);
+          } else if (company.isRemoved || !company.logoPreview) {
+            // Mark for removal or set to null if no valid preview
+            company.logo = null;
+            console.log(`Setting logo to null for ${company.name}`);
           }
-          // Remove preview property from data
+          
+          // Clean up preview properties and temporary properties
           delete company.logoPreview;
+          delete company.id;
+          delete company.isRemoved;
+          delete company.isExisting;
         });
       }
       
-      // Extract files from student data
-      if (placementData.recentPlacementSuccess) {
-        placementData.recentPlacementSuccess.forEach((student, index) => {
+      // Process student data with unique identifiers
+      if (processedData.recentPlacementSuccess) {
+        processedData.recentPlacementSuccess.forEach((student, index) => {
+          // Use the student's existing ID or create one
+          const studentId = student.id || `student_${index}_${Date.now()}`;
+          
+          console.log(`Processing student ${index}:`, {
+            name: student.name,
+            hasPhoto: !!student.photo,
+            hasPreview: !!student.photoPreview,
+            hasNewFile: student.hasNewFile,
+            isRemoved: student.isRemoved
+          });
+          
           if (student.photo && student.photo instanceof File) {
-            studentPhotos.push(student.photo);
-            // Remove file object from data to be sent as JSON
+            // Add file with unique identifier
+            formData.append(`studentPhoto_${studentId}`, student.photo);
+            fileMapping.studentPhotos[studentId] = index;
+            // Mark that this student has a new file
+            student.hasNewFile = true;
+            student.fileId = studentId;
+            // Remove the File object from the data (will be handled by backend)
             student.photo = null;
-          } else if (student.photoPreview && !student.photoPreview.startsWith('blob:')) {
-            // Keep existing URL if it's not a blob URL
+            console.log(`Added student photo file for ${student.name}`);
+          } else if (student.photoPreview && typeof student.photoPreview === 'string' && student.photoPreview.includes('http') && !student.isRemoved) {
+            // Keep existing URL if it's a valid URL and not marked for removal
             student.photo = student.photoPreview;
+            console.log(`Keeping existing photo URL for ${student.name}:`, student.photoPreview);
+          } else if (student.isRemoved || !student.photoPreview) {
+            // Mark for removal or set to null if no valid preview
+            student.photo = null;
+            console.log(`Setting photo to null for ${student.name}`);
           }
-          // Remove preview property from data
+          
+          // Clean up preview properties and temporary properties
           delete student.photoPreview;
+          delete student.id;
+          delete student.isRemoved;
+          delete student.isExisting;
         });
       }
       
-      // Add files to FormData
-      companyLogos.forEach(logo => {
-        formData.append('companyLogos', logo);
-      });
-      
-      studentPhotos.forEach(photo => {
-        formData.append('studentPhotos', photo);
-      });
-      
-      // Add placement data as JSON string
-      formData.append('placementData', JSON.stringify(placementData));
+      // Add placement data and file mapping as JSON strings
+      formData.append('placementData', JSON.stringify(processedData));
+      formData.append('fileMapping', JSON.stringify(fileMapping));
+
+      console.log('Sending placement data to backend:', processedData);
+      console.log('File mapping:', fileMapping);
 
       const response = await fetch(`${API_URL}/institutes/placement-section`, {
         method: 'PUT',
@@ -2022,7 +2076,10 @@ const apiService = {
         },
         body: formData
       });
-      return await response.json();
+      
+      const result = await response.json();
+      console.log('Placement section update response:', result);
+      return result;
     } catch (error) {
       console.error('Update placement section error:', error);
       return { success: false, message: 'Failed to update placement section' };
@@ -2043,7 +2100,10 @@ const apiService = {
           'Authorization': `Bearer ${token}`
         }
       });
-      return await response.json();
+      
+      const result = await response.json();
+      console.log('Get placement section response:', result);
+      return result;
     } catch (error) {
       console.error('Get placement section error:', error);
       return { success: false, message: 'Failed to get placement section' };
@@ -2078,7 +2138,518 @@ const apiService = {
       console.error('Get public dashboard stats error:', error);
       return { success: false, message: 'Failed to get dashboard stats' };
     }
-  }
+  },
+
+  // Institute Industry Collaboration API
+  updateIndustryCollaborations: async (collabData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('Starting industry collaboration update with data:', collabData);
+
+      // Create FormData for file uploads
+      const formData = new FormData();
+      
+      // Create a mapping system to preserve file associations
+      const fileMapping = {
+        collabImages: {},
+        mouPdfs: {}
+      };
+      
+      // Deep clone collaboration data to avoid modifying original
+      const processedData = JSON.parse(JSON.stringify(collabData));
+      
+      // Process collaboration card data with unique identifiers
+      if (processedData.collaborationCards) {
+        processedData.collaborationCards.forEach((card, index) => {
+          // Use the card's existing ID or create one
+          const cardId = card.id || `card_${index}_${Date.now()}`;
+          
+          console.log(`Processing collaboration card ${index}:`, {
+            title: card.title,
+            hasImage: !!card.image,
+            hasNewFile: card.hasNewFile,
+            isRemoved: card.isRemoved
+          });
+          
+          if (card.image && card.image instanceof File) {
+            // Add file with unique identifier
+            formData.append(`collabImage_${cardId}`, card.image);
+            fileMapping.collabImages[cardId] = index;
+            // Mark that this card has a new file
+            card.hasNewFile = true;
+            card.fileId = cardId;
+            // Remove the File object from the data (will be handled by backend)
+            card.image = null;
+            console.log(`Added collaboration image file for ${card.title}`);
+          } else if (card.imagePreview && typeof card.imagePreview === 'string' && card.imagePreview.includes('http') && !card.isRemoved) {
+            // Keep existing URL if it's a valid URL and not marked for removal
+            card.image = card.imagePreview;
+            console.log(`Keeping existing image URL for ${card.title}:`, card.imagePreview);
+          } else if (card.isRemoved || !card.imagePreview) {
+            // Mark for removal or set to null if no valid preview
+            card.image = null;
+            console.log(`Setting image to null for ${card.title}`);
+          }
+          
+          // Clean up preview properties and temporary properties
+          delete card.imagePreview;
+          delete card.id;
+          delete card.isRemoved;
+          delete card.isExisting;
+        });
+      }
+      
+      // Process MOU data - add PDF files to FormData
+      if (processedData.mouItems) {
+        processedData.mouItems.forEach((mou, index) => {
+          const mouId = mou.id || `mou_${index}_${Date.now()}`;
+          
+          console.log(`Processing MOU ${index}:`, {
+            title: mou.title,
+            hasPdfFile: !!mou.pdfFile,
+            hasPdfUrl: !!mou.pdfUrl,
+            pdfUrl: mou.pdfUrl
+          });
+          
+          if (mou.pdfFile && mou.pdfFile instanceof File) {
+            const fieldName = `mouPdf_${mouId}`;
+            formData.append(fieldName, mou.pdfFile);
+            fileMapping.mouPdfs[mouId] = index;
+            mou.hasNewFile = true;
+            mou.fileId = mouId;
+            console.log(`📁 PDF file added to FormData:`, {
+              fieldName: fieldName,
+              fileName: mou.pdfFile.name,
+              fileSize: mou.pdfFile.size,
+              fileType: mou.pdfFile.type,
+              mouId: mouId,
+              index: index
+            });
+            // Remove pdfFile but keep pdfUrl for existing URLs
+            delete mou.pdfFile;
+          } else if (mou.pdfUrl && typeof mou.pdfUrl === 'string' && mou.pdfUrl.trim() !== '') {
+            // Keep existing PDF URL
+            mou.hasNewFile = false;
+            mou.fileId = null;
+            console.log(`✅ Keeping existing PDF URL: ${mou.pdfUrl}`);
+          } else {
+            mou.hasNewFile = false;
+            mou.fileId = null;
+            mou.pdfUrl = null;
+            console.log(`❌ No PDF for MOU: ${mou.title}`);
+          }
+          
+          // Clean up temporary properties but keep pdfUrl
+          delete mou.pdfFile;
+          delete mou.id;
+          delete mou.isRemoved;
+          delete mou.isExisting;
+        });
+      }
+      
+      // Add collaboration data and file mapping as JSON strings
+      formData.append('collabData', JSON.stringify(processedData));
+      formData.append('fileMapping', JSON.stringify(fileMapping));
+
+      console.log('Sending collaboration data to backend:', processedData);
+      console.log('File mapping:', fileMapping);
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value instanceof File ? `File: ${value.name}` : value);
+      }
+
+      const response = await fetch(`${API_URL}/institutes/industry-collaborations`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+          // Don't set Content-Type for FormData, let browser set it with boundary
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response error:', response.status, errorText);
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Industry collaboration update response:', result);
+      return result;
+    } catch (error) {
+      console.error('Update industry collaborations error:', error);
+      return { success: false, message: error.message || 'Failed to update industry collaborations' };
+    }
+  },
+
+  getIndustryCollaborations: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/industry-collaborations`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response error:', response.status, errorText);
+        throw new Error(`Server error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('Get industry collaborations response:', result);
+      
+      // Ensure proper data structure
+      if (result.success && result.data) {
+        result.data = {
+          collaborationCards: result.data.collaborationCards || [],
+          mouItems: result.data.mouItems || []
+        };
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Get industry collaborations error:', error);
+      return { 
+        success: true, 
+        data: {
+          collaborationCards: [],
+          mouItems: []
+        },
+        message: 'Failed to get industry collaborations, using empty data'
+      };
+    }
+  },
+
+  getPublicIndustryCollaborations: async (instituteId) => {
+    try {
+      const response = await fetch(`${API_URL}/institutes/public/${instituteId}/industry-collaborations`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get public industry collaborations error:', error);
+      return { success: false, message: 'Failed to get industry collaborations' };
+    }
+  },
+
+  // Institute Events & News API
+  addEventNews: async (eventNewsData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const formData = new FormData();
+      
+      // Add all form fields
+      Object.keys(eventNewsData).forEach(key => {
+        if (key === 'bannerImage' && eventNewsData[key] instanceof File) {
+          formData.append('bannerImage', eventNewsData[key]);
+        } else if (key !== 'bannerImage' && eventNewsData[key] !== null && eventNewsData[key] !== undefined) {
+          formData.append(key, eventNewsData[key]);
+        }
+      });
+
+      const response = await fetch(`${API_URL}/institutes/events-news`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Add event/news error:', error);
+      return { success: false, message: 'Failed to add event/news' };
+    }
+  },
+
+  getEventNews: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/events-news`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get events/news error:', error);
+      return { success: false, message: 'Failed to get events/news' };
+    }
+  },
+
+  getEventNewsByType: async (type) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/events-news/type/${type}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get events/news by type error:', error);
+      return { success: false, message: 'Failed to get events/news' };
+    }
+  },
+
+  getEventNewsById: async (eventNewsId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/events-news/${eventNewsId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get event/news by ID error:', error);
+      return { success: false, message: 'Failed to get event/news' };
+    }
+  },
+
+  updateEventNews: async (eventNewsId, eventNewsData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const formData = new FormData();
+      
+      // Add all form fields
+      Object.keys(eventNewsData).forEach(key => {
+        if (key === 'bannerImage' && eventNewsData[key] instanceof File) {
+          formData.append('bannerImage', eventNewsData[key]);
+        } else if (key !== 'bannerImage' && eventNewsData[key] !== null && eventNewsData[key] !== undefined) {
+          formData.append(key, eventNewsData[key]);
+        }
+      });
+
+      const response = await fetch(`${API_URL}/institutes/events-news/${eventNewsId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update event/news error:', error);
+      return { success: false, message: 'Failed to update event/news' };
+    }
+  },
+
+  deleteEventNews: async (eventNewsId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/events-news/${eventNewsId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete event/news error:', error);
+      return { success: false, message: 'Failed to delete event/news' };
+    }
+  },
+
+  getPublicEventNews: async (instituteId) => {
+    try {
+      const response = await fetch(`${API_URL}/institutes/public/${instituteId}/events-news`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get public events/news error:', error);
+      return { success: false, message: 'Failed to get events/news' };
+    }
+  },
+
+  // Recruiter News API
+  addRecruiterNews: async (newsData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const formData = new FormData();
+      
+      // Add all form fields
+      Object.keys(newsData).forEach(key => {
+        if (key === 'bannerImage' && newsData[key] instanceof File) {
+          formData.append('bannerImage', newsData[key]);
+        } else if (key !== 'bannerImage' && newsData[key] !== null && newsData[key] !== undefined) {
+          formData.append(key, newsData[key]);
+        }
+      });
+
+      const response = await fetch(`${API_URL}/news/recruiter`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Add recruiter news error:', error);
+      return { success: false, message: 'Failed to add news' };
+    }
+  },
+
+  getRecruiterNews: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/news/recruiter`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get recruiter news error:', error);
+      return { success: false, message: 'Failed to get news' };
+    }
+  },
+
+  updateRecruiterNews: async (newsId, newsData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const formData = new FormData();
+      
+      // Add all form fields
+      Object.keys(newsData).forEach(key => {
+        if (key === 'bannerImage' && newsData[key] instanceof File) {
+          formData.append('bannerImage', newsData[key]);
+        } else if (key !== 'bannerImage' && newsData[key] !== null && newsData[key] !== undefined) {
+          formData.append(key, newsData[key]);
+        }
+      });
+
+      const response = await fetch(`${API_URL}/news/recruiter/${newsId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update recruiter news error:', error);
+      return { success: false, message: 'Failed to update news' };
+    }
+  },
+
+  deleteRecruiterNews: async (newsId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/news/recruiter/${newsId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete recruiter news error:', error);
+      return { success: false, message: 'Failed to delete news' };
+    }
+  },
+
+  // News API for public pages
+  getAllNews: async () => {
+    try {
+      const response = await fetch(`${API_URL}/news/all`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get all news error:', error);
+      return { success: false, message: 'Failed to get news' };
+    }
+  },
+
+  getNewsByCategory: async (category) => {
+    try {
+      const response = await fetch(`${API_URL}/news/category/${category}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get news by category error:', error);
+      return { success: false, message: 'Failed to get news' };
+    }
+  },
+
+
 };
 
 export default apiService;

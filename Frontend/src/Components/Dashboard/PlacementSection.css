@@ -79,8 +79,8 @@
     width: 24px;
     height: 24px;
     cursor: pointer;
-    font-size: 18px;
-    font-weight: 900;
+    font-size: 14px;
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -164,6 +164,61 @@
     transform: none;
 }
 
+/* Image placeholder styles */
+.image-placeholder {
+    width: 80px;
+    height: 80px;
+    border: 2px dashed #d1d5db;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f9fafb;
+    color: #6b7280;
+    font-size: 0.75rem;
+    text-align: center;
+    margin-top: 8px;
+}
+
+/* Loading state for images */
+.image-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.image-loading .image-preview {
+    filter: blur(1px);
+}
+
+/* Success/Error states */
+.image-upload-success {
+    border-color: #10b981;
+    background-color: #f0fdf4;
+}
+
+.image-upload-error {
+    border-color: #ef4444;
+    background-color: #fef2f2;
+}
+
+/* File input focus styles */
+.file-input-container input[type="file"]:focus {
+    outline: 2px solid #4863f7;
+    outline-offset: 2px;
+    border-color: #4863f7;
+}
+
+/* Hover effects for better UX */
+.file-input-container:hover .image-placeholder {
+    border-color: #9ca3af;
+    background-color: #f3f4f6;
+}
+
+.image-preview-container:hover .image-preview {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
     .institute-company-item,
@@ -183,7 +238,8 @@
         width: 100%;
     }
     
-    .image-preview {
+    .image-preview,
+    .image-placeholder {
         width: 60px;
         height: 60px;
     }

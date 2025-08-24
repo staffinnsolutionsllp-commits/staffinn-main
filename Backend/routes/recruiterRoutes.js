@@ -5,6 +5,7 @@
 
 const express = require('express');
 const recruiterController = require('../controllers/recruiterController');
+
 const { authenticate } = require('../middleware/auth');
 const { getRecruiterCandidates } = recruiterController;
 
@@ -160,5 +161,7 @@ router.delete('/:recruiterId/follow', authenticate, recruiterController.unfollow
  * @access Private
  */
 router.get('/:recruiterId/follow-status', authenticate, recruiterController.getFollowStatus);
+
+
 
 module.exports = router;

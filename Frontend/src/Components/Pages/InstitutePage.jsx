@@ -18,7 +18,11 @@ const InstitutePage = () => {
   const [instituteData, setInstituteData] = useState(null);
   const [placementData, setPlacementData] = useState(null);
   const [instituteDashboardStats, setInstituteDashboardStats] = useState(null);
+  const [industryCollabData, setIndustryCollabData] = useState(null);
+  const [eventNewsData, setEventNewsData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedNewsItem, setSelectedNewsItem] = useState(null);
+  const [showNewsModal, setShowNewsModal] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [newReview, setNewReview] = useState({
     name: '',
@@ -55,17 +59,9 @@ const InstitutePage = () => {
     topCompanies: ['Microsoft', 'Google', 'Amazon', 'TCS', 'Infosys', 'Wipro', 'IBM', 'Accenture']
   };
 
-  const achievements = [
-    { id: 1, student: 'Rajesh Kumar', achievement: 'National Coding Competition Winner', details: 'First place in HackerRank national coding challenge' },
-    { id: 2, student: 'Sunita Devi', achievement: 'Google Certification', details: 'Completed Google Cloud Engineer certification with distinction' },
-    { id: 3, student: 'Mohammed Ali', achievement: 'Research Publication', details: 'Published research paper in International Journal of Data Science' },
-  ];
 
-  const collaborations = [
-    { id: 1, company: 'Microsoft', type: 'Training Partner', details: 'Official curriculum and certification partner' },
-    { id: 2, company: 'Amazon', type: 'Hiring Partner', details: 'Regular campus recruitment drives' },
-    { id: 3, company: 'IBM', type: 'Research Partner', details: 'Joint research projects and internship opportunities' },
-  ];
+
+
 
   const events = [
     // New staff verified events
@@ -95,8 +91,22 @@ const InstitutePage = () => {
       fetchInstitute();
       fetchPlacementData();
       fetchInstituteDashboardStats();
+      fetchIndustryCollabData();
+      fetchEventNewsData();
     }
   }, [id]);
+  
+  // Add a periodic refresh for placement data to catch updates
+  useEffect(() => {
+    if (id && activeTab === 'placements') {
+      const interval = setInterval(() => {
+        console.log('Refreshing placement data...');
+        fetchPlacementData();
+      }, 30000); // Refresh every 30 seconds when on placements tab
+      
+      return () => clearInterval(interval);
+    }
+  }, [id, activeTab]);
 
   const fetchInstitute = async () => {
     try {
@@ -156,9 +166,13 @@ const InstitutePage = () => {
 
   const fetchPlacementData = async () => {
     try {
+      console.log('Fetching placement data for institute:', id);
       const response = await apiService.getPublicPlacementSection(id);
       if (response.success && response.data) {
+        console.log('Placement data fetched successfully:', response.data);
         setPlacementData(response.data);
+      } else {
+        console.log('No placement data found or API error:', response);
       }
     } catch (error) {
       console.error('Error fetching placement data:', error);
@@ -173,6 +187,36 @@ const InstitutePage = () => {
       }
     } catch (error) {
       console.error('Error fetching institute dashboard stats:', error);
+    }
+  };
+
+  const fetchIndustryCollabData = async () => {
+    try {
+      console.log('Fetching industry collaboration data for institute:', id);
+      const response = await apiService.getPublicIndustryCollaborations(id);
+      if (response.success && response.data) {
+        console.log('Industry collaboration data fetched successfully:', response.data);
+        setIndustryCollabData(response.data);
+      } else {
+        console.log('No industry collaboration data found or API error:', response);
+      }
+    } catch (error) {
+      console.error('Error fetching industry collaboration data:', error);
+    }
+  };
+
+  const fetchEventNewsData = async () => {
+    try {
+      console.log('Fetching events/news data for institute:', id);
+      const response = await apiService.getPublicEventNews(id);
+      if (response.success && response.data) {
+        console.log('Events/news data fetched successfully:', response.data);
+        setEventNewsData(response.data);
+      } else {
+        console.log('No events/news data found or API error:', response);
+      }
+    } catch (error) {
+      console.error('Error fetching events/news data:', error);
     }
   };
 
@@ -350,12 +394,7 @@ const InstitutePage = () => {
         >
           <FaBriefcase /> Placements
         </button>
-        <button 
-          className={`tab-button ${activeTab === 'achievements' ? 'active' : ''}`}
-          onClick={() => setActiveTab('achievements')}
-        >
-          <FaUsers /> Student Achievements
-        </button>
+
         <button 
           className={`tab-button ${activeTab === 'collaborations' ? 'active' : ''}`}
           onClick={() => setActiveTab('collaborations')}
@@ -497,15 +536,26 @@ const InstitutePage = () => {
                 <h3>Top Hiring Companies</h3>
                 <div className="company-logos">
                   {placementData?.topHiringCompanies && placementData.topHiringCompanies.length > 0 ? (
-                    placementData.topHiringCompanies.map((company, index) => (
-                      <div key={index} className="company-logo">
-                        <img 
-                          src={company.logo || `https://via.placeholder.com/100?text=${company.name}`} 
-                          alt={company.name} 
-                        />
-                        <span>{company.name}</span>
-                      </div>
-                    ))
+                    placementData.topHiringCompanies.map((company, index) => {
+                      // Check if logo is a valid URL string
+                      const validLogo = company.logo && typeof company.logo === 'string' && company.logo.includes('http') ? company.logo : null;
+                      const placeholderUrl = `https://via.placeholder.com/100?text=${encodeURIComponent(company.name || 'Company')}`;
+                      
+                      return (
+                        <div key={index} className="company-logo">
+                          <img 
+                            src={validLogo || placeholderUrl} 
+                            alt={company.name || 'Company Logo'}
+                            onError={(e) => {
+                              console.error('Company logo load error:', e.target.src);
+                              e.target.src = placeholderUrl;
+                            }}
+                            onLoad={() => validLogo && console.log('Company logo loaded successfully:', validLogo)}
+                          />
+                          <span>{company.name}</span>
+                        </div>
+                      );
+                    })
                   ) : (
                     <div className="empty-section">
                       <p>No hiring companies data available yet.</p>
@@ -518,25 +568,36 @@ const InstitutePage = () => {
                 <h3>Recent Placement Success</h3>
                 <div className="placement-list">
                   {placementData?.recentPlacementSuccess && placementData.recentPlacementSuccess.length > 0 ? (
-                    placementData.recentPlacementSuccess.map((placement, index) => (
-                      <div key={index} className="placement-item">
-                        <div className="student-profile">
-                          <div className="student-avatar">
-                            <img 
-                              src={placement.photo || `https://via.placeholder.com/50?text=${placement.name.charAt(0)}`} 
-                              alt={placement.name} 
-                            />
+                    placementData.recentPlacementSuccess.map((placement, index) => {
+                      // Check if photo is a valid URL string
+                      const validPhoto = placement.photo && typeof placement.photo === 'string' && placement.photo.includes('http') ? placement.photo : null;
+                      const placeholderUrl = `https://via.placeholder.com/50?text=${encodeURIComponent(placement.name?.charAt(0) || 'S')}`;
+                      
+                      return (
+                        <div key={index} className="placement-item">
+                          <div className="student-profile">
+                            <div className="student-avatar">
+                              <img 
+                                src={validPhoto || placeholderUrl} 
+                                alt={placement.name || 'Student Photo'}
+                                onError={(e) => {
+                                  console.error('Student photo load error:', e.target.src);
+                                  e.target.src = placeholderUrl;
+                                }}
+                                onLoad={() => validPhoto && console.log('Student photo loaded successfully:', validPhoto)}
+                              />
+                            </div>
+                            <div className="student-details">
+                              <h4>{placement.name}</h4>
+                            </div>
                           </div>
-                          <div className="student-details">
-                            <h4>{placement.name}</h4>
+                          <div className="placement-details">
+                            <div className="company-name">{placement.company}</div>
+                            <div className="job-role">{placement.position}</div>
                           </div>
                         </div>
-                        <div className="placement-details">
-                          <div className="company-name">{placement.company}</div>
-                          <div className="job-role">{placement.position}</div>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="empty-section">
                       <p>No recent placement success stories available yet.</p>
@@ -548,94 +609,7 @@ const InstitutePage = () => {
           </section>
         )}
 
-        {/* Achievements Tab */}
-        {activeTab === 'achievements' && (
-          <section className="achievements-section">
-            <div className="section-header">
-              <h2>Student Achievements & Alumni Success</h2>
-              <p>Celebrating the success of our students and alumni in their careers</p>
-            </div>
 
-            <div className="achievement-container">
-              {achievements.map(achievement => (
-                <div key={achievement.id} className="achievement-card">
-                  <div className="achievement-icon">
-                    <img src={`https://via.placeholder.com/80?text=${achievement.student.charAt(0)}`} alt={achievement.student} />
-                  </div>
-                  <div className="achievement-content">
-                    <h3>{achievement.student}</h3>
-                    <div className="achievement-title">{achievement.achievement}</div>
-                    <p>{achievement.details}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="alumni-showcase">
-              <h3>Alumni Success Stories</h3>
-              <div className="alumni-grid">
-                {/* Sample alumni stories */}
-                <div className="alumni-card">
-                  <div className="alumni-photo">
-                    <img src="https://via.placeholder.com/200?text=V" alt="Vikram Singh" />
-                  </div>
-                  <div className="alumni-info">
-                    <h4>Vikram Singh</h4>
-                    <div className="alumni-position">Senior Developer at Google</div>
-                    <p className="alumni-story">
-                      "The hands-on training and real-world projects at Tech Skills Academy prepared me for the challenges in the tech industry. Today, I lead a team of developers at Google."
-                    </p>
-                  </div>
-                </div>
-                <div className="alumni-card">
-                  <div className="alumni-photo">
-                    <img src="https://via.placeholder.com/200?text=A" alt="Ananya Desai" />
-                  </div>
-                  <div className="alumni-info">
-                    <h4>Ananya Desai</h4>
-                    <div className="alumni-position">Data Scientist at Microsoft</div>
-                    <p className="alumni-story">
-                      "The specialized data science course and mentorship from industry experts helped me secure my dream role at Microsoft."
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="certification-showcase">
-              <h3>Industry Certifications & Projects</h3>
-              <div className="certifications-grid">
-                <div className="certification-card">
-                  <div className="certification-logo">
-                    <img src="https://via.placeholder.com/100?text=AWS" alt="AWS Certification" />
-                  </div>
-                  <div className="certification-details">
-                    <h4>AWS Certified Solutions Architect</h4>
-                    <p>25 students certified in 2023</p>
-                  </div>
-                </div>
-                <div className="certification-card">
-                  <div className="certification-logo">
-                    <img src="https://via.placeholder.com/100?text=GCP" alt="Google Cloud Certification" />
-                  </div>
-                  <div className="certification-details">
-                    <h4>Google Cloud Engineer</h4>
-                    <p>18 students certified in 2023</p>
-                  </div>
-                </div>
-                <div className="certification-card">
-                  <div className="certification-logo">
-                    <img src="https://via.placeholder.com/100?text=CISCO" alt="Cisco Certification" />
-                  </div>
-                  <div className="certification-details">
-                    <h4>Cisco Certified Network Associate</h4>
-                    <p>32 students certified in 2023</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* Industry Collaborations Tab */}
         {activeTab === 'collaborations' && (
@@ -645,45 +619,98 @@ const InstitutePage = () => {
               <p>Our strong network of industry partners and collaborations</p>
             </div>
 
+            {/* Collaboration Cards */}
             <div className="collaboration-grid">
-              {collaborations.map(collab => (
-                <div key={collab.id} className="collaboration-card">
-                  <div className="company-logo">
-                    <img src={`https://via.placeholder.com/150?text=${collab.company}`} alt={collab.company} />
-                  </div>
-                  <div className="collaboration-details">
-                    <h3>{collab.company}</h3>
-                    <div className="collaboration-type">{collab.type}</div>
-                    <p>{collab.details}</p>
-                  </div>
+              {industryCollabData?.collaborationCards && industryCollabData.collaborationCards.length > 0 ? (
+                industryCollabData.collaborationCards.map((card, index) => {
+                  const validImage = card.image && typeof card.image === 'string' && card.image.includes('http') ? card.image : null;
+                  const placeholderUrl = `https://via.placeholder.com/150?text=${encodeURIComponent(card.company || 'Company')}`;
+                  
+                  return (
+                    <div key={index} className="collaboration-card">
+                      <div className="company-logo">
+                        <img 
+                          src={validImage || placeholderUrl} 
+                          alt={card.company || 'Company Logo'}
+                          onError={(e) => {
+                            console.error('Collaboration image load error:', e.target.src);
+                            e.target.src = placeholderUrl;
+                          }}
+                          onLoad={() => validImage && console.log('Collaboration image loaded successfully:', validImage)}
+                        />
+                      </div>
+                      <div className="collaboration-details">
+                        <h3>{card.title || card.company}</h3>
+                        <div className="collaboration-company">{card.company}</div>
+                        <div className="collaboration-type">{card.type}</div>
+                        <p>{card.description}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="empty-section">
+                  <p>No collaboration partnerships available yet.</p>
                 </div>
-              ))}
+              )}
             </div>
 
+            {/* MOU Section */}
             <div className="mou-section">
               <h3>Memorandums of Understanding (MOUs)</h3>
               <div className="mou-list">
-                <div className="mou-item">
-                  <div className="mou-icon">📄</div>
-                  <div className="mou-details">
-                    <h4>TechCorp India</h4>
-                    <p>Joint research and development program</p>
+                {industryCollabData?.mouItems && industryCollabData.mouItems.length > 0 ? (
+                  industryCollabData.mouItems.map((mou, index) => {
+                    const validPdf = mou.pdfUrl && typeof mou.pdfUrl === 'string' && mou.pdfUrl.includes('http') ? mou.pdfUrl : null;
+                    
+                    return (
+                      <div key={index} className="mou-item">
+                        <div className="mou-icon">📄</div>
+                        <div className="mou-details">
+                          <h4>{mou.title}</h4>
+                          <p>{mou.description}</p>
+                          {validPdf ? (
+                            <a 
+                              href={validPdf} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="mou-download-link"
+                              style={{
+                                display: 'inline-block',
+                                marginTop: '10px',
+                                padding: '8px 16px',
+                                backgroundColor: '#007bff',
+                                color: 'white',
+                                textDecoration: 'none',
+                                borderRadius: '4px',
+                                fontSize: '14px',
+                                cursor: 'pointer'
+                              }}
+                              onClick={(e) => {
+                                console.log('PDF link clicked:', validPdf);
+                                // Let the default behavior handle the link
+                              }}
+                              onError={(e) => {
+                                console.error('PDF link error:', validPdf);
+                                e.target.style.display = 'none';
+                              }}
+                            >
+                              📄 View MOU Document
+                            </a>
+                          ) : (
+                            <span style={{color: '#666', fontSize: '14px', fontStyle: 'italic'}}>
+                              Document not available
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="empty-section">
+                    <p>No MOU documents available yet.</p>
                   </div>
-                </div>
-                <div className="mou-item">
-                  <div className="mou-icon">📄</div>
-                  <div className="mou-details">
-                    <h4>Global Systems Ltd</h4>
-                    <p>Industry internship program</p>
-                  </div>
-                </div>
-                <div className="mou-item">
-                  <div className="mou-icon">📄</div>
-                  <div className="mou-details">
-                    <h4>DataTech Solutions</h4>
-                    <p>Co-development of specialized curriculum</p>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -763,74 +790,103 @@ const InstitutePage = () => {
               <div className="upcoming-events">
                 <h3>Upcoming Events</h3>
                 <div className="event-list">
-                  {events.map(event => (
-                    <div key={event.id} className="event-card">
-                      <div className="event-date">
-                        <div className="month">{event.date.split(' ')[0]}</div>
-                        <div className="day">{event.date.split(' ')[1].replace(',', '')}</div>
-                      </div>
-                      <div className="event-details">
-                        <h4>
-                          {event.name}
-                          {event.verified && (
-                            <span className="staff-verified">
-                              <FaCheckCircle /> Staffinn Verified
-                            </span>
-                          )}
-                        </h4>
-                        <p>{event.details}</p>
-                      </div>
-                      <button className="event-button">Register</button>
+                  {eventNewsData?.events && eventNewsData.events.length > 0 ? (
+                    eventNewsData.events.map(event => {
+                      const eventDate = new Date(event.date);
+                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      
+                      return (
+                        <div key={event.eventNewsId} className="compact-event-card">
+                          <div className="compact-card-image">
+                            <img src={event.bannerImage || 'https://via.placeholder.com/300x150?text=Event'} alt={event.title} />
+                          </div>
+                          <div className="compact-card-content">
+                            <div className="compact-card-left">
+                              <div className="compact-type-badge">{event.type}</div>
+                              <div className="compact-date">
+                                <FaCalendarAlt /> {monthNames[eventDate.getMonth()]} {eventDate.getDate()}, {eventDate.getFullYear()}
+                              </div>
+                            </div>
+                            <div className="compact-card-main">
+                              <h4 className="compact-title">{event.title}</h4>
+                              <p className="compact-description">
+                                {event.details.length > 120 ? event.details.substring(0, 120) + '...' : event.details}
+                              </p>
+                            </div>
+                            <div className="compact-card-footer">
+                              <div className="compact-venue">
+                                <FaMapMarkerAlt /> {event.venue || 'Venue TBA'}
+                              </div>
+                              <button 
+                                className="compact-read-more"
+                                onClick={() => {
+                                  setSelectedNewsItem(event);
+                                  setShowNewsModal(true);
+                                }}
+                              >
+                                Read More
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="no-events">
+                      <p>No upcoming events available at the moment.</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
               <div className="news-section">
                 <h3>Latest News</h3>
                 <div className="news-list">
-                  {/* Staff verified news items at the beginning */}
-                  <div className="news-item">
-                    <div className="news-date">April 10, 2023</div>
-                    <h4>
-                      Tech Skills Academy Partners with Google for AI Research
-                      <span className="staff-verified">
-                        <FaCheckCircle /> Staffinn Verified
-                      </span>
-                    </h4>
-                    <p>Our institute has signed a landmark agreement with Google to collaborate on AI research and development projects.</p>
-                    <a href="#" className="read-more">Read More</a>
-                  </div>
-                  <div className="news-item">
-                    <div className="news-date">April 5, 2023</div>
-                    <h4>
-                      100% Placement Record for Advanced Data Science Batch
-                      <span className="staff-verified">
-                        <FaCheckCircle /> Staffinn Verified
-                      </span>
-                    </h4>
-                    <p>All students from our Advanced Data Science program have secured placements with an average package of 8.5 LPA.</p>
-                    <a href="#" className="read-more">Read More</a>
-                  </div>
-                  {/* Original news items */}
-                  <div className="news-item">
-                    <div className="news-date">May 10, 2023</div>
-                    <h4>Tech Skills Academy Ranked #1 in Placement Success</h4>
-                    <p>Our institute has been recognized as the top institute for job placements in the IT sector.</p>
-                    <a href="#" className="read-more">Read More</a>
-                  </div>
-                  <div className="news-item">
-                    <div className="news-date">April 28, 2023</div>
-                    <h4>New Cloud Computing Lab Inaugurated</h4>
-                    <p>State-of-the-art cloud computing lab opened in collaboration with AWS and Google Cloud.</p>
-                    <a href="#" className="read-more">Read More</a>
-                  </div>
-                  <div className="news-item">
-                    <div className="news-date">April 15, 2023</div>
-                    <h4>MOU Signed with Microsoft for Advanced Training</h4>
-                    <p>New partnership to provide specialized training in Microsoft technologies and certifications.</p>
-                    <a href="#" className="read-more">Read More</a>
-                  </div>
+                  {eventNewsData?.news && eventNewsData.news.length > 0 ? (
+                    eventNewsData.news.map(newsItem => {
+                      const newsDate = new Date(newsItem.date);
+                      
+                      return (
+                        <div key={newsItem.eventNewsId} className="compact-event-card">
+                          <div className="compact-card-image">
+                            <img src={newsItem.bannerImage || 'https://via.placeholder.com/300x150?text=News'} alt={newsItem.title} />
+                          </div>
+                          <div className="compact-card-content">
+                            <div className="compact-card-left">
+                              <div className="compact-type-badge">{newsItem.type}</div>
+                              <div className="compact-date">
+                                <FaCalendarAlt /> {newsDate.toLocaleDateString()}
+                              </div>
+                            </div>
+                            <div className="compact-card-main">
+                              <h4 className="compact-title">{newsItem.title}</h4>
+                              <p className="compact-description">
+                                {newsItem.details.length > 120 ? newsItem.details.substring(0, 120) + '...' : newsItem.details}
+                              </p>
+                            </div>
+                            <div className="compact-card-footer">
+                              <div className="compact-venue">
+                                <FaMapMarkerAlt /> {newsItem.venue || newsItem.company}
+                              </div>
+                              <button 
+                                className="compact-read-more"
+                                onClick={() => {
+                                  setSelectedNewsItem(newsItem);
+                                  setShowNewsModal(true);
+                                }}
+                              >
+                                Read More
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="no-news">
+                      <p>No latest news available at the moment.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -938,6 +994,53 @@ const InstitutePage = () => {
           )}
         </div>
       </section>
+
+      {/* Event/News Details Modal */}
+      {showNewsModal && selectedNewsItem && (
+        <div className="modal-overlay" onClick={() => setShowNewsModal(false)}>
+          <div className="modal-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{selectedNewsItem.title}</h2>
+              <button className="modal-close" onClick={() => setShowNewsModal(false)}>×</button>
+            </div>
+            
+            <div className="modal-banner">
+              <img src={selectedNewsItem.bannerImage || 'https://via.placeholder.com/500x250?text=Event'} alt={selectedNewsItem.title} />
+            </div>
+            
+            <div className="modal-content">
+              <div className="modal-meta">
+                <div className="meta-item">
+                  <FaCalendarAlt className="meta-icon" />
+                  <span>{new Date(selectedNewsItem.date).toLocaleDateString()}</span>
+                </div>
+                <div className="meta-item">
+                  <FaUsers className="meta-icon" />
+                  <span>{selectedNewsItem.expectedParticipants || 'Open to all'}</span>
+                </div>
+                <div className="meta-item">
+                  <FaMapMarkerAlt className="meta-icon" />
+                  <span>{selectedNewsItem.venue || selectedNewsItem.company}</span>
+                </div>
+              </div>
+              
+              <div className="modal-description">
+                <div 
+                  className="formatted-content"
+                  dangerouslySetInnerHTML={{ 
+                    __html: selectedNewsItem.details
+                      .replace(/\n/g, '<br>')
+                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                      .replace(/^• (.+)$/gm, '<li>$1</li>')
+                      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+                  }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Contact & Inquiry Section */}
       <section className="contact-section">

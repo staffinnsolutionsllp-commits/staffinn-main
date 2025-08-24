@@ -1,6 +1,9 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import apiService from '../../services/api';
 import './NewsPage.css';
+
 import { 
   FaPlay, 
   FaBookmark, 
@@ -15,19 +18,75 @@ import {
   FaChevronRight, 
   FaPodcast, 
   FaVideo,
-  FaChevronDown
+  FaChevronDown,
+  FaUsers,
+  FaUniversity,
+  FaBuilding
 } from 'react-icons/fa';
 
 const NewsPage = () => {
-  // Sample data - in a real application, this would come from an API
-  const featuredNews = {
+  const location = useLocation();
+  const [selectedNewsItem, setSelectedNewsItem] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [activeNewsCategory, setActiveNewsCategory] = useState('all');
+  
+  // Check if we have a specific news item to display
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const newsId = urlParams.get('id');
+    const newsTitle = urlParams.get('title');
+    
+    if (newsId && newsTitle) {
+      // In a real implementation, you would fetch the news item by ID
+      // For now, we'll create a placeholder with the title
+      setSelectedNewsItem({
+        eventNewsId: newsId,
+        title: decodeURIComponent(newsTitle),
+        type: 'News',
+        date: new Date().toISOString(),
+        company: 'Institute News',
+        details: 'This news item was selected from an institute page. Full details would be loaded from the database.',
+        verified: true,
+        bannerImage: null
+      });
+    }
+  }, [location]);
+  
+  // News categories for the top section
+  const newsCategories = [
+    { 
+      id: 'staff', 
+      name: 'Staff', 
+      icon: FaUsers, 
+      description: 'News and updates related to staff members, career opportunities, and professional development.',
+      color: '#3b82f6'
+    },
+    { 
+      id: 'institute', 
+      name: 'Institute', 
+      icon: FaUniversity, 
+      description: 'Institute announcements, events, academic updates, and institutional news.',
+      color: '#10b981'
+    },
+    { 
+      id: 'recruiter', 
+      name: 'Recruiter', 
+      icon: FaBuilding, 
+      description: 'Recruiter announcements, job openings, company news, and hiring updates.',
+      color: '#f59e0b'
+    },
+
+  ];
+
+  // Featured news - use selected news item or default
+  const featuredNews = selectedNewsItem || {
     id: 1,
     title: "Tech Industry Set to Create 100,000 New Jobs by 2026",
     description: "A new report reveals that the technology sector is poised for massive growth with projections of 100,000 new jobs in AI, cloud computing, and cybersecurity over the next 12 months.",
     image: "https://via.placeholder.com/1200x600?text=Tech+Industry+Jobs",
     date: "September 15, 2023",
     source: "Tech Career Insights",
-    category: "Recruitment & Hiring Trends"
+    category: "staff"
   };
   
   const trendingTopics = [
@@ -46,89 +105,11 @@ const NewsPage = () => {
     "New Labor Law Changes to Impact Contractual Employment"
   ];
   
-  const newsCategories = [
-    { id: "govt", name: "Government Job Schemes", icon: "🏛️" },
-    { id: "recruitment", name: "Recruitment & Hiring Trends", icon: "📈" },
-    { id: "company", name: "Company Announcements", icon: "🏢" },
-    { id: "career", name: "Career Growth Tips", icon: "🚀" },
-    { id: "freelance", name: "Freelance & Gig Economy", icon: "🌐" },
-    { id: "tech", name: "Technology & Market Trends", icon: "💻" }
-  ];
+
   
-  const newsArticles = [
-    {
-      id: 1,
-      title: "TCS to Hire 40,000 Freshers in 2025",
-      description: "India's largest IT services firm announces plans for massive campus recruitment drive across engineering colleges.",
-      image: "https://via.placeholder.com/300x200?text=TCS+Hiring",
-      category: "Company Announcements",
-      date: "September 14, 2023",
-      source: "Tech Career News",
-      likes: 342,
-      comments: 56,
-      saved: false
-    },
-    {
-      id: 2,
-      title: "New NAPS Guidelines Released - Higher Stipends for Apprentices",
-      description: "Government updates National Apprenticeship Promotion Scheme with increased financial support and simplified enrollment.",
-      image: "https://via.placeholder.com/300x200?text=NAPS+Guidelines",
-      category: "Government Job Schemes",
-      date: "September 13, 2023",
-      source: "Government Circular",
-      likes: 287,
-      comments: 42,
-      saved: true
-    },
-    {
-      id: 3,
-      title: "LinkedIn Report: Most In-Demand Skills for 2025",
-      description: "Annual skills report highlights AI, machine learning, and blockchain as the most sought-after technical skills by employers.",
-      image: "https://via.placeholder.com/300x200?text=LinkedIn+Skills+Report",
-      category: "Recruitment & Hiring Trends",
-      date: "September 12, 2023",
-      source: "LinkedIn Insights",
-      likes: 523,
-      comments: 78,
-      saved: false
-    },
-    {
-      id: 4,
-      title: "10 Resume Mistakes That Instantly Disqualify Candidates",
-      description: "HR experts reveal common resume errors that could cost you your dream job opportunity.",
-      image: "https://via.placeholder.com/300x200?text=Resume+Mistakes",
-      category: "Career Growth Tips",
-      date: "September 11, 2023",
-      source: "Career Advisor",
-      likes: 412,
-      comments: 93,
-      saved: false
-    },
-    {
-      id: 5,
-      title: "Freelance Platforms Report 40% Growth in Technical Projects",
-      description: "The demand for freelance developers, designers, and data analysts has surged as more companies adopt flexible hiring models.",
-      image: "https://via.placeholder.com/300x200?text=Freelance+Growth",
-      category: "Freelance & Gig Economy",
-      date: "September 10, 2023",
-      source: "Gig Economy Report",
-      likes: 256,
-      comments: 38,
-      saved: true
-    },
-    {
-      id: 6,
-      title: "How AI is Changing the Recruitment Process",
-      description: "From resume screening to candidate matching, artificial intelligence is revolutionizing how companies hire.",
-      image: "https://via.placeholder.com/300x200?text=AI+Recruitment",
-      category: "Technology & Market Trends",
-      date: "September 9, 2023",
-      source: "Tech Trends",
-      likes: 378,
-      comments: 65,
-      saved: false
-    }
-  ];
+  // Real news data from API
+  const [newsArticles, setNewsArticles] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
   
   const expertInsights = [
     {
@@ -241,8 +222,7 @@ const NewsPage = () => {
 
   // State management
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [breakingNewsIndex, setBreakingNewsIndex] = useState(0);
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [newsFilter, setNewsFilter] = useState("all");
   const [saveStates, setSaveStates] = useState({});
   const [currentPoll, setCurrentPoll] = useState({
     question: "Do you prefer remote jobs?",
@@ -272,20 +252,171 @@ const NewsPage = () => {
     }
   };
 
-  // Filter articles by category
-  const filteredArticles = activeCategory === "all" 
-    ? newsArticles 
-    : newsArticles.filter(article => 
-        article.category.toLowerCase().includes(activeCategory.toLowerCase()));
 
-  // Effects for animations like breaking news ticker and trending topics carousel
+
+
+
+  // Get category statistics
+  const getCategoryStats = () => {
+    const stats = {
+      all: newsArticles.length,
+      staff: newsArticles.filter(article => 
+        article.category === 'staff' || 
+        (article.source && article.source.toLowerCase().includes('staff'))
+      ).length,
+      institute: newsArticles.filter(article => 
+        article.category === 'institute' || 
+        (article.source && article.source.toLowerCase().includes('institute'))
+      ).length,
+      recruiter: newsArticles.filter(article => 
+        article.category === 'recruiter' || 
+        (article.source && article.source.toLowerCase().includes('recruiter'))
+      ).length
+    };
+    return stats;
+  };
+
+  const categoryStats = getCategoryStats();
+
+  // Filter articles based on selected category
+  const filteredArticles = newsArticles.filter(article => {
+    if (newsFilter === 'all') return true;
+    if (newsFilter === 'staff') {
+      return article.category === 'staff' || 
+             (article.source && article.source.toLowerCase().includes('staff'));
+    }
+    if (newsFilter === 'institute') {
+      return article.category === 'institute' || 
+             (article.source && article.source.toLowerCase().includes('institute'));
+    }
+    if (newsFilter === 'recruiter') {
+      return article.category === 'recruiter' || 
+             (article.source && article.source.toLowerCase().includes('recruiter'));
+    }
+    return true;
+  });
+
+  // Load news data on component mount
   useEffect(() => {
-    const breakingNewsInterval = setInterval(() => {
-      setBreakingNewsIndex((prev) => (prev + 1) % breakingNews.length);
-    }, 5000);
+    loadAllNews();
+    setNewsFilter('all');
+    
+    // Set up periodic refresh to catch new news
+    const refreshInterval = setInterval(() => {
+      console.log('Auto-refreshing news...');
+      loadAllNews();
+    }, 30000); // Refresh every 30 seconds
+    
+    // Listen for custom news update events
+    const handleNewsUpdate = () => {
+      console.log('News update event received, refreshing...');
+      loadAllNews();
+    };
+    
+    window.addEventListener('newsUpdated', handleNewsUpdate);
+    
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener('newsUpdated', handleNewsUpdate);
+    };
+  }, []);
+  
+  // Load all news from API
+  const loadAllNews = async () => {
+    try {
+      setNewsLoading(true);
+      console.log('Loading all news for NewsPage...');
+      
+      // Try to get all news from the combined endpoint first
+      let response = await apiService.getAllNews();
+      console.log('getAllNews response:', response);
+      
+      let allNews = [];
+      
+      if (response.success && response.data) {
+        // Handle different response structures
+        if (response.data.all) {
+          allNews = response.data.all;
+        } else if (Array.isArray(response.data)) {
+          allNews = response.data;
+        } else {
+          // Combine different news types if they exist separately
+          const instituteNews = response.data.institute || [];
+          const recruiterNews = response.data.recruiter || [];
+          const staffNews = response.data.staff || [];
+          allNews = [...instituteNews, ...recruiterNews, ...staffNews];
+        }
+      } else {
+        // If getAllNews fails, try to load from individual endpoints
+        console.log('getAllNews failed, trying individual endpoints...');
+        
+        try {
 
-    return () => clearInterval(breakingNewsInterval);
-  }, [breakingNews.length]);
+          
+          // Load institute news
+          const instituteResponse = await apiService.getNewsByCategory('institute');
+          console.log('Institute news response:', instituteResponse);
+          if (instituteResponse.success && instituteResponse.data) {
+            const instituteNews = Array.isArray(instituteResponse.data) ? instituteResponse.data : [];
+            instituteNews.forEach(news => {
+              news.category = 'institute';
+              news.source = news.company || 'Institute';
+            });
+            allNews = [...allNews, ...instituteNews];
+          }
+          
+          // Load staff news
+          const staffResponse = await apiService.getNewsByCategory('staff');
+          console.log('Staff news response:', staffResponse);
+          if (staffResponse.success && staffResponse.data) {
+            const staffNews = Array.isArray(staffResponse.data) ? staffResponse.data : [];
+            staffNews.forEach(news => {
+              news.category = 'staff';
+              news.source = news.company || 'Staffinn';
+            });
+            allNews = [...allNews, ...staffNews];
+          }
+          
+          // Load recruiter news
+          const recruiterResponse = await apiService.getNewsByCategory('recruiter');
+          console.log('Recruiter news response:', recruiterResponse);
+          if (recruiterResponse.success && recruiterResponse.data) {
+            const recruiterNews = Array.isArray(recruiterResponse.data) ? recruiterResponse.data : [];
+            recruiterNews.forEach(news => {
+              news.category = 'recruiter';
+              news.source = news.company || news.source || 'Recruiter';
+            });
+            allNews = [...allNews, ...recruiterNews];
+          }
+        } catch (individualError) {
+          console.error('Error loading individual news categories:', individualError);
+        }
+      }
+      
+      // Sort news by date (newest first)
+      allNews.sort((a, b) => {
+        const dateA = new Date(a.createdAt || a.date || 0);
+        const dateB = new Date(b.createdAt || b.date || 0);
+        return dateB - dateA;
+      });
+      
+      // Debug: Log news by category
+      const newsByCategory = {
+        all: allNews.length,
+        institute: allNews.filter(n => n.category === 'institute' || (n.source && n.source.toLowerCase().includes('institute'))).length,
+        staff: allNews.filter(n => n.category === 'staff' || (n.source && n.source.toLowerCase().includes('staff'))).length,
+        recruiter: allNews.filter(n => n.category === 'recruiter' || (n.source && n.source.toLowerCase().includes('recruiter'))).length
+      };
+      console.log('News by category:', newsByCategory);
+      console.log('Final news articles:', allNews);
+      setNewsArticles(allNews);
+    } catch (error) {
+      console.error('Error loading news:', error);
+      setNewsArticles([]);
+    } finally {
+      setNewsLoading(false);
+    }
+  };
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % trendingTopics.length);
@@ -297,24 +428,68 @@ const NewsPage = () => {
 
   return (
     <div className="news-page">
+
       {/* Top Section: Featured & Trending News */}
       <section className="top-news-section">
         {/* Featured News Banner */}
         <div className="featured-news">
-          <div className="featured-news-image">
-            <img src={featuredNews.image} alt={featuredNews.title} />
-          </div>
-          <div className="featured-news-content">
-            <div className="featured-tag">Top News of the Day</div>
-            <h1>{featuredNews.title}</h1>
-            <p>{featuredNews.description}</p>
-            <div className="featured-news-meta">
-              <span className="meta-date"><FaClock /> {featuredNews.date}</span>
-              <span className="meta-source">{featuredNews.source}</span>
-              <span className="meta-category">{featuredNews.category}</span>
-            </div>
-            <button className="read-more-btn">Read Full Article</button>
-          </div>
+          {selectedNewsItem ? (
+            <>
+              <div className="featured-news-image">
+                <img 
+                  src={selectedNewsItem.bannerImage || selectedNewsItem.originalData?.bannerImage || "https://via.placeholder.com/1200x600?text=News+Banner"} 
+                  alt={selectedNewsItem.title}
+                  onError={(e) => {
+                    e.target.src = "https://via.placeholder.com/1200x600?text=News+Banner";
+                  }}
+                />
+              </div>
+              <div className="featured-news-content">
+                <div className="featured-tag">
+                  {selectedNewsItem.verified ? 'Verified News' : 'News Update'}
+                </div>
+                <h1>{selectedNewsItem.title}</h1>
+                <p>{selectedNewsItem.details}</p>
+                <div className="featured-news-meta">
+                  <span className="meta-date">
+                    <FaClock /> {new Date(selectedNewsItem.date).toLocaleDateString()}
+                  </span>
+                  <span className="meta-source">{selectedNewsItem.company}</span>
+                  <span className="meta-category">{selectedNewsItem.type}</span>
+                  {selectedNewsItem.expectedParticipants && (
+                    <span className="meta-participants">
+                      Expected Participants: {selectedNewsItem.expectedParticipants}
+                    </span>
+                  )}
+                </div>
+                <div className="news-actions">
+                  <button className="back-btn" onClick={() => window.history.back()}>
+                    ← Back to Institute
+                  </button>
+                  <button className="share-btn">
+                    <FaShareAlt /> Share News
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="featured-news-image">
+                <img src={featuredNews.image} alt={featuredNews.title} />
+              </div>
+              <div className="featured-news-content">
+                <div className="featured-tag">Top News of the Day</div>
+                <h1>{featuredNews.title}</h1>
+                <p>{featuredNews.description}</p>
+                <div className="featured-news-meta">
+                  <span className="meta-date"><FaClock /> {featuredNews.date}</span>
+                  <span className="meta-source">{featuredNews.source}</span>
+                  <span className="meta-category">{featuredNews.category}</span>
+                </div>
+                <button className="read-more-btn">Read Full Article</button>
+              </div>
+            </>
+          )}
         </div>
         
         {/* Trending Topics Carousel */}
@@ -354,87 +529,112 @@ const NewsPage = () => {
         </div>
       </section>
 
-      {/* Breaking News Ticker */}
-      <div className="breaking-news-ticker">
-        <div className="ticker-label">Breaking News</div>
-        <div className="ticker-content">
-          <div className="ticker-animation">
-            {breakingNews.map((news, index) => (
-              <span 
-                key={index} 
-                className={`ticker-item ${index === breakingNewsIndex ? 'active' : ''}`}
-              >
-                {news}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+
 
       <div className="content-container">
         {/* Main Column */}
         <div className="main-column">
-          {/* Categories Section */}
-          <section className="categories-section">
-            <h2>News Categories</h2>
-            <div className="categories-tabs">
-              <button 
-                className={`category-tab ${activeCategory === 'all' ? 'active' : ''}`}
-                onClick={() => setActiveCategory('all')}
-              >
-                All News
-              </button>
-              {newsCategories.map(category => (
-                <button
-                  key={category.id}
-                  className={`category-tab ${activeCategory === category.id ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(category.id)}
-                >
-                  <span className="category-icon">{category.icon}</span>
-                  {category.name}
-                </button>
-              ))}
-            </div>
-          </section>
+
 
           {/* Main News Feed */}
           <section className="news-feed">
             <div className="section-header">
-              <h2>Latest News</h2>
-              {activeCategory !== 'all' && (
-                <span className="filter-applied">
-                  Filtered by: {newsCategories.find(c => c.id === activeCategory)?.name || activeCategory}
-                </span>
-              )}
+              <h2>News & Updates</h2>
+              <div className="news-controls">
+                <div className="news-filters">
+                  <button 
+                    className={`filter-btn ${newsFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setNewsFilter('all')}
+                  >
+                    All News ({categoryStats.all})
+                  </button>
+                  <button 
+                    className={`filter-btn ${newsFilter === 'staff' ? 'active' : ''}`}
+                    onClick={() => setNewsFilter('staff')}
+                  >
+                    Staffinn News ({categoryStats.staff})
+                  </button>
+                  <button 
+                    className={`filter-btn ${newsFilter === 'institute' ? 'active' : ''}`}
+                    onClick={() => setNewsFilter('institute')}
+                  >
+                    Institute News ({categoryStats.institute})
+                  </button>
+                  <button 
+                    className={`filter-btn ${newsFilter === 'recruiter' ? 'active' : ''}`}
+                    onClick={() => setNewsFilter('recruiter')}
+                  >
+                    Recruiter News ({categoryStats.recruiter || 0})
+                  </button>
+
+                </div>
+                <button 
+                  className="refresh-btn"
+                  onClick={loadAllNews}
+                  disabled={newsLoading}
+                  style={{
+                    marginLeft: '10px',
+                    padding: '8px 16px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: newsLoading ? 'not-allowed' : 'pointer',
+                    opacity: newsLoading ? 0.6 : 1
+                  }}
+                >
+                  {newsLoading ? 'Refreshing...' : 'Refresh News'}
+                </button>
+              </div>
             </div>
             
             <div className="articles-list">
-              {filteredArticles.length > 0 ? (
+              {newsLoading ? (
+                <div className="loading-articles">
+                  <p>Loading news...</p>
+                  <div style={{marginTop: '10px', fontSize: '0.9rem', color: '#6b7280'}}>
+                    Fetching latest updates from all sources...
+                  </div>
+                </div>
+              ) : filteredArticles.length > 0 ? (
                 filteredArticles.map(article => (
-                  <div key={article.id} className="article-card">
+                  <div key={article.id || article.eventNewsId || article.newsId} className="article-card">
                     <div className="article-image">
-                      <img src={article.image} alt={article.title} />
-                      <div className="article-category">{article.category}</div>
+                      <img 
+                        src={article.bannerImage || article.image || article.originalData?.bannerImage || "https://via.placeholder.com/300x200?text=News+Image"} 
+                        alt={article.title}
+                        onError={(e) => {
+                          e.target.src = "https://via.placeholder.com/300x200?text=News+Image";
+                        }}
+                      />
+                      <div className="article-category">{article.category || article.type || 'News'}</div>
                     </div>
                     <div className="article-content">
                       <h3>{article.title}</h3>
-                      <p>{article.description}</p>
+                      <p>{article.description || article.details}</p>
                       <div className="article-meta">
-                        <span className="meta-date"><FaClock /> {article.date}</span>
-                        <span className="meta-source">{article.source}</span>
+                        <span className="meta-date">
+                          <FaClock /> {article.date || new Date(article.createdAt || Date.now()).toLocaleDateString()}
+                        </span>
+                        <span className="meta-source">{article.source || article.company || 'Staffinn'}</span>
+                        {(article.verified || article.status === 'verified') && (
+                          <span className="meta-verified" style={{color: '#10b981', fontWeight: 'bold'}}>
+                            ✓ Verified
+                          </span>
+                        )}
                       </div>
                       <div className="article-actions">
                         <button className="action-btn">
-                          <FaThumbsUp /> <span>{article.likes}</span>
+                          <FaThumbsUp /> <span>{article.likes || 0}</span>
                         </button>
                         <button className="action-btn">
-                          <FaComment /> <span>{article.comments}</span>
+                          <FaComment /> <span>{article.comments || 0}</span>
                         </button>
                         <button 
                           className="action-btn"
-                          onClick={() => toggleSave(article.id)}
+                          onClick={() => toggleSave(article.id || article.eventNewsId || article.newsId)}
                         >
-                          {saveStates[article.id] || article.saved ? 
+                          {saveStates[article.id || article.eventNewsId || article.newsId] || article.saved ? 
                             <FaBookmark className="saved" /> : 
                             <FaRegBookmark />
                           }

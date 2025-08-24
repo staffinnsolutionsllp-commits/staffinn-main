@@ -24,14 +24,14 @@ const uploadFile = async (file, key) => {
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      CacheControl: 'max-age=31536000', // Cache for 1 year
+      CacheControl: 'max-age=31536000' // Cache for 1 year
     };
 
     const command = new PutObjectCommand(uploadParams);
     const result = await s3Client.send(command);
 
-    // Generate a long-lived pre-signed URL (7 days)
-    const fileUrl = await getPresignedUrl(key, 7 * 24 * 60 * 60); // 7 days
+    // Return permanent public URL instead of pre-signed URL
+    const fileUrl = getFileUrl(key);
 
     return {
       success: true,
@@ -211,6 +211,11 @@ const uploadCertificate = async (file, userId, certificateName = 'certificate') 
  * @returns {string} - Public file URL
  */
 const getFileUrl = (key) => {
+  // Use CloudFront URL if available, otherwise use direct S3 URL
+  const cloudFrontUrl = process.env.CLOUDFRONT_URL;
+  if (cloudFrontUrl) {
+    return `${cloudFrontUrl}/${key}`;
+  }
   return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
 };
 

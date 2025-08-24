@@ -5,6 +5,7 @@
 const userModel = require('../models/userModel');
 const instituteModel = require('../models/instituteModel');
 const institutePlacementModel = require('../models/institutePlacementModel');
+const instituteIndustryCollabModel = require('../models/instituteIndustryCollabModel');
 const jwtUtils = require('../utils/jwtUtils');
 const { validateInstituteRegistration } = require('../utils/validation');
 const emailService = require('../services/emailService');
@@ -676,14 +677,19 @@ const placementUpload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit for images
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(file.originalname.toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (mimetype && extname) {
-      return cb(null, true);
+    // Allow any field name that starts with companyLogo_ or studentPhoto_
+    if (file.fieldname.startsWith('companyLogo_') || file.fieldname.startsWith('studentPhoto_')) {
+      const allowedTypes = /jpeg|jpg|png|gif|webp/;
+      const extname = allowedTypes.test(file.originalname.toLowerCase());
+      const mimetype = allowedTypes.test(file.mimetype);
+      
+      if (mimetype && extname) {
+        return cb(null, true);
+      } else {
+        return cb(new Error('Only image files are allowed'));
+      }
     } else {
-      cb(new Error('Only image files are allowed'));
+      return cb(new Error('Invalid file field name'));
     }
   }
 });
@@ -694,8 +700,16 @@ const placementUpload = multer({
 const uploadPlacementFiles = async (files, type) => {
   const uploadedFiles = [];
   
+  console.log(`Uploading ${files.length} files of type: ${type}`);
+  
   for (const file of files) {
     try {
+      console.log('Uploading file:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
+      });
+      
       const fileExtension = file.originalname.split('.').pop();
       const fileName = `${uuidv4()}-${Date.now()}.${fileExtension}`;
       const key = `placement-${type}/${fileName}`;
@@ -710,7 +724,8 @@ const uploadPlacementFiles = async (files, type) => {
       
       await s3Client.send(uploadCommand);
       
-      const fileUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+      const fileUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+      console.log('File uploaded successfully:', fileUrl);
       uploadedFiles.push(fileUrl);
     } catch (error) {
       console.error('Error uploading file to S3:', error);
@@ -722,12 +737,79 @@ const uploadPlacementFiles = async (files, type) => {
 };
 
 /**
+ * Delete old placement files from S3
+ */
+const deleteOldPlacementFiles = async (oldData, newData) => {
+  try {
+    // Delete old company logos that are no longer used
+    if (oldData.topHiringCompanies && Array.isArray(oldData.topHiringCompanies)) {
+      for (const oldCompany of oldData.topHiringCompanies) {
+        // Check if logo is a valid string URL
+        if (oldCompany.logo && typeof oldCompany.logo === 'string' && oldCompany.logo.includes('http')) {
+          // Check if this logo is still being used in new data
+          const stillUsed = newData.topHiringCompanies && newData.topHiringCompanies.some(newCompany => 
+            newCompany.logo === oldCompany.logo
+          );
+          
+          if (!stillUsed) {
+            try {
+              const key = oldCompany.logo.split('/').pop();
+              const deleteCommand = new DeleteObjectCommand({
+                Bucket: S3_BUCKET_NAME,
+                Key: `placement-company-logos/${key}`
+              });
+              await s3Client.send(deleteCommand);
+              console.log(`Deleted old company logo: ${key}`);
+            } catch (deleteError) {
+              console.error('Error deleting old company logo:', deleteError);
+            }
+          }
+        }
+      }
+    }
+    
+    // Delete old student photos that are no longer used
+    if (oldData.recentPlacementSuccess && Array.isArray(oldData.recentPlacementSuccess)) {
+      for (const oldStudent of oldData.recentPlacementSuccess) {
+        // Check if photo is a valid string URL
+        if (oldStudent.photo && typeof oldStudent.photo === 'string' && oldStudent.photo.includes('http')) {
+          // Check if this photo is still being used in new data
+          const stillUsed = newData.recentPlacementSuccess && newData.recentPlacementSuccess.some(newStudent => 
+            newStudent.photo === oldStudent.photo
+          );
+          
+          if (!stillUsed) {
+            try {
+              const key = oldStudent.photo.split('/').pop();
+              const deleteCommand = new DeleteObjectCommand({
+                Bucket: S3_BUCKET_NAME,
+                Key: `placement-student-photos/${key}`
+              });
+              await s3Client.send(deleteCommand);
+              console.log(`Deleted old student photo: ${key}`);
+            } catch (deleteError) {
+              console.error('Error deleting old student photo:', deleteError);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting old placement files:', error);
+  }
+};
+
+/**
  * Update placement section data with file uploads
  * @route PUT /api/institute/placement-section
  */
 const updatePlacementSection = async (req, res) => {
   try {
     const userId = req.user.userId;
+    
+    console.log('Placement section update request for user:', userId);
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Request files keys:', Object.keys(req.files || {}));
     
     // Get institute profile to get institute name
     const user = await userModel.getUserById(userId);
@@ -740,44 +822,112 @@ const updatePlacementSection = async (req, res) => {
     
     const instituteName = user.name || 'Unknown Institute';
     
+    // Get existing placement data for cleanup
+    const existingPlacementData = await institutePlacementModel.getPlacementSectionByInstituteId(userId);
+    
     // Parse form data
     let placementData;
+    let fileMapping;
     try {
       placementData = JSON.parse(req.body.placementData || '{}');
+      fileMapping = JSON.parse(req.body.fileMapping || '{}');
+      console.log('Parsed placement data:', placementData);
+      console.log('Parsed file mapping:', fileMapping);
     } catch (parseError) {
-      // If parsing fails, use req.body directly
-      placementData = req.body;
+      console.error('Error parsing form data:', parseError);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid form data'
+      });
     }
     
-    // Handle file uploads
+    // Handle file uploads with proper mapping
     const files = req.files || {};
+    console.log('Available files:', Object.keys(files));
     
-    // Process company logos
-    if (files.companyLogos && files.companyLogos.length > 0) {
-      const logoUrls = await uploadPlacementFiles(files.companyLogos, 'company-logos');
-      
-      // Map logos to companies
-      if (placementData.topHiringCompanies && Array.isArray(placementData.topHiringCompanies)) {
-        placementData.topHiringCompanies.forEach((company, index) => {
-          if (logoUrls[index]) {
-            company.logo = logoUrls[index];
-          }
+    // Process company logos with unique identifiers
+    if (placementData.topHiringCompanies && Array.isArray(placementData.topHiringCompanies)) {
+      for (let i = 0; i < placementData.topHiringCompanies.length; i++) {
+        const company = placementData.topHiringCompanies[i];
+        
+        console.log(`Processing company ${i}:`, {
+          name: company.name,
+          hasNewFile: company.hasNewFile,
+          fileId: company.fileId,
+          currentLogo: company.logo
         });
+        
+        if (company.hasNewFile && company.fileId) {
+          const fileFieldName = `companyLogo_${company.fileId}`;
+          const file = files[fileFieldName];
+          
+          console.log(`Looking for file: ${fileFieldName}`, !!file);
+          
+          if (file && file.length > 0) {
+            try {
+              const logoUrls = await uploadPlacementFiles([file[0]], 'company-logos');
+              if (logoUrls[0]) {
+                company.logo = logoUrls[0];
+                console.log(`Uploaded company logo: ${logoUrls[0]}`);
+              }
+            } catch (uploadError) {
+              console.error(`Error uploading company logo for ${company.name}:`, uploadError);
+            }
+          }
+        } else if (!company.logo || typeof company.logo !== 'string' || !company.logo.includes('http')) {
+          // If no valid logo URL, set to null instead of empty object
+          company.logo = null;
+        }
+        
+        // Clean up temporary properties
+        delete company.hasNewFile;
+        delete company.fileId;
       }
     }
     
-    // Process student photos
-    if (files.studentPhotos && files.studentPhotos.length > 0) {
-      const photoUrls = await uploadPlacementFiles(files.studentPhotos, 'student-photos');
-      
-      // Map photos to students
-      if (placementData.recentPlacementSuccess && Array.isArray(placementData.recentPlacementSuccess)) {
-        placementData.recentPlacementSuccess.forEach((student, index) => {
-          if (photoUrls[index]) {
-            student.photo = photoUrls[index];
-          }
+    // Process student photos with unique identifiers
+    if (placementData.recentPlacementSuccess && Array.isArray(placementData.recentPlacementSuccess)) {
+      for (let i = 0; i < placementData.recentPlacementSuccess.length; i++) {
+        const student = placementData.recentPlacementSuccess[i];
+        
+        console.log(`Processing student ${i}:`, {
+          name: student.name,
+          hasNewFile: student.hasNewFile,
+          fileId: student.fileId,
+          currentPhoto: student.photo
         });
+        
+        if (student.hasNewFile && student.fileId) {
+          const fileFieldName = `studentPhoto_${student.fileId}`;
+          const file = files[fileFieldName];
+          
+          console.log(`Looking for file: ${fileFieldName}`, !!file);
+          
+          if (file && file.length > 0) {
+            try {
+              const photoUrls = await uploadPlacementFiles([file[0]], 'student-photos');
+              if (photoUrls[0]) {
+                student.photo = photoUrls[0];
+                console.log(`Uploaded student photo: ${photoUrls[0]}`);
+              }
+            } catch (uploadError) {
+              console.error(`Error uploading student photo for ${student.name}:`, uploadError);
+            }
+          }
+        } else if (!student.photo || typeof student.photo !== 'string' || !student.photo.includes('http')) {
+          // If no valid photo URL, set to null instead of empty object
+          student.photo = null;
+        }
+        
+        // Clean up temporary properties
+        delete student.hasNewFile;
+        delete student.fileId;
       }
+    }
+    
+    // Clean up old files that are no longer used
+    if (existingPlacementData) {
+      await deleteOldPlacementFiles(existingPlacementData, placementData);
     }
     
     // Validate placement data
@@ -790,12 +940,16 @@ const updatePlacementSection = async (req, res) => {
       });
     }
     
+    console.log('Final placement data to save:', placementData);
+    
     // Create or update placement section
     const updatedPlacementSection = await institutePlacementModel.createOrUpdatePlacementSection(
       userId,
       instituteName,
       placementData
     );
+    
+    console.log('Placement section updated successfully:', updatedPlacementSection);
     
     res.status(200).json({
       success: true,
@@ -820,12 +974,17 @@ const getPlacementSection = async (req, res) => {
   try {
     const userId = req.user.userId;
     
+    console.log('Getting placement section for user:', userId);
+    
     const placementSection = await institutePlacementModel.getPlacementSectionByInstituteId(userId);
     
+    console.log('Retrieved placement section:', placementSection);
+    
     if (!placementSection) {
-      return res.status(404).json({
-        success: false,
-        message: 'Placement section not found'
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: 'No placement section data found'
       });
     }
     
@@ -851,12 +1010,17 @@ const getPublicPlacementSection = async (req, res) => {
   try {
     const { id } = req.params;
     
+    console.log('Getting public placement section for institute:', id);
+    
     const placementSection = await institutePlacementModel.getPlacementSectionByInstituteId(id);
     
+    console.log('Retrieved public placement section:', placementSection);
+    
     if (!placementSection) {
-      return res.status(404).json({
-        success: false,
-        message: 'Placement section not found'
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: 'No placement section data found'
       });
     }
     
@@ -902,6 +1066,585 @@ const getPublicDashboardStats = async (req, res) => {
   }
 };
 
+// Multer for industry collaboration uploads (images and PDFs)
+const industryCollabUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit for PDFs and images
+  },
+  fileFilter: (req, file, cb) => {
+    console.log('File filter - fieldname:', file.fieldname, 'mimetype:', file.mimetype, 'originalname:', file.originalname);
+    
+    // Allow any field name that starts with collabImage_ or mouPdf_
+    if (file.fieldname.startsWith('collabImage_') || file.fieldname.startsWith('mouPdf_')) {
+      if (file.fieldname.startsWith('collabImage_')) {
+        // Images for collaboration cards
+        const allowedTypes = /jpeg|jpg|png|gif|webp/;
+        const extname = allowedTypes.test(file.originalname.toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+          console.log('Collaboration image file accepted:', file.fieldname);
+          return cb(null, true);
+        } else {
+          console.log('Collaboration image file rejected:', file.fieldname, 'mimetype:', file.mimetype);
+          return cb(new Error('Collaboration images must be image files (JPEG, PNG, GIF, WebP)'));
+        }
+      } else if (file.fieldname.startsWith('mouPdf_')) {
+        // PDFs for MOU items
+        const allowedTypes = /pdf/;
+        const extname = allowedTypes.test(file.originalname.toLowerCase());
+        const mimetype = /application\/pdf/.test(file.mimetype);
+        
+        if (mimetype && extname) {
+          console.log('MOU PDF file accepted:', file.fieldname);
+          return cb(null, true);
+        } else {
+          console.log('MOU PDF file rejected:', file.fieldname, 'mimetype:', file.mimetype);
+          return cb(new Error('MOU files must be PDF files'));
+        }
+      }
+    } else {
+      console.log('Invalid file field name:', file.fieldname);
+      return cb(new Error('Invalid file field name'));
+    }
+  }
+});
+
+/**
+ * Upload files to S3 for industry collaboration section
+ */
+const uploadIndustryCollabFiles = async (files, type) => {
+  const uploadedFiles = [];
+  
+  console.log(`📤 Starting upload of ${files.length} files of type: ${type}`);
+  
+  for (const file of files) {
+    try {
+      console.log('📄 File details:', {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        hasBuffer: !!file.buffer
+      });
+      
+      const fileExtension = file.originalname.split('.').pop().toLowerCase();
+      const fileName = `${uuidv4()}-${Date.now()}.${fileExtension}`;
+      const key = `industry-collab-${type}/${fileName}`;
+      
+      console.log(`🔑 S3 upload details:`, {
+        bucket: S3_BUCKET_NAME,
+        key: key,
+        contentType: file.mimetype
+      });
+      
+      const uploadCommand = new PutObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        CacheControl: 'max-age=31536000'
+      });
+      
+      await s3Client.send(uploadCommand);
+      
+      const fileUrl = `https://${S3_BUCKET_NAME}.s3.${(process.env.AWS_REGION || 'us-east-1').trim()}.amazonaws.com/${key}`;
+      
+      console.log(`✅ File uploaded successfully: ${fileUrl}`);
+      uploadedFiles.push(fileUrl);
+    } catch (error) {
+      console.error(`❌ S3 upload error:`, error);
+      throw error;
+    }
+  }
+  
+  console.log(`🎉 Upload complete. ${uploadedFiles.length} files uploaded.`);
+  return uploadedFiles;
+};
+
+/**
+ * Delete old industry collaboration files from S3
+ */
+const deleteOldIndustryCollabFiles = async (oldData, newData) => {
+  try {
+    // Delete old collaboration images that are no longer used
+    if (oldData.collaborationCards && Array.isArray(oldData.collaborationCards)) {
+      for (const oldCard of oldData.collaborationCards) {
+        if (oldCard.image && typeof oldCard.image === 'string' && oldCard.image.includes('http')) {
+          const stillUsed = newData.collaborationCards && newData.collaborationCards.some(newCard => 
+            newCard.image === oldCard.image
+          );
+          
+          if (!stillUsed) {
+            try {
+              const urlParts = oldCard.image.split('/');
+              const key = urlParts[urlParts.length - 1];
+              const deleteCommand = new DeleteObjectCommand({
+                Bucket: S3_BUCKET_NAME,
+                Key: `industry-collab-images/${key}`
+              });
+              await s3Client.send(deleteCommand);
+              console.log(`Deleted old collaboration image: ${key}`);
+            } catch (deleteError) {
+              console.error('Error deleting old collaboration image:', deleteError);
+            }
+          }
+        }
+      }
+    }
+    
+    // Delete old MOU PDFs that are no longer used
+    if (oldData.mouItems && Array.isArray(oldData.mouItems)) {
+      for (const oldMou of oldData.mouItems) {
+        if (oldMou.pdfUrl && typeof oldMou.pdfUrl === 'string' && oldMou.pdfUrl.includes('http')) {
+          const stillUsed = newData.mouItems && newData.mouItems.some(newMou => 
+            newMou.pdfUrl === oldMou.pdfUrl
+          );
+          
+          if (!stillUsed) {
+            try {
+              const urlParts = oldMou.pdfUrl.split('/');
+              const key = urlParts[urlParts.length - 1];
+              const deleteCommand = new DeleteObjectCommand({
+                Bucket: S3_BUCKET_NAME,
+                Key: `industry-collab-pdfs/${key}`
+              });
+              await s3Client.send(deleteCommand);
+              console.log(`Deleted old MOU PDF: ${key}`);
+            } catch (deleteError) {
+              console.error('Error deleting old MOU PDF:', deleteError);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting old industry collaboration files:', error);
+  }
+};
+
+/**
+ * Update industry collaboration section data with file uploads
+ * @route PUT /api/institute/industry-collaborations
+ */
+const updateIndustryCollaborations = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    console.log('Industry collaboration update request for user:', userId);
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Request files keys:', Object.keys(req.files || {}));
+    
+    // Get institute profile to get institute name
+    const user = await userModel.getUserById(userId);
+    if (!user || user.role !== 'institute') {
+      return res.status(404).json({
+        success: false,
+        message: 'Institute not found'
+      });
+    }
+    
+    const instituteName = user.name || 'Unknown Institute';
+    
+    // Get existing collaboration data for cleanup
+    const existingCollabData = await instituteIndustryCollabModel.getIndustryCollabSectionByInstituteId(userId);
+    
+    // Parse form data
+    let collabData;
+    let fileMapping;
+    try {
+      console.log('Raw request body:', {
+        collabData: req.body.collabData ? req.body.collabData.substring(0, 200) + '...' : 'undefined',
+        fileMapping: req.body.fileMapping ? req.body.fileMapping.substring(0, 200) + '...' : 'undefined'
+      });
+      
+      collabData = JSON.parse(req.body.collabData || '{}');
+      fileMapping = JSON.parse(req.body.fileMapping || '{}');
+      
+      console.log('Parsed collaboration data:', {
+        collaborationCards: collabData.collaborationCards?.length || 0,
+        mouItems: collabData.mouItems?.length || 0,
+        mouItemsWithData: collabData.mouItems?.filter(mou => mou.title)?.length || 0
+      });
+      console.log('Parsed file mapping:', fileMapping);
+    } catch (parseError) {
+      console.error('Error parsing form data:', parseError);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid form data'
+      });
+    }
+    
+    // Handle file uploads with proper mapping
+    const files = req.files || {};
+    console.log('Available files:', Object.keys(files));
+    
+    // Process collaboration card images with permanent storage
+    if (collabData.collaborationCards && Array.isArray(collabData.collaborationCards)) {
+      for (let i = 0; i < collabData.collaborationCards.length; i++) {
+        const card = collabData.collaborationCards[i];
+        
+        console.log(`Processing collaboration card ${i}:`, {
+          title: card.title,
+          hasNewFile: card.hasNewFile,
+          fileId: card.fileId,
+          currentImage: card.image
+        });
+        
+        if (card.hasNewFile && card.fileId) {
+          const fileFieldName = `collabImage_${card.fileId}`;
+          const file = files[fileFieldName];
+          
+          console.log(`Looking for file: ${fileFieldName}`, !!file);
+          
+          if (file && file.length > 0) {
+            try {
+              // Delete old image if exists
+              if (card.image && typeof card.image === 'string' && card.image.includes('http')) {
+                try {
+                  const oldKey = card.image.split('/').pop();
+                  const deleteCommand = new DeleteObjectCommand({
+                    Bucket: S3_BUCKET_NAME,
+                    Key: `industry-collab-images/${oldKey}`
+                  });
+                  await s3Client.send(deleteCommand);
+                  console.log(`Deleted old collaboration image: ${oldKey}`);
+                } catch (deleteError) {
+                  console.error('Error deleting old collaboration image:', deleteError);
+                }
+              }
+              
+              const imageUrls = await uploadIndustryCollabFiles([file[0]], 'images');
+              if (imageUrls[0]) {
+                card.image = imageUrls[0];
+                console.log(`Uploaded collaboration image: ${imageUrls[0]}`);
+              }
+            } catch (uploadError) {
+              console.error(`Error uploading collaboration image for ${card.title}:`, uploadError);
+              // Keep existing image if upload fails
+            }
+          }
+        }
+        
+        // Ensure image URL is properly preserved
+        if (!card.image || typeof card.image !== 'string' || !card.image.includes('http')) {
+          // Only set to null if there's no valid existing image
+          if (!existingCollabData?.collaborationCards?.[i]?.image) {
+            card.image = null;
+          } else {
+            // Preserve existing image if no new upload
+            card.image = existingCollabData.collaborationCards[i].image;
+          }
+        }
+        
+        // Clean up temporary properties
+        delete card.hasNewFile;
+        delete card.fileId;
+      }
+    }
+    
+    // Process MOU PDFs with improved logic
+    if (collabData.mouItems && Array.isArray(collabData.mouItems)) {
+      for (let i = 0; i < collabData.mouItems.length; i++) {
+        const mou = collabData.mouItems[i];
+        
+        console.log(`Processing MOU ${i}:`, {
+          title: mou.title,
+          hasNewFile: mou.hasNewFile,
+          fileId: mou.fileId,
+          currentPdfUrl: mou.pdfUrl
+        });
+        
+        // Handle new PDF file upload
+        if (mou.hasNewFile && mou.fileId) {
+          const fileFieldName = `mouPdf_${mou.fileId}`;
+          const file = files[fileFieldName];
+          
+          console.log(`🔍 Looking for PDF file: ${fileFieldName}`, {
+            fileExists: !!file,
+            fileLength: file?.length || 0,
+            fileName: file?.[0]?.originalname || 'N/A',
+            fileSize: file?.[0]?.size || 0,
+            mimeType: file?.[0]?.mimetype || 'N/A'
+          });
+          
+          if (file && file.length > 0) {
+            try {
+              // Delete old PDF if exists
+              if (mou.pdfUrl && typeof mou.pdfUrl === 'string' && mou.pdfUrl.includes('http')) {
+                try {
+                  const oldKey = mou.pdfUrl.split('/').pop();
+                  const deleteCommand = new DeleteObjectCommand({
+                    Bucket: S3_BUCKET_NAME,
+                    Key: `industry-collab-pdfs/${oldKey}`
+                  });
+                  await s3Client.send(deleteCommand);
+                  console.log(`Deleted old MOU PDF: ${oldKey}`);
+                } catch (deleteError) {
+                  console.error('Error deleting old MOU PDF:', deleteError);
+                }
+              }
+              
+              console.log('📤 Attempting to upload PDF file...');
+              const pdfUrls = await uploadIndustryCollabFiles([file[0]], 'pdfs');
+              console.log('📥 Upload result:', pdfUrls);
+              
+              if (pdfUrls[0]) {
+                mou.pdfUrl = pdfUrls[0];
+                console.log(`✅ PDF uploaded successfully: ${pdfUrls[0]}`);
+              } else {
+                console.error('❌ PDF upload failed - no URL returned');
+                // Keep existing URL if upload fails
+                if (existingCollabData?.mouItems?.[i]?.pdfUrl) {
+                  mou.pdfUrl = existingCollabData.mouItems[i].pdfUrl;
+                } else {
+                  mou.pdfUrl = '';
+                }
+              }
+            } catch (error) {
+              console.error(`❌ PDF upload error:`, error);
+              // Keep existing URL if upload fails
+              if (existingCollabData?.mouItems?.[i]?.pdfUrl) {
+                mou.pdfUrl = existingCollabData.mouItems[i].pdfUrl;
+              } else {
+                mou.pdfUrl = '';
+              }
+            }
+          } else {
+            console.log(`No file found for ${fileFieldName}`);
+            // Keep existing URL if no new file
+            if (existingCollabData?.mouItems?.[i]?.pdfUrl) {
+              mou.pdfUrl = existingCollabData.mouItems[i].pdfUrl;
+            } else {
+              mou.pdfUrl = '';
+            }
+          }
+        }
+        // Preserve existing PDF URL if no new file
+        else if (!mou.hasNewFile && mou.pdfUrl && typeof mou.pdfUrl === 'string' && mou.pdfUrl.trim() !== '') {
+          console.log(`Preserving existing PDF URL: ${mou.pdfUrl}`);
+          // Keep the existing pdfUrl as is - no changes needed
+        }
+        // Try to get from existing data if no current URL
+        else if (existingCollabData?.mouItems?.[i]?.pdfUrl && typeof existingCollabData.mouItems[i].pdfUrl === 'string' && existingCollabData.mouItems[i].pdfUrl.trim() !== '') {
+          mou.pdfUrl = existingCollabData.mouItems[i].pdfUrl;
+          console.log(`Retrieved PDF URL from existing data: ${mou.pdfUrl}`);
+        }
+        // Set to empty string instead of null to avoid DynamoDB NULL issue
+        else {
+          mou.pdfUrl = '';
+          console.log(`No PDF URL available for MOU: ${mou.title} - setting to empty string`);
+        }
+        
+        delete mou.hasNewFile;
+        delete mou.fileId;
+      }
+    }
+    
+    // Clean up old files that are no longer used (only if we have new data)
+    if (existingCollabData && (collabData.collaborationCards?.length >= 0 || collabData.mouItems?.length >= 0)) {
+      await deleteOldIndustryCollabFiles(existingCollabData, collabData);
+    }
+    
+    // Allow empty sections - don't require at least one item
+    console.log('📊 Final collaboration data to save:', {
+      collaborationCards: collabData.collaborationCards?.length || 0,
+      mouItems: collabData.mouItems?.length || 0,
+      mouItemsWithPdfs: collabData.mouItems?.filter(mou => mou.pdfUrl && mou.pdfUrl.trim() !== '')?.length || 0,
+      mouDetails: collabData.mouItems?.map(mou => ({ 
+        title: mou.title, 
+        hasPdf: !!(mou.pdfUrl && mou.pdfUrl.trim() !== ''),
+        pdfUrl: mou.pdfUrl || 'NULL'
+      })) || []
+    });
+    
+    // Validate that we have data to save
+    if (!collabData.collaborationCards && !collabData.mouItems) {
+      console.log('WARNING: No collaboration data to save');
+      collabData = {
+        collaborationCards: [],
+        mouItems: []
+      };
+    }
+    
+    // Create or update industry collaboration section
+    console.log('Calling createOrUpdateIndustryCollabSection with:', {
+      userId,
+      instituteName,
+      dataKeys: Object.keys(collabData)
+    });
+    
+    const updatedCollabSection = await instituteIndustryCollabModel.createOrUpdateIndustryCollabSection(
+      userId,
+      instituteName,
+      collabData
+    );
+    
+    console.log('Industry collaboration section updated successfully:', {
+      hasData: !!updatedCollabSection,
+      collaborationCards: updatedCollabSection?.collaborationCards?.length || 0,
+      mouItems: updatedCollabSection?.mouItems?.length || 0,
+      mouItemsWithPdfs: updatedCollabSection?.mouItems?.filter(mou => mou.pdfUrl)?.length || 0
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Industry collaborations updated successfully',
+      data: updatedCollabSection
+    });
+    
+  } catch (error) {
+    console.error('Update industry collaborations error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update industry collaborations'
+    });
+  }
+};
+
+/**
+ * Get industry collaboration section data
+ * @route GET /api/institute/industry-collaborations
+ */
+const getIndustryCollaborations = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    console.log('Getting industry collaborations for user:', userId);
+    
+    const collabSection = await instituteIndustryCollabModel.getIndustryCollabSectionByInstituteId(userId);
+    
+    console.log('Retrieved industry collaboration section:', collabSection);
+    
+    if (!collabSection) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          collaborationCards: [],
+          mouItems: []
+        },
+        message: 'No industry collaboration data found'
+      });
+    }
+    
+    // Ensure arrays exist and are properly formatted
+    const formattedData = {
+      ...collabSection,
+      collaborationCards: collabSection.collaborationCards || [],
+      mouItems: collabSection.mouItems || []
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: formattedData
+    });
+    
+  } catch (error) {
+    console.error('Get industry collaborations error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get industry collaborations'
+    });
+  }
+};
+
+/**
+ * Get public industry collaboration section data by institute ID
+ * @route GET /api/institute/public/:id/industry-collaborations
+ */
+const getPublicIndustryCollaborations = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('Getting public industry collaborations for institute:', id);
+    
+    const collabSection = await instituteIndustryCollabModel.getIndustryCollabSectionByInstituteId(id);
+    
+    console.log('Retrieved public industry collaboration section:', {
+      hasData: !!collabSection,
+      collaborationCards: collabSection?.collaborationCards?.length || 0,
+      mouItems: collabSection?.mouItems?.length || 0,
+      mouItemsWithPdfs: collabSection?.mouItems?.filter(mou => mou.pdfUrl && mou.pdfUrl.includes('http'))?.length || 0
+    });
+    
+    if (!collabSection) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          collaborationCards: [],
+          mouItems: []
+        },
+        message: 'No industry collaboration data found'
+      });
+    }
+    
+    // Ensure arrays exist and are properly formatted for public display
+    const formattedData = {
+      collaborationCards: (collabSection.collaborationCards || []).filter(card => 
+        card.title && card.company
+      ),
+      mouItems: (collabSection.mouItems || []).filter(mou => 
+        mou.title && mou.description
+      ).map(mou => ({
+        title: mou.title,
+        description: mou.description,
+        pdfUrl: mou.pdfUrl && typeof mou.pdfUrl === 'string' && mou.pdfUrl.trim() !== '' && mou.pdfUrl.includes('http') ? mou.pdfUrl : null
+      }))
+    };
+    
+    console.log('📊 Public data formatted:', {
+      collaborationCards: formattedData.collaborationCards.length,
+      mouItems: formattedData.mouItems.length,
+      mouItemsWithPdfs: formattedData.mouItems.filter(mou => mou.pdfUrl && mou.pdfUrl.trim() !== '').length
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: formattedData
+    });
+    
+  } catch (error) {
+    console.error('Get public industry collaborations error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get industry collaborations'
+    });
+  }
+};
+
+/**
+ * Serve MOU PDF file with proper headers for browser viewing
+ * @route GET /api/institute/mou-pdf/:filename
+ */
+const serveMouPdf = async (req, res) => {
+  try {
+    const { filename } = req.params;
+    
+    // Validate filename to prevent directory traversal
+    if (!filename || filename.includes('..') || filename.includes('/')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid filename'
+      });
+    }
+    
+    // Construct S3 URL
+    const pdfUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/industry-collab-pdfs/${filename}`;
+    
+    console.log('Serving MOU PDF:', pdfUrl);
+    
+    // Redirect to S3 URL with proper headers
+    res.redirect(pdfUrl);
+    
+  } catch (error) {
+    console.error('Serve MOU PDF error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to serve PDF'
+    });
+  }
+};
+
 module.exports = {
   registerInstitute,
   getInstituteProfile,
@@ -919,7 +1662,12 @@ module.exports = {
   getPlacementSection,
   getPublicPlacementSection,
   getPublicDashboardStats,
+  updateIndustryCollaborations,
+  getIndustryCollaborations,
+  getPublicIndustryCollaborations,
+  serveMouPdf,
   upload,
   studentUpload,
-  placementUpload
+  placementUpload,
+  industryCollabUpload
 };

@@ -6,6 +6,8 @@ import './RecruiterDashboard.css';
 import './ProfileModal.css';
 import '../Pages/StaffPage.css';
 import './HiringStyles.css';
+import './NewsCardStyles.css';
+
 import apiService from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
@@ -172,6 +174,25 @@ const RecruiterDashboard = () => {
         newPassword: ''
     });
     
+    // News state - always start empty and load from database
+    const [newsItems, setNewsItems] = useState([]);
+    const [showNewsForm, setShowNewsForm] = useState(false);
+    const [editingNews, setEditingNews] = useState(null);
+    const [newsLoading, setNewsLoading] = useState(false);
+    const [showNewsView, setShowNewsView] = useState(false);
+    const [viewingNews, setViewingNews] = useState(null);
+    const [newsForm, setNewsForm] = useState({
+        title: '',
+        date: new Date().toISOString().split('T')[0],
+        venue: '',
+        expectedParticipants: '',
+        details: '',
+        verified: false,
+        bannerImage: null
+    });
+    
+
+    
     // Clear any invalid profile photo on component mount
     useEffect(() => {
         if (profilePhoto && typeof profilePhoto === 'string' && !profilePhoto.startsWith('http')) {
@@ -197,8 +218,16 @@ const RecruiterDashboard = () => {
             loadDashboardStats();
             loadAppliedInstitutes();
             loadHiringHistory();
+            loadRecruiterNews();
         }
     }, [currentUser]);
+    
+    // Reload news when switching to news tab
+    useEffect(() => {
+        if (activeTab === 'news' && currentUser && currentUser.role === 'recruiter') {
+            loadRecruiterNews();
+        }
+    }, [activeTab, currentUser]);
     
     // Load dashboard stats
     const loadDashboardStats = async () => {
@@ -503,6 +532,8 @@ const RecruiterDashboard = () => {
             [name]: value
         }));
     };
+    
+
     
     // Handle change password
     const handleChangePassword = async () => {
@@ -1010,6 +1041,8 @@ const RecruiterDashboard = () => {
         }
     };
     
+
+    
     // Handle view hiring history for institute
     const handleViewHiringHistory = async (institute) => {
         setSelectedInstitute(institute);
@@ -1028,6 +1061,167 @@ const RecruiterDashboard = () => {
             console.error('Error loading institute hiring history:', error);
         }
     };
+    
+    // Load recruiter news
+    const loadRecruiterNews = async () => {
+        try {
+            setNewsLoading(true);
+            console.log('Loading recruiter news...');
+            const response = await apiService.getRecruiterNews();
+            console.log('News response:', response);
+            
+            if (response && response.success) {
+                const newsData = response.data || [];
+                console.log('Raw news data:', newsData);
+                
+                // Ensure each news item has a proper ID for editing/deleting and sort by date
+                const processedNews = newsData
+                    .map(item => ({
+                        ...item,
+                        // Ensure we have a consistent ID field
+                        id: item.recruiterNewsID || item.id || Date.now() + Math.random()
+                    }))
+                    .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date)); // Sort by newest first
+                
+                console.log('Processed news items:', processedNews);
+                setNewsItems(processedNews);
+            } else {
+                console.log('API response failed or no data, response:', response);
+                setNewsItems([]);
+            }
+        } catch (error) {
+            console.error('Error loading recruiter news:', error);
+            setNewsItems([]);
+        } finally {
+            setNewsLoading(false);
+        }
+    };
+    
+    // Handle news form input changes
+    const handleNewsInputChange = (e) => {
+        const { name, value, type, checked, files } = e.target;
+        if (type === 'file') {
+            setNewsForm(prev => ({
+                ...prev,
+                [name]: files[0]
+            }));
+        } else if (type === 'checkbox') {
+            setNewsForm(prev => ({
+                ...prev,
+                [name]: checked
+            }));
+        } else {
+            setNewsForm(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
+    };
+    
+    // Handle news form submission
+    const handleNewsSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        
+        try {
+            const newsData = {
+                ...newsForm,
+                company: profileForm.companyName || currentUser?.name || 'Company',
+                recruiterName: profileForm.recruiterName || currentUser?.name || 'Recruiter'
+            };
+            
+            console.log('Submitting news data:', newsData);
+            
+            if (editingNews) {
+                const newsId = editingNews.recruiterNewsID || editingNews.id;
+                const response = await apiService.updateRecruiterNews(newsId, newsData);
+                if (response.success) {
+                    alert('News updated successfully!');
+                    await loadRecruiterNews();
+                } else {
+                    alert('Failed to update news: ' + response.message);
+                }
+            } else {
+                const response = await apiService.addRecruiterNews(newsData);
+                if (response.success) {
+                    alert('News added successfully!');
+                    await loadRecruiterNews();
+                } else {
+                    alert('Failed to add news: ' + response.message);
+                }
+            }
+            
+            // Reset form and close modal only after successful submission
+            setNewsForm({
+                title: '',
+                date: new Date().toISOString().split('T')[0],
+                venue: '',
+                expectedParticipants: '',
+                details: '',
+                verified: false,
+                bannerImage: null
+            });
+            setShowNewsForm(false);
+            setEditingNews(null);
+        } catch (error) {
+            console.error('Error submitting news:', error);
+            alert('Failed to submit news: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // Handle edit news
+    const handleEditNews = (news) => {
+        console.log('Editing news item:', news);
+        console.log('News ID fields:', {
+            recruiterNewsID: news.recruiterNewsID,
+            id: news.id
+        });
+        setEditingNews(news);
+        setNewsForm({
+            title: news.title,
+            date: news.date,
+            venue: news.venue || '',
+            expectedParticipants: news.expectedParticipants || '',
+            details: news.details,
+            verified: news.verified || false,
+            bannerImage: null // Don't pre-fill file input
+        });
+        setShowNewsForm(true);
+    };
+    
+    // Handle delete news with real-time update
+    const handleDeleteNews = async (newsId) => {
+        console.log('Attempting to delete news with ID:', newsId);
+        if (window.confirm('Are you sure you want to delete this news? This will remove it from both your dashboard and the database.')) {
+            try {
+                setLoading(true);
+                const response = await apiService.deleteRecruiterNews(newsId);
+                console.log('Delete response:', response);
+                if (response.success) {
+                    alert('News deleted successfully!');
+                    // Immediately reload news from database to show updated list
+                    await loadRecruiterNews();
+                } else {
+                    alert('Failed to delete news: ' + response.message);
+                }
+            } catch (error) {
+                console.error('Error deleting news:', error);
+                alert('Failed to delete news: ' + error.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+    
+    // Handle view news
+    const handleViewNews = (news) => {
+        setViewingNews(news);
+        setShowNewsView(true);
+    };
+    
+
     
     // Download all students details as Excel
     const downloadStudentsExcel = () => {
@@ -1144,6 +1338,9 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'institutes' ? 'active' : ''} onClick={() => setActiveTab('institutes')}>
                         Institutes
                     </li>
+                    <li className={activeTab === 'news' ? 'active' : ''} onClick={() => setActiveTab('news')}>
+                        News
+                    </li>
                     <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>
                         My Profile
                     </li>
@@ -1159,8 +1356,11 @@ const RecruiterDashboard = () => {
                     {activeTab === 'candidates' && 'Candidate Search'}
                     {activeTab === 'hiring' && 'Hiring History'}
                     {activeTab === 'institutes' && 'Institutes'}
+                    {activeTab === 'news' && 'News'}
                     {activeTab === 'profile' && 'My Profile'}
                 </h1>
+
+
                 {/* Job Form Modal */}
                 {showJobForm && (
                     <div className="recruiter-modal-overlay">
@@ -1361,6 +1561,146 @@ const RecruiterDashboard = () => {
                     </div>
                 )}
 
+                {/* News Form Modal */}
+                {showNewsForm && (
+                    <div className="recruiter-modal-overlay">
+                        <div className="recruiter-job-form-modal">
+                            <div className="recruiter-modal-header">
+                                <h2>{editingNews ? 'Edit News' : 'Add News'}</h2>
+                                <button 
+                                    className="recruiter-close-modal"
+                                    onClick={() => {
+                                        setShowNewsForm(false);
+                                        setEditingNews(null);
+                                        setNewsForm({
+                                            title: '',
+                                            date: new Date().toISOString().split('T')[0],
+                                            venue: '',
+                                            expectedParticipants: '',
+                                            details: '',
+                                            verified: false,
+                                            bannerImage: null
+                                        });
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            
+                            <form onSubmit={handleNewsSubmit} className="recruiter-job-form">
+                                <div className="recruiter-form-row">
+                                    <div className="recruiter-form-group">
+                                        <label>News Title *</label>
+                                        <input
+                                            type="text"
+                                            name="title"
+                                            value={newsForm.title}
+                                            onChange={handleNewsInputChange}
+                                            required
+                                            placeholder="e.g. New Job Openings Available"
+                                        />
+                                    </div>
+                                    <div className="recruiter-form-group">
+                                        <label>Date *</label>
+                                        <input
+                                            type="date"
+                                            name="date"
+                                            value={newsForm.date}
+                                            onChange={handleNewsInputChange}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="recruiter-form-row">
+                                    <div className="recruiter-form-group">
+                                        <label>Venue</label>
+                                        <input
+                                            type="text"
+                                            name="venue"
+                                            value={newsForm.venue}
+                                            onChange={handleNewsInputChange}
+                                            placeholder="e.g. Conference Hall, Online"
+                                        />
+                                    </div>
+                                    <div className="recruiter-form-group">
+                                        <label>Expected Participants</label>
+                                        <input
+                                            type="number"
+                                            name="expectedParticipants"
+                                            value={newsForm.expectedParticipants}
+                                            onChange={handleNewsInputChange}
+                                            placeholder="e.g. 100"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="recruiter-form-row">
+                                    <div className="recruiter-form-group">
+                                        <label>Banner Image</label>
+                                        <input
+                                            type="file"
+                                            name="bannerImage"
+                                            onChange={handleNewsInputChange}
+                                            accept="image/*"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="recruiter-form-group">
+                                    <label>News Details *</label>
+                                    <textarea
+                                        name="details"
+                                        value={newsForm.details}
+                                        onChange={handleNewsInputChange}
+                                        required
+                                        rows="4"
+                                        placeholder="Describe the news, event, or announcement..."
+                                    />
+                                </div>
+
+                                <div className="recruiter-form-group">
+                                    <label className="checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            name="verified"
+                                            checked={newsForm.verified}
+                                            onChange={handleNewsInputChange}
+                                        />
+                                        Mark as Verified News
+                                    </label>
+                                </div>
+
+                                <div className="recruiter-form-actions">
+                                    <button 
+                                        type="button" 
+                                        className="recruiter-cancel-btn"
+                                        onClick={() => {
+                                            setShowNewsForm(false);
+                                            setEditingNews(null);
+                                            setNewsForm({
+                                                title: '',
+                                                date: new Date().toISOString().split('T')[0],
+                                                venue: '',
+                                                expectedParticipants: '',
+                                                details: '',
+                                                verified: false,
+                                                bannerImage: null
+                                            });
+                                        }}
+                                        disabled={loading}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="recruiter-submit-btn" disabled={loading}>
+                                        {loading ? 'Saving...' : (editingNews ? 'Update News' : 'Add News')}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'overview' && (
                     <div className="recruiter-dashboard-overview">
 
@@ -1531,6 +1871,8 @@ const RecruiterDashboard = () => {
                                 </tbody>
                             </table>
                         </div>
+
+
 
 
                     </div>
@@ -2086,6 +2428,203 @@ const RecruiterDashboard = () => {
                                 <p>No institutes have applied to your jobs yet.</p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'news' && (
+                    <div className="recruiter-news-tab">
+                        <div className="recruiter-tab-header">
+                            <button 
+                                className="recruiter-primary-button"
+                                onClick={() => setShowNewsForm(true)}
+                                disabled={loading}
+                            >
+                                + Add News
+                            </button>
+                        </div>
+
+                        {newsLoading ? (
+                            <div className="loading-section">
+                                <p>Loading news...</p>
+                            </div>
+                        ) : (
+                            <div className="recruiter-news-grid">
+                                {newsItems.length > 0 ? (
+                                    newsItems.map((news) => (
+                                        <div key={news.recruiterNewsID || news.id} className="recruiter-news-card">
+                                            {news.bannerImage && (
+                                                <div className="recruiter-news-banner">
+                                                    <img 
+                                                        src={news.bannerImage} 
+                                                        alt={news.title}
+                                                        className="recruiter-news-banner-image"
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="recruiter-news-content">
+                                                <div className="recruiter-news-header">
+                                                    <h3>{news.title}</h3>
+                                                    <span className="recruiter-news-badge">NEWS</span>
+                                                </div>
+                                                
+                                                <div className="recruiter-news-meta">
+                                                    <div className="recruiter-news-meta-item">
+                                                        <strong>Company:</strong> {news.company || 'Company'}
+                                                    </div>
+                                                    <div className="recruiter-news-meta-item">
+                                                        <strong>Date:</strong> {new Date(news.date).toLocaleDateString()}
+                                                    </div>
+                                                </div>
+                                                
+                                                {news.venue && (
+                                                    <div className="recruiter-news-meta">
+                                                        <div className="recruiter-news-meta-item">
+                                                            <strong>Venue:</strong> {news.venue}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {news.expectedParticipants && (
+                                                    <div className="recruiter-news-meta">
+                                                        <div className="recruiter-news-meta-item">
+                                                            <strong>Expected Participants:</strong> {news.expectedParticipants}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                <div className="recruiter-news-meta" style={{marginBottom: '15px'}}>
+                                                    <div className="recruiter-news-meta-item">
+                                                        <strong>Details:</strong> {news.details}
+                                                    </div>
+                                                </div>
+                                                
+                                                {news.verified && (
+                                                    <div className="recruiter-verified-badge">
+                                                        ✓ Verified
+                                                    </div>
+                                                )}
+                                                
+                                                <div className="recruiter-news-actions">
+                                                    <button 
+                                                        className="recruiter-table-action"
+                                                        onClick={() => handleViewNews(news)}
+                                                        disabled={loading}
+                                                    >
+                                                        View
+                                                    </button>
+                                                    <button 
+                                                        className="recruiter-table-action"
+                                                        onClick={() => handleEditNews(news)}
+                                                        disabled={loading}
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    <button 
+                                                        className="recruiter-table-action delete"
+                                                        onClick={() => handleDeleteNews(news.recruiterNewsID || news.id)}
+                                                        disabled={loading}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="recruiter-empty-state">
+                                        <p>No news added yet. Click "Add News" to create your first news item.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* News View Modal */}
+                {showNewsView && viewingNews && (
+                    <div className="recruiter-modal-overlay">
+                        <div className="recruiter-job-form-modal">
+                            <div className="recruiter-modal-header">
+                                <h2>View News</h2>
+                                <button 
+                                    className="recruiter-close-modal"
+                                    onClick={() => {
+                                        setShowNewsView(false);
+                                        setViewingNews(null);
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                            
+                            <div className="recruiter-job-form" style={{padding: '30px'}}>
+                                {viewingNews.bannerImage && (
+                                    <div style={{marginBottom: '20px'}}>
+                                        <img 
+                                            src={viewingNews.bannerImage} 
+                                            alt={viewingNews.title}
+                                            style={{width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '8px'}}
+                                        />
+                                    </div>
+                                )}
+                                
+                                <h3 style={{margin: '0 0 15px 0', color: '#1e293b'}}>{viewingNews.title}</h3>
+                                
+                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px'}}>
+                                    <div>
+                                        <strong>Date:</strong> {new Date(viewingNews.date).toLocaleDateString()}
+                                    </div>
+                                    <div>
+                                        <strong>Company:</strong> {viewingNews.company}
+                                    </div>
+                                    {viewingNews.venue && (
+                                        <div>
+                                            <strong>Venue:</strong> {viewingNews.venue}
+                                        </div>
+                                    )}
+                                    {viewingNews.expectedParticipants && (
+                                        <div>
+                                            <strong>Expected Participants:</strong> {viewingNews.expectedParticipants}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div style={{marginBottom: '20px'}}>
+                                    <strong>Details:</strong>
+                                    <p style={{marginTop: '8px', lineHeight: '1.6', color: '#64748b'}}>{viewingNews.details}</p>
+                                </div>
+                                
+                                {viewingNews.verified && (
+                                    <div style={{marginBottom: '20px'}}>
+                                        <span className="recruiter-verified-badge">✓ Verified News</span>
+                                    </div>
+                                )}
+                                
+                                <div className="recruiter-form-actions">
+                                    <button 
+                                        type="button" 
+                                        className="recruiter-cancel-btn"
+                                        onClick={() => {
+                                            setShowNewsView(false);
+                                            setViewingNews(null);
+                                        }}
+                                    >
+                                        Close
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        className="recruiter-submit-btn"
+                                        onClick={() => {
+                                            setShowNewsView(false);
+                                            setViewingNews(null);
+                                            handleEditNews(viewingNews);
+                                        }}
+                                    >
+                                        Edit News
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 

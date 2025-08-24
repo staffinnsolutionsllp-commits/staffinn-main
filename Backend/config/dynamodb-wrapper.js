@@ -20,13 +20,12 @@ const testConnection = async () => {
     console.log('Using real DynamoDB endpoint');
     return true;
   } catch (error) {
-    if (error.code === 'ECONNREFUSED') {
-      console.log('DynamoDB Local not available, using mock database');
-      useMockDB = true;
+    console.log('DynamoDB connection failed, using mock database. Error:', error.message);
+    useMockDB = true;
+    if (!mockDB) {
       mockDB = require('../mock-dynamodb');
-      return false;
     }
-    throw error;
+    return false;
   }
 };
 
@@ -44,6 +43,7 @@ const INSTITUTE_COURSES_TABLE = process.env.INSTITUTE_COURSES_TABLE || 'staffinn
 const INSTITUTE_STUDENTS_TABLE = process.env.INSTITUTE_STUDENTS_TABLE || 'staffinn-institute-students';
 const JOBS_TABLE = process.env.JOBS_TABLE || 'staffinn-jobs';
 const JOB_APPLICATIONS_TABLE = process.env.JOB_APPLICATIONS_TABLE || 'staffinn-job-applications';
+const RECRUITER_NEWS_TABLE = process.env.RECRUITER_NEWS_TABLE || 'recruiter-news';
 
 const createTablesIfNotExist = async () => {
   try {
@@ -61,6 +61,7 @@ const createTablesIfNotExist = async () => {
       mockDB.createTable(INSTITUTE_STUDENTS_TABLE);
       mockDB.createTable(JOBS_TABLE);
       mockDB.createTable(JOB_APPLICATIONS_TABLE);
+      mockDB.createTable(RECRUITER_NEWS_TABLE);
       console.log('Mock database tables initialized');
       return;
     }
@@ -90,5 +91,6 @@ module.exports = {
   INSTITUTE_STUDENTS_TABLE,
   JOBS_TABLE,
   JOB_APPLICATIONS_TABLE,
+  RECRUITER_NEWS_TABLE,
   createTablesIfNotExist
 };

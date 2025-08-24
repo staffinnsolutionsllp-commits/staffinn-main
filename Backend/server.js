@@ -33,6 +33,7 @@ const hiringRoutes = require('./routes/hiringRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const newsRoutes = require('./routes/newsRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -67,6 +68,7 @@ app.use(`${API_PREFIX}/hiring`, hiringRoutes);
 app.use(`${API_PREFIX}/reviews`, reviewRoutes);
 app.use(`${API_PREFIX}/applications`, applicationRoutes);
 app.use(`${API_PREFIX}/notifications`, notificationRoutes);
+app.use(`${API_PREFIX}/news`, newsRoutes);
 app.use('/debug', debugRoutes);
 
 // Basic routes

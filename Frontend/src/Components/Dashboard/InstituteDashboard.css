@@ -1733,6 +1733,340 @@
     align-self: flex-start;
 }
 
+/* Industry Collaboration Styles */
+.institute-collaboration-form {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.institute-collaboration-cards-section,
+.institute-mou-items-section {
+    margin-top: 10px;
+}
+
+.institute-collaboration-card-item,
+.institute-mou-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.institute-collaboration-card-item:hover,
+.institute-mou-item:hover {
+    border-color: #4863f7;
+    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.1);
+}
+
+.institute-collaboration-card-item input,
+.institute-collaboration-card-item textarea,
+.institute-mou-item input,
+.institute-mou-item textarea {
+    padding: 12px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background-color: white;
+}
+
+.institute-collaboration-card-item input:focus,
+.institute-collaboration-card-item textarea:focus,
+.institute-mou-item input:focus,
+.institute-mou-item textarea:focus {
+    outline: none;
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+}
+
+.institute-collaboration-card-item textarea,
+.institute-mou-item textarea {
+    resize: vertical;
+    font-family: inherit;
+    min-height: 80px;
+}
+
+.institute-collaboration-card-item input[type="file"],
+.institute-mou-item input[type="file"] {
+    padding: 8px;
+    font-size: 0.9rem;
+    background-color: #f8fafc;
+    border-style: dashed;
+}
+
+.institute-collaboration-card-item .file-input-container,
+.institute-mou-item .file-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-collaboration-card-item .image-placeholder,
+.institute-mou-item .pdf-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    background-color: #f1f5f9;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.pdf-preview-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background-color: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 8px;
+    margin: 8px 0;
+}
+
+.pdf-indicator {
+    color: #92400e;
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pdf-remove-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.pdf-remove-btn:hover {
+    background-color: #dc2626;
+    transform: scale(1.1);
+}
+
+.institute-collaboration-card-item .institute-remove-btn,
+.institute-mou-item .institute-remove-btn {
+    align-self: flex-end;
+    margin-top: 10px;
+    padding: 10px 16px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.institute-collaboration-card-item .institute-remove-btn:hover,
+.institute-mou-item .institute-remove-btn:hover {
+    background-color: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.institute-collaboration-cards-section .institute-add-btn,
+.institute-mou-items-section .institute-add-btn {
+    width: 100%;
+    padding: 15px 20px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.institute-collaboration-cards-section .institute-add-btn:hover,
+.institute-mou-items-section .institute-add-btn:hover {
+    background-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+.institute-collaboration-cards-section .institute-add-btn::before {
+    content: '+';
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.institute-mou-items-section .institute-add-btn::before {
+    content: '📄';
+    font-size: 1rem;
+}
+
+/* Industry Collaboration Tab Styles */
+.institute-collaborations-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+.institute-collaborations-tab .institute-tab-header {
+    margin-bottom: 30px;
+}
+
+.institute-collaborations-tab .institute-tab-header h1 {
+    color: #1e293b;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.institute-collaborations-tab .institute-tab-header p {
+    color: #64748b;
+    font-size: 1.1rem;
+    margin: 8px 0 0 0;
+    font-weight: 400;
+}
+
+.institute-collaborations-tab .institute-form-group {
+    margin-bottom: 35px;
+}
+
+.institute-collaborations-tab .institute-form-group > label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 15px;
+    display: block;
+    text-transform: none;
+    letter-spacing: normal;
+    border-bottom: 2px solid #4863f7;
+    padding-bottom: 8px;
+}
+
+.institute-collaborations-tab .institute-form-buttons {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #f1f5f9;
+}
+
+.institute-collaborations-tab .institute-primary-button {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.institute-collaborations-tab .institute-primary-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(72, 99, 247, 0.3);
+}
+
+.institute-collaborations-tab .institute-primary-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Empty state styles */
+.empty-section {
+    text-align: center;
+    padding: 40px 20px;
+    color: #64748b;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border: 2px dashed #cbd5e1;
+    margin: 20px 0;
+}
+
+.empty-section p {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* MOU download link styles */
+.mou-download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #4863f7;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background-color: #eff6ff;
+    border: 1px solid #dbeafe;
+    transition: all 0.2s ease;
+    margin-top: 8px;
+}
+
+.mou-download-link:hover {
+    background-color: #dbeafe;
+    color: #3a4fd8;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(72, 99, 247, 0.2);
+}
+
+.mou-download-link::before {
+    content: '📄';
+    font-size: 0.9rem;
+}
+
+/* Responsive styles for industry collaboration */
+@media (max-width: 768px) {
+    .institute-collaboration-card-item,
+    .institute-mou-item {
+        padding: 15px;
+        gap: 10px;
+    }
+    
+    .institute-collaboration-card-item .file-input-container,
+    .institute-mou-item .file-input-container {
+        padding: 12px;
+    }
+    
+    .institute-collaborations-tab .institute-tab-header h1 {
+        font-size: 1.6rem;
+    }
+    
+    .institute-collaborations-tab .institute-tab-header p {
+        font-size: 1rem;
+    }
+    
+    .institute-collaboration-cards-section .institute-add-btn,
+    .institute-mou-items-section .institute-add-btn {
+        padding: 12px 16px;
+        font-size: 0.95rem;
+    }
+}
+
 /* Responsive styles for profile view */
 @media (max-width: 768px) {
     .institute-profile-grid {

@@ -23,9 +23,14 @@ const {
   getPlacementSection,
   getPublicPlacementSection,
   getPublicDashboardStats,
+  updateIndustryCollaborations,
+  getIndustryCollaborations,
+  getPublicIndustryCollaborations,
+  serveMouPdf,
   upload,
   studentUpload,
-  placementUpload
+  placementUpload,
+  industryCollabUpload
 } = require('../controllers/instituteController');
 
 // Import student controller
@@ -39,11 +44,26 @@ const {
   updatePlacementStatus
 } = require('../controllers/instituteStudentController');
 
+// Import event news controller
+const {
+  upload: eventNewsUpload,
+  addEventNews,
+  getEventNews,
+  getEventNewsByTypeController,
+  getEventNewsItem,
+  updateEventNewsItem,
+  deleteEventNewsItem,
+  getPublicEventNews
+} = require('../controllers/instituteEventNewsController');
+
 // Public routes (no authentication required)
 router.get('/public/all', getAllLiveInstitutes);
 router.get('/public/:id', getInstituteById);
 router.get('/public/:id/placement-section', getPublicPlacementSection);
 router.get('/public/:id/dashboard-stats', getPublicDashboardStats);
+router.get('/public/:id/industry-collaborations', getPublicIndustryCollaborations);
+router.get('/public/:instituteId/events-news', getPublicEventNews);
+router.get('/mou-pdf/:filename', serveMouPdf); // Public PDF serving route
 router.post('/verify-registration', verifyRegistrationNumber);
 
 // Registration route
@@ -62,11 +82,12 @@ router.post('/upload-image', upload.single('profileImage'), uploadProfileImage);
 router.delete('/profile-image', deleteProfileImage);
 
 // Placement section routes
-router.put('/placement-section', placementUpload.fields([
-  { name: 'companyLogos', maxCount: 10 },
-  { name: 'studentPhotos', maxCount: 20 }
-]), updatePlacementSection);
+router.put('/placement-section', placementUpload.any(), updatePlacementSection);
 router.get('/placement-section', getPlacementSection);
+
+// Industry collaboration routes
+router.put('/industry-collaborations', industryCollabUpload.any(), updateIndustryCollaborations);
+router.get('/industry-collaborations', getIndustryCollaborations);
 
 // Student management routes
 router.post('/students', studentUpload.fields([
@@ -86,6 +107,14 @@ router.patch('/students/:studentId/placement-status', updatePlacementStatus);
 
 // Dashboard stats route
 router.get('/dashboard/stats', getDashboardStats);
+
+// Events & News management routes
+router.post('/events-news', eventNewsUpload.single('bannerImage'), addEventNews);
+router.get('/events-news', getEventNews);
+router.get('/events-news/type/:type', getEventNewsByTypeController);
+router.get('/events-news/:eventNewsId', getEventNewsItem);
+router.put('/events-news/:eventNewsId', eventNewsUpload.single('bannerImage'), updateEventNewsItem);
+router.delete('/events-news/:eventNewsId', deleteEventNewsItem);
 
 // Course management routes
 router.post('/courses', (req, res) => {

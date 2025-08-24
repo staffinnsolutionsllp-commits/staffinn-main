@@ -17,7 +17,11 @@ class MockDynamoDB {
     try {
       if (fs.existsSync(this.dataFile)) {
         const data = JSON.parse(fs.readFileSync(this.dataFile, 'utf8'));
-        this.tables = new Map(Object.entries(data));
+        // Convert loaded data to Maps
+        this.tables = new Map();
+        Object.entries(data).forEach(([tableName, tableData]) => {
+          this.tables.set(tableName, new Map(Object.entries(tableData || {})));
+        });
       }
     } catch (error) {
       console.log('Starting with empty mock database');
@@ -26,7 +30,10 @@ class MockDynamoDB {
 
   saveData() {
     try {
-      const data = Object.fromEntries(this.tables);
+      const data = {};
+      this.tables.forEach((table, tableName) => {
+        data[tableName] = Object.fromEntries(table);
+      });
       fs.writeFileSync(this.dataFile, JSON.stringify(data, null, 2));
     } catch (error) {
       console.error('Error saving mock database:', error);
@@ -43,7 +50,7 @@ class MockDynamoDB {
   putItem(tableName, item) {
     this.createTable(tableName);
     const table = this.tables.get(tableName);
-    const key = item.id || item.userId || item.email || Date.now().toString();
+    const key = item.id || item.userId || item.email || item.recruiterNewsID || Date.now().toString();
     table.set(key, item);
     this.saveData();
     return { success: true };
@@ -103,5 +110,6 @@ mockDB.createTable('staffinn-institute-students');
 mockDB.createTable('staffinn-institute-courses');
 mockDB.createTable('staffinn-jobs');
 mockDB.createTable('staffinn-job-applications');
+mockDB.createTable('recruiter-news');
 
 module.exports = mockDB;
