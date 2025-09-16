@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 const useProfilePhotoSync = (profileImage, userRole = 'institute') => {
   useEffect(() => {
     if (userRole === 'institute' && profileImage) {
-      console.log('Updating all images with:', profileImage);
+      console.log('Updating all institute images with:', profileImage);
       
       // Update institute-profile-logo images
       const profileLogos = document.querySelectorAll('img.institute-profile-logo');
@@ -36,6 +36,29 @@ const useProfilePhotoSync = (profileImage, userRole = 'institute') => {
         img.src = profileImage;
         console.log('Updated other image:', img.src);
       });
+    } else if (userRole === 'recruiter' && profileImage) {
+      console.log('Updating all recruiter images with:', profileImage);
+      
+      // Update recruiter company logo images
+      const companyLogos = document.querySelectorAll('img.recruiter-company-logo');
+      companyLogos.forEach(img => {
+        img.src = profileImage;
+        console.log('Updated recruiter company logo:', img.src);
+      });
+      
+      // Update recruiter profile images
+      const profileImages = document.querySelectorAll('img.recruiter-profile-image');
+      profileImages.forEach(img => {
+        img.src = profileImage;
+        console.log('Updated recruiter profile image:', img.src);
+      });
+      
+      // Update any other recruiter-related images
+      const otherRecruiterImages = document.querySelectorAll('[data-recruiter-image]');
+      otherRecruiterImages.forEach(img => {
+        img.src = profileImage;
+        console.log('Updated other recruiter image:', img.src);
+      });
     }
   }, [profileImage, userRole]);
 
@@ -56,10 +79,32 @@ const useProfilePhotoSync = (profileImage, userRole = 'institute') => {
           img.src = newImageUrl || '/institute-logo-placeholder.png';
         });
       });
+    } else if (userRole === 'recruiter') {
+      const selectors = [
+        'img.recruiter-company-logo',
+        'img.recruiter-profile-image',
+        '[data-recruiter-image]'
+      ];
+      
+      selectors.forEach(selector => {
+        const images = document.querySelectorAll(selector);
+        images.forEach(img => {
+          img.src = newImageUrl || '/recruiter-logo-placeholder.png';
+        });
+      });
     }
   };
 
-  return { updateAllImages };
+  // Function to notify other components about profile photo updates
+  const notifyProfilePhotoUpdated = () => {
+    // Dispatch a custom event to notify other components
+    const event = new CustomEvent('profilePhotoUpdated', {
+      detail: { profileImage, userRole }
+    });
+    window.dispatchEvent(event);
+  };
+
+  return { updateAllImages, notifyProfilePhotoUpdated };
 };
 
 export default useProfilePhotoSync;

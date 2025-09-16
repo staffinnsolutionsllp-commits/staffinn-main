@@ -4,7 +4,11 @@ import React, { useState, useEffect, useContext } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../services/api";
+import HiddenUser from '../HiddenUser/HiddenUser';
+import StaffCourses from './StaffCourses';
+import './HiddenNotification.css';
 import './Dashboard.css';
+import './HiddenNotification.css';
 
 const StaffDashboard = ({ currentUser }) => {
     const { user, updateUser } = useContext(AuthContext);
@@ -23,6 +27,10 @@ const StaffDashboard = ({ currentUser }) => {
         resume: false,
         certificate: false
     });
+    
+    // Hidden user state
+    const [isHidden, setIsHidden] = useState(false);
+    const [showHiddenModal, setShowHiddenModal] = useState(false);
     
     // Contact History State
     const [contactHistory, setContactHistory] = useState([]);
@@ -89,6 +97,7 @@ const StaffDashboard = ({ currentUser }) => {
         email: '',
         phone: '',
         address: '',
+        pincode: '',
         skills: '',
         profilePhoto: null,
         resumeUrl: null,
@@ -123,7 +132,64 @@ const StaffDashboard = ({ currentUser }) => {
         if (isActiveStaff) {
             loadDashboardData();
         }
+        setupSocketConnection();
     }, []);
+    
+    // Setup socket connection for real-time updates
+    const setupSocketConnection = () => {
+        try {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+            
+            // Use Socket.io client (assuming it's available globally or imported)
+            const socket = window.io ? window.io('http://localhost:4001', {
+                auth: { token }
+            }) : null;
+            
+            if (!socket) {
+                console.warn('Socket.io client not available, using fallback');
+                return;
+            }
+            
+            socket.on('connect', () => {
+                console.log('Socket connected for visibility updates');
+                // Check current visibility status
+                socket.emit('check_visibility');
+            });
+            
+            socket.on('visibility_update', (visibilityData) => {
+                handleVisibilityUpdate(visibilityData);
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('Socket disconnected');
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+            });
+            
+            return () => {
+                if (socket) {
+                    socket.disconnect();
+                }
+            };
+        } catch (error) {
+            console.error('Error setting up socket connection:', error);
+        }
+    };
+    
+    // Handle visibility update from socket
+    const handleVisibilityUpdate = (visibilityData) => {
+        console.log('Received visibility update:', visibilityData);
+        setIsHidden(visibilityData.isHidden);
+        if (visibilityData.isHidden) {
+            setShowHiddenModal(true);
+        } else {
+            // User is no longer hidden, hide the modal and notification
+            setShowHiddenModal(false);
+        }
+    };
     
     // Load dashboard data when mode changes
     useEffect(() => {
@@ -285,6 +351,7 @@ const StaffDashboard = ({ currentUser }) => {
                     email: profileData.email || '',
                     phone: profileData.phone || '',
                     address: profileData.address || '',
+                    pincode: profileData.pincode || '',
                     skills: profileData.skills || '',
                     profilePhoto: profileData.profilePhoto || null,
                     resumeUrl: profileData.resumeUrl || null,
@@ -298,6 +365,9 @@ const StaffDashboard = ({ currentUser }) => {
                     isActiveStaff: profileData.isActiveStaff || false,
                     profileVisibility: profileData.profileVisibility || 'private'
                 });
+                
+                // Check if user is hidden
+                setIsHidden(profileData.profileVisibility === 'private');
                 
                 // Update seeker profile state
                 setSeekerProfile({
@@ -414,9 +484,9 @@ const StaffDashboard = ({ currentUser }) => {
             // Prepare update data
             const updateData = {
                 fullName: profile.fullName,
-                email: profile.email,
                 phone: profile.phone,
                 address: profile.address,
+                pincode: profile.pincode,
                 skills: profile.skills,
                 education: profile.education,
                 visibility: profile.visibility,
@@ -478,7 +548,6 @@ const StaffDashboard = ({ currentUser }) => {
             // Prepare update data
             const updateData = {
                 fullName: seekerProfile.fullName,
-                email: seekerProfile.email,
                 phone: seekerProfile.phone
             };
             
@@ -713,6 +782,30 @@ const StaffDashboard = ({ currentUser }) => {
 
     return (
         <div className="staff-dashboard">
+            {/* Hidden User Modal */}
+            {showHiddenModal && isHidden && (
+                <HiddenUser
+                    user={userData}
+                    onClose={() => setShowHiddenModal(false)}
+                />
+            )}
+            
+            {/* Hidden User Notification Bar */}
+            {isHidden && !showHiddenModal && (
+                <div className="hidden-notification-bar">
+                    <div className="hidden-notification-content">
+                        <i className="fas fa-eye-slash"></i>
+                        <span>You are hidden from Staffinn.</span>
+                        <button 
+                            className="request-help-link"
+                            onClick={() => setShowHiddenModal(true)}
+                        >
+                            Request Help
+                        </button>
+                    </div>
+                </div>
+            )}
+            
             {/* Sidebar Navigation */}
             <div className="staff-dashboard-sidebar">
                 <div className="staff-sidebar-header">
@@ -757,6 +850,14 @@ const StaffDashboard = ({ currentUser }) => {
                     >
                         <i className="fas fa-history"></i>
                         Contact History
+                    </button>
+                    
+                    <button 
+                        className={`staff-nav-item ${activeTab === 'courses' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('courses')}
+                    >
+                        <i className="fas fa-graduation-cap"></i>
+                        My Courses
                     </button>
                 </nav>
             </div>
@@ -1042,7 +1143,8 @@ const StaffDashboard = ({ currentUser }) => {
                                                         type="email" 
                                                         name="email" 
                                                         value={seekerProfile.email} 
-                                                        onChange={handleSeekerProfileChange}
+                                                        readOnly
+                                                        className="staff-readonly-field"
                                                     />
                                                 </div>
                                                 <div className="staff-form-group">
@@ -1167,7 +1269,8 @@ const StaffDashboard = ({ currentUser }) => {
                                                             type="email" 
                                                             name="email" 
                                                             value={profile.email} 
-                                                            onChange={handleProfileChange}
+                                                            readOnly
+                                                            className="staff-readonly-field"
                                                         />
                                                     </div>
                                                     <div className="staff-form-group">
@@ -1187,6 +1290,16 @@ const StaffDashboard = ({ currentUser }) => {
                                                         value={profile.address} 
                                                         onChange={handleProfileChange}
                                                     ></textarea>
+                                                </div>
+                                                <div className="staff-form-group">
+                                                    <label>Pincode</label>
+                                                    <input 
+                                                        type="text" 
+                                                        name="pincode" 
+                                                        value={profile.pincode} 
+                                                        onChange={handleProfileChange}
+                                                        placeholder="Enter pincode"
+                                                    />
                                                 </div>
                                                 
                                                 <h3>Professional Information</h3>
@@ -1623,6 +1736,17 @@ const StaffDashboard = ({ currentUser }) => {
                                 )}
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* Courses Tab */}
+                {activeTab === 'courses' && (
+                    <div className="staff-courses-section">
+                        <div className="staff-page-header">
+                            <h1>My Courses</h1>
+                            <p>Courses you've enrolled in and your learning progress</p>
+                        </div>
+                        <StaffCourses />
                     </div>
                 )}
 

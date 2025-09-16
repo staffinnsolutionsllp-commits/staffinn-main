@@ -32,6 +32,12 @@ const docClient = DynamoDBDocumentClient.from(client, {
  */
 const getItem = async (tableName, key) => {
   try {
+    // Check if using mock DB
+    const { isUsingMockDB, mockDB } = require('../config/dynamodb-wrapper');
+    if (isUsingMockDB()) {
+      return mockDB().getItem(tableName, key);
+    }
+    
     const command = new GetCommand({
       TableName: tableName,
       Key: key
@@ -42,8 +48,14 @@ const getItem = async (tableName, key) => {
   } catch (error) {
     console.error('DynamoDB getItem error:', error);
     if (error.code === 'ENOTFOUND' || error.code === 'NetworkingError') {
-      console.log('Network error - returning null for now');
-      return null;
+      console.log('Network error - trying mock database fallback');
+      const { mockDB } = require('../config/dynamodb-wrapper');
+      const mockInstance = mockDB();
+      if (!mockInstance) {
+        const mockDBModule = require('../mock-dynamodb');
+        return mockDBModule.getItem(tableName, key);
+      }
+      return mockInstance.getItem(tableName, key);
     }
     throw error;
   }
@@ -57,6 +69,12 @@ const getItem = async (tableName, key) => {
  */
 const putItem = async (tableName, item) => {
   try {
+    // Check if using mock DB
+    const { isUsingMockDB, mockDB } = require('../config/dynamodb-wrapper');
+    if (isUsingMockDB()) {
+      return mockDB().putItem(tableName, item);
+    }
+    
     const command = new PutCommand({
       TableName: tableName,
       Item: item
@@ -66,8 +84,14 @@ const putItem = async (tableName, item) => {
   } catch (error) {
     console.error('DynamoDB putItem error:', error);
     if (error.code === 'ENOTFOUND' || error.code === 'NetworkingError') {
-      console.log('Network error - simulating success for now');
-      return { $metadata: { httpStatusCode: 200 } };
+      console.log('Network error - using mock database fallback');
+      const { mockDB } = require('../config/dynamodb-wrapper');
+      const mockInstance = mockDB();
+      if (!mockInstance) {
+        const mockDBModule = require('../mock-dynamodb');
+        return mockDBModule.putItem(tableName, item);
+      }
+      return mockInstance.putItem(tableName, item);
     }
     throw error;
   }
@@ -118,6 +142,12 @@ const queryItems = async (tableName, params) => {
  */
 const scanItems = async (tableName, params = {}) => {
   try {
+    // Check if using mock DB
+    const { isUsingMockDB, mockDB } = require('../config/dynamodb-wrapper');
+    if (isUsingMockDB()) {
+      return mockDB().scanItems(tableName, params);
+    }
+    
     const command = new ScanCommand({
       TableName: tableName,
       ...params
@@ -128,8 +158,14 @@ const scanItems = async (tableName, params = {}) => {
   } catch (error) {
     console.error('DynamoDB scanItems error:', error);
     if (error.code === 'ENOTFOUND' || error.code === 'NetworkingError') {
-      console.log('Network error - returning empty array for now');
-      return [];
+      console.log('Network error - using mock database fallback');
+      const { mockDB } = require('../config/dynamodb-wrapper');
+      const mockInstance = mockDB();
+      if (!mockInstance) {
+        const mockDBModule = require('../mock-dynamodb');
+        return mockDBModule.scanItems(tableName, params);
+      }
+      return mockInstance.scanItems(tableName, params);
     }
     throw error;
   }
@@ -143,6 +179,12 @@ const scanItems = async (tableName, params = {}) => {
  */
 const deleteItem = async (tableName, key) => {
   try {
+    // Check if using mock DB
+    const { isUsingMockDB, mockDB } = require('../config/dynamodb-wrapper');
+    if (isUsingMockDB()) {
+      return mockDB().deleteItem(tableName, key);
+    }
+    
     const command = new DeleteCommand({
       TableName: tableName,
       Key: key
@@ -151,6 +193,16 @@ const deleteItem = async (tableName, key) => {
     return await docClient.send(command);
   } catch (error) {
     console.error('DynamoDB deleteItem error:', error);
+    if (error.code === 'ENOTFOUND' || error.code === 'NetworkingError') {
+      console.log('Network error - using mock database fallback');
+      const { mockDB } = require('../config/dynamodb-wrapper');
+      const mockInstance = mockDB();
+      if (!mockInstance) {
+        const mockDBModule = require('../mock-dynamodb');
+        return mockDBModule.deleteItem(tableName, key);
+      }
+      return mockInstance.deleteItem(tableName, key);
+    }
     throw error;
   }
 };

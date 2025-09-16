@@ -109,14 +109,28 @@ const staffRegistrationSchema = Joi.object({
       'any.required': 'Password is required'
     }),
   
+  confirmPassword: Joi.string()
+    .valid(Joi.ref('password'))
+    .optional()
+    .messages({
+      'any.only': 'Confirm password must match password'
+    }),
+  
   phoneNumber: Joi.string()
     .min(10)
     .max(15)
-    .allow('')
-    .optional()
+    .required()
     .messages({
       'string.min': 'Phone number must be at least 10 characters',
-      'string.max': 'Phone number cannot exceed 15 characters'
+      'string.max': 'Phone number cannot exceed 15 characters',
+      'any.required': 'Phone number is required'
+    }),
+  
+  role: Joi.string()
+    .valid('staff', 'Staff')
+    .optional()
+    .messages({
+      'any.only': 'Role must be staff'
     })
 });
 
@@ -132,25 +146,53 @@ const recruiterRegistrationSchema = Joi.object({
       'any.required': 'Company name is required'
     }),
   
-  email: emailSchema,
-  password: passwordSchema,
-  confirmPassword: Joi.string()
-    .valid(Joi.ref('password'))
+  email: Joi.string()
+    .email()
     .required()
     .messages({
-      'any.only': 'Confirm password must match password',
-      'any.required': 'Confirm password is required'
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Email is required'
+    }),
+  
+  password: Joi.string()
+    .min(6)
+    .required()
+    .messages({
+      'string.min': 'Password must be at least 6 characters long',
+      'any.required': 'Password is required'
+    }),
+  
+  confirmPassword: Joi.string()
+    .valid(Joi.ref('password'))
+    .optional()
+    .messages({
+      'any.only': 'Confirm password must match password'
     }),
   
   phoneNumber: Joi.string()
-    .pattern(new RegExp('^[0-9]{10}$'))
+    .min(10)
+    .max(15)
     .required()
     .messages({
-      'string.pattern.base': 'Phone number must be 10 digits',
+      'string.min': 'Phone number must be at least 10 characters',
+      'string.max': 'Phone number cannot exceed 15 characters',
       'any.required': 'Phone number is required'
     }),
   
-  website: websiteSchema
+  website: Joi.string()
+    .uri()
+    .required()
+    .messages({
+      'string.uri': 'Please provide a valid website URL',
+      'any.required': 'Website is required'
+    }),
+  
+  role: Joi.string()
+    .valid('recruiter', 'Recruiter')
+    .optional()
+    .messages({
+      'any.only': 'Role must be recruiter'
+    })
 });
 
 // Enhanced Institute registration validation schema
@@ -165,25 +207,55 @@ const instituteRegistrationSchema = Joi.object({
       'any.required': 'Institute name is required'
     }),
   
-  email: emailSchema,
-  password: passwordSchema,
-  confirmPassword: Joi.string()
-    .valid(Joi.ref('password'))
+  email: Joi.string()
+    .email()
     .required()
     .messages({
-      'any.only': 'Confirm password must match password',
-      'any.required': 'Confirm password is required'
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Email is required'
+    }),
+  
+  password: Joi.string()
+    .min(6)
+    .required()
+    .messages({
+      'string.min': 'Password must be at least 6 characters long',
+      'any.required': 'Password is required'
+    }),
+  
+  confirmPassword: Joi.string()
+    .valid(Joi.ref('password'))
+    .optional()
+    .messages({
+      'any.only': 'Confirm password must match password'
     }),
   
   phoneNumber: Joi.string()
-    .pattern(new RegExp('^[0-9]{10}$'))
+    .min(10)
+    .max(15)
     .required()
     .messages({
-      'string.pattern.base': 'Phone number must be 10 digits',
+      'string.min': 'Phone number must be at least 10 characters',
+      'string.max': 'Phone number cannot exceed 15 characters',
       'any.required': 'Phone number is required'
     }),
   
-  registrationNumber: registrationNumberSchema
+  registrationNumber: Joi.string()
+    .min(6)
+    .max(25)
+    .required()
+    .messages({
+      'string.min': 'Registration number must be at least 6 characters long',
+      'string.max': 'Registration number cannot exceed 25 characters',
+      'any.required': 'Registration number is required'
+    }),
+  
+  role: Joi.string()
+    .valid('institute', 'Institute')
+    .optional()
+    .messages({
+      'any.only': 'Role must be institute'
+    })
 });
 
 // Job posting validation schema

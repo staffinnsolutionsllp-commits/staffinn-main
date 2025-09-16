@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Backend Connection Test</title>
+</head>
+<body>
+    <h1>Backend Connection Test</h1>
+    <button onclick="testConnection()">Test Backend Connection</button>
+    <div id="result"></div>
+
+    <script>
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                // Test basic server connection
+                const response = await fetch('http://localhost:4001/');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h3>✅ Backend Connection Successful!</h3>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Message:</strong> ${data.message}</p>
+                    <p><strong>Port:</strong> ${data.port}</p>
+                    <p><strong>Time:</strong> ${data.timestamp}</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h3>❌ Backend Connection Failed!</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p><strong>Possible Issues:</strong></p>
+                    <ul>
+                        <li>Backend server is not running</li>
+                        <li>Backend is running on a different port</li>
+                        <li>CORS issues</li>
+                    </ul>
+                    <p><strong>Solution:</strong> Start the backend server by running 'npm start' in the Backend directory</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

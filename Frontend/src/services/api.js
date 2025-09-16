@@ -1,51 +1,92 @@
 /* eslint-disable no-unused-vars */
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1';
 
-// Helper function to get auth headers with debugging
+// Helper function to sanitize input for logging
+const sanitizeForLog = (input) => {
+  if (typeof input === 'string') {
+    return encodeURIComponent(input.substring(0, 100)); // Limit length and encode
+  }
+  return input;
+};
+
+// Helper function to get auth headers
 const getAuthHeader = () => {
   const token = localStorage.getItem('token');
   console.log('Getting auth token:', token ? 'Token found' : 'No token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 };
 
+// Get CSRF token
+const getCSRFToken = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    
+    const response = await fetch(`${API_URL}/institutes/csrf-token`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.token;
+    }
+  } catch (error) {
+    console.error('Failed to get CSRF token:', error);
+  }
+  return null;
+};
+
 const apiService = {
   // Authentication endpoints
   register: async (userData, role) => {
     try {
-      // For staff registration, use the staff endpoint
+      console.log('Registration request for role:', sanitizeForLog(role), 'with data keys:', Object.keys(userData));
+      
+      // Use auth endpoint for all registrations with proper data format
+      let formattedData;
+      
       if (role.toLowerCase() === 'staff') {
-        const staffData = {
+        formattedData = {
           fullName: userData.fullName,
           email: userData.email,
           password: userData.password,
-          phoneNumber: userData.phone || userData.phoneNumber || ''
+          phoneNumber: userData.phoneNumber,
+          role: role.toLowerCase()
         };
-
-        console.log('Sending staff registration data:', staffData);
-
-        const response = await fetch(`${API_URL}/staff/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(staffData),
-        });
-
-        const data = await response.json();
-        console.log('Staff registration response:', data);
-        return data;
+      } else if (role.toLowerCase() === 'recruiter') {
+        formattedData = {
+          companyName: userData.companyName,
+          email: userData.email,
+          password: userData.password,
+          phoneNumber: userData.phoneNumber,
+          website: userData.website,
+          role: role.toLowerCase()
+        };
+      } else if (role.toLowerCase() === 'institute') {
+        formattedData = {
+          instituteName: userData.instituteName,
+          email: userData.email,
+          password: userData.password,
+          phoneNumber: userData.phoneNumber,
+          registrationNumber: userData.registrationNumber,
+          role: role.toLowerCase()
+        };
+      } else {
+        // Fallback for other roles
+        formattedData = {
+          name: userData.fullName || userData.companyName || userData.instituteName,
+          email: userData.email,
+          password: userData.password,
+          role: role.toLowerCase(),
+          phone: userData.phoneNumber || userData.phone || ''
+        };
       }
 
-      // For other roles, use general auth endpoint
-      const formattedData = {
-        name: userData.fullName || userData.companyName || userData.instituteName,
-        email: userData.email,
-        password: userData.password,
-        role: role.toLowerCase(),
-        phone: userData.phone || ''
-      };
-
-      console.log('Sending registration data:', formattedData);
+      console.log('Sending registration data keys:', Object.keys(formattedData));
 
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
@@ -66,7 +107,7 @@ const apiService = {
 
   login: async (email, password) => {
     try {
-      console.log('Sending login data:', { email });
+      console.log('Sending login data for email:', sanitizeForLog(email));
 
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
@@ -560,17 +601,26 @@ const apiService = {
         throw new Error('No authentication token found. Please login again.');
       }
 
+      // Check if courseData is FormData (for file uploads) or regular object
+      const isFormData = courseData instanceof FormData;
+      
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+      
+      // Only set Content-Type for JSON, let browser set it for FormData
+      if (!isFormData) {
+        headers['Content-Type'] = 'application/json';
+      }
+
       const response = await fetch(`${API_URL}/institutes/courses`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(courseData)
+        headers,
+        body: isFormData ? courseData : JSON.stringify(courseData)
       });
       return await response.json();
     } catch (error) {
-      console.error('Add course error:', error);
+      console.error('Add course error:', sanitizeForLog(error.message));
       return { success: false, message: 'Failed to add course' };
     }
   },
@@ -1607,6 +1657,74 @@ const apiService = {
     }
   },
 
+  // Course Review API endpoints
+  addCourseReview: async (courseId, rating, review) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/reviews/course`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ courseId, rating, review })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Add course review error:', error);
+      return { success: false, message: 'Failed to add review' };
+    }
+  },
+
+  getCourseReviews: async (courseId, limit = 10) => {
+    try {
+      const response = await fetch(`${API_URL}/reviews/course/${courseId}?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get course reviews error:', error);
+      return { success: false, message: 'Failed to get reviews' };
+    }
+  },
+
+  getCourseRatingStats: async (courseId) => {
+    try {
+      const response = await fetch(`${API_URL}/reviews/course/${courseId}/stats`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get course rating stats error:', error);
+      return { success: false, message: 'Failed to get rating stats' };
+    }
+  },
+
+  getCourseEnrollmentCount: async (courseId) => {
+    try {
+      const response = await fetch(`${API_URL}/reviews/course/${courseId}/enrollment`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get course enrollment count error:', error);
+      return { success: false, message: 'Failed to get enrollment count' };
+    }
+  },
+
   // Institute Course Management API - Missing endpoints
   addCourse: async (courseData) => {
     try {
@@ -1618,15 +1736,14 @@ const apiService = {
       const response = await fetch(`${API_URL}/institutes/courses`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(courseData)
+        body: courseData // FormData object
       });
       return await response.json();
     } catch (error) {
       console.error('Add course error:', error);
-      return { success: true, message: 'Course added successfully', data: { id: Date.now(), ...courseData, isActive: true } };
+      return { success: false, message: 'Failed to add course' };
     }
   },
 
@@ -1647,7 +1764,293 @@ const apiService = {
       return await response.json();
     } catch (error) {
       console.error('Get courses error:', error);
-      return { success: true, data: [] };
+      return { success: false, message: 'Failed to get courses' };
+    }
+  },
+
+  // Get public courses for institute
+  getPublicCourses: async (instituteId) => {
+    try {
+      const response = await fetch(`${API_URL}/institutes/public/${instituteId}/courses`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get public courses error:', error);
+      return { success: false, message: 'Failed to get courses' };
+    }
+  },
+
+  // Get public course by ID
+  getPublicCourseById: async (courseId) => {
+    try {
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}/public`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get public course by ID error:', error);
+      return { success: false, message: 'Failed to get course' };
+    }
+  },
+
+  // Course enrollment
+  enrollInCourse: async (courseId) => {
+    try {
+      console.log('🚀 enrollInCourse called with courseId:', courseId);
+      console.log('🚀 courseId type:', typeof courseId);
+      console.log('🚀 courseId value:', courseId);
+      
+      if (!courseId) {
+        throw new Error('Course ID is required for enrollment');
+      }
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const enrollmentUrl = `${API_URL}/institutes/courses/${courseId}/enroll`;
+      console.log('🚀 Making enrollment request to:', enrollmentUrl);
+      
+      const response = await fetch(enrollmentUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response ok:', response.ok);
+      
+      const result = await response.json();
+      console.log('📊 Response data:', result);
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to enroll in course');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Enroll in course error:', error);
+      return { success: false, message: error.message || 'Failed to enroll in course' };
+    }
+  },
+
+  // Get user enrollments
+  getUserEnrollments: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('🔑 Token for enrollments:', token ? 'Present' : 'Missing');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('🚀 Making request to:', `${API_URL}/institutes/my-enrollments`);
+      const response = await fetch(`${API_URL}/institutes/my-enrollments`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response ok:', response.ok);
+      
+      const result = await response.json();
+      console.log('📊 Response data:', result);
+      return result;
+    } catch (error) {
+      console.error('Get user enrollments error:', error);
+      return { success: false, message: 'Failed to get enrollments' };
+    }
+  },
+
+  // Get course content
+  getCourseContent: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('🔑 Token for course content:', token ? 'Present' : 'Missing');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const url = `${API_URL}/institutes/courses/${courseId}/content`;
+      console.log('🚀 Making request to:', url);
+      console.log('🎯 Course ID in request:', courseId);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response ok:', response.ok);
+      
+      const result = await response.json();
+      console.log('📊 Response data:', result);
+      return result;
+    } catch (error) {
+      console.error('Get course content error:', error);
+      return { success: false, message: 'Failed to get course content' };
+    }
+  },
+
+  // Check enrollment status
+  checkEnrollmentStatus: async (courseId) => {
+    try {
+      console.log('🔍 Checking enrollment status for courseId:', courseId);
+      
+      if (!courseId) {
+        console.error('❌ Course ID is required for checking enrollment status');
+        return { success: false, enrolled: false };
+      }
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return { success: false, enrolled: false };
+      }
+
+      const statusUrl = `${API_URL}/institutes/courses/${courseId}/enrollment-status`;
+      console.log('🔍 Making status request to:', statusUrl);
+      
+      const response = await fetch(statusUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const result = await response.json();
+      console.log('📊 Enrollment status response:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Check enrollment status error:', error);
+      return { success: false, enrolled: false };
+    }
+  },
+
+  // Quiz functionality
+  getModuleQuiz: async (moduleId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/modules/${moduleId}/quiz`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get module quiz error:', error);
+      return { success: false, message: 'Failed to get quiz' };
+    }
+  },
+
+  submitQuiz: async (quizId, answers, courseId, moduleId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/quiz/${quizId}/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ answers, courseId, moduleId })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Submit quiz error:', error);
+      return { success: false, message: 'Failed to submit quiz' };
+    }
+  },
+
+  // Submit quiz for course content
+  submitContentQuiz: async (contentId, answers, courseId, moduleId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/content/${contentId}/quiz/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ answers, courseId, moduleId })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Submit content quiz error:', error);
+      return { success: false, message: 'Failed to submit quiz' };
+    }
+  },
+
+  getQuizResults: async (quizId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/quiz/${quizId}/results`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get quiz results error:', error);
+      return { success: false, message: 'Failed to get quiz results' };
+    }
+  },
+
+  // Update content progress
+  updateProgress: async (contentId, progressData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/courses/content/${contentId}/progress`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(progressData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update progress error:', error);
+      return { success: false, message: 'Failed to update progress' };
     }
   },
 
@@ -1669,6 +2072,50 @@ const apiService = {
     } catch (error) {
       console.error('Get active course count error:', error);
       return { success: true, data: { activeCourses: 0 } };
+    }
+  },
+
+  // Debug course content URLs
+  debugCourseContent: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}/debug`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Debug course content error:', error);
+      return { success: false, message: 'Failed to debug course content' };
+    }
+  },
+
+  // Fix course content URLs
+  fixCourseContentUrls: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}/fix-urls`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Fix course content URLs error:', error);
+      return { success: false, message: 'Failed to fix course content URLs' };
     }
   },
 
@@ -1963,110 +2410,121 @@ const apiService = {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      console.log('Starting placement section update with data:', placementData);
+      console.log('🚀 Starting placement section update with data:', placementData);
 
       // Create FormData for file uploads
       const formData = new FormData();
       
-      // Create a mapping system to preserve file associations
-      const fileMapping = {
-        companyLogos: {},
-        studentPhotos: {}
-      };
-      
       // Deep clone placement data to avoid modifying original
       const processedData = JSON.parse(JSON.stringify(placementData));
       
-      // Process company data with unique identifiers
+      // Process company data and add files with simple index-based naming
       if (processedData.topHiringCompanies) {
         processedData.topHiringCompanies.forEach((company, index) => {
-          // Use the company's existing ID or create one
-          const companyId = company.id || `company_${index}_${Date.now()}`;
-          
-          console.log(`Processing company ${index}:`, {
+          console.log(`🏢 Processing company ${index}:`, {
             name: company.name,
             hasLogo: !!company.logo,
-            hasPreview: !!company.logoPreview,
-            hasNewFile: company.hasNewFile,
-            isRemoved: company.isRemoved
+            logoIsFile: company.logo instanceof File,
+            logoType: typeof company.logo,
+            logoValue: company.logo instanceof File ? company.logo.name : (typeof company.logo === 'string' ? company.logo.substring(0, 50) : company.logo)
           });
           
-          if (company.logo && company.logo instanceof File) {
-            // Add file with unique identifier
-            formData.append(`companyLogo_${companyId}`, company.logo);
-            fileMapping.companyLogos[companyId] = index;
-            // Mark that this company has a new file
-            company.hasNewFile = true;
-            company.fileId = companyId;
-            // Remove the File object from the data (will be handled by backend)
+          // Check if logo is a File object (new upload)
+          if (company.logo instanceof File) {
+            const fieldName = `companyLogo_${index}`;
+            formData.append(fieldName, company.logo);
+            console.log(`📁 Added company logo file: ${fieldName} for ${company.name}`);
+            company.logo = null; // Will be replaced with S3 URL by backend
+          }
+          // Check if logo is a blob URL (should be converted to null)
+          else if (typeof company.logo === 'string' && company.logo.startsWith('blob:')) {
+            console.log(`❌ Removing blob URL for ${company.name}: ${company.logo}`);
             company.logo = null;
-            console.log(`Added company logo file for ${company.name}`);
-          } else if (company.logoPreview && typeof company.logoPreview === 'string' && company.logoPreview.includes('http') && !company.isRemoved) {
-            // Keep existing URL if it's a valid URL and not marked for removal
-            company.logo = company.logoPreview;
-            console.log(`Keeping existing logo URL for ${company.name}:`, company.logoPreview);
-          } else if (company.isRemoved || !company.logoPreview) {
-            // Mark for removal or set to null if no valid preview
+          }
+          // Check if logo is a valid S3 URL (keep it)
+          else if (typeof company.logo === 'string' && company.logo.includes('http') && !company.logo.startsWith('blob:')) {
+            console.log(`🔗 Keeping existing S3 URL for ${company.name}: ${company.logo}`);
+            // Keep the URL as is
+          }
+          // Otherwise set to null
+          else {
             company.logo = null;
-            console.log(`Setting logo to null for ${company.name}`);
+            console.log(`❌ No valid logo for ${company.name}`);
           }
           
-          // Clean up preview properties and temporary properties
+          // Clean up temporary properties
           delete company.logoPreview;
           delete company.id;
           delete company.isRemoved;
           delete company.isExisting;
+          delete company.hasNewFile;
+          delete company.fileId;
         });
       }
       
-      // Process student data with unique identifiers
+      // Process student data and add files with simple index-based naming
       if (processedData.recentPlacementSuccess) {
         processedData.recentPlacementSuccess.forEach((student, index) => {
-          // Use the student's existing ID or create one
-          const studentId = student.id || `student_${index}_${Date.now()}`;
-          
-          console.log(`Processing student ${index}:`, {
+          console.log(`👨🎓 Processing student ${index}:`, {
             name: student.name,
             hasPhoto: !!student.photo,
-            hasPreview: !!student.photoPreview,
-            hasNewFile: student.hasNewFile,
-            isRemoved: student.isRemoved
+            photoIsFile: student.photo instanceof File,
+            photoType: typeof student.photo,
+            photoValue: student.photo instanceof File ? student.photo.name : (typeof student.photo === 'string' ? student.photo.substring(0, 50) : student.photo)
           });
           
-          if (student.photo && student.photo instanceof File) {
-            // Add file with unique identifier
-            formData.append(`studentPhoto_${studentId}`, student.photo);
-            fileMapping.studentPhotos[studentId] = index;
-            // Mark that this student has a new file
-            student.hasNewFile = true;
-            student.fileId = studentId;
-            // Remove the File object from the data (will be handled by backend)
+          // Check if photo is a File object (new upload)
+          if (student.photo instanceof File) {
+            const fieldName = `studentPhoto_${index}`;
+            formData.append(fieldName, student.photo);
+            console.log(`📁 Added student photo file: ${fieldName} for ${student.name}`);
+            student.photo = null; // Will be replaced with S3 URL by backend
+          }
+          // Check if photo is a blob URL (should be converted to null)
+          else if (typeof student.photo === 'string' && student.photo.startsWith('blob:')) {
+            console.log(`❌ Removing blob URL for ${student.name}: ${student.photo}`);
             student.photo = null;
-            console.log(`Added student photo file for ${student.name}`);
-          } else if (student.photoPreview && typeof student.photoPreview === 'string' && student.photoPreview.includes('http') && !student.isRemoved) {
-            // Keep existing URL if it's a valid URL and not marked for removal
-            student.photo = student.photoPreview;
-            console.log(`Keeping existing photo URL for ${student.name}:`, student.photoPreview);
-          } else if (student.isRemoved || !student.photoPreview) {
-            // Mark for removal or set to null if no valid preview
+          }
+          // Check if photo is a valid S3 URL (keep it)
+          else if (typeof student.photo === 'string' && student.photo.includes('http') && !student.photo.startsWith('blob:')) {
+            console.log(`🔗 Keeping existing S3 URL for ${student.name}: ${student.photo}`);
+            // Keep the URL as is
+          }
+          // Otherwise set to null
+          else {
             student.photo = null;
-            console.log(`Setting photo to null for ${student.name}`);
+            console.log(`❌ No valid photo for ${student.name}`);
           }
           
-          // Clean up preview properties and temporary properties
+          // Clean up temporary properties
           delete student.photoPreview;
           delete student.id;
           delete student.isRemoved;
           delete student.isExisting;
+          delete student.hasNewFile;
+          delete student.fileId;
         });
       }
       
-      // Add placement data and file mapping as JSON strings
+      // Add placement data as JSON string
       formData.append('placementData', JSON.stringify(processedData));
-      formData.append('fileMapping', JSON.stringify(fileMapping));
 
-      console.log('Sending placement data to backend:', processedData);
-      console.log('File mapping:', fileMapping);
+      console.log('📊 Sending placement data to backend:', {
+        averageSalary: processedData.averageSalary,
+        highestPackage: processedData.highestPackage,
+        companiesCount: processedData.topHiringCompanies?.length || 0,
+        studentsCount: processedData.recentPlacementSuccess?.length || 0
+      });
+      
+      // Log FormData contents
+      console.log('📄 FormData contents:');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
+        } else {
+          console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) + '...' : value}`);
+        }
+      }
 
       const response = await fetch(`${API_URL}/institutes/placement-section`, {
         method: 'PUT',
@@ -2077,12 +2535,18 @@ const apiService = {
         body: formData
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Server response error:', response.status, errorText);
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+      
       const result = await response.json();
-      console.log('Placement section update response:', result);
+      console.log('✅ Placement section update response:', result);
       return result;
     } catch (error) {
-      console.error('Update placement section error:', error);
-      return { success: false, message: 'Failed to update placement section' };
+      console.error('❌ Update placement section error:', error);
+      return { success: false, message: error.message || 'Failed to update placement section' };
     }
   },
 
@@ -2141,125 +2605,23 @@ const apiService = {
   },
 
   // Institute Industry Collaboration API
-  updateIndustryCollaborations: async (collabData) => {
+  updateIndustryCollaborations: async (formData) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      console.log('Starting industry collaboration update with data:', collabData);
-
-      // Create FormData for file uploads
-      const formData = new FormData();
+      console.log('🚀 Starting industry collaboration update with FormData');
       
-      // Create a mapping system to preserve file associations
-      const fileMapping = {
-        collabImages: {},
-        mouPdfs: {}
-      };
-      
-      // Deep clone collaboration data to avoid modifying original
-      const processedData = JSON.parse(JSON.stringify(collabData));
-      
-      // Process collaboration card data with unique identifiers
-      if (processedData.collaborationCards) {
-        processedData.collaborationCards.forEach((card, index) => {
-          // Use the card's existing ID or create one
-          const cardId = card.id || `card_${index}_${Date.now()}`;
-          
-          console.log(`Processing collaboration card ${index}:`, {
-            title: card.title,
-            hasImage: !!card.image,
-            hasNewFile: card.hasNewFile,
-            isRemoved: card.isRemoved
-          });
-          
-          if (card.image && card.image instanceof File) {
-            // Add file with unique identifier
-            formData.append(`collabImage_${cardId}`, card.image);
-            fileMapping.collabImages[cardId] = index;
-            // Mark that this card has a new file
-            card.hasNewFile = true;
-            card.fileId = cardId;
-            // Remove the File object from the data (will be handled by backend)
-            card.image = null;
-            console.log(`Added collaboration image file for ${card.title}`);
-          } else if (card.imagePreview && typeof card.imagePreview === 'string' && card.imagePreview.includes('http') && !card.isRemoved) {
-            // Keep existing URL if it's a valid URL and not marked for removal
-            card.image = card.imagePreview;
-            console.log(`Keeping existing image URL for ${card.title}:`, card.imagePreview);
-          } else if (card.isRemoved || !card.imagePreview) {
-            // Mark for removal or set to null if no valid preview
-            card.image = null;
-            console.log(`Setting image to null for ${card.title}`);
-          }
-          
-          // Clean up preview properties and temporary properties
-          delete card.imagePreview;
-          delete card.id;
-          delete card.isRemoved;
-          delete card.isExisting;
-        });
-      }
-      
-      // Process MOU data - add PDF files to FormData
-      if (processedData.mouItems) {
-        processedData.mouItems.forEach((mou, index) => {
-          const mouId = mou.id || `mou_${index}_${Date.now()}`;
-          
-          console.log(`Processing MOU ${index}:`, {
-            title: mou.title,
-            hasPdfFile: !!mou.pdfFile,
-            hasPdfUrl: !!mou.pdfUrl,
-            pdfUrl: mou.pdfUrl
-          });
-          
-          if (mou.pdfFile && mou.pdfFile instanceof File) {
-            const fieldName = `mouPdf_${mouId}`;
-            formData.append(fieldName, mou.pdfFile);
-            fileMapping.mouPdfs[mouId] = index;
-            mou.hasNewFile = true;
-            mou.fileId = mouId;
-            console.log(`📁 PDF file added to FormData:`, {
-              fieldName: fieldName,
-              fileName: mou.pdfFile.name,
-              fileSize: mou.pdfFile.size,
-              fileType: mou.pdfFile.type,
-              mouId: mouId,
-              index: index
-            });
-            // Remove pdfFile but keep pdfUrl for existing URLs
-            delete mou.pdfFile;
-          } else if (mou.pdfUrl && typeof mou.pdfUrl === 'string' && mou.pdfUrl.trim() !== '') {
-            // Keep existing PDF URL
-            mou.hasNewFile = false;
-            mou.fileId = null;
-            console.log(`✅ Keeping existing PDF URL: ${mou.pdfUrl}`);
-          } else {
-            mou.hasNewFile = false;
-            mou.fileId = null;
-            mou.pdfUrl = null;
-            console.log(`❌ No PDF for MOU: ${mou.title}`);
-          }
-          
-          // Clean up temporary properties but keep pdfUrl
-          delete mou.pdfFile;
-          delete mou.id;
-          delete mou.isRemoved;
-          delete mou.isExisting;
-        });
-      }
-      
-      // Add collaboration data and file mapping as JSON strings
-      formData.append('collabData', JSON.stringify(processedData));
-      formData.append('fileMapping', JSON.stringify(fileMapping));
-
-      console.log('Sending collaboration data to backend:', processedData);
-      console.log('File mapping:', fileMapping);
-      console.log('FormData entries:');
+      // Log FormData contents
+      console.log('📄 FormData contents:');
       for (let [key, value] of formData.entries()) {
-        console.log(key, value instanceof File ? `File: ${value.name}` : value);
+        if (value instanceof File) {
+          console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
+        } else {
+          console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) + '...' : value}`);
+        }
       }
 
       const response = await fetch(`${API_URL}/institutes/industry-collaborations`, {
@@ -2649,6 +3011,166 @@ const apiService = {
     }
   },
 
+  // Course Management API - Additional methods
+  getCourseById: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get course by ID error:', error);
+      return { success: false, message: 'Failed to get course details' };
+    }
+  },
+
+  updateCourse: async (courseId, courseData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: courseData // FormData object
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update course error:', error);
+      return { success: false, message: 'Failed to update course' };
+    }
+  },
+
+  deleteCourse: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete course error:', error);
+      return { success: false, message: 'Failed to delete course' };
+    }
+  },
+
+  // Progress tracking API
+  markContentComplete: async (courseId, contentId, contentType) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/progress/courses/${courseId}/content/${contentId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ contentType })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log('✅ Content marked complete:', result);
+        return result;
+      } else {
+        throw new Error(result.message || 'Failed to mark content complete');
+      }
+    } catch (error) {
+      console.error('Mark content complete error:', error);
+      return { success: false, message: error.message || 'Failed to mark content as complete' };
+    }
+  },
+
+  markQuizComplete: async (courseId, quizId, quizType, passed, score, maxScore, moduleId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/progress/courses/${courseId}/quiz/${quizId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ quizType, passed, score, maxScore, moduleId })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log('✅ Quiz marked complete:', result);
+        return result;
+      } else {
+        throw new Error(result.message || 'Failed to mark quiz complete');
+      }
+    } catch (error) {
+      console.error('Mark quiz complete error:', error);
+      return { success: false, message: error.message || 'Failed to mark quiz as complete' };
+    }
+  },
+
+  getUserProgress: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/progress/courses/${courseId}/progress`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log('✅ Progress loaded from database:', result);
+        return result;
+      } else {
+        throw new Error(result.message || 'Failed to get progress');
+      }
+    } catch (error) {
+      console.error('Get user progress error:', error);
+      return { 
+        success: true, 
+        data: {
+          completedContent: {},
+          completedQuizzes: {},
+          progressPercentage: 0
+        }
+      };
+    }
+  }
 
 };
 

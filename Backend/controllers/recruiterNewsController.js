@@ -59,6 +59,12 @@ const RecruiterNewsController = {
             const result = await RecruiterNewsModel.create(newsData);
 
             if (result.success) {
+                // Emit real-time update to News Admin Panel
+                const io = req.app.get('io');
+                if (io) {
+                    io.emit('recruiterNewsCreated', result.data);
+                }
+
                 res.status(201).json({
                     success: true,
                     message: 'News added successfully',
@@ -194,6 +200,12 @@ const RecruiterNewsController = {
             const result = await RecruiterNewsModel.update(newsId, updateData);
 
             if (result.success) {
+                // Emit real-time update to News Admin Panel
+                const io = req.app.get('io');
+                if (io) {
+                    io.emit('recruiterNewsUpdated', result.data);
+                }
+
                 res.json({
                     success: true,
                     message: 'News updated successfully',
@@ -238,6 +250,12 @@ const RecruiterNewsController = {
             const result = await RecruiterNewsModel.delete(newsId);
 
             if (result.success) {
+                // Emit real-time update to News Admin Panel
+                const io = req.app.get('io');
+                if (io) {
+                    io.emit('recruiterNewsDeleted', { recruiterNewsID: newsId });
+                }
+
                 res.json({
                     success: true,
                     message: 'News deleted successfully'
@@ -276,6 +294,31 @@ const RecruiterNewsController = {
             }
         } catch (error) {
             console.error('Error in getPublicNews:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Internal server error'
+            });
+        }
+    },
+
+    // Get all recruiter news (for admin panel)
+    getAllNews: async (req, res) => {
+        try {
+            const result = await RecruiterNewsModel.getAllPublic();
+
+            if (result.success) {
+                res.json({
+                    success: true,
+                    data: result.data
+                });
+            } else {
+                res.status(500).json({
+                    success: false,
+                    message: result.message
+                });
+            }
+        } catch (error) {
+            console.error('Error in getAllNews:', error);
             res.status(500).json({
                 success: false,
                 message: 'Internal server error'

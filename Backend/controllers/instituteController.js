@@ -10,19 +10,36 @@ const jwtUtils = require('../utils/jwtUtils');
 const { validateInstituteRegistration } = require('../utils/validation');
 const emailService = require('../services/emailService');
 const multer = require('multer');
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
 
-// Initialize S3 client
+// Initialize S3 client with proper configuration
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.AWS_REGION || 'ap-south-1',
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-  }
+  },
+  forcePathStyle: false, // Use virtual hosted-style URLs
+  signatureVersion: 'v4'
 });
 
 const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || 'staffinn-files';
+
+// Validate S3 configuration on startup
+if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+  console.warn('⚠️ AWS credentials not found. S3 uploads may fail.');
+}
+
+if (!process.env.S3_BUCKET_NAME) {
+  console.warn('⚠️ S3_BUCKET_NAME not configured. Using default: staffinn-files');
+}
+
+console.log('✅ S3 Client initialized:', {
+  region: process.env.AWS_REGION || 'ap-south-1',
+  bucket: S3_BUCKET_NAME,
+  hasCredentials: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
+});
 
 // Registration number validation service
 const registrationValidationService = {
@@ -674,9 +691,16 @@ const deleteProfileImage = async (req, res) => {
 const placementUpload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit for images
+    fileSize: 5 * 1024 * 1024, // 5MB limit for images
+    files: 20 // Maximum 20 files
   },
   fileFilter: (req, file, cb) => {
+    console.log('🔍 File filter check:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      mimetype: file.mimetype
+    });
+    
     // Allow any field name that starts with companyLogo_ or studentPhoto_
     if (file.fieldname.startsWith('companyLogo_') || file.fieldname.startsWith('studentPhoto_')) {
       const allowedTypes = /jpeg|jpg|png|gif|webp/;
@@ -684,12 +708,15 @@ const placementUpload = multer({
       const mimetype = allowedTypes.test(file.mimetype);
       
       if (mimetype && extname) {
+        console.log('✅ File accepted:', file.fieldname);
         return cb(null, true);
       } else {
-        return cb(new Error('Only image files are allowed'));
+        console.log('❌ File rejected - invalid type:', file.fieldname, file.mimetype);
+        return cb(new Error(`Only image files are allowed. Got: ${file.mimetype}`));
       }
     } else {
-      return cb(new Error('Invalid file field name'));
+      console.log('❌ File rejected - invalid field name:', file.fieldname);
+      return cb(new Error(`Invalid file field name: ${file.fieldname}`));
     }
   }
 });
@@ -700,39 +727,96 @@ const placementUpload = multer({
 const uploadPlacementFiles = async (files, type) => {
   const uploadedFiles = [];
   
-  console.log(`Uploading ${files.length} files of type: ${type}`);
+  console.log(`📤 Starting upload of ${files.length} files of type: ${type}`);
   
   for (const file of files) {
     try {
-      console.log('Uploading file:', {
+      console.log('📄 File details:', {
         originalname: file.originalname,
         mimetype: file.mimetype,
-        size: file.size
+        size: file.size,
+        hasBuffer: !!file.buffer
       });
       
-      const fileExtension = file.originalname.split('.').pop();
+      if (!file.buffer) {
+        console.error('❌ File buffer is missing');
+        throw new Error('File buffer is missing');
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error(`File ${file.originalname} is too large. Maximum size is 5MB.`);
+      }
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.mimetype)) {
+        throw new Error(`File ${file.originalname} has invalid type. Only JPEG, PNG, GIF, and WebP are allowed.`);
+      }
+      
+      const fileExtension = file.originalname.split('.').pop().toLowerCase();
       const fileName = `${uuidv4()}-${Date.now()}.${fileExtension}`;
-      const key = `placement-${type}/${fileName}`;
+      
+      // Use the exact folder names as requested
+      let key;
+      if (type === 'company-logos') {
+        key = `placement-company-logos/${fileName}`;
+      } else if (type === 'student-photos') {
+        key = `placement-student-photos/${fileName}`;
+      } else {
+        // Fallback for backward compatibility
+        key = `placement-${type}/${fileName}`;
+      }
+      
+      console.log(`🔑 S3 upload details:`, {
+        bucket: S3_BUCKET_NAME,
+        key: key,
+        contentType: file.mimetype,
+        region: process.env.AWS_REGION || 'ap-south-1',
+        fileSize: file.size
+      });
       
       const uploadCommand = new PutObjectCommand({
         Bucket: S3_BUCKET_NAME,
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
-        CacheControl: 'max-age=31536000'
+        CacheControl: 'max-age=31536000',
+        ACL: 'public-read' // Make files publicly accessible
       });
       
-      await s3Client.send(uploadCommand);
+      const uploadResult = await s3Client.send(uploadCommand);
+      console.log('📤 S3 upload result:', {
+        ETag: uploadResult.ETag,
+        Location: uploadResult.Location,
+        Key: uploadResult.Key
+      });
       
-      const fileUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
-      console.log('File uploaded successfully:', fileUrl);
+      const fileUrl = `https://${S3_BUCKET_NAME}.s3.${(process.env.AWS_REGION || 'ap-south-1').trim()}.amazonaws.com/${key}`;
+      
+      console.log(`✅ File uploaded successfully: ${fileUrl}`);
+      
+      // Verify the upload by checking if the file exists
+      try {
+        const headCommand = new HeadObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: key
+        });
+        await s3Client.send(headCommand);
+        console.log(`✅ File verified in S3: ${key}`);
+      } catch (verifyError) {
+        console.error(`❌ File verification failed: ${key}`, verifyError);
+        throw new Error(`File upload verification failed for ${file.originalname}`);
+      }
+      
       uploadedFiles.push(fileUrl);
     } catch (error) {
-      console.error('Error uploading file to S3:', error);
-      throw error;
+      console.error(`❌ S3 upload error for file ${file.originalname}:`, error);
+      throw new Error(`Failed to upload ${file.originalname}: ${error.message}`);
     }
   }
   
+  console.log(`🎉 Upload complete. ${uploadedFiles.length} files uploaded successfully.`);
   return uploadedFiles;
 };
 
@@ -753,10 +837,23 @@ const deleteOldPlacementFiles = async (oldData, newData) => {
           
           if (!stillUsed) {
             try {
-              const key = oldCompany.logo.split('/').pop();
+              // Extract the full key from the URL
+              const urlParts = oldCompany.logo.split('/');
+              const bucketIndex = urlParts.findIndex(part => part.includes('.s3.'));
+              let key;
+              
+              if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+                // Extract key from full S3 URL
+                key = urlParts.slice(bucketIndex + 1).join('/');
+              } else {
+                // Fallback: assume it's just the filename and use correct folder
+                const fileName = urlParts[urlParts.length - 1];
+                key = `placement-company-logos/${fileName}`;
+              }
+              
               const deleteCommand = new DeleteObjectCommand({
                 Bucket: S3_BUCKET_NAME,
-                Key: `placement-company-logos/${key}`
+                Key: key
               });
               await s3Client.send(deleteCommand);
               console.log(`Deleted old company logo: ${key}`);
@@ -780,10 +877,23 @@ const deleteOldPlacementFiles = async (oldData, newData) => {
           
           if (!stillUsed) {
             try {
-              const key = oldStudent.photo.split('/').pop();
+              // Extract the full key from the URL
+              const urlParts = oldStudent.photo.split('/');
+              const bucketIndex = urlParts.findIndex(part => part.includes('.s3.'));
+              let key;
+              
+              if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+                // Extract key from full S3 URL
+                key = urlParts.slice(bucketIndex + 1).join('/');
+              } else {
+                // Fallback: assume it's just the filename and use correct folder
+                const fileName = urlParts[urlParts.length - 1];
+                key = `placement-student-photos/${fileName}`;
+              }
+              
               const deleteCommand = new DeleteObjectCommand({
                 Bucket: S3_BUCKET_NAME,
-                Key: `placement-student-photos/${key}`
+                Key: key
               });
               await s3Client.send(deleteCommand);
               console.log(`Deleted old student photo: ${key}`);
@@ -807,9 +917,21 @@ const updatePlacementSection = async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    console.log('Placement section update request for user:', userId);
-    console.log('Request body keys:', Object.keys(req.body));
-    console.log('Request files keys:', Object.keys(req.files || {}));
+    console.log('🚀 Placement section update request for user:', userId);
+    console.log('📋 Request body keys:', Object.keys(req.body));
+    console.log('📁 Request files:', req.files ? req.files.length : 0, 'files');
+    
+    // Log all files received
+    if (req.files && req.files.length > 0) {
+      req.files.forEach((file, index) => {
+        console.log(`📄 File ${index}:`, {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size
+        });
+      });
+    }
     
     // Get institute profile to get institute name
     const user = await userModel.getUserById(userId);
@@ -825,103 +947,161 @@ const updatePlacementSection = async (req, res) => {
     // Get existing placement data for cleanup
     const existingPlacementData = await institutePlacementModel.getPlacementSectionByInstituteId(userId);
     
-    // Parse form data
+    // Parse the placement data from the request body
     let placementData;
-    let fileMapping;
     try {
-      placementData = JSON.parse(req.body.placementData || '{}');
-      fileMapping = JSON.parse(req.body.fileMapping || '{}');
-      console.log('Parsed placement data:', placementData);
-      console.log('Parsed file mapping:', fileMapping);
+      // Handle both direct object and JSON string
+      if (typeof req.body.placementData === 'string') {
+        placementData = JSON.parse(req.body.placementData);
+      } else if (typeof req.body.placementData === 'object') {
+        placementData = req.body.placementData;
+      } else {
+        // Try to parse the entire body as placement data
+        placementData = {
+          averageSalary: req.body.averageSalary || '',
+          highestPackage: req.body.highestPackage || '',
+          topHiringCompanies: [],
+          recentPlacementSuccess: []
+        };
+      }
+      
+      console.log('📊 Parsed placement data:', {
+        averageSalary: placementData.averageSalary,
+        highestPackage: placementData.highestPackage,
+        companiesCount: placementData.topHiringCompanies?.length || 0,
+        studentsCount: placementData.recentPlacementSuccess?.length || 0
+      });
     } catch (parseError) {
-      console.error('Error parsing form data:', parseError);
+      console.error('❌ Error parsing placement data:', parseError);
       return res.status(400).json({
         success: false,
-        message: 'Invalid form data'
+        message: 'Invalid placement data format'
       });
     }
     
-    // Handle file uploads with proper mapping
-    const files = req.files || {};
-    console.log('Available files:', Object.keys(files));
+    // Convert files array to object for easier access
+    const filesMap = {};
+    if (req.files && Array.isArray(req.files)) {
+      req.files.forEach(file => {
+        filesMap[file.fieldname] = file;
+      });
+    }
     
-    // Process company logos with unique identifiers
+    console.log('🗂️ Files map keys:', Object.keys(filesMap));
+    
+    // Process company logos
     if (placementData.topHiringCompanies && Array.isArray(placementData.topHiringCompanies)) {
       for (let i = 0; i < placementData.topHiringCompanies.length; i++) {
         const company = placementData.topHiringCompanies[i];
         
-        console.log(`Processing company ${i}:`, {
+        console.log(`🏢 Processing company ${i}:`, {
           name: company.name,
-          hasNewFile: company.hasNewFile,
-          fileId: company.fileId,
-          currentLogo: company.logo
+          hasLogo: !!company.logo,
+          logoType: typeof company.logo
         });
         
-        if (company.hasNewFile && company.fileId) {
-          const fileFieldName = `companyLogo_${company.fileId}`;
-          const file = files[fileFieldName];
+        // Look for company logo file
+        const logoFieldName = `companyLogo_${i}`;
+        const logoFile = filesMap[logoFieldName];
+        
+        if (logoFile) {
+          console.log(`📤 Uploading logo for company ${i}: ${company.name}`);
+          console.log(`📁 Logo file details:`, {
+            fieldName: logoFieldName,
+            originalname: logoFile.originalname,
+            mimetype: logoFile.mimetype,
+            size: logoFile.size
+          });
           
-          console.log(`Looking for file: ${fileFieldName}`, !!file);
-          
-          if (file && file.length > 0) {
-            try {
-              const logoUrls = await uploadPlacementFiles([file[0]], 'company-logos');
-              if (logoUrls[0]) {
-                company.logo = logoUrls[0];
-                console.log(`Uploaded company logo: ${logoUrls[0]}`);
-              }
-            } catch (uploadError) {
-              console.error(`Error uploading company logo for ${company.name}:`, uploadError);
+          try {
+            const logoUrls = await uploadPlacementFiles([logoFile], 'company-logos');
+            if (logoUrls && logoUrls.length > 0 && logoUrls[0]) {
+              company.logo = logoUrls[0];
+              console.log(`✅ Company logo uploaded successfully: ${logoUrls[0]}`);
+            } else {
+              throw new Error('No URL returned from S3 upload');
+            }
+          } catch (uploadError) {
+            console.error(`❌ Error uploading company logo for ${company.name}:`, uploadError);
+            // Keep existing logo if upload fails
+            if (existingPlacementData?.topHiringCompanies?.[i]?.logo) {
+              company.logo = existingPlacementData.topHiringCompanies[i].logo;
+              console.log(`🔄 Kept existing logo due to upload failure: ${company.logo}`);
+            } else {
+              company.logo = null;
+              console.log(`❌ Set logo to null due to upload failure`);
             }
           }
-        } else if (!company.logo || typeof company.logo !== 'string' || !company.logo.includes('http')) {
-          // If no valid logo URL, set to null instead of empty object
-          company.logo = null;
+        } else if (!company.logo || (typeof company.logo === 'object' && company.logo !== null)) {
+          // If no file and no valid existing logo, try to preserve from existing data
+          if (existingPlacementData?.topHiringCompanies?.[i]?.logo) {
+            company.logo = existingPlacementData.topHiringCompanies[i].logo;
+            console.log(`🔄 Preserved existing logo for ${company.name}: ${company.logo}`);
+          } else {
+            company.logo = null;
+            console.log(`❌ No logo available for ${company.name}`);
+          }
+        } else {
+          console.log(`🔗 Keeping existing logo URL for ${company.name}: ${company.logo}`);
         }
-        
-        // Clean up temporary properties
-        delete company.hasNewFile;
-        delete company.fileId;
       }
     }
     
-    // Process student photos with unique identifiers
+    // Process student photos
     if (placementData.recentPlacementSuccess && Array.isArray(placementData.recentPlacementSuccess)) {
       for (let i = 0; i < placementData.recentPlacementSuccess.length; i++) {
         const student = placementData.recentPlacementSuccess[i];
         
-        console.log(`Processing student ${i}:`, {
+        console.log(`👨🎓 Processing student ${i}:`, {
           name: student.name,
-          hasNewFile: student.hasNewFile,
-          fileId: student.fileId,
-          currentPhoto: student.photo
+          hasPhoto: !!student.photo,
+          photoType: typeof student.photo
         });
         
-        if (student.hasNewFile && student.fileId) {
-          const fileFieldName = `studentPhoto_${student.fileId}`;
-          const file = files[fileFieldName];
+        // Look for student photo file
+        const photoFieldName = `studentPhoto_${i}`;
+        const photoFile = filesMap[photoFieldName];
+        
+        if (photoFile) {
+          console.log(`📤 Uploading photo for student ${i}: ${student.name}`);
+          console.log(`📁 Photo file details:`, {
+            fieldName: photoFieldName,
+            originalname: photoFile.originalname,
+            mimetype: photoFile.mimetype,
+            size: photoFile.size
+          });
           
-          console.log(`Looking for file: ${fileFieldName}`, !!file);
-          
-          if (file && file.length > 0) {
-            try {
-              const photoUrls = await uploadPlacementFiles([file[0]], 'student-photos');
-              if (photoUrls[0]) {
-                student.photo = photoUrls[0];
-                console.log(`Uploaded student photo: ${photoUrls[0]}`);
-              }
-            } catch (uploadError) {
-              console.error(`Error uploading student photo for ${student.name}:`, uploadError);
+          try {
+            const photoUrls = await uploadPlacementFiles([photoFile], 'student-photos');
+            if (photoUrls && photoUrls.length > 0 && photoUrls[0]) {
+              student.photo = photoUrls[0];
+              console.log(`✅ Student photo uploaded successfully: ${photoUrls[0]}`);
+            } else {
+              throw new Error('No URL returned from S3 upload');
+            }
+          } catch (uploadError) {
+            console.error(`❌ Error uploading student photo for ${student.name}:`, uploadError);
+            // Keep existing photo if upload fails
+            if (existingPlacementData?.recentPlacementSuccess?.[i]?.photo) {
+              student.photo = existingPlacementData.recentPlacementSuccess[i].photo;
+              console.log(`🔄 Kept existing photo due to upload failure: ${student.photo}`);
+            } else {
+              student.photo = null;
+              console.log(`❌ Set photo to null due to upload failure`);
             }
           }
-        } else if (!student.photo || typeof student.photo !== 'string' || !student.photo.includes('http')) {
-          // If no valid photo URL, set to null instead of empty object
-          student.photo = null;
+        } else if (!student.photo || (typeof student.photo === 'object' && student.photo !== null)) {
+          // If no file and no valid existing photo, try to preserve from existing data
+          if (existingPlacementData?.recentPlacementSuccess?.[i]?.photo) {
+            student.photo = existingPlacementData.recentPlacementSuccess[i].photo;
+            console.log(`🔄 Preserved existing photo for ${student.name}: ${student.photo}`);
+          } else {
+            student.photo = null;
+            console.log(`❌ No photo available for ${student.name}`);
+          }
+        } else {
+          console.log(`🔗 Keeping existing photo URL for ${student.name}: ${student.photo}`);
         }
-        
-        // Clean up temporary properties
-        delete student.hasNewFile;
-        delete student.fileId;
       }
     }
     
@@ -930,17 +1110,16 @@ const updatePlacementSection = async (req, res) => {
       await deleteOldPlacementFiles(existingPlacementData, placementData);
     }
     
-    // Validate placement data
-    if (!placementData.averageSalary && !placementData.highestPackage && 
-        (!placementData.topHiringCompanies || placementData.topHiringCompanies.length === 0) &&
-        (!placementData.recentPlacementSuccess || placementData.recentPlacementSuccess.length === 0)) {
-      return res.status(400).json({
-        success: false,
-        message: 'At least one placement field is required'
-      });
-    }
-    
-    console.log('Final placement data to save:', placementData);
+    console.log('💾 Final placement data to save:', {
+      averageSalary: placementData.averageSalary,
+      highestPackage: placementData.highestPackage,
+      companiesCount: placementData.topHiringCompanies?.length || 0,
+      studentsCount: placementData.recentPlacementSuccess?.length || 0,
+      companiesWithLogos: placementData.topHiringCompanies?.filter(c => c.logo && typeof c.logo === 'string' && c.logo.includes('http')).length || 0,
+      studentsWithPhotos: placementData.recentPlacementSuccess?.filter(s => s.photo && typeof s.photo === 'string' && s.photo.includes('http')).length || 0,
+      companyLogos: placementData.topHiringCompanies?.map(c => ({ name: c.name, logo: c.logo })) || [],
+      studentPhotos: placementData.recentPlacementSuccess?.map(s => ({ name: s.name, photo: s.photo })) || []
+    });
     
     // Create or update placement section
     const updatedPlacementSection = await institutePlacementModel.createOrUpdatePlacementSection(
@@ -949,7 +1128,7 @@ const updatePlacementSection = async (req, res) => {
       placementData
     );
     
-    console.log('Placement section updated successfully:', updatedPlacementSection);
+    console.log('✅ Placement section updated successfully');
     
     res.status(200).json({
       success: true,
@@ -958,7 +1137,7 @@ const updatePlacementSection = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Update placement section error:', error);
+    console.error('❌ Update placement section error:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update placement section'
@@ -1130,12 +1309,23 @@ const uploadIndustryCollabFiles = async (files, type) => {
       
       const fileExtension = file.originalname.split('.').pop().toLowerCase();
       const fileName = `${uuidv4()}-${Date.now()}.${fileExtension}`;
-      const key = `industry-collab-${type}/${fileName}`;
+      
+      // Use the exact folder names as requested
+      let key;
+      if (type === 'images') {
+        key = `industry-collab-images/${fileName}`;
+      } else if (type === 'pdfs') {
+        key = `industry-collab-pdfs/${fileName}`;
+      } else {
+        // Fallback for backward compatibility
+        key = `industry-collab-${type}/${fileName}`;
+      }
       
       console.log(`🔑 S3 upload details:`, {
         bucket: S3_BUCKET_NAME,
         key: key,
-        contentType: file.mimetype
+        contentType: file.mimetype,
+        region: process.env.AWS_REGION || 'ap-south-1'
       });
       
       const uploadCommand = new PutObjectCommand({
@@ -1143,14 +1333,34 @@ const uploadIndustryCollabFiles = async (files, type) => {
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
-        CacheControl: 'max-age=31536000'
+        CacheControl: 'max-age=31536000',
+        ACL: 'public-read' // Make files publicly accessible
       });
       
-      await s3Client.send(uploadCommand);
+      const uploadResult = await s3Client.send(uploadCommand);
+      console.log('📤 S3 upload result:', {
+        ETag: uploadResult.ETag,
+        Location: uploadResult.Location,
+        Key: uploadResult.Key
+      });
       
-      const fileUrl = `https://${S3_BUCKET_NAME}.s3.${(process.env.AWS_REGION || 'us-east-1').trim()}.amazonaws.com/${key}`;
+      const fileUrl = `https://${S3_BUCKET_NAME}.s3.${(process.env.AWS_REGION || 'ap-south-1').trim()}.amazonaws.com/${key}`;
       
       console.log(`✅ File uploaded successfully: ${fileUrl}`);
+      
+      // Verify the upload by checking if the file exists
+      try {
+        const headCommand = new HeadObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: key
+        });
+        await s3Client.send(headCommand);
+        console.log(`✅ File verified in S3: ${key}`);
+      } catch (verifyError) {
+        console.error(`❌ File verification failed: ${key}`, verifyError);
+        throw new Error(`File upload verification failed for ${file.originalname}`);
+      }
+      
       uploadedFiles.push(fileUrl);
     } catch (error) {
       console.error(`❌ S3 upload error:`, error);
@@ -1177,11 +1387,23 @@ const deleteOldIndustryCollabFiles = async (oldData, newData) => {
           
           if (!stillUsed) {
             try {
+              // Extract the full key from the URL
               const urlParts = oldCard.image.split('/');
-              const key = urlParts[urlParts.length - 1];
+              const bucketIndex = urlParts.findIndex(part => part.includes('.s3.'));
+              let key;
+              
+              if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+                // Extract key from full S3 URL
+                key = urlParts.slice(bucketIndex + 1).join('/');
+              } else {
+                // Fallback: assume it's just the filename and use correct folder
+                const fileName = urlParts[urlParts.length - 1];
+                key = `industry-collab-images/${fileName}`;
+              }
+              
               const deleteCommand = new DeleteObjectCommand({
                 Bucket: S3_BUCKET_NAME,
-                Key: `industry-collab-images/${key}`
+                Key: key
               });
               await s3Client.send(deleteCommand);
               console.log(`Deleted old collaboration image: ${key}`);
@@ -1203,11 +1425,23 @@ const deleteOldIndustryCollabFiles = async (oldData, newData) => {
           
           if (!stillUsed) {
             try {
+              // Extract the full key from the URL
               const urlParts = oldMou.pdfUrl.split('/');
-              const key = urlParts[urlParts.length - 1];
+              const bucketIndex = urlParts.findIndex(part => part.includes('.s3.'));
+              let key;
+              
+              if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+                // Extract key from full S3 URL
+                key = urlParts.slice(bucketIndex + 1).join('/');
+              } else {
+                // Fallback: assume it's just the filename and use correct folder
+                const fileName = urlParts[urlParts.length - 1];
+                key = `industry-collab-pdfs/${fileName}`;
+              }
+              
               const deleteCommand = new DeleteObjectCommand({
                 Bucket: S3_BUCKET_NAME,
-                Key: `industry-collab-pdfs/${key}`
+                Key: key
               });
               await s3Client.send(deleteCommand);
               console.log(`Deleted old MOU PDF: ${key}`);
@@ -1302,10 +1536,23 @@ const updateIndustryCollaborations = async (req, res) => {
               // Delete old image if exists
               if (card.image && typeof card.image === 'string' && card.image.includes('http')) {
                 try {
-                  const oldKey = card.image.split('/').pop();
+                  // Extract the full key from the URL
+                  const urlParts = card.image.split('/');
+                  const bucketIndex = urlParts.findIndex(part => part.includes('.s3.'));
+                  let oldKey;
+                  
+                  if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+                    // Extract key from full S3 URL
+                    oldKey = urlParts.slice(bucketIndex + 1).join('/');
+                  } else {
+                    // Fallback: assume it's just the filename and use correct folder
+                    const fileName = urlParts[urlParts.length - 1];
+                    oldKey = `industry-collab-images/${fileName}`;
+                  }
+                  
                   const deleteCommand = new DeleteObjectCommand({
                     Bucket: S3_BUCKET_NAME,
-                    Key: `industry-collab-images/${oldKey}`
+                    Key: oldKey
                   });
                   await s3Client.send(deleteCommand);
                   console.log(`Deleted old collaboration image: ${oldKey}`);
@@ -1373,10 +1620,23 @@ const updateIndustryCollaborations = async (req, res) => {
               // Delete old PDF if exists
               if (mou.pdfUrl && typeof mou.pdfUrl === 'string' && mou.pdfUrl.includes('http')) {
                 try {
-                  const oldKey = mou.pdfUrl.split('/').pop();
+                  // Extract the full key from the URL
+                  const urlParts = mou.pdfUrl.split('/');
+                  const bucketIndex = urlParts.findIndex(part => part.includes('.s3.'));
+                  let oldKey;
+                  
+                  if (bucketIndex !== -1 && bucketIndex < urlParts.length - 1) {
+                    // Extract key from full S3 URL
+                    oldKey = urlParts.slice(bucketIndex + 1).join('/');
+                  } else {
+                    // Fallback: assume it's just the filename and use correct folder
+                    const fileName = urlParts[urlParts.length - 1];
+                    oldKey = `industry-collab-pdfs/${fileName}`;
+                  }
+                  
                   const deleteCommand = new DeleteObjectCommand({
                     Bucket: S3_BUCKET_NAME,
-                    Key: `industry-collab-pdfs/${oldKey}`
+                    Key: oldKey
                   });
                   await s3Client.send(deleteCommand);
                   console.log(`Deleted old MOU PDF: ${oldKey}`);

@@ -14,7 +14,7 @@ const {
 } = require('../controllers/instituteStudentController');
 
 const {
-  addCourse,
+  createCourse,
   getCourses,
   getActiveCourseCount
 } = require('../controllers/instituteCourseController');
@@ -69,7 +69,7 @@ router.put('/students/:studentId/placement-status', updatePlacementStatus);
 router.get('/students/:studentId/application-history', getStudentApplicationHistory);
 
 // Course routes
-router.post('/courses', addCourse);
+router.post('/courses', createCourse);
 router.get('/courses', getCourses);
 router.get('/active-courses-count', getActiveCourseCount);
 

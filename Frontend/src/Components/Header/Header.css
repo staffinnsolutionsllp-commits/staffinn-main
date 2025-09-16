@@ -170,25 +170,94 @@
 
 .login-form {
  background: white;
- padding: 2rem;
- border-radius: 16px;
- width: 360px;
+ border-radius: 20px;
+ width: 800px;
+ height: 500px;
  position: relative;
  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
  animation: slideUp 0.4s ease;
+ display: flex;
+ overflow: hidden;
+}
+
+.login-form::before {
+ content: '';
+ position: absolute;
+ left: 0;
+ top: 0;
+ width: 50%;
+ height: 100%;
+ background: linear-gradient(135deg, #0077B5 0%, #3a4fd8 100%);
+ border-radius: 20px 70px 70px 20px;
+ z-index: 1;
+}
+
+.login-left-panel {
+ width: 50%;
+ position: relative;
+ z-index: 2;
+ display: flex;
+ flex-direction: column;
+ justify-content: center;
+ align-items: center;
+ color: white;
+ padding: 2rem;
+ text-align: center;
+
+}
+
+.login-left-panel h2 {
+ font-size: 2.5rem;
+ font-weight: 700;
+ margin-bottom: 1rem;
+ color: white;
+}
+
+.login-left-panel p {
+ font-size: 1rem;
+ margin-bottom: 2rem;
+ opacity: 0.9;
+}
+
+.register-btn {
+ background: transparent;
+ border: 2px solid white;
+ color: white;
+ padding: 12px 30px;
+ border-radius: 25px;
+ font-size: 1rem;
+ font-weight: 500;
+ cursor: pointer;
+ transition: all 0.3s ease;
+ text-transform: uppercase;
+ letter-spacing: 1px;
+}
+
+.register-btn:hover {
+ background: white;
+ color: #333;
+}
+
+.login-right-panel {
+ width: 50%;
+ padding: 3rem 2.5rem;
+ display: flex;
+ flex-direction: column;
+ justify-content: center;
+ position: relative;
 }
 
 .modal-close-btn {
  position: absolute;
- right: 16px;
- top: 16px;
+ right: 20px;
+ top: 20px;
  background: none;
  border: none;
- font-size: 20px;
- color: #666;
+ font-size: 24px;
+ color: #999;
  cursor: pointer;
- width: 28px;
- height: 28px;
+ width: 32px;
+ height: 32px;
  border-radius: 50%;
  display: flex;
  align-items: center;
@@ -198,47 +267,76 @@
 
 .modal-close-btn:hover {
  background: #f0f0f0;
- color: #333;
- transform: rotate(90deg);
+ color: #3a4fd8;
 }
 
 .modal-header {
  text-align: center;
- margin-bottom: 1.5rem;
+ margin-bottom: 2rem;
 }
 
 .modal-header h2 {
- color: #1a1a1a;
- font-size: 1.5rem;
- font-weight: 600;
- margin-bottom: 0.3rem;
+ color: #333;
+ font-size: 2.5rem !important;
+ font-weight: 650 !important;
+ margin-bottom: 0;
+ text-align: center !important;
+ display: block;
+ width: 100%;
 }
 
 .modal-subtitle {
  color: #666;
- font-size: 0.85rem;
- margin-top: 0.3rem;
+ font-size: 1rem;
+ margin-top: 0.5rem;
+ text-align: center;
 }
 
 .input-group {
- margin-bottom: 1rem;
+ margin-bottom: 1.5rem;
+ position: relative;
 }
 
 .login-form input {
  width: 100%;
- padding: 10px 14px;
- border: 1.5px solid #e0e0e0;
+ padding: 15px 50px 15px 20px;
+ border: 1px solid #ddd;
  border-radius: 8px;
- font-size: 0.9rem;
+ font-size: 1rem;
  transition: all 0.3s ease;
  background: #f8f9fa;
+ box-sizing: border-box;
 }
 
 .login-form input:focus {
  outline: none;
- border-color: #4863f7;
+ border-color: #667eea;
  background: white;
- box-shadow: 0 0 0 4px rgba(72, 99, 247, 0.1);
+ box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.login-form input::placeholder {
+ color: #999;
+}
+
+.input-icon {
+ position: absolute;
+ right: 15px;
+ top: 50%;
+ transform: translateY(-50%);
+ font-size: 18px;
+ color: #999;
+ pointer-events: none;
+}
+
+.eye-icon {
+ cursor: pointer;
+ pointer-events: auto;
+ user-select: none;
+}
+
+.eye-icon:hover {
+ color: #667eea;
 }
 
 /* Login Error Toast */
@@ -295,24 +393,23 @@
 
 .login-submit-btn {
  width: 100%;
- padding: 12px;
- background: #4863f7;
+ padding: 15px;
+ background: linear-gradient(135deg, #667eea 0%, #3a4fd8 100%);
  color: white;
  border: none;
  border-radius: 8px;
  font-weight: 600;
- font-size: 0.95rem;
+ font-size: 1rem;
  cursor: pointer;
  transition: all 0.3s ease;
- margin-top: 0.8rem;
+ margin-top: 1rem;
  text-transform: uppercase;
  letter-spacing: 0.5px;
 }
 
 .login-submit-btn:hover {
- background: #3a4fd8;
  transform: translateY(-2px);
- box-shadow: 0 4px 12px rgba(72, 99, 247, 0.2);
+ box-shadow: 0 8px 25px white;
 }
 
 .divider {
@@ -383,20 +480,7 @@
 }
 
 .register-text {
- text-align: center;
- margin-top: 1.2rem;
- color: #666;
- font-size: 0.85rem;
-}
-
-.register-text a {
- color: #4863f7;
- text-decoration: none;
- font-weight: 500;
-}
-
-.register-text a:hover {
- text-decoration: underline;
+ display: none;
 }
 
 /* Profile Section */

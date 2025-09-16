@@ -37,6 +37,7 @@ const createUser = async (userData) => {
       email: userData.email.toLowerCase(),
       password: hashedPassword,
       role: userData.role.toLowerCase(),
+      isVisible: userData.isVisible !== false, // Default to true
       createdAt: new Date().toISOString()
     };
     
@@ -55,7 +56,7 @@ const createUser = async (userData) => {
     }
     
     // Remove any extra fields that might have been passed
-    const allowedFields = ['userId', 'email', 'password', 'role', 'createdAt'];
+    const allowedFields = ['userId', 'email', 'password', 'role', 'isVisible', 'createdAt'];
     if (user.role === 'staff') {
       allowedFields.push('fullName', 'phoneNumber');
     } else if (user.role === 'recruiter') {
@@ -107,7 +108,9 @@ const findUserByEmail = async (email) => {
         email: user.email,
         password: user.password, // Keep for authentication
         role: user.role,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        isBlocked: user.isBlocked || false,
+        isVisible: user.isVisible !== false // Default to true if not set
       };
       
       // Add role-specific fields
@@ -172,7 +175,8 @@ const getUserByRegistrationNumber = async (registrationNumber) => {
  */
 const updateUser = async (userId, updateData) => {
   try {
-    const user = await findUserById(userId);
+    // Get full user object from database (including password)
+    const user = await dynamoService.getItem(USERS_TABLE, { userId });
     if (!user) {
       return null;
     }
@@ -267,7 +271,9 @@ const findUserById = async (userId) => {
       userId: user.userId,
       email: user.email,
       role: user.role,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      isBlocked: user.isBlocked || false,
+      isVisible: user.isVisible !== false // Default to true if not set
     };
     
     // Add role-specific fields
@@ -318,7 +324,9 @@ const authenticateUser = async (email, password) => {
       userId: user.userId,
       email: user.email,
       role: user.role,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      isBlocked: user.isBlocked || false,
+      isVisible: user.isVisible !== false // Default to true if not set
     };
     
     // Add role-specific fields

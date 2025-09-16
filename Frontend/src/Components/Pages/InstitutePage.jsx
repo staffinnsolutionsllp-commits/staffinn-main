@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import apiService from '../../services/api';
 import './InstitutePage.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaSearch, FaGraduationCap, FaBriefcase, FaHandshake, FaChalkboardTeacher, FaCalendarAlt, FaUsers, FaCheckCircle } from 'react-icons/fa';
@@ -8,6 +8,7 @@ import InstitutepageImage from '../../assets/Institutepage.jpg';
 
 const InstitutePage = () => {
   const { id } = useParams(); // Get the institute ID from URL params
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('courses');
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -30,18 +31,23 @@ const InstitutePage = () => {
     rating: 5,
     comment: ''
   });
+  const [courses, setCourses] = useState([]);
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [enrollmentStatuses, setEnrollmentStatuses] = useState({});
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [quizResults, setQuizResults] = useState(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [showEnrollmentSuccess, setShowEnrollmentSuccess] = useState(false);
 
 
 
-  // Sample data - would come from API in real implementation
-  const courses = [
-    { id: 1, name: 'Full Stack Web Development', duration: '6 months', fees: '₹45,000', mode: 'Online/Offline', status: 'Enrollment Open', category: 'IT', certification: 'Industry-Specific' },
-    { id: 2, name: 'Data Science & Machine Learning', duration: '8 months', fees: '₹65,000', mode: 'Online', status: 'Enrollment Open', category: 'IT', certification: 'Industry-Specific' },
-    { id: 3, name: 'Digital Marketing', duration: '3 months', fees: '₹25,000', mode: 'Online', status: 'Enrollment Open', category: 'Management', certification: 'Government-Recognized' },
-    { id: 4, name: 'Mechanical CAD Design', duration: '4 months', fees: '₹30,000', mode: 'Offline', status: 'Enrollment Open', category: 'Engineering', certification: 'Government-Recognized' },
-    { id: 5, name: 'Industrial Automation', duration: '6 months', fees: '₹40,000', mode: 'Offline', status: 'Enrollment Closing Soon', category: 'Engineering', certification: 'Industry-Specific' },
-    { id: 6, name: 'Advanced Excel & Business Analytics', duration: '2 months', fees: '₹15,000', mode: 'Online/Offline', status: 'Enrollment Open', category: 'Management', certification: 'Industry-Specific' },
-  ];
+
 
   const placements = {
     statistics: {
@@ -93,16 +99,29 @@ const InstitutePage = () => {
       fetchInstituteDashboardStats();
       fetchIndustryCollabData();
       fetchEventNewsData();
+      fetchCourses();
     }
   }, [id]);
   
-  // Add a periodic refresh for placement data to catch updates
+  // Add a periodic refresh for placement data and courses to catch updates
   useEffect(() => {
     if (id && activeTab === 'placements') {
       const interval = setInterval(() => {
         console.log('Refreshing placement data...');
         fetchPlacementData();
       }, 30000); // Refresh every 30 seconds when on placements tab
+      
+      return () => clearInterval(interval);
+    }
+  }, [id, activeTab]);
+  
+  // Refresh courses when on courses tab
+  useEffect(() => {
+    if (id && activeTab === 'courses') {
+      const interval = setInterval(() => {
+        console.log('Refreshing courses...');
+        fetchCourses();
+      }, 30000); // Refresh every 30 seconds when on courses tab
       
       return () => clearInterval(interval);
     }
@@ -220,12 +239,173 @@ const InstitutePage = () => {
     }
   };
 
+  const fetchCourses = async () => {
+    try {
+      console.log('Fetching courses for institute:', id);
+      const response = await apiService.getPublicCourses(id);
+      if (response.success && response.data) {
+        console.log('Courses fetched successfully:', response.data);
+        console.log('Course data structure check:');
+        response.data.forEach((course, index) => {
+          console.log(`Course ${index}:`, {
+            coursesId: course.coursesId,
+            instituteCourseID: course.instituteCourseID,
+            name: course.courseName || course.name,
+            hasCoursesId: !!course.coursesId,
+            hasInstituteCourseID: !!course.instituteCourseID
+          });
+        });
+        setCourses(response.data);
+        
+        // Check enrollment status for each course if user is logged in
+        const token = localStorage.getItem('token');
+        if (token) {
+          const statuses = {};
+          for (const course of response.data) {
+            const courseId = course.coursesId || course.instituteCourseID;
+            if (courseId) {
+              const statusResponse = await apiService.checkEnrollmentStatus(courseId);
+              if (statusResponse.success) {
+                statuses[courseId] = {
+                  enrolled: statusResponse.enrolled,
+                  hasStarted: statusResponse.hasStarted,
+                  progressPercentage: statusResponse.progressPercentage
+                };
+              }
+            }
+          }
+          setEnrollmentStatuses(statuses);
+        }
+      } else {
+        console.log('No courses found or API error:', response);
+        setCourses([]);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      setCourses([]);
+    }
+  };
+
+  const handleEnrollInCourse = async (courseId) => {
+    try {
+      console.log('🎯 Attempting to enroll in course:', courseId);
+      console.log('🎯 Course ID type:', typeof courseId);
+      console.log('🎯 Course ID value:', courseId);
+      
+      if (!courseId) {
+        console.error('❌ Course ID is undefined or null');
+        alert('Course ID is missing. Please try again.');
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please login to enroll in courses');
+        return;
+      }
+
+      console.log('🚀 Calling enrollInCourse API with courseId:', courseId);
+      const response = await apiService.enrollInCourse(courseId);
+      console.log('📊 Enrollment response:', response);
+      
+      if (response.success) {
+        console.log('✅ Enrollment successful');
+        // Show success animation
+        setShowEnrollmentSuccess(true);
+        
+        // Update enrollment status
+        setEnrollmentStatuses(prev => ({
+          ...prev,
+          [courseId]: {
+            enrolled: true,
+            hasStarted: false,
+            progressPercentage: 0
+          }
+        }));
+        
+        // Hide success message and redirect after 2 seconds
+        setTimeout(() => {
+          setShowEnrollmentSuccess(false);
+          setShowCourseModal(false);
+          navigate('/dashboard/staff');
+        }, 2000);
+      } else {
+        console.error('❌ Enrollment failed:', response.message);
+        alert(response.message || 'Failed to enroll in course');
+      }
+    } catch (error) {
+      console.error('❌ Error enrolling in course:', error);
+      alert('Failed to enroll in course: ' + error.message);
+    }
+  };
+
+  const handleAccessCourse = async (courseId) => {
+    try {
+      // Redirect to course learning page
+      navigate(`/course/${courseId}`);
+    } catch (error) {
+      console.error('Error navigating to course:', error);
+    }
+  };
+
+  const handleTakeQuiz = async (moduleId) => {
+    try {
+      const quizResponse = await apiService.getModuleQuiz(moduleId);
+      if (quizResponse.success && quizResponse.data) {
+        setSelectedQuiz(quizResponse.data);
+        setQuizAnswers({});
+        setQuizResults(null);
+        setShowQuizModal(true);
+      } else {
+        alert('No quiz available for this module');
+      }
+    } catch (error) {
+      console.error('Error loading quiz:', error);
+      alert('Failed to load quiz');
+    }
+  };
+
+  const handleQuizSubmit = async () => {
+    try {
+      const response = await apiService.submitQuiz(selectedQuiz.quizId, quizAnswers);
+      if (response.success) {
+        setQuizResults(response.data);
+        alert(`Quiz completed! Score: ${response.data.score}% (${response.data.correctAnswers}/${response.data.totalQuestions})`);
+      } else {
+        alert(response.message || 'Failed to submit quiz');
+      }
+    } catch (error) {
+      console.error('Error submitting quiz:', error);
+      alert('Failed to submit quiz');
+    }
+  };
+
+  const getEnrollmentButtonText = (courseId) => {
+    const status = enrollmentStatuses[courseId];
+    if (!status || !status.enrolled) {
+      return 'Enroll Now';
+    }
+    if (status.hasStarted) {
+      return 'Continue Learning';
+    }
+    return 'Start Learning';
+  };
+
+  const getEnrollmentButtonAction = (courseId) => {
+    const status = enrollmentStatuses[courseId];
+    if (!status || !status.enrolled) {
+      return () => handleEnrollInCourse(courseId);
+    }
+    return () => handleAccessCourse(courseId);
+  };
+
   // Filter courses based on search and filter criteria
   const filteredCourses = courses.filter(course => {
+    const courseName = course.courseName || course.name || '';
     return (
-      course.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      courseName.toLowerCase().includes(searchTerm.toLowerCase()) &&
       (filters.category === 'all' || course.category === filters.category) &&
-      (filters.duration === 'all' || course.duration.startsWith(filters.duration)) &&
+      (filters.duration === 'all' || (course.duration && course.duration.startsWith(filters.duration))) &&
       (filters.certification === 'all' || course.certification === filters.certification)
     );
   });
@@ -469,37 +649,82 @@ const InstitutePage = () => {
             </div>
 
             <div className="courses-grid">
-              {filteredCourses.map(course => (
-                <div key={course.id} className="course-card">
-                  <div className="course-header">
-                    <span className="course-status">{course.status}</span>
-                    <h3 className="course-name">{course.name}</h3>
-                  </div>
-                  <div className="course-details">
-                    <div className="course-detail">
-                      <span className="detail-label">Duration:</span>
-                      <span className="detail-value">{course.duration}</span>
+              {courses.length > 0 ? (
+                filteredCourses.map(course => {
+                  const courseId = course.coursesId || course.instituteCourseID;
+                  const courseName = course.courseName || course.name;
+                  return (
+                    <div key={courseId} className="course-card">
+                      {course.thumbnailUrl && (
+                        <div className="course-thumbnail">
+                          <img src={course.thumbnailUrl} alt={courseName} />
+                        </div>
+                      )}
+                      <div className="course-header">
+                        <span className="course-status">Enrollment Open</span>
+                        <h3 className="course-name">{courseName}</h3>
+                      </div>
+                      <div className="course-details">
+                        <div className="course-detail">
+                          <span className="detail-label">Duration:</span>
+                          <span className="detail-value">{course.duration}</span>
+                        </div>
+                        <div className="course-detail">
+                          <span className="detail-label">Fees:</span>
+                          <span className="detail-value">₹{course.fees}</span>
+                        </div>
+                        <div className="course-detail">
+                          <span className="detail-label">Mode:</span>
+                          <span className="detail-value">{course.mode}</span>
+                        </div>
+                        <div className="course-detail">
+                          <span className="detail-label">Category:</span>
+                          <span className="detail-value">{course.category}</span>
+                        </div>
+                        <div className="course-detail">
+                          <span className="detail-label">Certification:</span>
+                          <span className="detail-value">{course.certification}</span>
+                        </div>
+                        <div className="course-detail">
+                          <span className="detail-label">Instructor:</span>
+                          <span className="detail-value">{course.instructor}</span>
+                        </div>
+                      </div>
+                      <div className="course-enrollment-section">
+                        {enrollmentStatuses[courseId]?.enrolled && (
+                          <div className="enrollment-status">
+                            <span className="enrolled-badge">✓ Enrolled</span>
+                            <div className="progress-indicator">
+                              <div className="progress-bar">
+                                <div 
+                                  className="progress-fill" 
+                                  style={{ width: `${enrollmentStatuses[courseId]?.progressPercentage || 0}%` }}
+                                ></div>
+                              </div>
+                              <span className="progress-text">
+                                {enrollmentStatuses[courseId]?.progressPercentage || 0}% Complete
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <button 
+                          className="view-details-button"
+                          onClick={() => {
+                            // Navigate to course details page instead of opening modal
+                            navigate(`/course/${courseId}?preview=true&institute=${id}`);
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
-                    <div className="course-detail">
-                      <span className="detail-label">Fees:</span>
-                      <span className="detail-value">{course.fees}</span>
-                    </div>
-                    <div className="course-detail">
-                      <span className="detail-label">Mode:</span>
-                      <span className="detail-value">{course.mode}</span>
-                    </div>
-                    <div className="course-detail">
-                      <span className="detail-label">Category:</span>
-                      <span className="detail-value">{course.category}</span>
-                    </div>
-                    <div className="course-detail">
-                      <span className="detail-label">Certification:</span>
-                      <span className="detail-value">{course.certification}</span>
-                    </div>
-                  </div>
-                  <button className="enroll-button">Enroll Now</button>
+                  );
+                })
+              ) : (
+                <div className="no-courses">
+                  <p>No courses available at the moment. Please check back later.</p>
                 </div>
-              ))}
+              )}
             </div>
           </section>
         )}
@@ -1042,6 +1267,262 @@ const InstitutePage = () => {
         </div>
       )}
 
+      {/* Course Detail Modal */}
+      {showCourseModal && selectedCourse && (
+        <div className="modal-overlay" onClick={() => setShowCourseModal(false)}>
+          <div className="course-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="course-detail-header">
+              <button className="modal-close" onClick={() => setShowCourseModal(false)}>×</button>
+            </div>
+            
+            <div className="course-detail-content">
+              {/* Left Side - Course Details */}
+              <div className="course-detail-left">
+                <div className="course-overview-section">
+                  <h2>About This Course</h2>
+                  <p>{selectedCourse.description}</p>
+                  
+                  <div className="course-stats">
+                    <div className="stat-item">
+                      <span className="stat-label">Duration:</span>
+                      <span className="stat-value">{selectedCourse.duration}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Instructor:</span>
+                      <span className="stat-value">{selectedCourse.instructor}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Mode:</span>
+                      <span className="stat-value">{selectedCourse.mode}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Category:</span>
+                      <span className="stat-value">{selectedCourse.category}</span>
+                    </div>
+                  </div>
+                  
+                  {selectedCourse.prerequisites && (
+                    <div className="course-prerequisites">
+                      <h3>Prerequisites</h3>
+                      <p>{selectedCourse.prerequisites}</p>
+                    </div>
+                  )}
+                  
+                  {selectedCourse.syllabus && (
+                    <div className="course-syllabus">
+                      <h3>Syllabus Overview</h3>
+                      <p>{selectedCourse.syllabus}</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Course Modules Section */}
+                <div className="course-modules-section">
+                  <h3>Course Content</h3>
+                  {selectedCourse.modules && selectedCourse.modules.map((module, index) => (
+                    <div key={module.moduleId} className="module-detail-item">
+                      <h4>Module {index + 1}: {module.moduleTitle}</h4>
+                      <p>{module.description}</p>
+                      
+                      {module.content && module.content.length > 0 && (
+                        <div className="module-content-list">
+                          <h5>Content:</h5>
+                          <ul>
+                            {module.content.map((content, contentIndex) => (
+                              <li key={content.contentId}>
+                                <span className="content-type-badge">{content.contentType}</span>
+                                {content.contentTitle}
+                                <span className="content-duration">({content.durationMinutes} min)</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {module.quiz && (
+                        <div className="module-quiz-info">
+                          <h5>Quiz: {module.quiz.title}</h5>
+                          <p>{module.quiz.description}</p>
+                          <div className="quiz-meta">
+                            <span>Questions: {module.quiz.questions?.length || 0}</span>
+                            <span>Passing Score: {module.quiz.passingScore}%</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {module.assignments && module.assignments.length > 0 && (
+                        <div className="module-assignments-info">
+                          <h5>Assignments:</h5>
+                          <ul>
+                            {module.assignments.map((assignment, idx) => (
+                              <li key={idx}>{assignment.title}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Right Side - Course Card */}
+              <div className="course-detail-right">
+                <div className="course-detail-card">
+                  {selectedCourse.thumbnailUrl && (
+                    <div className="course-card-thumbnail">
+                      <img src={selectedCourse.thumbnailUrl} alt={selectedCourse.name} />
+                    </div>
+                  )}
+                  
+                  <div className="course-card-content">
+                    <h3>{selectedCourse.name}</h3>
+                    <div className="course-price">
+                      <span className="price">₹{selectedCourse.fees}</span>
+                    </div>
+                    
+                    <div className="course-quick-info">
+                      <div className="info-row">
+                        <span>Duration: {selectedCourse.duration}</span>
+                      </div>
+                      <div className="info-row">
+                        <span>Mode: {selectedCourse.mode}</span>
+                      </div>
+                      <div className="info-row">
+                        <span>Instructor: {selectedCourse.instructor}</span>
+                      </div>
+                    </div>
+                    
+                    {enrollmentStatuses[selectedCourse.coursesId || selectedCourse.instituteCourseID]?.enrolled ? (
+                      <button className="enrolled-button" disabled>
+                        Already Enrolled
+                      </button>
+                    ) : (
+                      <button 
+                        className="enroll-now-button"
+                        onClick={() => handleEnrollInCourse(selectedCourse.coursesId || selectedCourse.instituteCourseID)}
+                      >
+                        Enroll Now
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Enrollment Success Modal */}
+      {showEnrollmentSuccess && (
+        <div className="modal-overlay">
+          <div className="success-modal">
+            <div className="success-content">
+              <div className="success-icon">
+                <div className="checkmark">
+                  <div className="checkmark-circle"></div>
+                  <div className="checkmark-stem"></div>
+                  <div className="checkmark-kick"></div>
+                </div>
+              </div>
+              <h3>Successfully Enrolled!</h3>
+              <p>Redirecting to your dashboard...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quiz Modal */}
+      {showQuizModal && selectedQuiz && (
+        <div className="modal-overlay" onClick={() => setShowQuizModal(false)}>
+          <div className="quiz-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="quiz-modal-header">
+              <h2>{selectedQuiz.title}</h2>
+              <button className="modal-close" onClick={() => setShowQuizModal(false)}>×</button>
+            </div>
+            
+            <div className="quiz-modal-content">
+              {!quizResults ? (
+                <>
+                  <div className="quiz-info">
+                    <p>{selectedQuiz.description}</p>
+                    <div className="quiz-meta">
+                      <span>Questions: {selectedQuiz.questions?.length}</span>
+                      <span>Passing Score: {selectedQuiz.passingScore}%</span>
+                      <span>Time Limit: {selectedQuiz.timeLimit} minutes</span>
+                    </div>
+                  </div>
+                  
+                  <div className="quiz-questions">
+                    {selectedQuiz.questions?.map((question, index) => (
+                      <div key={question.questionId} className="question-item">
+                        <h4>Question {index + 1}</h4>
+                        <p>{question.question}</p>
+                        <div className="question-options">
+                          {question.options?.map((option, optionIndex) => (
+                            <label key={optionIndex} className="option-label">
+                              <input
+                                type="radio"
+                                name={question.questionId}
+                                value={option}
+                                onChange={(e) => setQuizAnswers(prev => ({
+                                  ...prev,
+                                  [question.questionId]: e.target.value
+                                }))}
+                              />
+                              <span>{option}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="quiz-actions">
+                    <button 
+                      className="submit-quiz-btn"
+                      onClick={handleQuizSubmit}
+                      disabled={Object.keys(quizAnswers).length !== selectedQuiz.questions?.length}
+                    >
+                      Submit Quiz
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="quiz-results">
+                  <h3>Quiz Results</h3>
+                  <div className="results-summary">
+                    <div className="score-display">
+                      <span className="score">{quizResults.score}%</span>
+                      <span className="status">{quizResults.passed ? 'PASSED' : 'FAILED'}</span>
+                    </div>
+                    <p>You answered {quizResults.correctAnswers} out of {quizResults.totalQuestions} questions correctly.</p>
+                  </div>
+                  
+                  <div className="detailed-results">
+                    <h4>Question Review</h4>
+                    {quizResults.detailedResults?.map((result, index) => (
+                      <div key={index} className={`result-item ${result.isCorrect ? 'correct' : 'incorrect'}`}>
+                        <p><strong>Q{index + 1}:</strong> {result.question}</p>
+                        <p><strong>Your Answer:</strong> {result.userAnswer}</p>
+                        <p><strong>Correct Answer:</strong> {result.correctAnswer}</p>
+                        <span className="result-status">{result.isCorrect ? '✓' : '✗'}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <button 
+                    className="close-results-btn"
+                    onClick={() => setShowQuizModal(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contact & Inquiry Section */}
       <section className="contact-section">
         <div className="section-header">
@@ -1125,6 +1606,89 @@ const InstitutePage = () => {
         </div>
       </section>
 
+      {/* Video Modal */}
+      {showVideoModal && selectedVideo && (
+        <div className="modal-overlay" onClick={() => setShowVideoModal(false)}>
+          <div className="video-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="video-modal-header">
+              <h3>{selectedVideo.contentTitle}</h3>
+              <button className="modal-close" onClick={() => setShowVideoModal(false)}>×</button>
+            </div>
+            <div className="video-container">
+              <video 
+                controls 
+                width="100%" 
+                height="400px"
+                onEnded={() => {
+                  if (!selectedVideo.progress?.completedAt) {
+                    markContentComplete(selectedVideo.contentId);
+                  }
+                }}
+              >
+                <source src={selectedVideo.contentUrl} type="video/mp4" />
+                <source src={selectedVideo.contentUrl} type="video/webm" />
+                <source src={selectedVideo.contentUrl} type="video/ogg" />
+                Your browser does not support the video tag.
+              </video>
+            </div>
+            <div className="video-actions">
+              <button 
+                className="mark-complete-btn"
+                onClick={() => {
+                  markContentComplete(selectedVideo.contentId);
+                  setShowVideoModal(false);
+                }}
+              >
+                Mark as Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assignment Modal */}
+      {showAssignmentModal && selectedAssignment && (
+        <div className="modal-overlay" onClick={() => setShowAssignmentModal(false)}>
+          <div className="assignment-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="assignment-modal-header">
+              <h3>{selectedAssignment.title}</h3>
+              <button className="modal-close" onClick={() => setShowAssignmentModal(false)}>×</button>
+            </div>
+            <div className="assignment-content">
+              <p>{selectedAssignment.description}</p>
+              {selectedAssignment.fileUrl && (
+                <div className="assignment-file">
+                  <a 
+                    href={selectedAssignment.fileUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="assignment-download"
+                  >
+                    📄 Download Assignment PDF
+                  </a>
+                </div>
+              )}
+              <div className="assignment-submission">
+                <h4>Submit Your Work</h4>
+                <textarea 
+                  placeholder="Write your answer or paste your solution here..."
+                  rows="6"
+                  className="submission-text"
+                ></textarea>
+                <input 
+                  type="file" 
+                  accept=".pdf,.doc,.docx,.txt"
+                  className="submission-file"
+                />
+                <button className="submit-assignment-btn">
+                  Submit Assignment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="institute-footer">
         <div className="footer-container">
@@ -1187,6 +1751,20 @@ const InstitutePage = () => {
       </footer>
     </div>
   );
+};
+
+const markContentComplete = async (contentId) => {
+  try {
+    const response = await apiService.updateProgress(contentId, {
+      progressPercentage: 100,
+      completed: true
+    });
+    if (response.success) {
+      console.log('Content marked as complete');
+    }
+  } catch (error) {
+    console.error('Error marking content complete:', error);
+  }
 };
 
 export default InstitutePage;

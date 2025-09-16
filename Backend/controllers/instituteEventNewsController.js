@@ -158,6 +158,12 @@ const addEventNews = async (req, res) => {
     // Save to database
     const createdEventNews = await createEventNews(instituteId, eventNewsData);
 
+    // Emit real-time update to News Admin Panel
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('instituteNewsCreated', createdEventNews);
+    }
+
     res.status(201).json({
       success: true,
       message: `${type} added successfully`,
@@ -328,6 +334,12 @@ const updateEventNewsItem = async (req, res) => {
     // Update in database
     const updatedEventNews = await updateEventNews(instituteId, eventNewsId, updateData);
 
+    // Emit real-time update to News Admin Panel
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('instituteNewsUpdated', updatedEventNews);
+    }
+
     res.json({
       success: true,
       message: 'Event/News updated successfully',
@@ -369,6 +381,12 @@ const deleteEventNewsItem = async (req, res) => {
 
     // Delete from database
     await deleteEventNews(instituteId, eventNewsId);
+
+    // Emit real-time update to News Admin Panel
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('instituteNewsDeleted', { eventNewsId });
+    }
 
     res.json({
       success: true,
@@ -421,6 +439,36 @@ const getPublicEventNews = async (req, res) => {
   }
 };
 
+/**
+ * Get all institute news (for admin panel)
+ */
+const getAllInstituteNews = async (req, res) => {
+  try {
+    console.log('Getting all institute news for admin panel');
+    
+    const { getAllPublic } = require('../models/instituteEventNewsModel');
+    const result = await getAllPublic();
+
+    if (result.success) {
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message
+      });
+    }
+  } catch (error) {
+    console.error('Error getting all institute news:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get institute news'
+    });
+  }
+};
+
 module.exports = {
   upload,
   addEventNews,
@@ -429,5 +477,6 @@ module.exports = {
   getEventNewsItem,
   updateEventNewsItem,
   deleteEventNewsItem,
-  getPublicEventNews
+  getPublicEventNews,
+  getAllInstituteNews
 };

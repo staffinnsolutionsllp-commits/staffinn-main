@@ -80,10 +80,10 @@ const registerStaff = async (req, res) => {
     
     // Prepare user data for creation
     const userData = {
-      name: value.fullName,
+      fullName: value.fullName,
       email: value.email,
       password: value.password,
-      phone: value.phoneNumber,
+      phoneNumber: value.phoneNumber,
       role: 'staff'
     };
     
@@ -94,15 +94,16 @@ const registerStaff = async (req, res) => {
     // Create initial staff profile
     const staffProfileData = {
       userId: user.userId,
-      fullName: user.name,
-      email: user.email,
-      phone: user.phone,
+      fullName: value.fullName,
+      email: value.email,
+      phone: value.phoneNumber,
       isActiveStaff: false, // Default to seeker mode
-      profileVisibility: 'private',
+      profileVisibility: 'public', // Keep profile visible by default
       profilePhoto: null,
       resumeUrl: null,
       skills: '',
       address: '',
+      pincode: '',
       availability: 'available',
       visibility: 'public',
       experiences: [],
@@ -137,10 +138,10 @@ const registerStaff = async (req, res) => {
       data: {
         user: {
           userId: user.userId,
-          name: user.name,
+          fullName: user.fullName,
           email: user.email,
           role: user.role,
-          phone: user.phone
+          phoneNumber: user.phoneNumber
         },
         ...tokens
       }
@@ -274,15 +275,59 @@ const toggleProfileMode = async (req, res) => {
     
     console.log('Toggling profile mode for user:', userId, 'to active:', isActiveStaff);
     
-    const updateData = {
-      isActiveStaff: Boolean(isActiveStaff),
-      profileVisibility: isActiveStaff ? 'public' : 'private',
-      updatedAt: new Date().toISOString()
-    };
+    // Check if staff profile exists, create if not
+    let staffProfile = await staffModel.getStaffProfile(userId);
+    if (!staffProfile) {
+      console.log('Staff profile not found, creating one...');
+      const userData = await userModel.findUserById(userId);
+      if (!userData) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+      
+      const staffProfileData = {
+        userId: userId,
+        fullName: userData.fullName,
+        email: userData.email,
+        phone: userData.phoneNumber,
+        isActiveStaff: Boolean(isActiveStaff),
+        profileVisibility: 'public', // Default to public for new profiles
+        profilePhoto: null,
+        resumeUrl: null,
+        skills: '',
+        address: '',
+        pincode: '',
+        availability: 'available',
+        visibility: 'public',
+        experiences: [],
+        certificates: [],
+        education: {
+          tenth: { percentage: '', year: '', school: '' },
+          twelfth: { percentage: '', year: '', school: '' },
+          graduation: { degree: '', college: '', percentage: '', startDate: '', endDate: '', pursuing: false }
+        }
+      };
+      
+      staffProfile = await staffModel.createStaffProfile(staffProfileData);
+    } else {
+      const updateData = {
+        isActiveStaff: Boolean(isActiveStaff),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Only set visibility to public if becoming active staff
+      // Keep existing visibility when becoming seeker (don't force to private)
+      if (isActiveStaff) {
+        updateData.profileVisibility = 'public';
+      }
+      
+      console.log('Updating profile with isActiveStaff:', updateData.isActiveStaff);
+      staffProfile = await staffModel.updateStaffProfile(userId, updateData);
+    }
     
-    console.log('Updating profile with isActiveStaff:', updateData.isActiveStaff);
-    
-    const updatedProfile = await staffModel.updateStaffProfile(userId, updateData);
+    const updatedProfile = staffProfile;
     
     if (!updatedProfile) {
       return res.status(404).json({

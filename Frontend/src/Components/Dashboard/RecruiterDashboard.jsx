@@ -11,14 +11,22 @@ import './NewsCardStyles.css';
 import apiService from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
+import HiddenUser from '../HiddenUser/HiddenUser';
+import './HiddenNotification.css';
 
 const RecruiterDashboard = () => {
     const { currentUser } = useContext(AuthContext);
-    const { notifyProfilePhotoUpdated } = useProfilePhotoSync();
+    // Profile photo state
+    const [profilePhoto, setProfilePhoto] = useState(null);
+    const { updateAllImages, notifyProfilePhotoUpdated } = useProfilePhotoSync(profilePhoto, 'recruiter');
     const [activeTab, setActiveTab] = useState('overview');
     const [showJobForm, setShowJobForm] = useState(false);
     const [editingJob, setEditingJob] = useState(null);
     const [loading, setLoading] = useState(false);
+    
+    // Hidden user state
+    const [isHidden, setIsHidden] = useState(false);
+    const [showHiddenModal, setShowHiddenModal] = useState(false);
 
     // Job form state
     const [jobForm, setJobForm] = useState({
@@ -161,7 +169,6 @@ const RecruiterDashboard = () => {
     
     // Profile photo upload state
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
-    const [profilePhoto, setProfilePhoto] = useState(null);
     const [tempProfilePhoto, setTempProfilePhoto] = useState(null);
     
     // Office images upload state
@@ -219,8 +226,65 @@ const RecruiterDashboard = () => {
             loadAppliedInstitutes();
             loadHiringHistory();
             loadRecruiterNews();
+            setupSocketConnection();
         }
     }, [currentUser]);
+    
+    // Setup socket connection for real-time updates
+    const setupSocketConnection = () => {
+        try {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            if (!token) return;
+            
+            // Use Socket.io client (assuming it's available globally or imported)
+            const socket = window.io ? window.io('http://localhost:4001', {
+                auth: { token }
+            }) : null;
+            
+            if (!socket) {
+                console.warn('Socket.io client not available, using fallback');
+                return;
+            }
+            
+            socket.on('connect', () => {
+                console.log('Socket connected for visibility updates');
+                // Check current visibility status
+                socket.emit('check_visibility');
+            });
+            
+            socket.on('visibility_update', (visibilityData) => {
+                handleVisibilityUpdate(visibilityData);
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('Socket disconnected');
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('Socket connection error:', error);
+            });
+            
+            return () => {
+                if (socket) {
+                    socket.disconnect();
+                }
+            };
+        } catch (error) {
+            console.error('Error setting up socket connection:', error);
+        }
+    };
+    
+    // Handle visibility update from socket
+    const handleVisibilityUpdate = (visibilityData) => {
+        console.log('Received visibility update:', visibilityData);
+        setIsHidden(visibilityData.isHidden);
+        if (visibilityData.isHidden) {
+            setShowHiddenModal(true);
+        } else {
+            // User is no longer hidden, hide the modal and notification
+            setShowHiddenModal(false);
+        }
+    };
     
     // Reload news when switching to news tab
     useEffect(() => {
@@ -347,6 +411,9 @@ const RecruiterDashboard = () => {
             if (response.success && response.data) {
                 const profile = response.data;
                 
+                // Check if recruiter is hidden
+                setIsHidden(!profile.isVisible);
+                
                 // Default values for dashboard editing
                 const defaultPerks = [
                     { text: 'Health insurance' },
@@ -375,6 +442,7 @@ const RecruiterDashboard = () => {
                     designation: profile.designation || '',
                     industry: profile.industry || '',
                     location: profile.location || '',
+                    pincode: profile.pincode || '',
                     experience: profile.experience || '',
                     website: profile.website || '',
                     phone: profile.phone || '',
@@ -384,14 +452,16 @@ const RecruiterDashboard = () => {
                     hiringSteps: (profile.hiringSteps && profile.hiringSteps.length > 0) ? profile.hiringSteps : defaultHiringSteps,
                     interviewQuestions: (profile.interviewQuestions && profile.interviewQuestions.length > 0) ? profile.interviewQuestions : defaultQuestions,
                     officeImages: (profile.officeImages || []).map(img => 
-                        img.startsWith('http') ? img : `http://localhost:5000${img}`
+                        img.startsWith('http') ? img : `http://localhost:4001${img}`
                     )
                 });
                 // Set profile photo with proper URL handling
                 if (profile.profilePhoto) {
-                    const fullPhotoUrl = profile.profilePhoto.startsWith('http') ? profile.profilePhoto : `http://localhost:5000${profile.profilePhoto}`;
+                    const fullPhotoUrl = profile.profilePhoto.startsWith('http') ? profile.profilePhoto : `http://localhost:4001${profile.profilePhoto}`;
                     setProfilePhoto(fullPhotoUrl);
-                    console.log('Loaded profile photo:', fullPhotoUrl);
+                    // Update all images immediately when profile loads
+                    updateAllImages(fullPhotoUrl);
+                    console.log('Loaded and synced profile photo:', fullPhotoUrl);
                 } else {
                     setProfilePhoto(null);
                     console.log('No profile photo found');
@@ -409,6 +479,17 @@ const RecruiterDashboard = () => {
         const file = event.target.files[0];
         if (!file) return;
         
+        // Validate file type and size
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            alert('File size must be less than 5MB.');
+            return;
+        }
+        
         setUploadingPhoto(true);
         
         try {
@@ -417,11 +498,12 @@ const RecruiterDashboard = () => {
             if (response.success && response.data && response.data.profilePhoto) {
                 const newProfilePhoto = response.data.profilePhoto;
                 // Convert relative path to full URL if needed
-                const fullPhotoUrl = newProfilePhoto.startsWith('http') ? newProfilePhoto : `http://localhost:5000${newProfilePhoto}`;
+                const fullPhotoUrl = newProfilePhoto.startsWith('http') ? newProfilePhoto : `http://localhost:4001${newProfilePhoto}`;
                 
                 // Store photo temporarily - don't update everywhere yet
                 setTempProfilePhoto(fullPhotoUrl);
                 console.log('Temp profile photo set:', fullPhotoUrl);
+                console.log('Photo upload response data:', response.data);
                 alert('Profile photo uploaded! Click "Update Profile & Go Live" to apply changes.');
             } else {
                 console.error('Upload response:', response);
@@ -451,7 +533,7 @@ const RecruiterDashboard = () => {
             if (response.success && response.data && response.data.profilePhoto) {
                 const newImageUrl = response.data.profilePhoto;
                 // Convert relative path to full URL if needed
-                const fullImageUrl = newImageUrl.startsWith('http') ? newImageUrl : `http://localhost:5000${newImageUrl}`;
+                const fullImageUrl = newImageUrl.startsWith('http') ? newImageUrl : `http://localhost:4001${newImageUrl}`;
                 
                 // Store image temporarily - don't update everywhere yet
                 setTempOfficeImages(prev => [...prev, fullImageUrl]);
@@ -810,34 +892,28 @@ const RecruiterDashboard = () => {
             const updateData = {
                 ...profileForm,
                 officeImages: finalOfficeImages,
-                // Handle profile photo: use temp photo, current photo, or explicitly null if removed
-                profilePhoto: tempProfilePhoto !== null ? (tempProfilePhoto || profilePhoto || profileForm.profilePhoto) : null
+                // Handle profile photo: use temp photo if available, otherwise keep current photo
+                profilePhoto: tempProfilePhoto || profilePhoto
             };
             
             console.log('Updating profile with data:', updateData);
             console.log('Office images being saved:', finalOfficeImages);
             console.log('Profile photo being saved:', updateData.profilePhoto);
-            console.log('Temp office images:', tempOfficeImages);
-            console.log('Profile form office images:', profileForm.officeImages);
+            console.log('Temp profile photo:', tempProfilePhoto);
+            console.log('Current profile photo:', profilePhoto);
             
             const response = await apiService.updateRecruiterProfile(updateData);
             
             if (response.success) {
-                // Now update profile photo and office images everywhere
-                if (tempProfilePhoto !== null) {
-                    if (tempProfilePhoto) {
-                        setProfilePhoto(tempProfilePhoto);
-                    }
-                    setTempProfilePhoto(null);
-                    // Notify other components about the profile photo update
-                    notifyProfilePhotoUpdated();
-                } else {
-                    // Photo was removed
-                    setProfilePhoto(null);
-                    setTempProfilePhoto(null);
-                    // Notify other components about the profile photo removal
-                    notifyProfilePhotoUpdated();
+                // Update profile photo state and sync across app
+                if (tempProfilePhoto) {
+                    setProfilePhoto(tempProfilePhoto);
+                    // Update all images across the app immediately
+                    updateAllImages(tempProfilePhoto);
+                    console.log('Profile photo updated and synced:', tempProfilePhoto);
                 }
+                // Clear temp photo after successful update
+                setTempProfilePhoto(null);
                 
                 // Update office images
                 if (tempOfficeImages.length > 0) {
@@ -1311,10 +1387,34 @@ const RecruiterDashboard = () => {
 
     return (
         <div className="recruiter-dashboard">
+            {/* Hidden User Modal */}
+            {showHiddenModal && isHidden && (
+                <HiddenUser
+                    user={currentUser}
+                    onClose={() => setShowHiddenModal(false)}
+                />
+            )}
+            
+            {/* Hidden User Notification Bar */}
+            {isHidden && !showHiddenModal && (
+                <div className="hidden-notification-bar">
+                    <div className="hidden-notification-content">
+                        <i className="fas fa-eye-slash"></i>
+                        <span>You are hidden from Staffinn.</span>
+                        <button 
+                            className="request-help-link"
+                            onClick={() => setShowHiddenModal(true)}
+                        >
+                            Request Help
+                        </button>
+                    </div>
+                </div>
+            )}
+            
             <div className="recruiter-dashboard-sidebar">
                 <div className="recruiter-company-info">
                     {profilePhoto && profilePhoto !== '' ? (
-                        <img src={profilePhoto} alt="Company Logo" className="recruiter-company-logo" />
+                        <img src={profilePhoto} alt="Company Logo" className="recruiter-company-logo" data-recruiter-image />
                     ) : (
                         <div className="recruiter-company-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50' }}>
                             {(profileForm.companyName || currentUser?.name || 'C').charAt(0)}
@@ -2455,7 +2555,7 @@ const RecruiterDashboard = () => {
                                             {news.bannerImage && (
                                                 <div className="recruiter-news-banner">
                                                     <img 
-                                                        src={news.bannerImage} 
+                                                        src={news.bannerImage.startsWith('http') ? news.bannerImage : `https://s3.ap-south-1.amazonaws.com/staffinn-files/${news.bannerImage}`}
                                                         alt={news.title}
                                                         className="recruiter-news-banner-image"
                                                     />
@@ -2561,7 +2661,7 @@ const RecruiterDashboard = () => {
                                 {viewingNews.bannerImage && (
                                     <div style={{marginBottom: '20px'}}>
                                         <img 
-                                            src={viewingNews.bannerImage} 
+                                            src={viewingNews.bannerImage.startsWith('http') ? viewingNews.bannerImage : `https://s3.ap-south-1.amazonaws.com/staffinn-files/${viewingNews.bannerImage}`}
                                             alt={viewingNews.title}
                                             style={{width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '8px'}}
                                         />
@@ -2647,8 +2747,12 @@ const RecruiterDashboard = () => {
                                                 className="profile-photo-preview"
                                                 onError={(e) => {
                                                     console.error('Failed to load profile photo:', tempProfilePhoto || profilePhoto);
-                                                    if (tempProfilePhoto) setTempProfilePhoto(null);
-                                                    else setProfilePhoto(null);
+                                                    if (tempProfilePhoto) {
+                                                        setTempProfilePhoto(null);
+                                                    } else {
+                                                        setProfilePhoto(null);
+                                                        updateAllImages(null);
+                                                    }
                                                 }}
                                                 onLoad={() => console.log('Profile photo loaded successfully:', tempProfilePhoto || profilePhoto)}
                                             />
@@ -2684,6 +2788,7 @@ const RecruiterDashboard = () => {
                                                     } else {
                                                         setProfilePhoto(null);
                                                         setTempProfilePhoto(null);
+                                                        updateAllImages(null);
                                                     }
                                                 }}
                                             >
@@ -2730,6 +2835,18 @@ const RecruiterDashboard = () => {
                                             required
                                         />
                                     </div>
+                                    <div className="recruiter-form-group">
+                                        <label>Pincode</label>
+                                        <input
+                                            type="text"
+                                            name="pincode"
+                                            value={profileForm.pincode}
+                                            onChange={handleProfileInputChange}
+                                            placeholder="Enter pincode"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="recruiter-form-row">
                                     <div className="recruiter-form-group">
                                         <label>Website</label>
                                         <input

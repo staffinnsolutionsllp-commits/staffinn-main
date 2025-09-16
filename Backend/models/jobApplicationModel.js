@@ -374,6 +374,60 @@ const getAverageSalaryPackage = async (instituteID) => {
   }
 };
 
+/**
+ * Get all applications
+ */
+const getAllApplications = async () => {
+  try {
+    const applications = await dynamoService.scanItems(JOB_APPLICATIONS_TABLE);
+    return applications || [];
+  } catch (error) {
+    console.error('Get all applications error:', error);
+    return [];
+  }
+};
+
+/**
+ * Get applications by institute and recruiter
+ */
+const getApplicationsByInstituteAndRecruiter = async (instituteId, recruiterId) => {
+  try {
+    const params = {
+      FilterExpression: 'instituteID = :instituteID AND recruiterID = :recruiterID',
+      ExpressionAttributeValues: {
+        ':instituteID': instituteId,
+        ':recruiterID': recruiterId
+      }
+    };
+    
+    const applications = await dynamoService.scanItems(JOB_APPLICATIONS_TABLE, params);
+    return applications || [];
+  } catch (error) {
+    console.error('Get applications by institute and recruiter error:', error);
+    return [];
+  }
+};
+
+/**
+ * Get applications by student
+ */
+const getApplicationsByStudent = async (studentId) => {
+  try {
+    const params = {
+      FilterExpression: 'studentID = :studentID',
+      ExpressionAttributeValues: {
+        ':studentID': studentId
+      }
+    };
+    
+    const applications = await dynamoService.scanItems(JOB_APPLICATIONS_TABLE, params);
+    return applications || [];
+  } catch (error) {
+    console.error('Get applications by student error:', error);
+    return [];
+  }
+};
+
 module.exports = {
   createJobApplication,
   updateJobApplicationStatus,
@@ -385,5 +439,8 @@ module.exports = {
   getStudentApplicationHistory,
   getJobInstituteApplications,
   getUniqueHiredStudentsByInstitute,
-  getAverageSalaryPackage
+  getAverageSalaryPackage,
+  getAllApplications,
+  getApplicationsByInstituteAndRecruiter,
+  getApplicationsByStudent
 };

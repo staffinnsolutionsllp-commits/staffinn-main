@@ -14,6 +14,7 @@ import InstitutePage from './Components/Pages/InstitutePage.jsx';
 import InstitutePageList from './Components/Pages/InstitutePageList.jsx'; // Added this import
 import NewsPage from './Components/Pages/NewsPage.jsx';
 import RecruiterPage from './Components/Pages/RecruiterPage.jsx';
+import CourseLearningPage from './Components/Pages/CourseLearningPage.jsx';
 import { AuthProvider, AuthContext } from './context';
 import apiService from './services/api';
 import './App.css';
@@ -21,7 +22,38 @@ import './App.css';
 function AppContent() {
     const [showLoginPopup, setShowLoginPopup] = useState(false);
     const [showRegistrationPopup, setShowRegistrationPopup] = useState(false);
-    const { isLoggedIn, currentUser, login, register, logout } = useContext(AuthContext);
+    const authContext = useContext(AuthContext);
+    
+    if (!authContext) {
+        return (
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: '100vh',
+                flexDirection: 'column',
+                fontFamily: 'Arial, sans-serif'
+            }}>
+                <div style={{ marginBottom: '20px', fontSize: '18px' }}>Loading Staffinn...</div>
+                <div style={{ 
+                    width: '50px', 
+                    height: '50px', 
+                    border: '3px solid #f3f3f3',
+                    borderTop: '3px solid #3498db',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                }}></div>
+                <style>{`
+                    @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+                `}</style>
+            </div>
+        );
+    }
+    
+    const { isLoggedIn, currentUser, login, register, logout } = authContext;
 
     const openLoginPopup = () => setShowLoginPopup(true);
     const closeLoginPopup = () => setShowLoginPopup(false);
@@ -96,6 +128,7 @@ function AppContent() {
                     <Route path="/news" element={<NewsPage />} />
                     <Route path="/recruiter" element={<RecruiterPage />} />
                     <Route path="/recruiter/:recruiterId" element={<RecruiterPage />} />
+                    <Route path="/course/:courseId" element={<CourseLearningPage />} />
                     <Route 
                         path="/dashboard/staff" 
                         element={isLoggedIn && currentUser?.role?.toLowerCase() === 'staff' ? 

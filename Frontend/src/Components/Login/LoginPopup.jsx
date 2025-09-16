@@ -21,7 +21,13 @@ const LoginPopup = ({ onClose }) => {
       const result = await login(email, password);
       
       if (result.success) {
-        onClose();
+        if (result.blocked) {
+          // User is blocked, AuthContext will show the blocked screen
+          onClose();
+        } else {
+          // Normal login success
+          onClose();
+        }
       } else {
         setError(result.message || 'Invalid email or password. Please try again.');
       }

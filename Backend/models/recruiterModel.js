@@ -356,14 +356,46 @@ const getRecruiterStats = async (recruiterId) => {
     const recruiterProfile = await dynamoService.getItem(RECRUITER_PROFILES_TABLE, { recruiterId }) || {};
     const followersCount = recruiterProfile.followersCount || 0;
     
+    // Also get institute applications count from job applications table
+    let instituteApplicationsCount = 0;
+    try {
+      const jobApplicationModel = require('./jobApplicationModel');
+      const dynamoService = require('../services/dynamoService');
+      const { JOB_APPLICATIONS_TABLE } = require('../config/dynamodb');
+      
+      const params = {
+        FilterExpression: 'recruiterID = :recruiterId AND attribute_exists(instituteID)',
+        ExpressionAttributeValues: {
+          ':recruiterId': recruiterId
+        }
+      };
+      
+      const instituteApps = await dynamoService.scanItems(JOB_APPLICATIONS_TABLE, params);
+      instituteApplicationsCount = instituteApps.length;
+      console.log(`Recruiter ${recruiterId} institute applications:`, instituteApplicationsCount);
+    } catch (error) {
+      console.log('Institute applications count error (non-critical):', error.message);
+    }
+    
     // Calculate real-time statistics
-    const totalApplications = allCandidates.length;
+    const staffApplications = allCandidates.length;
+    const totalApplications = staffApplications + instituteApplicationsCount;
     const totalHires = allCandidates.filter(candidate => candidate.status === 'Hired').length;
     const pendingApplications = allCandidates.filter(candidate => candidate.status === 'Applied').length;
     const rejectedApplications = allCandidates.filter(candidate => candidate.status === 'Rejected').length;
     
+    console.log(`Recruiter ${recruiterId} stats:`, {
+      staffApplications,
+      instituteApplicationsCount,
+      totalApplications,
+      totalHires
+    });
+    
     return {
       applications: totalApplications,
+      totalApplications: totalApplications,
+      staffApplications: staffApplications,
+      instituteApplications: instituteApplicationsCount,
       hires: totalHires,
       pending: pendingApplications,
       rejected: rejectedApplications,
@@ -371,7 +403,16 @@ const getRecruiterStats = async (recruiterId) => {
     };
   } catch (error) {
     console.error('Get recruiter stats error:', error);
-    return { applications: 0, hires: 0, pending: 0, rejected: 0, followers: 0 };
+    return { 
+      applications: 0, 
+      totalApplications: 0,
+      staffApplications: 0,
+      instituteApplications: 0,
+      hires: 0, 
+      pending: 0, 
+      rejected: 0, 
+      followers: 0 
+    };
   }
 };
 

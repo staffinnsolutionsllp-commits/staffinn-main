@@ -56,9 +56,37 @@ const {
   getPublicEventNews
 } = require('../controllers/instituteEventNewsController');
 
+// Import course controller
+const {
+  createCourse,
+  getCourses,
+  getPublicCourses,
+  getPublicCourseById,
+  checkEnrollmentStatus,
+  enrollInCourse,
+  getUserEnrollments,
+  getCourseContent,
+  updateProgress,
+  getActiveCourseCount,
+  debugCourseContent,
+  fixContentUrls
+} = require('../controllers/instituteCourseController');
+
+// Import quiz controller
+const {
+  createQuiz,
+  getModuleQuiz,
+  submitQuiz,
+  submitContentQuiz,
+  getUserQuizResults,
+  getUserQuizProgress
+} = require('../controllers/quizController');
+
 // Public routes (no authentication required)
 router.get('/public/all', getAllLiveInstitutes);
 router.get('/public/:id', getInstituteById);
+router.get('/public/:instituteId/courses', getPublicCourses);
+router.get('/courses/:courseId/public', getPublicCourseById);
 router.get('/public/:id/placement-section', getPublicPlacementSection);
 router.get('/public/:id/dashboard-stats', getPublicDashboardStats);
 router.get('/public/:id/industry-collaborations', getPublicIndustryCollaborations);
@@ -117,15 +145,35 @@ router.put('/events-news/:eventNewsId', eventNewsUpload.single('bannerImage'), u
 router.delete('/events-news/:eventNewsId', deleteEventNewsItem);
 
 // Course management routes
-router.post('/courses', (req, res) => {
-  res.json({ success: true, message: 'Course added successfully', data: { id: Date.now(), ...req.body, isActive: true } });
+const multer = require('multer');
+const courseUpload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB limit for videos
+    files: 50 // Maximum 50 files
+  }
 });
-router.get('/courses', (req, res) => {
-  res.json({ success: true, data: [] });
-});
-router.get('/active-courses-count', (req, res) => {
-  res.json({ success: true, data: { activeCourses: 0 } });
-});
+
+router.post('/courses', courseUpload.any(), createCourse);
+router.get('/courses', getCourses);
+router.get('/active-courses-count', getActiveCourseCount);
+router.get('/courses/:courseId/debug', debugCourseContent);
+router.post('/courses/:courseId/fix-urls', fixContentUrls);
+
+// Course enrollment routes
+router.get('/courses/:courseId/enrollment-status', checkEnrollmentStatus);
+router.post('/courses/:courseId/enroll', enrollInCourse);
+router.get('/my-enrollments', getUserEnrollments);
+router.get('/courses/:courseId/content', getCourseContent);
+router.put('/courses/content/:contentId/progress', updateProgress);
+
+// Quiz routes
+router.post('/modules/:moduleId/quiz', createQuiz);
+router.get('/modules/:moduleId/quiz', getModuleQuiz);
+router.post('/quiz/:quizId/submit', submitQuiz);
+router.post('/content/:contentId/quiz/submit', submitContentQuiz);
+router.get('/quiz/:quizId/results', getUserQuizResults);
+router.get('/courses/:courseId/quiz-progress', getUserQuizProgress);
 
 // Admin routes
 router.get('/all', getAllInstitutes);

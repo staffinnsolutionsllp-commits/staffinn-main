@@ -1,9 +1,10 @@
 /* eslint-disable react/prop-types */
 import { createContext, useState, useEffect } from 'react';
 import apiService from '../services/api';
+import BlockedUser from '../Components/BlockedUser/BlockedUser';
 
 // Create the context
-const AuthContext = createContext();
+const AuthContext = createContext(undefined);
 
 // Create the provider component
 function AuthProvider({ children }) {
@@ -11,29 +12,45 @@ function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showBlockedScreen, setShowBlockedScreen] = useState(false);
+  const [error, setError] = useState(null);
 
   // Check if user is logged in on page load
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser');
-    
-    console.log('AuthContext init - Token:', token ? 'Found' : 'Not found');
-    console.log('AuthContext init - User data:', userData ? 'Found' : 'Not found');
-    
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setCurrentUser(parsedUser);
-        setIsLoggedIn(true);
-        console.log('User restored from storage:', parsedUser);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        logout();
+    try {
+      const token = localStorage.getItem('token');
+      const userData = sessionStorage.getItem('currentUser') || localStorage.getItem('currentUser');
+      
+      console.log('AuthContext init - Token:', token ? 'Found' : 'Not found');
+      console.log('AuthContext init - User data:', userData ? 'Found' : 'Not found');
+      
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          setCurrentUser(parsedUser);
+          setIsLoggedIn(true);
+          
+          // Check if user is blocked
+          if (parsedUser.isBlocked) {
+            setShowBlockedScreen(true);
+          }
+          
+          console.log('User restored from storage:', parsedUser);
+        } catch (parseError) {
+          console.error('Error parsing user data:', parseError);
+          // Clear corrupted data
+          localStorage.removeItem('token');
+          localStorage.removeItem('currentUser');
+          sessionStorage.removeItem('currentUser');
+        }
       }
+    } catch (error) {
+      console.error('AuthContext initialization error:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   }, []);
 
   // Auth methods
@@ -85,6 +102,15 @@ function AuthProvider({ children }) {
       if (response.success) {
         console.log('Login successful:', response.data);
         
+        // Check if user is blocked
+        if (response.blocked || response.data.user.isBlocked) {
+          const userInfo = response.data.user;
+          setUser(userInfo);
+          setCurrentUser(userInfo);
+          setShowBlockedScreen(true);
+          return { success: true, blocked: true, data: response.data };
+        }
+        
         // Store token in localStorage with validation
         const token = response.data.accessToken;
         if (token) {
@@ -124,6 +150,7 @@ function AuthProvider({ children }) {
     setUser(null);
     setCurrentUser(null);
     setIsLoggedIn(false);
+    setShowBlockedScreen(false);
   };
 
   // Update user information
@@ -188,6 +215,39 @@ function AuthProvider({ children }) {
     return hasRole('admin');
   };
 
+  if (error) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        fontFamily: 'Arial, sans-serif',
+        color: '#e74c3c'
+      }}>
+        <h2>Authentication Error</h2>
+        <p>Error: {error}</p>
+        <button 
+          onClick={() => {
+            setError(null);
+            window.location.reload();
+          }}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#3498db',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer'
+          }}
+        >
+          Reload Page
+        </button>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -203,12 +263,24 @@ function AuthProvider({ children }) {
         hasRole,
         isStaff,
         isRecruiter,
-        isAdmin
+        isAdmin,
+        showBlockedScreen,
+        setShowBlockedScreen
       }}
     >
       {children}
+      {showBlockedScreen && (
+        <BlockedUser 
+          user={currentUser} 
+          onClose={() => {
+            setShowBlockedScreen(false);
+            logout();
+          }} 
+        />
+      )}
     </AuthContext.Provider>
   );
 }
 
 export { AuthContext, AuthProvider };
+export default AuthContext;

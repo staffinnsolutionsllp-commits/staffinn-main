@@ -20,6 +20,8 @@ const INSTITUTE_STUDENTS_TABLE = process.env.INSTITUTE_STUDENTS_TABLE || 'staffi
 const INDUSTRY_COLLAB_TABLE = process.env.INDUSTRY_COLLAB_TABLE || 'institute-industrycollab-section';
 const JOBS_TABLE = process.env.JOBS_TABLE || 'staffinn-jobs';
 const JOB_APPLICATIONS_TABLE = process.env.JOB_APPLICATIONS_TABLE || 'staffinn-job-applications';
+const ISSUES_TABLE = process.env.DYNAMODB_ISSUES_TABLE || 'staffinn-issue-section';
+const ADMIN_TABLE = process.env.ADMIN_TABLE || 'staffinn-admin';
 
 // Define table schemas
 const usersTableSchema = {
@@ -139,6 +141,28 @@ const jobApplicationsTableSchema = {
   ],
   AttributeDefinitions: [
     { AttributeName: 'staffinnjob', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const issuesTableSchema = {
+  TableName: ISSUES_TABLE,
+  KeySchema: [
+    { AttributeName: 'issuesection', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'issuesection', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const adminTableSchema = {
+  TableName: ADMIN_TABLE,
+  KeySchema: [
+    { AttributeName: 'adminId', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'adminId', AttributeType: 'S' }
   ],
   BillingMode: 'PAY_PER_REQUEST'
 };
@@ -284,6 +308,28 @@ const createTablesIfNotExist = async () => {
     } else {
       console.log(`Table already exists: ${INDUSTRY_COLLAB_TABLE}`);
     }
+    
+    // Check if issues table exists
+    const issuesExists = await tableExists(ISSUES_TABLE);
+    
+    if (!issuesExists) {
+      // Create issues table
+      await dynamoClient.send(new CreateTableCommand(issuesTableSchema));
+      console.log(`Created table: ${ISSUES_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${ISSUES_TABLE}`);
+    }
+    
+    // Check if admin table exists
+    const adminExists = await tableExists(ADMIN_TABLE);
+    
+    if (!adminExists) {
+      // Create admin table
+      await dynamoClient.send(new CreateTableCommand(adminTableSchema));
+      console.log(`Created table: ${ADMIN_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${ADMIN_TABLE}`);
+    }
   } catch (error) {
     // ResourceInUseException means table already exists
     if (error.name === 'ResourceInUseException') {
@@ -308,5 +354,7 @@ module.exports = {
   INDUSTRY_COLLAB_TABLE,
   JOBS_TABLE,
   JOB_APPLICATIONS_TABLE,
+  ISSUES_TABLE,
+  ADMIN_TABLE,
   createTablesIfNotExist
 };

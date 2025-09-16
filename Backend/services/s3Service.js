@@ -9,7 +9,7 @@ const awsConfig = require('../config/aws');
 // Initialize S3 client
 const s3Client = new S3Client(awsConfig);
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'staffinn-uploads';
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'staffinn-files';
 
 /**
  * Upload file to S3
@@ -19,12 +19,20 @@ const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'staffinn-uploads';
  */
 const uploadFile = async (file, key) => {
   try {
+    console.log('S3 Upload - Starting upload:', {
+      key,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      bucket: BUCKET_NAME
+    });
+
     const uploadParams = {
       Bucket: BUCKET_NAME,
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
       CacheControl: 'max-age=31536000' // Cache for 1 year
+      // Removed ACL as bucket doesn't allow ACLs
     };
 
     const command = new PutObjectCommand(uploadParams);
@@ -33,15 +41,33 @@ const uploadFile = async (file, key) => {
     // Return permanent public URL instead of pre-signed URL
     const fileUrl = getFileUrl(key);
 
+    console.log('S3 Upload - Success:', {
+      key,
+      fileUrl,
+      etag: result.ETag,
+      bucket: BUCKET_NAME
+    });
+
+    // Verify the URL is properly formed
+    if (!fileUrl) {
+      throw new Error('Failed to generate file URL after upload');
+    }
+
     return {
       success: true,
       Location: fileUrl,
+      url: fileUrl, // Add url field for compatibility
       Key: key,
       Bucket: BUCKET_NAME,
       ETag: result.ETag
     };
   } catch (error) {
-    console.error('S3 upload error:', error);
+    console.error('S3 upload error:', {
+      key,
+      error: error.message,
+      stack: error.stack,
+      bucket: BUCKET_NAME
+    });
     throw new Error(`Failed to upload file: ${error.message}`);
   }
 };
@@ -164,9 +190,9 @@ const uploadResume = async (file, userId) => {
       throw new Error('Resume must be a PDF file');
     }
 
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      throw new Error('File size must be less than 10MB');
+    // Validate file size (5GB limit)
+    if (file.size > 5 * 1024 * 1024 * 1024) {
+      throw new Error('File size must be less than 5GB');
     }
 
     const key = `staff-profiles/${userId}/resume-${Date.now()}.pdf`;
@@ -191,9 +217,9 @@ const uploadCertificate = async (file, userId, certificateName = 'certificate') 
       throw new Error('Certificate must be a PDF file');
     }
 
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      throw new Error('File size must be less than 10MB');
+    // Validate file size (5GB limit)
+    if (file.size > 5 * 1024 * 1024 * 1024) {
+      throw new Error('File size must be less than 5GB');
     }
 
     const sanitizedName = certificateName.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
@@ -211,12 +237,25 @@ const uploadCertificate = async (file, userId, certificateName = 'certificate') 
  * @returns {string} - Public file URL
  */
 const getFileUrl = (key) => {
+  if (!key) {
+    console.error('No key provided for getFileUrl');
+    return null;
+  }
+  
   // Use CloudFront URL if available, otherwise use direct S3 URL
   const cloudFrontUrl = process.env.CLOUDFRONT_URL;
   if (cloudFrontUrl) {
-    return `${cloudFrontUrl}/${key}`;
+    // Remove leading slash from key if present
+    const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+    return `${cloudFrontUrl}/${cleanKey}`;
   }
-  return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+  
+  // Generate proper S3 URL with correct region
+  const region = process.env.AWS_REGION || 'ap-south-1';
+  const cleanKey = key.startsWith('/') ? key.substring(1) : key;
+  const url = `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${cleanKey}`;
+  console.log('Generated S3 URL:', { key, cleanKey, url });
+  return url;
 };
 
 /**

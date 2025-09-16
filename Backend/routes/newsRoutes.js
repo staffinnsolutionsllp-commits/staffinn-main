@@ -40,5 +40,10 @@ router.get('/recruiter/:newsId', authenticate, recruiterNewsController.getNewsBy
 router.put('/recruiter/:newsId', authenticate, upload.single('bannerImage'), recruiterNewsController.updateNews);
 router.delete('/recruiter/:newsId', authenticate, recruiterNewsController.deleteNews);
 router.get('/recruiter/public/:recruiterId', recruiterNewsController.getPublicNews);
+router.get('/recruiter/all', recruiterNewsController.getAllNews);
+
+// Institute news routes
+const instituteEventNewsController = require('../controllers/instituteEventNewsController');
+router.get('/institute/all', instituteEventNewsController.getAllInstituteNews);
 
 module.exports = router;

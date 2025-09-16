@@ -59,6 +59,17 @@ const getStaffProfile = async (userId) => {
         profile.isActiveStaff = false;
       }
       
+      // Get user data to ensure profile has latest registration info
+      const userModel = require('./userModel');
+      const userData = await userModel.findUserById(userId);
+      
+      if (userData) {
+        // Merge user registration data with profile data
+        profile.fullName = profile.fullName || userData.fullName;
+        profile.email = profile.email || userData.email;
+        profile.phone = profile.phone || userData.phoneNumber;
+      }
+      
       return profile;
     }
     
@@ -105,13 +116,14 @@ const updateStaffProfile = async (userId, updateData) => {
       ExpressionAttributeValues: expressionAttributeValues
     };
     
-    const updatedProfile = await dynamoService.updateItem(
+    await dynamoService.updateItem(
       STAFF_TABLE,
       { staffId: currentProfile.staffId },
       updateParams
     );
     
-    return updatedProfile;
+    // Return the updated profile by fetching it again
+    return await getStaffProfile(userId);
   } catch (error) {
     console.error('Update staff profile error:', error);
     throw new Error('Failed to update staff profile');
@@ -134,8 +146,25 @@ const getActiveStaffProfiles = async () => {
     
     const profiles = await dynamoService.scanItems(STAFF_TABLE, scanParams);
     
+    // Filter out blocked users by checking user table
+    const userModel = require('./userModel');
+    const filteredProfiles = [];
+    
+    for (const profile of profiles) {
+      try {
+        const user = await userModel.findUserById(profile.userId);
+        // Only include if user exists and is not blocked
+        if (user && !user.isBlocked) {
+          filteredProfiles.push(profile);
+        }
+      } catch (error) {
+        console.error('Error checking user block status:', error);
+        // If error checking user, exclude from results for safety
+      }
+    }
+    
     // Sort by updated date (most recent first)
-    return profiles.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    return filteredProfiles.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   } catch (error) {
     console.error('Get active staff profiles error:', error);
     throw new Error('Failed to get active staff profiles');
@@ -220,8 +249,25 @@ const searchStaffProfiles = async (searchParams) => {
     
     const profiles = await dynamoService.scanItems(STAFF_TABLE, scanParams);
     
+    // Filter out blocked users by checking user table
+    const userModel = require('./userModel');
+    const filteredProfiles = [];
+    
+    for (const profile of profiles) {
+      try {
+        const user = await userModel.findUserById(profile.userId);
+        // Only include if user exists and is not blocked
+        if (user && !user.isBlocked) {
+          filteredProfiles.push(profile);
+        }
+      } catch (error) {
+        console.error('Error checking user block status:', error);
+        // If error checking user, exclude from results for safety
+      }
+    }
+    
     // Sort by updated date (most recent first)
-    return profiles.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    return filteredProfiles.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   } catch (error) {
     console.error('Search staff profiles error:', error);
     throw new Error('Failed to search staff profiles');
@@ -259,7 +305,24 @@ const getStaffBySkills = async (skillsArray) => {
     
     const profiles = await dynamoService.scanItems(STAFF_TABLE, scanParams);
     
-    return profiles.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    // Filter out blocked users by checking user table
+    const userModel = require('./userModel');
+    const filteredProfiles = [];
+    
+    for (const profile of profiles) {
+      try {
+        const user = await userModel.findUserById(profile.userId);
+        // Only include if user exists and is not blocked
+        if (user && !user.isBlocked) {
+          filteredProfiles.push(profile);
+        }
+      } catch (error) {
+        console.error('Error checking user block status:', error);
+        // If error checking user, exclude from results for safety
+      }
+    }
+    
+    return filteredProfiles.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   } catch (error) {
     console.error('Get staff by skills error:', error);
     throw new Error('Failed to get staff by skills');

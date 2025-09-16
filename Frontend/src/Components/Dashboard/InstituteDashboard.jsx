@@ -1,24 +1,33 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import apiService from '../../services/api';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
+
 import './InstituteDashboard.css';
 import './BadgeStyles.css';
 import './ImageUpload.css';
 import './HiringStyles.css';
 import './PlacementSection.css';
 import './EventNewsStyles.css';
+import './CourseCardStyles.css';
+import CourseQuizManager from './CourseQuizManager';
 
 const InstituteDashboard = () => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
     const [showModal, setShowModal] = useState(false);
     const [modalType, setModalType] = useState('');
     const [loading, setLoading] = useState(true);
+    
+    // Course management states
+    const [selectedCourseId, setSelectedCourseId] = useState(null);
 
     const [profileData, setProfileData] = useState({
         instituteName: '',
         address: '',
+        pincode: '',
         phone: '',
         email: '',
         website: '',
@@ -286,6 +295,7 @@ const InstituteDashboard = () => {
                 setProfileData({
                     instituteName: response.data.instituteName || '',
                     address: response.data.address || '',
+                    pincode: response.data.pincode || '',
                     phone: response.data.phone || '',
                     email: response.data.email || '',
                     website: response.data.website || '',
@@ -359,7 +369,9 @@ const InstituteDashboard = () => {
         mode: 'Offline',
         prerequisites: '',
         syllabus: '',
-        certification: ''
+        certification: '',
+        thumbnail: null,
+        modules: []
     });
 
     const [eventForm, setEventForm] = useState({
@@ -400,6 +412,10 @@ const InstituteDashboard = () => {
         topHiringCompanies: [],
         recentPlacementSuccess: []
     });
+    
+    // Use refs to maintain File object references
+    const companyFilesRef = useRef(new Map());
+    const studentFilesRef = useRef(new Map());
 
     const [placementSectionData, setPlacementSectionData] = useState(null);
 
@@ -541,8 +557,9 @@ const InstituteDashboard = () => {
         setStudentFiles({ profilePhoto: null, resume: null, certificates: [] });
         setCourseForm({
             name: '', duration: '', fees: '', instructor: '', description: '', category: '',
-            mode: 'Offline', prerequisites: '', syllabus: '', certification: ''
+            mode: 'Offline', prerequisites: '', syllabus: '', certification: '', thumbnail: null, modules: []
         });
+        setSelectedCourseId(null);
         setEventForm({
             title: '', date: '', company: '', venue: '', expectedParticipants: '', details: '', type: 'Event', verified: false, bannerImage: null
         });
@@ -654,21 +671,73 @@ const InstituteDashboard = () => {
         try {
             setLoading(true);
             
-            const response = await apiService.addCourse(courseForm);
+            // Create FormData for file uploads
+            const formData = new FormData();
+            
+            // Add basic course data
+            Object.keys(courseForm).forEach(key => {
+                if (key !== 'thumbnail' && key !== 'modules' && courseForm[key]) {
+                    formData.append(key, courseForm[key]);
+                }
+            });
+            
+            // Add thumbnail
+            if (courseForm.thumbnail) {
+                formData.append('thumbnail', courseForm.thumbnail);
+            }
+            
+            // Add modules data
+            if (courseForm.modules.length > 0) {
+                formData.append('modules', JSON.stringify(courseForm.modules.map(module => ({
+                    title: module.title,
+                    description: module.description,
+                    order: module.order,
+                    content: module.content.map(content => ({
+                        title: content.title,
+                        type: content.type,
+                        order: content.order
+                    })),
+                    quiz: module.quiz || null
+                }))));
+                
+                // Add content files
+                courseForm.modules.forEach((module, moduleIndex) => {
+                    module.content.forEach((content, contentIndex) => {
+                        if (content.file) {
+                            const fieldName = `content_${moduleIndex}_${contentIndex}`;
+                            formData.append(fieldName, content.file);
+                        }
+                    });
+                });
+            }
+            
+            let response;
+            if (modalType === 'editCourse' && selectedCourseId) {
+                // Update existing course
+                response = await apiService.updateCourse(selectedCourseId, formData);
+                if (response.success) {
+                    alert('Course updated successfully!');
+                }
+            } else {
+                // Create new course
+                response = await apiService.addCourse(formData);
+                if (response.success) {
+                    alert('Course created successfully!');
+                }
+            }
             
             if (response.success) {
-                alert('Course added successfully!');
                 await Promise.all([
                     loadDashboardData(), // Refresh dashboard stats
                     loadCourses() // Refresh course list
                 ]);
                 closeModal();
             } else {
-                alert(response.message || 'Failed to add course');
+                alert(response.message || `Failed to ${modalType === 'editCourse' ? 'update' : 'create'} course`);
             }
         } catch (error) {
-            console.error('Error adding course:', error);
-            alert('Failed to add course. Please try again.');
+            console.error(`Error ${modalType === 'editCourse' ? 'updating' : 'creating'} course:`, error);
+            alert(`Failed to ${modalType === 'editCourse' ? 'update' : 'create'} course. Please try again.`);
         } finally {
             setLoading(false);
         }
@@ -803,35 +872,73 @@ const InstituteDashboard = () => {
         try {
             setLoading(true);
             
-            // Create a deep copy of the form data for submission
+            // Create FormData for file uploads
+            const formData = new FormData();
+            
+            // Prepare placement data without File objects
             const placementData = {
                 averageSalary: placementSectionForm.averageSalary,
                 highestPackage: placementSectionForm.highestPackage,
-                topHiringCompanies: placementSectionForm.topHiringCompanies.map(company => ({
-                    id: company.id,
+                topHiringCompanies: [],
+                recentPlacementSuccess: []
+            };
+            
+            // Process company data and add files to FormData
+            placementSectionForm.topHiringCompanies.forEach((company, index) => {
+                const companyData = {
                     name: company.name,
-                    logo: company.logo, // Keep the File object for upload
-                    logoPreview: company.logoPreview,
-                    hasNewFile: company.hasNewFile,
-                    isExisting: company.isExisting,
-                    isRemoved: company.isRemoved
-                })),
-                recentPlacementSuccess: placementSectionForm.recentPlacementSuccess.map(placement => ({
-                    id: placement.id,
+                    hasNewFile: company.hasNewFile || false,
+                    isExisting: company.isExisting || false,
+                    isRemoved: company.isRemoved || false
+                };
+                
+                // Get File object from ref using the stored ID
+                if (company.logoFileId && companyFilesRef.current.has(company.logoFileId)) {
+                    const file = companyFilesRef.current.get(company.logoFileId);
+                    formData.append(`companyLogo_${index}`, file);
+                    companyData.hasNewFile = true;
+                    companyData.logo = null;
+                } else if (typeof company.logo === 'string' && company.logo.includes('http') && !company.logo.startsWith('blob:')) {
+                    companyData.logo = company.logo; // Keep existing S3 URL
+                } else {
+                    companyData.logo = null;
+                }
+                
+                placementData.topHiringCompanies.push(companyData);
+            });
+            
+            // Process student data and add files to FormData
+            placementSectionForm.recentPlacementSuccess.forEach((placement, index) => {
+                const placementData_item = {
                     name: placement.name,
                     company: placement.company,
                     position: placement.position,
-                    photo: placement.photo, // Keep the File object for upload
-                    photoPreview: placement.photoPreview,
-                    hasNewFile: placement.hasNewFile,
-                    isExisting: placement.isExisting,
-                    isRemoved: placement.isRemoved
-                }))
-            };
+                    hasNewFile: placement.hasNewFile || false,
+                    isExisting: placement.isExisting || false,
+                    isRemoved: placement.isRemoved || false
+                };
+                
+                // Get File object from ref using the stored ID
+                if (placement.photoFileId && studentFilesRef.current.has(placement.photoFileId)) {
+                    const file = studentFilesRef.current.get(placement.photoFileId);
+                    formData.append(`studentPhoto_${index}`, file);
+                    placementData_item.hasNewFile = true;
+                    placementData_item.photo = null;
+                } else if (typeof placement.photo === 'string' && placement.photo.includes('http') && !placement.photo.startsWith('blob:')) {
+                    placementData_item.photo = placement.photo; // Keep existing S3 URL
+                } else {
+                    placementData_item.photo = null;
+                }
+                
+                placementData.recentPlacementSuccess.push(placementData_item);
+            });
+            
+            // Add placement data as JSON
+            formData.append('placementData', JSON.stringify(placementData));
             
             console.log('Submitting placement data:', placementData);
             
-            const response = await apiService.updatePlacementSection(placementData);
+            const response = await apiService.updatePlacementSection(formData);
             
             if (response.success) {
                 alert('Placement section updated successfully!');
@@ -957,6 +1064,120 @@ const InstituteDashboard = () => {
             } finally {
                 setLoading(false);
             }
+        }
+    };
+
+    // Quiz update handler
+    const handleQuizUpdate = (moduleIndex, quizData) => {
+        const updatedModules = [...courseForm.modules];
+        if (quizData) {
+            updatedModules[moduleIndex].quiz = quizData;
+        } else {
+            delete updatedModules[moduleIndex].quiz;
+        }
+        setCourseForm({...courseForm, modules: updatedModules});
+    };
+
+    // Course management handlers
+    const handleViewCourseDetails = (course) => {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const courseId = course.coursesId || course.instituteCourseID;
+        
+        // Navigate to CourseLearningPage with institute context
+        navigate(`/course/${courseId}?preview=true&institute=${user.id}`);
+    };
+
+    const handleEditCourse = async (course) => {
+        const courseId = course.coursesId || course.instituteCourseID;
+        
+        try {
+            setLoading(true);
+            
+            // Fetch complete course details from API
+            const response = await apiService.getCourseById(courseId);
+            
+            let courseData = course; // fallback to course list data
+            if (response.success && response.data) {
+                courseData = response.data;
+                console.log('📚 Loaded course data for editing:', {
+                    courseName: courseData.courseName || courseData.name,
+                    modulesCount: courseData.modules?.length || 0,
+                    modules: courseData.modules
+                });
+            } else {
+                console.warn('Failed to fetch complete course details, using course list data');
+            }
+            
+            // Process modules to ensure proper structure for editing
+            const processedModules = (courseData.modules || []).map((module, index) => ({
+                title: module.moduleTitle || module.title || '',
+                description: module.moduleDescription || module.description || '',
+                order: module.order || index + 1,
+                content: (module.content || []).map((content, contentIndex) => ({
+                    title: content.contentTitle || content.title || '',
+                    type: content.contentType || content.type || 'video',
+                    file: null, // Don't pre-load existing files
+                    order: content.order || contentIndex + 1
+                }))
+            }));
+            
+            console.log('📝 Processed modules for form:', processedModules);
+            
+            // Pre-fill the course form with complete course data
+            setCourseForm({
+                name: courseData.courseName || courseData.name || '',
+                duration: courseData.duration || '',
+                fees: courseData.fees || '',
+                instructor: courseData.instructor || '',
+                description: courseData.description || '',
+                category: courseData.category || '',
+                mode: courseData.mode || 'Offline',
+                prerequisites: courseData.prerequisites || '',
+                syllabus: courseData.syllabus || courseData.syllabusOverview || '',
+                certification: courseData.certification || '',
+                thumbnail: null, // File input will be empty, but existing thumbnail will be shown via thumbnailUrl
+                modules: processedModules
+            });
+            
+            // Set edit mode and course ID
+            setSelectedCourseId(courseId);
+            openModal('editCourse');
+            
+        } catch (error) {
+            console.error('Error fetching course details for edit:', error);
+            
+            // Fallback: use course list data if API fails
+            const fallbackModules = (course.modules || []).map((module, index) => ({
+                title: module.moduleTitle || module.title || '',
+                description: module.moduleDescription || module.description || '',
+                order: module.order || index + 1,
+                content: (module.content || []).map((content, contentIndex) => ({
+                    title: content.contentTitle || content.title || '',
+                    type: content.contentType || content.type || 'video',
+                    file: null,
+                    order: content.order || contentIndex + 1
+                }))
+            }));
+            
+            setCourseForm({
+                name: course.courseName || course.name || '',
+                duration: course.duration || '',
+                fees: course.fees || '',
+                instructor: course.instructor || '',
+                description: course.description || '',
+                category: course.category || '',
+                mode: course.mode || 'Offline',
+                prerequisites: course.prerequisites || '',
+                syllabus: course.syllabus || course.syllabusOverview || '',
+                certification: course.certification || '',
+                thumbnail: null,
+                modules: fallbackModules
+            });
+            
+            setSelectedCourseId(courseId);
+            openModal('editCourse');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1618,31 +1839,60 @@ const InstituteDashboard = () => {
 
                         <div className="institute-course-cards">
                             {courses.length > 0 ? courses.map(course => (
-                                <div className="institute-course-card" key={course.instituteCourseID}>
-                                    <h3>{course.name}</h3>
-                                    <div className="institute-course-details">
-                                        <div className="institute-detail-item">
-                                            <span className="institute-label">Duration:</span>
-                                            <span className="institute-value">{course.duration}</span>
+                                <div className="institute-course-card" key={course.coursesId || course.instituteCourseID}>
+                                    {course.thumbnailUrl && (
+                                        <div className="institute-course-thumbnail">
+                                            <img src={course.thumbnailUrl} alt={course.courseName || course.name} />
                                         </div>
-                                        <div className="institute-detail-item">
-                                            <span className="institute-label">Fees:</span>
-                                            <span className="institute-value">{course.fees}</span>
+                                    )}
+                                    <div className="institute-course-content">
+                                        <h3>{course.courseName || course.name}</h3>
+                                        <div className="institute-course-details">
+                                            <div className="institute-detail-item">
+                                                <span className="institute-label">Duration:</span>
+                                                <span className="institute-value">{course.duration}</span>
+                                            </div>
+                                            <div className="institute-detail-item">
+                                                <span className="institute-label">Fees:</span>
+                                                <span className="institute-value">₹{course.fees}</span>
+                                            </div>
+                                            <div className="institute-detail-item">
+                                                <span className="institute-label">Instructor:</span>
+                                                <span className="institute-value">{course.instructor}</span>
+                                            </div>
+                                            <div className="institute-detail-item">
+                                                <span className="institute-label">Category:</span>
+                                                <span className="institute-value">{course.category}</span>
+                                            </div>
+                                            <div className="institute-detail-item">
+                                                <span className="institute-label">Mode:</span>
+                                                <span className="institute-value">{course.mode}</span>
+                                            </div>
+                                            <div className="institute-detail-item">
+                                                <span className="institute-label">Modules:</span>
+                                                <span className="institute-value">{course.modules?.length || 0}</span>
+                                            </div>
+                                            <div className="institute-detail-item">
+                                                <span className="institute-label">Status:</span>
+                                                <span className={`institute-value ${course.isActive ? 'active' : 'inactive'}`}>
+                                                    {course.isActive ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="institute-detail-item">
-                                            <span className="institute-label">Instructor:</span>
-                                            <span className="institute-value">{course.instructor}</span>
+                                        <div className="institute-course-actions">
+                                            <button 
+                                                className="institute-action-button"
+                                                onClick={() => handleViewCourseDetails(course)}
+                                            >
+                                                View Details
+                                            </button>
+                                            <button 
+                                                className="institute-action-button"
+                                                onClick={() => handleEditCourse(course)}
+                                            >
+                                                Edit Course
+                                            </button>
                                         </div>
-                                        <div className="institute-detail-item">
-                                            <span className="institute-label">Status:</span>
-                                            <span className={`institute-value ${course.isActive ? 'active' : 'inactive'}`}>
-                                                {course.isActive ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="institute-course-actions">
-                                        <button className="institute-action-button">View Details</button>
-                                        <button className="institute-action-button">Edit Course</button>
                                     </div>
                                 </div>
                             )) : (
@@ -1741,15 +1991,25 @@ const InstituteDashboard = () => {
                                                                     return;
                                                                 }
                                                                 
-                                                                const updatedCompanies = [...placementSectionForm.topHiringCompanies];
-                                                                // Clean up previous blob URL if it exists
-                                                                if (updatedCompanies[index].logoPreview && updatedCompanies[index].logoPreview.startsWith('blob:')) {
-                                                                    URL.revokeObjectURL(updatedCompanies[index].logoPreview);
-                                                                }
-                                                                updatedCompanies[index].logo = file;
-                                                                updatedCompanies[index].logoPreview = URL.createObjectURL(file);
-                                                                updatedCompanies[index].hasNewFile = true; // Mark as having new file
-                                                                setPlacementSectionForm({...placementSectionForm, topHiringCompanies: updatedCompanies});
+                                                                // Store File object in ref to prevent loss during state updates
+                                                                const fileId = `company_${index}_${Date.now()}`;
+                                                                companyFilesRef.current.set(fileId, file);
+                                                                
+                                                                setPlacementSectionForm(prevForm => {
+                                                                    const updatedCompanies = [...prevForm.topHiringCompanies];
+                                                                    // Clean up previous blob URL if it exists
+                                                                    if (updatedCompanies[index].logoPreview && updatedCompanies[index].logoPreview.startsWith('blob:')) {
+                                                                        URL.revokeObjectURL(updatedCompanies[index].logoPreview);
+                                                                    }
+                                                                    // Store file reference ID instead of File object
+                                                                    updatedCompanies[index] = {
+                                                                        ...updatedCompanies[index],
+                                                                        logoFileId: fileId,
+                                                                        logoPreview: URL.createObjectURL(file),
+                                                                        hasNewFile: true
+                                                                    };
+                                                                    return {...prevForm, topHiringCompanies: updatedCompanies};
+                                                                });
                                                             }
                                                         }}
                                                     />
@@ -1769,14 +2029,18 @@ const InstituteDashboard = () => {
                                                                 type="button"
                                                                 onClick={() => {
                                                                     const updatedCompanies = [...placementSectionForm.topHiringCompanies];
+                                                                    // Clean up file ref if exists
+                                                                    if (updatedCompanies[index].logoFileId) {
+                                                                        companyFilesRef.current.delete(updatedCompanies[index].logoFileId);
+                                                                    }
                                                                     // Only revoke blob URLs, not server URLs
                                                                     if (updatedCompanies[index].logoPreview && updatedCompanies[index].logoPreview.startsWith('blob:')) {
                                                                         URL.revokeObjectURL(updatedCompanies[index].logoPreview);
                                                                     }
-                                                                    updatedCompanies[index].logo = null;
+                                                                    updatedCompanies[index].logoFileId = null;
                                                                     updatedCompanies[index].logoPreview = null;
                                                                     updatedCompanies[index].hasNewFile = false;
-                                                                    updatedCompanies[index].isRemoved = true; // Mark for removal
+                                                                    updatedCompanies[index].isRemoved = true;
                                                                     setPlacementSectionForm({...placementSectionForm, topHiringCompanies: updatedCompanies});
                                                                 }}
                                                                 className="image-remove-btn"
@@ -1886,15 +2150,25 @@ const InstituteDashboard = () => {
                                                                     return;
                                                                 }
                                                                 
-                                                                const updatedPlacements = [...placementSectionForm.recentPlacementSuccess];
-                                                                // Clean up previous blob URL if it exists
-                                                                if (updatedPlacements[index].photoPreview && updatedPlacements[index].photoPreview.startsWith('blob:')) {
-                                                                    URL.revokeObjectURL(updatedPlacements[index].photoPreview);
-                                                                }
-                                                                updatedPlacements[index].photo = file;
-                                                                updatedPlacements[index].photoPreview = URL.createObjectURL(file);
-                                                                updatedPlacements[index].hasNewFile = true; // Mark as having new file
-                                                                setPlacementSectionForm({...placementSectionForm, recentPlacementSuccess: updatedPlacements});
+                                                                // Store File object in ref to prevent loss during state updates
+                                                                const fileId = `student_${index}_${Date.now()}`;
+                                                                studentFilesRef.current.set(fileId, file);
+                                                                
+                                                                setPlacementSectionForm(prevForm => {
+                                                                    const updatedPlacements = [...prevForm.recentPlacementSuccess];
+                                                                    // Clean up previous blob URL if it exists
+                                                                    if (updatedPlacements[index].photoPreview && updatedPlacements[index].photoPreview.startsWith('blob:')) {
+                                                                        URL.revokeObjectURL(updatedPlacements[index].photoPreview);
+                                                                    }
+                                                                    // Store file reference ID instead of File object
+                                                                    updatedPlacements[index] = {
+                                                                        ...updatedPlacements[index],
+                                                                        photoFileId: fileId,
+                                                                        photoPreview: URL.createObjectURL(file),
+                                                                        hasNewFile: true
+                                                                    };
+                                                                    return {...prevForm, recentPlacementSuccess: updatedPlacements};
+                                                                });
                                                             }
                                                         }}
                                                     />
@@ -1914,14 +2188,18 @@ const InstituteDashboard = () => {
                                                                 type="button"
                                                                 onClick={() => {
                                                                     const updatedPlacements = [...placementSectionForm.recentPlacementSuccess];
+                                                                    // Clean up file ref if exists
+                                                                    if (updatedPlacements[index].photoFileId) {
+                                                                        studentFilesRef.current.delete(updatedPlacements[index].photoFileId);
+                                                                    }
                                                                     // Only revoke blob URLs, not server URLs
                                                                     if (updatedPlacements[index].photoPreview && updatedPlacements[index].photoPreview.startsWith('blob:')) {
                                                                         URL.revokeObjectURL(updatedPlacements[index].photoPreview);
                                                                     }
-                                                                    updatedPlacements[index].photo = null;
+                                                                    updatedPlacements[index].photoFileId = null;
                                                                     updatedPlacements[index].photoPreview = null;
                                                                     updatedPlacements[index].hasNewFile = false;
-                                                                    updatedPlacements[index].isRemoved = true; // Mark for removal
+                                                                    updatedPlacements[index].isRemoved = true;
                                                                     setPlacementSectionForm({...placementSectionForm, recentPlacementSuccess: updatedPlacements});
                                                                 }}
                                                                 className="image-remove-btn"
@@ -2449,6 +2727,7 @@ const InstituteDashboard = () => {
                                 {modalType === 'editStudent' && 'Edit Student'}
                                 {modalType === 'viewStudent' && 'Student Profile'}
                                 {modalType === 'course' && 'Add New Course'}
+                                {modalType === 'editCourse' && 'Edit Course'}
                                 {modalType === 'event' && 'Add New Event'}
                                 {modalType === 'editEvent' && 'Edit Event'}
                                 {modalType === 'news' && 'Add News'}
@@ -2865,8 +3144,18 @@ const InstituteDashboard = () => {
                         )}
 
                         {/* Course Form */}
-                        {modalType === 'course' && (
+                        {(modalType === 'course' || modalType === 'editCourse') && (
                             <form onSubmit={handleCourseSubmit} className="institute-modal-form">
+                                {modalType === 'editCourse' && (
+                                    <div style={{backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '4px', marginBottom: '15px', fontSize: '12px', color: '#666'}}>
+                                        <strong>Debug Info:</strong> Editing course with {courseForm.modules.length} modules loaded
+                                        {courseForm.modules.length > 0 && (
+                                            <div style={{marginTop: '5px'}}>
+                                                Modules: {courseForm.modules.map((m, i) => `${i + 1}. ${m.title || 'Untitled'} (${m.content?.length || 0} content items)`).join(', ')}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="institute-form-grid">
                                     <div className="institute-form-group">
                                         <label>Course Name *</label>
@@ -2932,6 +3221,40 @@ const InstituteDashboard = () => {
                                         </select>
                                     </div>
                                 </div>
+                                
+                                <div className="institute-form-group">
+                                    <label>Course Thumbnail</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setCourseForm({...courseForm, thumbnail: e.target.files[0]})}
+                                    />
+                                    {modalType === 'editCourse' && selectedCourseId && (
+                                        <div style={{marginTop: '10px'}}>
+                                            {courses.find(c => (c.coursesId || c.instituteCourseID) === selectedCourseId)?.thumbnailUrl && (
+                                                <div className="current-thumbnail-preview">
+                                                    <p style={{fontSize: '14px', color: '#666', marginBottom: '5px'}}>Current thumbnail:</p>
+                                                    <img 
+                                                        src={courses.find(c => (c.coursesId || c.instituteCourseID) === selectedCourseId)?.thumbnailUrl} 
+                                                        alt="Current Thumbnail" 
+                                                        style={{width: '150px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ddd'}}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    {courseForm.thumbnail && (
+                                        <div className="new-thumbnail-preview" style={{marginTop: '10px'}}>
+                                            <p style={{fontSize: '14px', color: '#666', marginBottom: '5px'}}>New thumbnail:</p>
+                                            <img 
+                                                src={URL.createObjectURL(courseForm.thumbnail)} 
+                                                alt="New Thumbnail Preview" 
+                                                style={{width: '150px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ddd'}}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                
                                 <div className="institute-form-group">
                                     <label>Course Description</label>
                                     <textarea
@@ -2958,6 +3281,11 @@ const InstituteDashboard = () => {
                                         rows="4"
                                         placeholder="Main topics covered in the course"
                                     />
+                                    {modalType === 'editCourse' && !courseForm.syllabus && (
+                                        <p style={{fontSize: '12px', color: '#999', marginTop: '5px', fontStyle: 'italic'}}>
+                                            No syllabus data found for this course. You can add it here.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="institute-form-group">
                                     <label>Certification</label>
@@ -2970,9 +3298,178 @@ const InstituteDashboard = () => {
                                         <option value="Industry-Specific">Industry-Specific</option>
                                         <option value="Internal Certificate">Internal Certificate</option>
                                     </select>
+                                    {modalType === 'editCourse' && !courseForm.certification && (
+                                        <p style={{fontSize: '12px', color: '#999', marginTop: '5px', fontStyle: 'italic'}}>
+                                            No certification type set for this course. You can select one above.
+                                        </p>
+                                    )}
                                 </div>
+                                
+                                {/* Course Modules Section */}
+                                <div className="institute-form-group">
+                                    <label>Course Modules ({courseForm.modules.length})</label>
+                                    {modalType === 'editCourse' && courseForm.modules.length === 0 && (
+                                        <p style={{fontSize: '12px', color: '#999', marginBottom: '10px', fontStyle: 'italic'}}>
+                                            No modules found for this course. You can add modules below.
+                                        </p>
+                                    )}
+                                    {modalType === 'editCourse' && courseForm.modules.length > 0 && (
+                                        <p style={{fontSize: '12px', color: '#28a745', marginBottom: '10px', fontStyle: 'italic'}}>
+                                            Found {courseForm.modules.length} existing modules. You can edit them below or add new ones.
+                                        </p>
+                                    )}
+                                    <div className="course-modules-section">
+                                        {courseForm.modules.map((module, moduleIndex) => (
+                                            <div key={moduleIndex} className="course-module-item">
+                                                <div className="module-header">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Module Title"
+                                                        value={module.title}
+                                                        onChange={(e) => {
+                                                            const updatedModules = [...courseForm.modules];
+                                                            updatedModules[moduleIndex].title = e.target.value;
+                                                            setCourseForm({...courseForm, modules: updatedModules});
+                                                        }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updatedModules = courseForm.modules.filter((_, i) => i !== moduleIndex);
+                                                            setCourseForm({...courseForm, modules: updatedModules});
+                                                        }}
+                                                        className="institute-remove-btn"
+                                                    >
+                                                        Remove Module
+                                                    </button>
+                                                </div>
+                                                <textarea
+                                                    placeholder="Module Description"
+                                                    value={module.description}
+                                                    onChange={(e) => {
+                                                        const updatedModules = [...courseForm.modules];
+                                                        updatedModules[moduleIndex].description = e.target.value;
+                                                        setCourseForm({...courseForm, modules: updatedModules});
+                                                    }}
+                                                    rows="2"
+                                                />
+                                                
+                                                {/* Module Content */}
+                                                <div className="module-content-section">
+                                                    <h5>Module Content ({module.content?.length || 0})</h5>
+                                                    {module.content && module.content.length > 0 ? (
+                                                        module.content.map((content, contentIndex) => (
+                                                            <div key={contentIndex} className="content-item">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Content Title"
+                                                                    value={content.title || ''}
+                                                                    onChange={(e) => {
+                                                                        const updatedModules = [...courseForm.modules];
+                                                                        updatedModules[moduleIndex].content[contentIndex].title = e.target.value;
+                                                                        setCourseForm({...courseForm, modules: updatedModules});
+                                                                    }}
+                                                                />
+                                                                <select
+                                                                    value={content.type || 'video'}
+                                                                    onChange={(e) => {
+                                                                        const updatedModules = [...courseForm.modules];
+                                                                        updatedModules[moduleIndex].content[contentIndex].type = e.target.value;
+                                                                        setCourseForm({...courseForm, modules: updatedModules});
+                                                                    }}
+                                                                >
+                                                                    <option value="video">Video</option>
+                                                                    <option value="assignment">Assignment</option>
+                                                                </select>
+                                                                <input
+                                                                    type="file"
+                                                                    accept={content.type === 'video' ? 'video/*' : content.type === 'pdf' ? '.pdf' : '*'}
+                                                                    onChange={(e) => {
+                                                                        const updatedModules = [...courseForm.modules];
+                                                                        updatedModules[moduleIndex].content[contentIndex].file = e.target.files[0];
+                                                                        setCourseForm({...courseForm, modules: updatedModules});
+                                                                    }}
+                                                                />
+                                                                {modalType === 'editCourse' && (
+                                                                    <small style={{fontSize: '11px', color: '#666', display: 'block', marginTop: '2px'}}>
+                                                                        Existing content will be preserved unless you upload a new file
+                                                                    </small>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const updatedModules = [...courseForm.modules];
+                                                                        updatedModules[moduleIndex].content = updatedModules[moduleIndex].content.filter((_, i) => i !== contentIndex);
+                                                                        setCourseForm({...courseForm, modules: updatedModules});
+                                                                    }}
+                                                                    className="institute-remove-btn"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <p style={{fontSize: '12px', color: '#999', fontStyle: 'italic', margin: '10px 0'}}>
+                                                            No content in this module yet. Add content below.
+                                                        </p>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updatedModules = [...courseForm.modules];
+                                                            // Ensure content array exists
+                                                            if (!updatedModules[moduleIndex].content) {
+                                                                updatedModules[moduleIndex].content = [];
+                                                            }
+                                                            updatedModules[moduleIndex].content.push({
+                                                                title: '',
+                                                                type: 'video',
+                                                                file: null,
+                                                                order: updatedModules[moduleIndex].content.length + 1
+                                                            });
+                                                            setCourseForm({...courseForm, modules: updatedModules});
+                                                        }}
+                                                        className="institute-add-btn"
+                                                    >
+                                                        Add Content
+                                                    </button>
+                                                    <CourseQuizManager 
+                                                        moduleIndex={moduleIndex}
+                                                        onQuizUpdate={handleQuizUpdate}
+                                                        existingQuiz={module.quiz}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setCourseForm({
+                                                    ...courseForm,
+                                                    modules: [...courseForm.modules, {
+                                                        title: '',
+                                                        description: '',
+                                                        order: courseForm.modules.length + 1,
+                                                        content: []
+                                                    }]
+                                                });
+                                            }}
+                                            className="institute-add-btn"
+                                        >
+                                            Add Module
+                                        </button>
+                                    </div>
+                                    {modalType === 'editCourse' && (
+                                        <p style={{fontSize: '12px', color: '#666', marginTop: '10px', fontStyle: 'italic'}}>
+                                            Note: Existing module content files will be preserved. Only add new files if you want to replace them.
+                                        </p>
+                                    )}
+                                </div>
+                                
                                 <div className="institute-form-buttons">
-                                    <button type="submit" className="institute-primary-button">Add Course</button>
+                                    <button type="submit" className="institute-primary-button" disabled={loading}>
+                                        {loading ? (modalType === 'editCourse' ? 'Updating...' : 'Creating...') : (modalType === 'editCourse' ? 'Update Course' : 'Create Course')}
+                                    </button>
                                     <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                                 </div>
                             </form>

@@ -56,6 +56,7 @@ const RecruiterNewsModel = {
                 type: 'News',
                 verified: newsData.verified || false,
                 bannerImage: newsData.bannerImage || null,
+                isVisible: true, // Default to visible
                 createdAt: timestamp,
                 updatedAt: timestamp
             };
@@ -203,7 +204,7 @@ const RecruiterNewsModel = {
                 let expressionAttributeNames = {};
 
                 // Add fields to update
-                const fieldsToUpdate = ['title', 'date', 'company', 'venue', 'expectedParticipants', 'details', 'verified', 'bannerImage', 'recruiterName'];
+                const fieldsToUpdate = ['title', 'date', 'company', 'venue', 'expectedParticipants', 'details', 'verified', 'bannerImage', 'recruiterName', 'isVisible'];
                 
                 fieldsToUpdate.forEach(field => {
                     if (updateData.hasOwnProperty(field)) {
@@ -324,8 +325,46 @@ const RecruiterNewsModel = {
         }
     },
 
-    // Get all public recruiter news (for news page)
+    // Get all public recruiter news (for news page) - only visible ones
     getAllPublic: async () => {
+        try {
+            // Try DynamoDB first, fall back to mock on error
+            try {
+                if (shouldUseMockDB()) {
+                    throw new Error('Using mock database');
+                }
+                
+                const params = {
+                    TableName: TABLE_NAME,
+                    FilterExpression: 'isVisible = :visible',
+                    ExpressionAttributeValues: {
+                        ':visible': true
+                    }
+                };
+
+                const result = await dynamodb.scan(params).promise();
+                
+                // Sort by date (newest first)
+                const sortedNews = (result.Items || []).sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+                
+                return { success: true, data: sortedNews };
+            } catch (dbError) {
+                console.log('DynamoDB failed, using mock database:', dbError.message);
+                useMockDB = true;
+                const mockDB = initializeMockDB();
+                const allNews = mockDB.scan(TABLE_NAME);
+                const visibleNews = allNews.filter(news => news.isVisible !== false);
+                const sortedNews = visibleNews.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+                return { success: true, data: sortedNews };
+            }
+        } catch (error) {
+            console.error('Error getting all public recruiter news:', error);
+            return { success: false, message: 'Failed to get news' };
+        }
+    },
+
+    // Get all recruiter news for admin panel (including hidden ones)
+    getAll: async () => {
         try {
             // Try DynamoDB first, fall back to mock on error
             try {
@@ -352,8 +391,30 @@ const RecruiterNewsModel = {
                 return { success: true, data: sortedNews };
             }
         } catch (error) {
-            console.error('Error getting all public recruiter news:', error);
+            console.error('Error getting all recruiter news:', error);
             return { success: false, message: 'Failed to get news' };
+        }
+    },
+
+    // Toggle visibility
+    toggleVisibility: async (recruiterNewsID) => {
+        try {
+            // First get the current item
+            const currentItem = await RecruiterNewsModel.getById(recruiterNewsID);
+            if (!currentItem.success) {
+                return currentItem;
+            }
+
+            const newVisibility = !currentItem.data.isVisible;
+            const updateResult = await RecruiterNewsModel.update(recruiterNewsID, { isVisible: newVisibility });
+            
+            if (updateResult.success) {
+                return { success: true, data: { ...updateResult.data, isVisible: newVisibility } };
+            }
+            return updateResult;
+        } catch (error) {
+            console.error('Error toggling recruiter news visibility:', error);
+            return { success: false, message: 'Failed to toggle visibility' };
         }
     }
 };

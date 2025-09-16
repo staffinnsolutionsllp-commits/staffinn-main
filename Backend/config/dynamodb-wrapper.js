@@ -44,6 +44,9 @@ const INSTITUTE_STUDENTS_TABLE = process.env.INSTITUTE_STUDENTS_TABLE || 'staffi
 const JOBS_TABLE = process.env.JOBS_TABLE || 'staffinn-jobs';
 const JOB_APPLICATIONS_TABLE = process.env.JOB_APPLICATIONS_TABLE || 'staffinn-job-applications';
 const RECRUITER_NEWS_TABLE = process.env.RECRUITER_NEWS_TABLE || 'recruiter-news';
+const ISSUES_TABLE = process.env.DYNAMODB_ISSUES_TABLE || 'staffinn-issue-section';
+const ADMIN_TABLE = process.env.ADMIN_TABLE || 'staffinn-admin';
+const QUIZ_PROGRESS_TABLE = process.env.QUIZ_PROGRESS_TABLE || 'user-quiz-progress';
 
 const createTablesIfNotExist = async () => {
   try {
@@ -62,7 +65,10 @@ const createTablesIfNotExist = async () => {
       mockDB.createTable(JOBS_TABLE);
       mockDB.createTable(JOB_APPLICATIONS_TABLE);
       mockDB.createTable(RECRUITER_NEWS_TABLE);
-      console.log('Mock database tables initialized');
+      mockDB.createTable(ISSUES_TABLE);
+      mockDB.createTable(ADMIN_TABLE);
+      mockDB.createTable(QUIZ_PROGRESS_TABLE);
+      console.log('Mock database tables initialized (including issues and quiz progress tables)');
       return;
     }
 
@@ -92,5 +98,8 @@ module.exports = {
   JOBS_TABLE,
   JOB_APPLICATIONS_TABLE,
   RECRUITER_NEWS_TABLE,
+  ISSUES_TABLE,
+  ADMIN_TABLE,
+  QUIZ_PROGRESS_TABLE,
   createTablesIfNotExist
 };

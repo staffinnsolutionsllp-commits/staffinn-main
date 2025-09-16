@@ -276,15 +276,139 @@ const getAllPublic = async () => {
     const response = await docClient.send(command);
     const items = response.Items || [];
     
-    // Sort by date (newest first)
-    const sortedItems = items.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+    // Filter out hidden and deleted items for public display
+    const visibleItems = items.filter(item => {
+      // Show item if:
+      // 1. isVisible is not explicitly set to false
+      // 2. isDeleted is not set to true
+      const isVisible = item.isVisible !== false;
+      const isNotDeleted = item.isDeleted !== true;
+      return isVisible && isNotDeleted;
+    });
     
-    console.log('Retrieved all public events/news:', sortedItems.length);
+    // Sort by date (newest first)
+    const sortedItems = visibleItems.sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+    
+    console.log(`Retrieved ${sortedItems.length} visible public events/news out of ${items.length} total items`);
 
     return { success: true, data: sortedItems };
   } catch (error) {
     console.error('Error getting all public events/news:', error);
     return { success: false, message: 'Failed to get events/news' };
+  }
+};
+
+/**
+ * Toggle visibility of an event/news item (for admin)
+ * @param {string} eventNewsId - Event/News ID
+ * @returns {Promise<Object>} - Success status and updated data
+ */
+const toggleVisibility = async (eventNewsId) => {
+  try {
+    console.log('Toggling visibility for event/news:', eventNewsId);
+
+    // First, find the item by scanning for eventNewsId
+    const scanCommand = new ScanCommand({
+      TableName: EVENT_NEWS_TABLE,
+      FilterExpression: 'eventNewsId = :eventNewsId',
+      ExpressionAttributeValues: {
+        ':eventNewsId': eventNewsId
+      }
+    });
+
+    const scanResponse = await docClient.send(scanCommand);
+    
+    if (!scanResponse.Items || scanResponse.Items.length === 0) {
+      return { success: false, message: 'Event/News not found' };
+    }
+
+    const item = scanResponse.Items[0];
+    const currentVisibility = item.isVisible !== false; // Default to true if not set
+    const newVisibility = !currentVisibility;
+
+    // Update the visibility
+    const updateCommand = new UpdateCommand({
+      TableName: EVENT_NEWS_TABLE,
+      Key: {
+        insteventnews: item.insteventnews
+      },
+      UpdateExpression: 'SET isVisible = :isVisible, lastUpdated = :lastUpdated',
+      ExpressionAttributeValues: {
+        ':isVisible': newVisibility,
+        ':lastUpdated': new Date().toISOString()
+      },
+      ReturnValues: 'ALL_NEW'
+    });
+
+    const updateResponse = await docClient.send(updateCommand);
+    console.log('Visibility toggled successfully:', newVisibility);
+
+    return { 
+      success: true, 
+      data: {
+        ...updateResponse.Attributes,
+        isVisible: newVisibility
+      }
+    };
+  } catch (error) {
+    console.error('Error toggling visibility:', error);
+    return { success: false, message: 'Failed to toggle visibility' };
+  }
+};
+
+/**
+ * Delete an event/news item (for admin)
+ * @param {string} eventNewsId - Event/News ID
+ * @returns {Promise<Object>} - Success status
+ */
+const adminDelete = async (eventNewsId) => {
+  try {
+    console.log('Admin deleting event/news:', eventNewsId);
+
+    // First, find the item by scanning for eventNewsId
+    const scanCommand = new ScanCommand({
+      TableName: EVENT_NEWS_TABLE,
+      FilterExpression: 'eventNewsId = :eventNewsId',
+      ExpressionAttributeValues: {
+        ':eventNewsId': eventNewsId
+      }
+    });
+
+    const scanResponse = await docClient.send(scanCommand);
+    
+    if (!scanResponse.Items || scanResponse.Items.length === 0) {
+      return { success: false, message: 'Event/News not found' };
+    }
+
+    const item = scanResponse.Items[0];
+
+    // Mark as deleted instead of actually deleting
+    const updateCommand = new UpdateCommand({
+      TableName: EVENT_NEWS_TABLE,
+      Key: {
+        insteventnews: item.insteventnews
+      },
+      UpdateExpression: 'SET isDeleted = :isDeleted, lastUpdated = :lastUpdated',
+      ExpressionAttributeValues: {
+        ':isDeleted': true,
+        ':lastUpdated': new Date().toISOString()
+      },
+      ReturnValues: 'ALL_NEW'
+    });
+
+    const updateResponse = await docClient.send(updateCommand);
+    console.log('Event/News marked as deleted successfully');
+
+    return { 
+      success: true, 
+      data: {
+        ...updateResponse.Attributes,
+        isDeleted: true
+      }
+    };
+  } catch (error) {
+    console.error('Error deleting event/news:', error);
+    return { success: false, message: 'Failed to delete event/news' };
   }
 };
 
@@ -297,5 +421,7 @@ module.exports = {
   getEventNewsByType,
   getAllEventNews,
   getAllPublic,
+  toggleVisibility,
+  adminDelete,
   EVENT_NEWS_TABLE
 };

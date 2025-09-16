@@ -34,13 +34,18 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const newsRoutes = require('./routes/newsRoutes');
+const newsAdminRoutes = require('./routes/newsAdminRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const issueRoutes = require('./routes/issueRoutes');
+const assignmentRoutes = require('./routes/assignmentRoutes');
+const progressRoutes = require('./routes/progressRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4001;
 const API_VERSION = 'v1';
 const API_PREFIX = `/api/${API_VERSION}`;
 
@@ -52,6 +57,18 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Simple placeholder image endpoint to fix console errors
+app.get('/api/placeholder/:width/:height', (req, res) => {
+  const { width, height } = req.params;
+  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100%" height="100%" fill="#f3f4f6"/>
+    <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="14" fill="#9ca3af" text-anchor="middle" dy=".3em">News Image</text>
+  </svg>`;
+  
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.send(svg);
+});
+
 // Import debug routes
 const debugRoutes = require('./debug-routes');
 
@@ -62,6 +79,7 @@ app.use(`${API_PREFIX}/recruiter`, recruiterRoutes);
 app.use(`${API_PREFIX}/staff`, staffRoutes);
 app.use(`${API_PREFIX}/institute`, instituteRoutes);
 app.use(`${API_PREFIX}/institutes`, instituteRoutes); // Add plural route for frontend compatibility
+app.use(`${API_PREFIX}/progress`, progressRoutes); // Progress routes
 app.use(`${API_PREFIX}/institute-management`, instituteManagementRoutes);
 app.use(`${API_PREFIX}/contact`, contactRoutes);
 app.use(`${API_PREFIX}/hiring`, hiringRoutes);
@@ -69,6 +87,10 @@ app.use(`${API_PREFIX}/reviews`, reviewRoutes);
 app.use(`${API_PREFIX}/applications`, applicationRoutes);
 app.use(`${API_PREFIX}/notifications`, notificationRoutes);
 app.use(`${API_PREFIX}/news`, newsRoutes);
+app.use(`${API_PREFIX}/news-admin`, newsAdminRoutes);
+app.use(`${API_PREFIX}/admin`, adminRoutes);
+app.use(`${API_PREFIX}/issues`, issueRoutes);
+app.use(`${API_PREFIX}/assignments`, assignmentRoutes);
 app.use('/debug', debugRoutes);
 
 // Basic routes
@@ -235,6 +257,15 @@ server.listen(PORT, async () => {
         // Reset institute courses cache after table creation
         const instituteCourseModel = require('./models/instituteCourseModel');
         instituteCourseModel.resetCache();
+        
+        // Initialize default admin
+        try {
+            const adminModel = require('./models/adminModel');
+            await adminModel.initializeDefaultAdmin();
+            console.log('✅ Default admin initialized');
+        } catch (error) {
+            console.log('ℹ️  Admin already exists or initialization failed:', error.message);
+        }
     } catch (error) {
         console.error('❌ Error initializing DynamoDB tables:', error);
     }

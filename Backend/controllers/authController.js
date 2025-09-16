@@ -4,7 +4,7 @@
  */
 const userModel = require('../models/userModel');
 const jwtUtils = require('../utils/jwtUtils');
-const { validateRegistration, validateLogin } = require('../utils/validation');
+const { validateRegistration, validateLogin, validateStaffRegistration, validateRecruiterRegistration, validateInstituteRegistration } = require('../utils/validation');
 
 // Import email verification service (you'll need to create this)
 const emailService = require('../services/emailService');
@@ -95,31 +95,55 @@ const register = async (req, res) => {
   try {
     console.log('Registration request:', req.body);
     
-    // Validate request body
-    const { error, value } = validateRegistration(req.body);
+    const { role } = req.body;
     
-    if (error) {
-      console.log('Validation error:', error);
+    if (!role) {
       return res.status(400).json({
         success: false,
-        message: error
+        message: 'Role is required'
       });
     }
     
-    // Check if email is verified (optional - you can enable this later)
-    // const isEmailVerified = await emailService.isEmailVerified(value.email);
-    // if (!isEmailVerified) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: 'Please verify your email first'
-    //   });
-    // }
+    // Role-specific validation
+    let validationResult;
+    const normalizedRole = role.toLowerCase();
     
-    // Normalize role to lowercase
-    value.role = value.role.toLowerCase();
+    switch (normalizedRole) {
+      case 'staff':
+        const { validateStaffRegistration } = require('../utils/validation');
+        validationResult = validateStaffRegistration(req.body);
+        break;
+      case 'recruiter':
+        const { validateRecruiterRegistration } = require('../utils/validation');
+        validationResult = validateRecruiterRegistration(req.body);
+        break;
+      case 'institute':
+        const { validateInstituteRegistration } = require('../utils/validation');
+        validationResult = validateInstituteRegistration(req.body);
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid role specified'
+        });
+    }
     
-    // Create user with only registration form fields
-    const user = await userModel.createUser(value);
+    if (validationResult.error) {
+      console.log('Validation error:', validationResult.error);
+      return res.status(400).json({
+        success: false,
+        message: validationResult.error
+      });
+    }
+    
+    // Prepare user data
+    const userData = {
+      ...validationResult.value,
+      role: normalizedRole
+    };
+    
+    // Create user
+    const user = await userModel.createUser(userData);
     
     // Generate tokens
     const tokens = jwtUtils.generateTokens(user);
@@ -143,7 +167,7 @@ const register = async (req, res) => {
 };
 
 /**
- * Login user (existing function - keeping as is)
+ * Login user
  * @route POST /api/auth/login
  */
 const login = async (req, res) => {
@@ -170,7 +194,24 @@ const login = async (req, res) => {
       });
     }
     
-    // Generate tokens
+    // Check if user is blocked
+    if (user.isBlocked) {
+      return res.status(200).json({
+        success: true,
+        blocked: true,
+        message: 'User is blocked',
+        data: {
+          user: {
+            userId: user.userId,
+            email: user.email,
+            role: user.role,
+            isBlocked: true
+          }
+        }
+      });
+    }
+    
+    // Generate tokens for non-blocked users
     const tokens = jwtUtils.generateTokens(user);
     
     // Send response
@@ -249,11 +290,57 @@ const changePassword = async (req, res) => {
   }
 };
 
+/**
+ * Submit help request for blocked users
+ * @route POST /api/auth/request-help
+ */
+const requestHelp = async (req, res) => {
+  try {
+    const { name, email, query } = req.body;
+    
+    if (!name || !email || !query) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, email, and query are required'
+      });
+    }
+    
+    // Store in issues table
+    const dynamoService = require('../services/dynamoService');
+    const { v4: uuidv4 } = require('uuid');
+    
+    const issueData = {
+      issuesection: uuidv4(),
+      name,
+      email,
+      query,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    await dynamoService.putItem('staffinn-issue-section', issueData);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Help request submitted successfully'
+    });
+    
+  } catch (error) {
+    console.error('Request help error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to submit help request'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   getCurrentUser,
-  verifyEmail,    // New function
-  verifyOTP,      // New function
-  changePassword  // New function
+  verifyEmail,
+  verifyOTP,
+  changePassword,
+  requestHelp
 };

@@ -1,7 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const dynamoService = require('../services/dynamoService');
 
-const INSTITUTE_COURSES_TABLE = process.env.INSTITUTE_COURSES_TABLE || 'staffinn-institute-courses';
+const COURSES_TABLE = 'staffinn-courses';
 
 // Cache to prevent repeated table not found errors
 let tableNotFound = false;
@@ -21,9 +21,9 @@ const createCourse = async (instituteId, courseData) => {
   
   try {
     const course = {
-      instituteCourseID: uuidv4(),
+      coursesId: uuidv4(),
       instituteId,
-      name: courseData.name,
+      courseName: courseData.name,
       duration: courseData.duration,
       fees: courseData.fees,
       instructor: courseData.instructor,
@@ -31,14 +31,15 @@ const createCourse = async (instituteId, courseData) => {
       category: courseData.category,
       mode: courseData.mode,
       prerequisites: courseData.prerequisites,
-      syllabus: courseData.syllabus,
+      syllabusOverview: courseData.syllabus,
       certification: courseData.certification,
+      modules: courseData.modules || [],
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    await dynamoService.putItem(INSTITUTE_COURSES_TABLE, course);
+    await dynamoService.putItem(COURSES_TABLE, course);
     return course;
   } catch (error) {
     if (error.name === 'ResourceNotFoundException' || error.__type === 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException') {
@@ -74,12 +75,13 @@ const getCoursesByInstitute = async (instituteId) => {
     tableCheckPromise = (async () => {
       try {
         const params = {
-          FilterExpression: 'instituteId = :instituteId',
+          FilterExpression: 'instituteId = :instituteId AND isActive = :isActive',
           ExpressionAttributeValues: {
-            ':instituteId': instituteId
+            ':instituteId': instituteId,
+            ':isActive': true
           }
         };
-        const result = await dynamoService.scanItems(INSTITUTE_COURSES_TABLE, params);
+        const result = await dynamoService.scanItems(COURSES_TABLE, params);
         tableCheckPromise = null; // Reset for future calls
         return result;
       } catch (error) {

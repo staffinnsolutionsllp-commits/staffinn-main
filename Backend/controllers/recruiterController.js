@@ -7,41 +7,41 @@ const jwtUtils = require('../utils/jwtUtils');
 const { validateRecruiterRegistration } = require('../utils/validation');
 const emailService = require('../services/emailService');
 
-// Website validation service
-const websiteValidationService = {
-  validateWebsiteExists: async (website) => {
-    try {
-      const https = require('https');
-      const http = require('http');
-      const url = require('url');
-      
-      const parsedUrl = url.parse(website);
-      const protocol = parsedUrl.protocol === 'https:' ? https : http;
-      
-      return new Promise((resolve) => {
-        const req = protocol.request({
-          hostname: parsedUrl.hostname,
-          port: parsedUrl.port,
-          path: '/',
-          method: 'HEAD',
-          timeout: 10000
-        }, (res) => {
-          resolve(res.statusCode >= 200 && res.statusCode < 400);
-        });
-        
-        req.on('error', () => resolve(false));
-        req.on('timeout', () => {
-          req.destroy();
-          resolve(false);
-        });
-        
-        req.end();
-      });
-    } catch (error) {
-      return false;
-    }
-  }
-};
+// Website validation service - Disabled for better user experience
+// const websiteValidationService = {
+//   validateWebsiteExists: async (website) => {
+//     try {
+//       const https = require('https');
+//       const http = require('http');
+//       const url = require('url');
+//       
+//       const parsedUrl = url.parse(website);
+//       const protocol = parsedUrl.protocol === 'https:' ? https : http;
+//       
+//       return new Promise((resolve) => {
+//         const req = protocol.request({
+//           hostname: parsedUrl.hostname,
+//           port: parsedUrl.port,
+//           path: '/',
+//           method: 'HEAD',
+//           timeout: 10000
+//         }, (res) => {
+//           resolve(res.statusCode >= 200 && res.statusCode < 400);
+//         });
+//         
+//         req.on('error', () => resolve(false));
+//         req.on('timeout', () => {
+//           req.destroy();
+//           resolve(false);
+//         });
+//         
+//         req.end();
+//       });
+//     } catch (error) {
+//       return false;
+//     }
+//   }
+// };
 
 /**
  * Register a new recruiter
@@ -71,14 +71,20 @@ const registerRecruiter = async (req, res) => {
       });
     }
     
-    // Validate website existence if provided
-    if (value.website) {
-      const isWebsiteValid = await websiteValidationService.validateWebsiteExists(value.website);
-      if (!isWebsiteValid) {
+    // Validate website format if provided
+    if (value.website && value.website.trim() !== '') {
+      // Basic URL format validation only
+      const urlPattern = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+(\/.*)?$/;
+      if (!urlPattern.test(value.website)) {
         return res.status(400).json({
           success: false,
-          message: 'Website URL is not accessible. Please provide a valid website URL.'
+          message: 'Please provide a valid website URL format (e.g., https://example.com)'
         });
+      }
+      
+      // Ensure URL has protocol
+      if (!value.website.startsWith('http://') && !value.website.startsWith('https://')) {
+        value.website = 'https://' + value.website;
       }
     }
     
@@ -89,7 +95,8 @@ const registerRecruiter = async (req, res) => {
       password: value.password,
       phoneNumber: value.phoneNumber,
       role: 'recruiter',
-      website: value.website || null
+      website: value.website || null,
+      isVisible: true // Default to visible when registering
     };
     
     // Create user in users table
@@ -259,14 +266,20 @@ const updateRecruiterProfile = async (req, res) => {
     delete updateData.password;
     delete updateData.role;
     
-    // If website is being updated, validate it
-    if (updateData.website) {
-      const isWebsiteValid = await websiteValidationService.validateWebsiteExists(updateData.website);
-      if (!isWebsiteValid) {
+    // If website is being updated, validate it (optional validation)
+    if (updateData.website && updateData.website.trim() !== '') {
+      // Basic URL format validation only
+      const urlPattern = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+(\/.*)?$/;
+      if (!urlPattern.test(updateData.website)) {
         return res.status(400).json({
           success: false,
-          message: 'Website URL is not accessible. Please provide a valid website URL.'
+          message: 'Please provide a valid website URL format (e.g., https://example.com)'
         });
+      }
+      
+      // Ensure URL has protocol
+      if (!updateData.website.startsWith('http://') && !updateData.website.startsWith('https://')) {
+        updateData.website = 'https://' + updateData.website;
       }
     }
     
@@ -299,12 +312,14 @@ const updateRecruiterProfile = async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
-    console.log('Saving profile data:', {
+    console.log('Updating recruiter profile with photo data:', {
       recruiterId: userId,
+      hasProfilePhoto: !!profileData.profilePhoto,
       profilePhoto: profileData.profilePhoto,
-      officeImages: profileData.officeImages,
-      hasExistingPhoto: !!existingProfile.profilePhoto,
-      hasNewPhoto: !!updateData.profilePhoto
+      isExplicitPhotoUpdate: updateData.hasOwnProperty('profilePhoto'),
+      updateDataPhoto: updateData.profilePhoto,
+      existingPhoto: existingProfile.profilePhoto,
+      officeImages: profileData.officeImages.length
     });
     
     // Save profile data to recruiter-profiles table (separate from registration data)
@@ -349,15 +364,16 @@ const verifyWebsite = async (req, res) => {
       });
     }
     
-    // Validate website existence
-    const isWebsiteValid = await websiteValidationService.validateWebsiteExists(website);
+    // Basic URL format validation
+    const urlPattern = /^(https?:\/\/)?(www\.)?[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+(\/.*)?$/;
+    const isValidFormat = urlPattern.test(website);
     
     res.status(200).json({
       success: true,
       data: {
         website,
-        isValid: isWebsiteValid,
-        message: isWebsiteValid ? 'Website is accessible' : 'Website is not accessible'
+        isValid: isValidFormat,
+        message: isValidFormat ? 'Website URL format is valid' : 'Invalid website URL format'
       }
     });
     
@@ -381,7 +397,11 @@ const getAllRecruitersPublic = async (req, res) => {
     const RECRUITER_PROFILES_TABLE = process.env.RECRUITER_PROFILES_TABLE;
     
     const allUsers = await dynamoService.scanItems(USERS_TABLE);
-    const recruiters = allUsers.filter(user => user.role === 'recruiter');
+    const recruiters = allUsers.filter(user => 
+      user.role === 'recruiter' && 
+      !user.isBlocked && 
+      user.isVisible !== false
+    );
     
     // Get all recruiter profiles
     const allProfiles = await dynamoService.scanItems(RECRUITER_PROFILES_TABLE);
@@ -461,7 +481,7 @@ const getRecruiterByIdPublic = async (req, res) => {
     
     const recruiter = await userModel.findUserById(recruiterId);
     
-    if (!recruiter || recruiter.role !== 'recruiter') {
+    if (!recruiter || recruiter.role !== 'recruiter' || recruiter.isBlocked || recruiter.isVisible === false) {
       return res.status(404).json({
         success: false,
         message: 'Recruiter not found'
@@ -656,7 +676,8 @@ const uploadProfilePhoto = async (req, res) => {
     }
 
     // Store the file path with proper URL format
-    const photoUrl = `http://localhost:4000/uploads/${req.file.filename}`;
+    const serverPort = process.env.PORT || 4001;
+    const photoUrl = `http://localhost:${serverPort}/uploads/${req.file.filename}`;
     
     // Update recruiter profile with photo URL in recruiter-profiles table
     const dynamoService = require('../services/dynamoService');
@@ -671,6 +692,12 @@ const uploadProfilePhoto = async (req, res) => {
       profilePhoto: photoUrl,
       updatedAt: new Date().toISOString()
     };
+    
+    console.log('Saving profile photo to database:', {
+      recruiterId: req.user.userId,
+      photoUrl: photoUrl,
+      existingProfile: !!existingProfile
+    });
     
     await dynamoService.putItem(RECRUITER_PROFILES_TABLE, updatedProfile);
     

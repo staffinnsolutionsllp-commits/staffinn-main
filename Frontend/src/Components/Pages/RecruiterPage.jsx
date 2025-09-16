@@ -300,7 +300,7 @@ const RecruiterPage = () => {
           // Handle profile photo URL properly
           let logoUrl;
           if (recruiter.profilePhoto) {
-            logoUrl = recruiter.profilePhoto.startsWith('http') ? recruiter.profilePhoto : `http://localhost:5000${recruiter.profilePhoto}`;
+            logoUrl = recruiter.profilePhoto.startsWith('http') ? recruiter.profilePhoto : `http://localhost:4001${recruiter.profilePhoto}`;
           } else {
             logoUrl = `https://via.placeholder.com/80?text=${recruiter.companyName ? recruiter.companyName.substring(0, 3).toUpperCase() : 'CO'}`;
           }
@@ -524,13 +524,13 @@ const RecruiterPage = () => {
       // Handle profile photo URL properly for detailed data
       let profilePhotoUrl = recruiter.profilePhoto; // Use the already processed URL from the list
       if (detailedData.profilePhoto) {
-        profilePhotoUrl = detailedData.profilePhoto.startsWith('http') ? detailedData.profilePhoto : `http://localhost:5000${detailedData.profilePhoto}`;
+        profilePhotoUrl = detailedData.profilePhoto.startsWith('http') ? detailedData.profilePhoto : `http://localhost:4001${detailedData.profilePhoto}`;
       }
       
       // Process office images to ensure full URLs
       const rawOfficeImages = detailedData.officeImages || detailedData.officePhotos || [];
       const processedOfficeImages = Array.isArray(rawOfficeImages) ? rawOfficeImages.map(img => 
-        (img && typeof img === 'string') ? (img.startsWith('http') ? img : `http://localhost:5000${img}`) : img
+        (img && typeof img === 'string') ? (img.startsWith('http') ? img : `http://localhost:4001${img}`) : img
       ).filter(Boolean) : [];
       
       setSelectedRecruiter({
@@ -825,7 +825,7 @@ const RecruiterPage = () => {
                           </div>
                         </div>
                         
-                        <p className="job-description">{job.description}</p>
+                        <div className="job-description" style={{whiteSpace: 'pre-wrap'}}>{job.description}</div>
                         
                         <div className="job-skills">
                           {job.skills.map((skill, index) => (

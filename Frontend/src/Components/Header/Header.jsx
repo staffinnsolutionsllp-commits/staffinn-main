@@ -22,6 +22,7 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
     const [loginError, setLoginError] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
     const [showDashboardMessage, setShowDashboardMessage] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     
     // Function to handle redirect from registration to login
@@ -194,63 +195,52 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
             {showLoginModal && (
                 <div className="login-modal">
                     <div className="login-form">
-                        <button className="modal-close-btn" onClick={closeLoginModal}>×</button>
-                        <div className="modal-header">
-                            <h2>Welcome Back</h2>
-                            <p className="modal-subtitle">Please enter your details</p>
-                        </div>
-
-                        <form onSubmit={handleLogin}>
-                            <div className="input-group">
-                                <input
-                                    type="email"
-                                    placeholder="Enter your email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            <div className="input-group">
-                                <input
-                                    type="password"
-                                    placeholder="Enter your password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            
-                            {/* Error message moved to toast */}
-                            
-                            <button type="submit" className="login-submit-btn">Sign In</button>
-                        </form>
-
-                        <div className="divider">
-                            <span>OR</span>
-                        </div>
-
-                        <div className="social-login">
-                            <button className="social-btn social-btn-google">
-                                <img src={assets.google_icon} alt="Google" />
-                                Continue with Google
-                            </button>
-                            <button className="social-btn social-btn-facebook">
-                                <img src={assets.facebook_icon} alt="Facebook" />
-                                Continue with Facebook
-                            </button>
-                            <button className="social-btn social-btn-linkedin">
-                                <img src={assets.linkedin_icon} alt="LinkedIn" />
-                                Continue with LinkedIn
-                            </button>
-                        </div>
-
-                        <p className="register-text">
-                            Don't have an account? <a href="#" onClick={(e) => {
+                        <div className="login-left-panel">
+                            <h2>Hello, Welcome!</h2>
+                            <p>Don't have an account?</p>
+                            <button className="register-btn" onClick={(e) => {
                                 e.preventDefault();
                                 setShowLoginModal(false);
                                 onRegisterClick();
-                            }}>Register here</a>
-                        </p>
+                            }}>Register</button>
+                        </div>
+                        <div className="login-right-panel">
+                            <button className="modal-close-btn" onClick={closeLoginModal}>×</button>
+                            <div className="modal-header">
+                                <h2>Login</h2>
+                            </div>
+                            <p className="modal-subtitle">Please enter your details</p>
+
+                            <form onSubmit={handleLogin}>
+                                <div className="input-group">
+                                    <input
+                                        type="email"
+                                        placeholder="Email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                    />
+                                    <span className="input-icon user-icon">👤</span>
+                                </div>
+                                <div className="input-group">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="Password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
+                                    <span 
+                                        className="input-icon eye-icon" 
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        {showPassword ? "👁️" : "👁️‍🗨️"}
+                                    </span>
+                                </div>
+                                
+                                <button type="submit" className="login-submit-btn">Login</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}

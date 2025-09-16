@@ -21,6 +21,7 @@ const createOrUpdateProfile = async (instituteId, profileData) => {
       instituteId,
       instituteName: profileData.instituteName,
       address: profileData.address,
+      pincode: profileData.pincode || '',
       phone: profileData.phone,
       email: profileData.email,
       website: profileData.website,

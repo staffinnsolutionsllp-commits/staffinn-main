@@ -20,22 +20,25 @@ const initializeSocketServer = (server) => {
     }
   });
 
-  // Authentication middleware
+  // Authentication middleware (optional for news updates)
   io.use((socket, next) => {
     try {
       const token = socket.handshake.auth.token;
       
-      if (!token) {
-        return next(new Error('Authentication error: Token missing'));
+      if (token) {
+        // Verify JWT token if provided
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded;
+      } else {
+        // Allow anonymous connections for news updates
+        socket.user = { userId: 'anonymous', role: 'guest' };
       }
-      
-      // Verify JWT token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      socket.user = decoded;
       next();
     } catch (error) {
       console.error('Socket authentication error:', error);
-      next(new Error('Authentication error'));
+      // Still allow connection for news updates
+      socket.user = { userId: 'anonymous', role: 'guest' };
+      next();
     }
   });
 
@@ -48,6 +51,36 @@ const initializeSocketServer = (server) => {
     
     // Send unread notifications count on connection
     sendUnreadNotificationsCount(socket);
+    
+    // Handle visibility status check on connection
+    socket.on('check_visibility', async (data) => {
+      try {
+        const userId = socket.user.userId;
+        const role = socket.user.role;
+        
+        let isHidden = false;
+        
+        if (role === 'staff') {
+          const staffModel = require('../models/staffModel');
+          const profile = await staffModel.getStaffProfile(userId);
+          isHidden = profile && profile.profileVisibility === 'private';
+        } else if (role === 'recruiter') {
+          const userModel = require('../models/userModel');
+          const user = await userModel.findUserById(userId);
+          isHidden = user && user.isVisible === false;
+        }
+        
+        if (isHidden) {
+          socket.emit('visibility_update', {
+            isHidden: true,
+            message: 'Your profile has been hidden by administrators',
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        console.error('Error checking visibility status:', error);
+      }
+    });
     
     // Handle disconnection
     socket.on('disconnect', () => {
@@ -106,8 +139,68 @@ const sendNotificationToUser = (userId, notification) => {
   }
 };
 
+/**
+ * Send visibility status update to a specific user
+ * @param {string} userId - User ID to send update to
+ * @param {object} visibilityData - Visibility status data
+ */
+const sendVisibilityUpdate = (userId, visibilityData) => {
+  try {
+    const userSocket = activeConnections.get(userId);
+    
+    if (userSocket) {
+      userSocket.emit('visibility_update', visibilityData);
+      console.log(`Visibility update sent to user ${userId}:`, visibilityData);
+      return true;
+    } else {
+      console.log(`User ${userId} not connected, visibility update not sent in real-time`);
+      return false;
+    }
+  } catch (error) {
+    console.error('Error sending visibility update:', error);
+    return false;
+  }
+};
+
+/**
+ * Check visibility status for all connected users
+ */
+const checkAllUsersVisibility = async () => {
+  try {
+    for (const [userId, socket] of activeConnections) {
+      const role = socket.user?.role;
+      
+      if (!role) continue;
+      
+      let isHidden = false;
+      
+      if (role === 'staff') {
+        const staffModel = require('../models/staffModel');
+        const profile = await staffModel.getStaffProfile(userId);
+        isHidden = profile && profile.profileVisibility === 'private';
+      } else if (role === 'recruiter') {
+        const userModel = require('../models/userModel');
+        const user = await userModel.findUserById(userId);
+        isHidden = user && user.isVisible === false;
+      }
+      
+      if (isHidden) {
+        socket.emit('visibility_update', {
+          isHidden: true,
+          message: 'Your profile has been hidden by administrators',
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error checking all users visibility:', error);
+  }
+};
+
 module.exports = {
   initializeSocketServer,
   sendNotificationToUser,
+  sendVisibilityUpdate,
+  checkAllUsersVisibility,
   activeConnections
 };

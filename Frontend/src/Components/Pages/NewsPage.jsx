@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import apiService from '../../services/api';
+import NewsDisplayAPI from '../../services/newsDisplayApi';
+import io from 'socket.io-client';
 import './NewsPage.css';
 
 import { 
@@ -29,6 +31,13 @@ const NewsPage = () => {
   const [selectedNewsItem, setSelectedNewsItem] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeNewsCategory, setActiveNewsCategory] = useState('all');
+  
+  // News Admin Panel data states
+  const [featuredHeroSection, setFeaturedHeroSection] = useState(null);
+  const [realTimeTrendingTopics, setRealTimeTrendingTopics] = useState([]);
+  const [realTimeExpertInsights, setRealTimeExpertInsights] = useState([]);
+  const [postedNews, setPostedNews] = useState([]);
+  const [socket, setSocket] = useState(null);
   
   // Check if we have a specific news item to display
   useEffect(() => {
@@ -78,24 +87,26 @@ const NewsPage = () => {
 
   ];
 
-  // Featured news - use selected news item or default
-  const featuredNews = selectedNewsItem || {
-    id: 1,
-    title: "Tech Industry Set to Create 100,000 New Jobs by 2026",
-    description: "A new report reveals that the technology sector is poised for massive growth with projections of 100,000 new jobs in AI, cloud computing, and cybersecurity over the next 12 months.",
-    image: "https://via.placeholder.com/1200x600?text=Tech+Industry+Jobs",
-    date: "September 15, 2023",
-    source: "Tech Career Insights",
-    category: "staff"
-  };
+  // Featured news - use real-time hero section or selected news item only
+  const featuredNews = featuredHeroSection ? {
+    id: featuredHeroSection.newsherosection,
+    title: featuredHeroSection.title,
+    description: featuredHeroSection.content,
+    image: featuredHeroSection.bannerImageUrl || "/api/placeholder/1200/600",
+    date: new Date(featuredHeroSection.createdAt).toLocaleDateString(),
+    source: "Staffinn News",
+    category: "staff",
+    tags: featuredHeroSection.tags
+  } : selectedNewsItem;
   
-  const trendingTopics = [
-    { id: 1, title: "Government Launches New Job Scheme for Fresh Graduates", image: "https://via.placeholder.com/300x200?text=Job+Scheme" },
-    { id: 2, title: "Top IT Companies Hiring in 2025 - Skills in Demand", image: "https://via.placeholder.com/300x200?text=IT+Hiring" },
-    { id: 3, title: "Remote Work Policies: Companies Shifting to Hybrid Models", image: "https://via.placeholder.com/300x200?text=Remote+Work" },
-    { id: 4, title: "AI Skills Become Essential - How to Prepare for the Future", image: "https://via.placeholder.com/300x200?text=AI+Skills" },
-    { id: 5, title: "Salary Insights: Which Industries Are Paying the Most in 2025", image: "https://via.placeholder.com/300x200?text=Salary+Insights" }
-  ];
+  // Use real-time trending topics only
+  const trendingTopics = realTimeTrendingTopics.length > 0 ? 
+    realTimeTrendingTopics.map(topic => ({
+      id: topic.newstrendingtopics,
+      title: topic.title,
+      image: topic.imageUrl || "/api/placeholder/300/200",
+      description: topic.description
+    })) : [];
   
   const breakingNews = [
     "TCS Announces Plan to Hire 40,000 Freshers in 2025",
@@ -111,90 +122,20 @@ const NewsPage = () => {
   const [newsArticles, setNewsArticles] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   
-  const expertInsights = [
-    {
-      id: 1,
-      expertName: "Priya Sharma",
-      title: "HR Director, Microsoft India",
-      topic: "What We Look for in Technical Candidates",
-      image: "https://via.placeholder.com/150x150?text=PS",
-      videoUrl: "#"
-    },
-    {
-      id: 2,
-      expertName: "Rahul Mehta",
-      title: "Career Coach & Former Google Recruiter",
-      topic: "Negotiating Your Salary: Do's and Don'ts",
-      image: "https://via.placeholder.com/150x150?text=RM",
-      videoUrl: "#"
-    },
-    {
-      id: 3,
-      expertName: "Anjali Desai",
-      title: "CEO, TalentBridge Consultancy",
-      topic: "Future of Work: Preparing for 2030",
-      image: "https://via.placeholder.com/150x150?text=AD",
-      videoUrl: "#"
-    }
-  ];
+  // Use real-time expert insights only
+  const expertInsights = realTimeExpertInsights.length > 0 ? 
+    realTimeExpertInsights.map(insight => ({
+      id: insight.newsexpertinsights,
+      expertName: insight.expertName,
+      title: insight.designation,
+      topic: insight.title,
+      image: insight.thumbnailUrl || "/api/placeholder/150/150",
+      videoUrl: insight.videoUrl || "#"
+    })) : [];
   
-  const mediaContent = [
-    {
-      id: 1,
-      title: "The Future of Work After Pandemic",
-      type: "video",
-      thumbnail: "https://via.placeholder.com/300x200?text=Future+of+Work",
-      duration: "18:24",
-      views: "24K"
-    },
-    {
-      id: 2,
-      title: "Career Talk Ep.45: Switching to Data Science",
-      type: "podcast",
-      thumbnail: "https://via.placeholder.com/300x200?text=Career+Talk",
-      duration: "32:10",
-      views: "15K"
-    },
-    {
-      id: 3,
-      title: "5 Common Interview Questions and How to Answer Them",
-      type: "video",
-      thumbnail: "https://via.placeholder.com/300x200?text=Interview+Tips",
-      duration: "12:47",
-      views: "38K"
-    },
-    {
-      id: 4,
-      title: "Weekly Job Market Update",
-      type: "podcast",
-      thumbnail: "https://via.placeholder.com/300x200?text=Job+Market+Update",
-      duration: "24:15",
-      views: "9K"
-    }
-  ];
+
   
-  const recommendedNews = [
-    {
-      id: 7,
-      title: "Software Engineering Salaries Across Different Cities in India",
-      description: "A comprehensive comparison of how much software engineers are earning across major tech hubs.",
-      image: "https://via.placeholder.com/300x200?text=SE+Salaries",
-      category: "Recruitment & Hiring Trends",
-      date: "September 8, 2023",
-      source: "Salary Survey",
-      relevance: "Based on your interest in tech careers"
-    },
-    {
-      id: 8,
-      title: "Upskilling Programs Launched by Major Tech Companies",
-      description: "Google, Amazon, and Microsoft announce free training programs to address skill gaps.",
-      image: "https://via.placeholder.com/300x200?text=Upskilling+Programs",
-      category: "Company Announcements",
-      date: "September 7, 2023",
-      source: "Tech Education News",
-      relevance: "Based on your search for programming courses"
-    }
-  ];
+
   
   const jobAlerts = [
     {
@@ -224,14 +165,11 @@ const NewsPage = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [newsFilter, setNewsFilter] = useState("all");
   const [saveStates, setSaveStates] = useState({});
-  const [currentPoll, setCurrentPoll] = useState({
-    question: "Do you prefer remote jobs?",
-    options: ["Yes", "No", "Hybrid model is best"],
-    votes: [42, 18, 76],
-    totalVotes: 136,
-    userVoted: false
-  });
+
   const [showNotification, setShowNotification] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalContent, setModalContent] = useState(null);
+  const [playingVideo, setPlayingVideo] = useState(null);
 
   // Toggle save state for articles
   const toggleSave = (articleId) => {
@@ -241,16 +179,7 @@ const NewsPage = () => {
     }));
   };
 
-  // Handle vote in poll
-  const handleVote = (optionIndex) => {
-    if (!currentPoll.userVoted) {
-      const newPoll = { ...currentPoll };
-      newPoll.votes[optionIndex] += 1;
-      newPoll.totalVotes += 1;
-      newPoll.userVoted = true;
-      setCurrentPoll(newPoll);
-    }
-  };
+
 
 
 
@@ -262,7 +191,10 @@ const NewsPage = () => {
       all: newsArticles.length,
       staff: newsArticles.filter(article => 
         article.category === 'staff' || 
-        (article.source && article.source.toLowerCase().includes('staff'))
+        (article.source && article.source.toLowerCase().includes('staff')) ||
+        article.staffinnpostednews ||
+        (article.source && article.source === 'Staffinn') ||
+        (article.bannerImage && article.bannerImage.includes('staffinn-posted-news-photos'))
       ).length,
       institute: newsArticles.filter(article => 
         article.category === 'institute' || 
@@ -282,8 +214,14 @@ const NewsPage = () => {
   const filteredArticles = newsArticles.filter(article => {
     if (newsFilter === 'all') return true;
     if (newsFilter === 'staff') {
-      return article.category === 'staff' || 
-             (article.source && article.source.toLowerCase().includes('staff'));
+      console.log('Checking article for staff filter:', article);
+      const isStaff = article.category === 'staff' || 
+                     (article.source && article.source.toLowerCase().includes('staff')) ||
+                     article.staffinnpostednews ||
+                     (article.source && article.source === 'Staffinn') ||
+                     (article.bannerImage && article.bannerImage.includes('staffinn-posted-news-photos'));
+      console.log('Is staff:', isStaff);
+      return isStaff;
     }
     if (newsFilter === 'institute') {
       return article.category === 'institute' || 
@@ -296,10 +234,150 @@ const NewsPage = () => {
     return true;
   });
 
-  // Load news data on component mount
+  // Load news data and initialize real-time updates on component mount
   useEffect(() => {
     loadAllNews();
+    loadNewsAdminData();
     setNewsFilter('all');
+    
+    // Initialize socket connection for real-time updates
+    const socketConnection = io('http://localhost:5000', {
+      auth: {
+        token: null // No authentication required for news updates
+      }
+    });
+    
+    setSocket(socketConnection);
+    
+    // Listen for real-time news admin updates
+    socketConnection.on('heroSectionCreated', (data) => {
+      console.log('New hero section created:', data);
+      if (data.isActive) {
+        setFeaturedHeroSection(data);
+      }
+    });
+    
+    socketConnection.on('heroSectionUpdated', (data) => {
+      console.log('Hero section updated:', data);
+      if (data.isActive) {
+        setFeaturedHeroSection(data);
+      }
+    });
+    
+    socketConnection.on('heroSectionVisibilityToggled', (data) => {
+      console.log('Hero section visibility toggled:', data);
+      if (data.isActive) {
+        setFeaturedHeroSection(data);
+      } else {
+        // If current featured section was hidden, clear it
+        if (featuredHeroSection && featuredHeroSection.newsherosection === data.newsherosection) {
+          setFeaturedHeroSection(null);
+          // Reload to get next active hero section
+          loadNewsAdminData();
+        }
+      }
+    });
+    
+    socketConnection.on('trendingTopicCreated', (data) => {
+      console.log('New trending topic created:', data);
+      setRealTimeTrendingTopics(prev => [data, ...prev.slice(0, 14)]); // Keep max 15
+    });
+    
+    socketConnection.on('trendingTopicUpdated', (data) => {
+      console.log('Trending topic updated:', data);
+      setRealTimeTrendingTopics(prev => 
+        prev.map(topic => topic.newstrendingtopics === data.newstrendingtopics ? data : topic)
+      );
+    });
+    
+    socketConnection.on('trendingTopicVisibilityToggled', (data) => {
+      console.log('Trending topic visibility toggled:', data);
+      if (data.isVisible) {
+        setRealTimeTrendingTopics(prev => {
+          const exists = prev.find(topic => topic.newstrendingtopics === data.newstrendingtopics);
+          if (!exists) {
+            return [data, ...prev.slice(0, 14)];
+          }
+          return prev.map(topic => topic.newstrendingtopics === data.newstrendingtopics ? data : topic);
+        });
+      } else {
+        setRealTimeTrendingTopics(prev => 
+          prev.filter(topic => topic.newstrendingtopics !== data.newstrendingtopics)
+        );
+      }
+    });
+    
+    socketConnection.on('trendingTopicDeleted', (data) => {
+      console.log('Trending topic deleted:', data);
+      setRealTimeTrendingTopics(prev => 
+        prev.filter(topic => topic.newstrendingtopics !== data.topicId)
+      );
+    });
+    
+    socketConnection.on('expertInsightCreated', (data) => {
+      console.log('New expert insight created:', data);
+      setRealTimeExpertInsights(prev => [data, ...prev]);
+    });
+    
+    socketConnection.on('expertInsightUpdated', (data) => {
+      console.log('Expert insight updated:', data);
+      setRealTimeExpertInsights(prev => 
+        prev.map(insight => insight.newsexpertinsights === data.newsexpertinsights ? data : insight)
+      );
+    });
+    
+    socketConnection.on('expertInsightVisibilityToggled', (data) => {
+      console.log('Expert insight visibility toggled:', data);
+      if (data.isVisible) {
+        setRealTimeExpertInsights(prev => {
+          const exists = prev.find(insight => insight.newsexpertinsights === data.newsexpertinsights);
+          if (!exists) {
+            return [data, ...prev];
+          }
+          return prev.map(insight => insight.newsexpertinsights === data.newsexpertinsights ? data : insight);
+        });
+      } else {
+        setRealTimeExpertInsights(prev => 
+          prev.filter(insight => insight.newsexpertinsights !== data.newsexpertinsights)
+        );
+      }
+    });
+    
+    socketConnection.on('expertInsightDeleted', (data) => {
+      console.log('Expert insight deleted:', data);
+      setRealTimeExpertInsights(prev => 
+        prev.filter(insight => insight.newsexpertinsights !== data.insightId)
+      );
+    });
+    
+    // Listen for posted news updates
+    socketConnection.on('postedNewsCreated', (data) => {
+      console.log('New posted news created:', data);
+      if (data.isVisible) {
+        setPostedNews(prev => [data, ...prev]);
+        // Manually trigger a page reload to refresh news
+        window.location.reload();
+      }
+    });
+    
+    socketConnection.on('postedNewsUpdated', (data) => {
+      console.log('Posted news updated:', data);
+      if (data.isVisible) {
+        setPostedNews(prev => prev.map(item => 
+          item.staffinnpostednews === data.staffinnpostednews ? data : item
+        ));
+      }
+    });
+    
+    socketConnection.on('postedNewsVisibilityToggled', (data) => {
+      console.log('Posted news visibility toggled:', data);
+      window.location.reload();
+    });
+    
+    socketConnection.on('postedNewsDeleted', (data) => {
+      console.log('Posted news deleted:', data);
+      window.location.reload();
+    });
     
     // Set up periodic refresh to catch new news
     const refreshInterval = setInterval(() => {
@@ -318,8 +396,46 @@ const NewsPage = () => {
     return () => {
       clearInterval(refreshInterval);
       window.removeEventListener('newsUpdated', handleNewsUpdate);
+      socketConnection.disconnect();
     };
   }, []);
+  
+  // Load News Admin Panel data
+  const loadNewsAdminData = async () => {
+    try {
+      console.log('Loading News Admin Panel data...');
+      
+      // Load latest hero section
+      const heroResponse = await NewsDisplayAPI.getLatestHeroSection();
+      if (heroResponse.success && heroResponse.data) {
+        console.log('Loaded hero section:', heroResponse.data);
+        setFeaturedHeroSection(heroResponse.data);
+      }
+      
+      // Load visible trending topics
+      const topicsResponse = await NewsDisplayAPI.getVisibleTrendingTopics();
+      if (topicsResponse.success && topicsResponse.data) {
+        console.log('Loaded trending topics:', topicsResponse.data);
+        setRealTimeTrendingTopics(topicsResponse.data);
+      }
+      
+      // Load visible expert insights
+      const insightsResponse = await NewsDisplayAPI.getVisibleExpertInsights();
+      if (insightsResponse.success && insightsResponse.data) {
+        console.log('Loaded expert insights:', insightsResponse.data);
+        setRealTimeExpertInsights(insightsResponse.data);
+      }
+      
+      // Load visible posted news
+      const postedResponse = await NewsDisplayAPI.getVisiblePostedNews();
+      if (postedResponse.success && postedResponse.data) {
+        console.log('Loaded posted news:', postedResponse.data);
+        setPostedNews(postedResponse.data);
+      }
+    } catch (error) {
+      console.error('Error loading News Admin Panel data:', error);
+    }
+  };
   
   // Load all news from API
   const loadAllNews = async () => {
@@ -327,7 +443,31 @@ const NewsPage = () => {
       setNewsLoading(true);
       console.log('Loading all news for NewsPage...');
       
-      // Try to get all news from the combined endpoint first
+      // Load posted news first
+      try {
+        console.log('Attempting to load posted news...');
+        const postedResponse = await NewsDisplayAPI.getVisiblePostedNews();
+        console.log('Posted news API response:', postedResponse);
+        if (postedResponse.success && postedResponse.data) {
+          const formattedPostedNews = postedResponse.data.map(news => ({
+            ...news,
+            id: news.staffinnpostednews,
+            category: 'staff',
+            source: 'Staffinn',
+            bannerImage: news.bannerImageUrl,
+            details: news.description,
+            date: news.createdAt
+          }));
+          setPostedNews(postedResponse.data);
+          console.log('Loaded posted news:', formattedPostedNews);
+        } else {
+          console.log('No posted news found or API failed');
+        }
+      } catch (postedError) {
+        console.error('Error loading posted news:', postedError);
+      }
+      
+      // Try to get all news from the combined endpoint
       let response = await apiService.getAllNews();
       console.log('getAllNews response:', response);
       
@@ -388,6 +528,31 @@ const NewsPage = () => {
             });
             allNews = [...allNews, ...recruiterNews];
           }
+          
+      
+      // Add posted news to all news
+      try {
+        console.log('Loading posted news for main feed...');
+        const currentPostedResponse = await NewsDisplayAPI.getVisiblePostedNews();
+        console.log('Posted news response for main feed:', currentPostedResponse);
+        if (currentPostedResponse.success && currentPostedResponse.data && currentPostedResponse.data.length > 0) {
+          const formattedPostedNews = currentPostedResponse.data.map(news => ({
+            ...news,
+            id: news.staffinnpostednews,
+            category: 'staff',
+            source: 'Staffinn',
+            bannerImage: news.bannerImageUrl,
+            details: news.description,
+            date: news.createdAt
+          }));
+          console.log('Adding formatted posted news to allNews:', formattedPostedNews);
+          allNews = [...allNews, ...formattedPostedNews];
+        } else {
+          console.log('No posted news to add to main feed');
+        }
+      } catch (postedError) {
+        console.error('Error loading posted news in main load:', postedError);
+      }
         } catch (individualError) {
           console.error('Error loading individual news categories:', individualError);
         }
@@ -404,11 +569,12 @@ const NewsPage = () => {
       const newsByCategory = {
         all: allNews.length,
         institute: allNews.filter(n => n.category === 'institute' || (n.source && n.source.toLowerCase().includes('institute'))).length,
-        staff: allNews.filter(n => n.category === 'staff' || (n.source && n.source.toLowerCase().includes('staff'))).length,
+        staff: allNews.filter(n => n.category === 'staff' || (n.source && n.source.toLowerCase().includes('staff')) || n.staffinnpostednews).length,
         recruiter: allNews.filter(n => n.category === 'recruiter' || (n.source && n.source.toLowerCase().includes('recruiter'))).length
       };
       console.log('News by category:', newsByCategory);
       console.log('Final news articles:', allNews);
+      console.log('Posted news in final array:', allNews.filter(n => n.staffinnpostednews));
       setNewsArticles(allNews);
     } catch (error) {
       console.error('Error loading news:', error);
@@ -437,10 +603,10 @@ const NewsPage = () => {
             <>
               <div className="featured-news-image">
                 <img 
-                  src={selectedNewsItem.bannerImage || selectedNewsItem.originalData?.bannerImage || "https://via.placeholder.com/1200x600?text=News+Banner"} 
+                  src={selectedNewsItem.bannerImage || selectedNewsItem.originalData?.bannerImage || "/api/placeholder/1200/600"} 
                   alt={selectedNewsItem.title}
                   onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/1200x600?text=News+Banner";
+                    e.target.src = "/api/placeholder/1200/600";
                   }}
                 />
               </div>
@@ -472,7 +638,7 @@ const NewsPage = () => {
                 </div>
               </div>
             </>
-          ) : (
+          ) : featuredNews ? (
             <>
               <div className="featured-news-image">
                 <img src={featuredNews.image} alt={featuredNews.title} />
@@ -480,53 +646,89 @@ const NewsPage = () => {
               <div className="featured-news-content">
                 <div className="featured-tag">Top News of the Day</div>
                 <h1>{featuredNews.title}</h1>
-                <p>{featuredNews.description}</p>
+                <p>{featuredNews.description && featuredNews.description.length > 200 ? 
+                  `${featuredNews.description.substring(0, 200)}...` : 
+                  featuredNews.description
+                }</p>
                 <div className="featured-news-meta">
                   <span className="meta-date"><FaClock /> {featuredNews.date}</span>
                   <span className="meta-source">{featuredNews.source}</span>
                   <span className="meta-category">{featuredNews.category}</span>
+                  {featuredNews.tags && (
+                    <div className="featured-tags">
+                      {featuredNews.tags.split(',').map((tag, index) => (
+                        <span key={index} className="featured-tag">
+                          {tag.trim()}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <button className="read-more-btn">Read Full Article</button>
+                <button 
+                  className="read-more-btn"
+                  onClick={() => {
+                    setModalContent(featuredNews);
+                    setShowModal(true);
+                  }}
+                >
+                  Read Full Article
+                </button>
               </div>
             </>
-          )}
+          ) : null}
         </div>
         
         {/* Trending Topics Carousel */}
-        <div className="trending-topics">
-          <h2>Trending Topics</h2>
-          <div className="topics-carousel">
-            <button className="carousel-nav prev" onClick={prevSlide}><FaChevronLeft /></button>
-            <div className="carousel-container">
-              <div 
-                className="carousel-track" 
-                style={{ transform: `translateX(-${currentSlide * 33.33}%)` }}
-              >
-                {trendingTopics.map((topic, index) => (
-                  <div 
-                    key={topic.id} 
-                    className={`carousel-item ${index === currentSlide ? 'active' : ''}`}
-                  >
-                    <div className="topic-card">
-                      <img src={topic.image} alt={topic.title} />
-                      <h3>{topic.title}</h3>
+        {trendingTopics.length > 0 && (
+          <div className="trending-topics">
+            <h2>Trending Topics</h2>
+            <div className="topics-carousel">
+              <button className="carousel-nav prev" onClick={prevSlide}><FaChevronLeft /></button>
+              <div className="carousel-container">
+                <div 
+                  className="carousel-track" 
+                  style={{ transform: `translateX(-${currentSlide * 33.33}%)` }}
+                >
+                  {trendingTopics.map((topic, index) => (
+                    <div 
+                      key={topic.id} 
+                      className={`carousel-item ${index === currentSlide ? 'active' : ''}`}
+                    >
+                      <div 
+                        className="topic-card"
+                        onClick={() => {
+                          setModalContent({
+                            title: topic.title,
+                            description: topic.description,
+                            image: topic.image,
+                            date: new Date().toLocaleDateString(),
+                            source: "Trending Topics",
+                            category: "Trending"
+                          });
+                          setShowModal(true);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <img src={topic.image} alt={topic.title} />
+                        <h3>{topic.title}</h3>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+              <button className="carousel-nav next" onClick={nextSlide}><FaChevronRight /></button>
             </div>
-            <button className="carousel-nav next" onClick={nextSlide}><FaChevronRight /></button>
+            <div className="carousel-indicators">
+              {trendingTopics.map((_, index) => (
+                <span 
+                  key={index} 
+                  className={`indicator ${index === currentSlide ? 'active' : ''}`}
+                  onClick={() => setCurrentSlide(index)}
+                ></span>
+              ))}
+            </div>
           </div>
-          <div className="carousel-indicators">
-            {trendingTopics.map((_, index) => (
-              <span 
-                key={index} 
-                className={`indicator ${index === currentSlide ? 'active' : ''}`}
-                onClick={() => setCurrentSlide(index)}
-              ></span>
-            ))}
-          </div>
-        </div>
+        )}
       </section>
 
 
@@ -596,22 +798,29 @@ const NewsPage = () => {
                     Fetching latest updates from all sources...
                   </div>
                 </div>
-              ) : filteredArticles.length > 0 ? (
+              ) : (() => {
+                console.log('Filtered articles:', filteredArticles);
+                console.log('Filtered articles length:', filteredArticles.length);
+                return filteredArticles.length > 0;
+              })() ? (
                 filteredArticles.map(article => (
                   <div key={article.id || article.eventNewsId || article.newsId} className="article-card">
                     <div className="article-image">
                       <img 
-                        src={article.bannerImage || article.image || article.originalData?.bannerImage || "https://via.placeholder.com/300x200?text=News+Image"} 
+                        src={article.bannerImage || article.image || article.originalData?.bannerImage || "/api/placeholder/300/200"} 
                         alt={article.title}
                         onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/300x200?text=News+Image";
+                          e.target.src = "/api/placeholder/300/200";
                         }}
                       />
                       <div className="article-category">{article.category || article.type || 'News'}</div>
                     </div>
                     <div className="article-content">
                       <h3>{article.title}</h3>
-                      <p>{article.description || article.details}</p>
+                      <p>{(article.description || article.details) && (article.description || article.details).length > 150 ? 
+                        `${(article.description || article.details).substring(0, 150)}...` : 
+                        (article.description || article.details)
+                      }</p>
                       <div className="article-meta">
                         <span className="meta-date">
                           <FaClock /> {article.date || new Date(article.createdAt || Date.now()).toLocaleDateString()}
@@ -642,13 +851,33 @@ const NewsPage = () => {
                         <button className="action-btn">
                           <FaShareAlt />
                         </button>
-                        <button className="read-more-btn">Read More</button>
+                        <button 
+                          className="read-more-btn"
+                          onClick={() => {
+                            setModalContent({
+                              title: article.title,
+                              description: article.description || article.details,
+                              image: article.bannerImage || article.image || article.originalData?.bannerImage,
+                              date: article.date || new Date(article.createdAt || Date.now()).toLocaleDateString(),
+                              source: article.source || article.company || 'Staffinn',
+                              category: article.category || article.type || 'News'
+                            });
+                            setShowModal(true);
+                          }}
+                        >
+                          Read More
+                        </button>
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="no-articles">No articles found in this category.</div>
+                <div className="no-articles">
+                  No articles found in this category.
+                  <div style={{fontSize: '12px', marginTop: '10px', color: '#666'}}>
+                    Debug: Total articles: {newsArticles.length}, Filtered: {filteredArticles.length}, Filter: {newsFilter}
+                  </div>
+                </div>
               )}
             </div>
 
@@ -658,110 +887,56 @@ const NewsPage = () => {
           </section>
 
           {/* Featured Interviews & Expert Insights */}
-          <section className="expert-insights">
-            <div className="section-header">
-              <h2>Expert Insights & Interviews</h2>
-              <a href="#" className="view-all">View All</a>
-            </div>
-            
-            <div className="insights-grid">
-              {expertInsights.map(insight => (
-                <div key={insight.id} className="insight-card">
-                  <div className="expert-image">
-                    <img src={insight.image} alt={insight.expertName} />
-                    <div className="play-button"><FaPlay /></div>
-                  </div>
-                  <div className="expert-info">
-                    <h3>{insight.topic}</h3>
-                    <div className="expert-name">{insight.expertName}</div>
-                    <div className="expert-title">{insight.title}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="ask-expert">
-              <h3>Ask an Expert</h3>
-              <p>Have a career or job-related question? Our industry experts will answer selected questions every week.</p>
-              <div className="ask-form">
-                <textarea 
-                  placeholder="Type your question here..."
-                  rows="3"
-                ></textarea>
-                <button>Submit Question</button>
+          {expertInsights.length > 0 && (
+            <section className="expert-insights">
+              <div className="section-header">
+                <h2>Expert Insights & Interviews</h2>
+                <a href="#" className="view-all">View All</a>
               </div>
-            </div>
-          </section>
-
-          {/* Video & Podcast Section */}
-          <section className="media-section">
-            <div className="section-header">
-              <h2>Videos & Podcasts</h2>
-              <div className="media-tabs">
-                <button className="media-tab active">All</button>
-                <button className="media-tab">Videos</button>
-                <button className="media-tab">Podcasts</button>
-              </div>
-            </div>
-            
-            <div className="media-grid">
-              {mediaContent.map(item => (
-                <div key={item.id} className="media-card">
-                  <div className="media-thumbnail">
-                    <img src={item.thumbnail} alt={item.title} />
-                    <div className="media-type">
-                      {item.type === 'video' ? <FaVideo /> : <FaPodcast />}
+              
+              <div className="insights-grid">
+                {expertInsights.map(insight => (
+                  <div key={insight.id} className="insight-card">
+                    <div className="expert-image">
+                      {playingVideo === insight.id && insight.videoUrl && insight.videoUrl !== "#" ? (
+                        <video 
+                          controls 
+                          autoPlay 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onEnded={() => setPlayingVideo(null)}
+                        >
+                          <source src={insight.videoUrl} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                        <>
+                          <img src={insight.image} alt={insight.expertName} />
+                          {insight.videoUrl && insight.videoUrl !== "#" && (
+                            <div 
+                              className="play-button" 
+                              onClick={() => setPlayingVideo(insight.id)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <FaPlay />
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
-                    <div className="media-duration">{item.duration}</div>
-                    <div className="media-play"><FaPlay /></div>
-                  </div>
-                  <div className="media-info">
-                    <h3>{item.title}</h3>
-                    <div className="media-views">{item.views} views</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* User Engagement - Poll Section */}
-          <section className="poll-section">
-            <h3>Quick Poll</h3>
-            <div className="poll-container">
-              <h4>{currentPoll.question}</h4>
-              <div className="poll-options">
-                {currentPoll.options.map((option, index) => (
-                  <div key={index} className="poll-option">
-                    <button 
-                      className={`vote-btn ${currentPoll.userVoted ? 'voted' : ''}`}
-                      onClick={() => handleVote(index)}
-                      disabled={currentPoll.userVoted}
-                    >
-                      {option}
-                    </button>
-                    {currentPoll.userVoted && (
-                      <div className="vote-result">
-                        <div 
-                          className="vote-bar" 
-                          style={{ width: `${(currentPoll.votes[index] / currentPoll.totalVotes) * 100}%` }}
-                        ></div>
-                        <span className="vote-percent">
-                          {Math.round((currentPoll.votes[index] / currentPoll.totalVotes) * 100)}%
-                        </span>
-                      </div>
-                    )}
+                    <div className="expert-info">
+                      <h3>{insight.topic}</h3>
+                      <div className="expert-name">{insight.expertName}</div>
+                      <div className="expert-title">{insight.title}</div>
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="poll-footer">
-                {currentPoll.userVoted ? (
-                  <span className="vote-count">{currentPoll.totalVotes} total votes</span>
-                ) : (
-                  <span className="poll-note">Click an option to vote</span>
-                )}
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
+
+
+
+
         </div>
 
         {/* Sidebar */}
@@ -792,38 +967,9 @@ const NewsPage = () => {
             <button className="more-jobs-btn">View All Job Alerts</button>
           </section>
 
-          {/* Recommended For You Section */}
-          <section className="recommended-news">
-            <h2>Recommended For You</h2>
-            
-            <div className="recommended-list">
-              {recommendedNews.map(article => (
-                <div key={article.id} className="recommended-card">
-                  <div className="recommended-image">
-                    <img src={article.image} alt={article.title} />
-                  </div>
-                  <div className="recommended-content">
-                    <div className="recommended-relevance">{article.relevance}</div>
-                    <h3>{article.title}</h3>
-                    <div className="recommended-meta">
-                      <span className="meta-date">{article.date}</span>
-                      <span className="meta-source">{article.source}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
 
-          {/* Newsletter Signup */}
-          <section className="newsletter">
-            <h2>Get Weekly Job News</h2>
-            <p>Stay updated with the latest career opportunities and industry trends.</p>
-            <div className="newsletter-form">
-              <input type="email" placeholder="Your email address" />
-              <button>Subscribe</button>
-            </div>
-          </section>
+
+
 
           {/* Popular Tags */}
           <section className="popular-tags">
@@ -842,6 +988,51 @@ const NewsPage = () => {
           </section>
         </div>
       </div>
+      
+      {/* Modal for full article */}
+      {showModal && modalContent && (
+        <div className="news-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="news-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="news-modal-header">
+              <h2>{modalContent.title}</h2>
+              <button 
+                className="news-modal-close"
+                onClick={() => setShowModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="news-modal-body">
+              {modalContent.image && (
+                <img 
+                  src={modalContent.image} 
+                  alt={modalContent.title}
+                  className="news-modal-image"
+                />
+              )}
+              <div className="news-modal-meta">
+                <span className="meta-date">
+                  <FaClock /> {modalContent.date}
+                </span>
+                <span className="meta-source">{modalContent.source}</span>
+                <span className="meta-category">{modalContent.category}</span>
+              </div>
+              <div className="news-modal-content-text">
+                <p>{modalContent.description || modalContent.content}</p>
+              </div>
+              {modalContent.tags && (
+                <div className="news-modal-tags">
+                  {modalContent.tags.split(',').map((tag, index) => (
+                    <span key={index} className="news-modal-tag">
+                      {tag.trim()}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
