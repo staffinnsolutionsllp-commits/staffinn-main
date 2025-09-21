@@ -10,6 +10,88 @@
     line-height: 1.5;
   }
   
+  /* Hero Section with Background Image */
+  .recruiter-search-section {
+    background-size: cover;
+    background-position: center;
+    padding: 80px 60px;
+    border-radius: 10px;
+    text-align: center;
+    position: relative;
+    color: white;
+    margin-bottom: 40px;
+  }
+  
+  .page-title {
+    font-size: 3rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 30px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  
+  .recruiter-search-container {
+    position: relative;
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 20px 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+  }
+  
+  .dual-search-inputs {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+  }
+  
+  .search-input {
+    flex: 1;
+    height: 56px;
+    padding: 0 20px;
+    border: 1px solid rgba(72, 99, 247, 0.2);
+    border-radius: 8px;
+    font-size: 16px;
+    color: #333;
+    background: white;
+    outline: none;
+    transition: all 0.3s ease;
+    min-width: 250px;
+  }
+  
+  .search-input:focus {
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+  }
+  
+  .search-btn {
+    height: 56px;
+    padding: 0 32px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+    background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-width: 140px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+  }
+  
+  .search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(72, 99, 247, 0.4);
+  }
+  
   /* Back Navigation */
   .back-navigation {
     margin-bottom: 20px;
@@ -1004,6 +1086,41 @@
     
     .job-cards-grid {
       grid-template-columns: 1fr;
+    }
+    
+    .dual-search-inputs {
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .search-input {
+      width: 100%;
+    }
+    
+    .search-btn {
+      width: 100%;
+    }
+    
+    .page-title {
+      font-size: 2.5rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .page-title {
+      font-size: 2rem;
+    }
+    
+    .recruiter-search-section {
+      padding: 40px 20px;
+    }
+    
+    .search-input {
+      font-size: 0.9rem;
+    }
+    
+    .recruiter-search-container {
+      padding: 16px 20px;
     }
   }
 .review-card {

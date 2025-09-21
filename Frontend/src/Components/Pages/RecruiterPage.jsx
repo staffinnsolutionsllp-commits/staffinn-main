@@ -3,9 +3,10 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import './RecruiterPage.css';
 import './AppliedButton.css';
-import apiService from '../../services/api';
+import apiWithLoading from '../../services/apiWithLoading';
 import { AuthContext } from '../../context/AuthContext';
 import StudentSelectionModal from '../common/StudentSelectionModal';
+import { FaSearch } from 'react-icons/fa';
 
 const RecruiterPage = () => {
   const { user } = useContext(AuthContext);
@@ -22,6 +23,11 @@ const RecruiterPage = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   
+  // Search state for hero section
+  const [recruiterNameSearch, setRecruiterNameSearch] = useState('');
+  const [jobSearch, setJobSearch] = useState('');
+  const [filteredRecruiters, setFilteredRecruiters] = useState([]);
+  
   // Student selection modal state
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -35,6 +41,50 @@ const RecruiterPage = () => {
       loadUserProfile();
     }
   }, []);
+  
+  // Filter recruiters based on search terms
+  useEffect(() => {
+    let results = recruiters;
+    
+    // Apply recruiter name search filter
+    if (recruiterNameSearch) {
+      results = results.filter(recruiter => 
+        recruiter.name.toLowerCase().includes(recruiterNameSearch.toLowerCase())
+      );
+    }
+    
+    // Apply job search filter - need to check jobs for each recruiter
+    if (jobSearch) {
+      const filterByJobs = async () => {
+        const jobsResponse = await apiWithLoading.getAllActiveJobs();
+        
+        if (jobsResponse.success && jobsResponse.data) {
+          const matchingRecruiterIds = new Set();
+          
+          // Find recruiters that have jobs matching the search term
+          jobsResponse.data.forEach(job => {
+            if (job.title.toLowerCase().includes(jobSearch.toLowerCase()) ||
+                job.description.toLowerCase().includes(jobSearch.toLowerCase())) {
+              matchingRecruiterIds.add(job.recruiterId);
+            }
+          });
+          
+          // Filter recruiters based on matching job IDs
+          const jobFilteredResults = results.filter(recruiter => 
+            matchingRecruiterIds.has(recruiter.id)
+          );
+          
+          setFilteredRecruiters(jobFilteredResults);
+        } else {
+          setFilteredRecruiters(results);
+        }
+      };
+      
+      filterByJobs();
+    } else {
+      setFilteredRecruiters(results);
+    }
+  }, [recruiterNameSearch, jobSearch, recruiters]);
   
   // Reload applied jobs when user changes
   useEffect(() => {
@@ -65,10 +115,10 @@ const RecruiterPage = () => {
     try {
       let response;
       if (user.role === 'staff') {
-        response = await apiService.getStaffProfile();
+        response = await apiWithLoading.getStaffProfile();
         console.log('Staff profile API response:', response);
       } else if (user.role === 'institute') {
-        response = await apiService.getInstituteProfile();
+        response = await apiWithLoading.getInstituteProfile();
         console.log('Institute profile API response:', response);
       }
       
@@ -102,7 +152,7 @@ const RecruiterPage = () => {
   const loadAppliedJobs = async () => {
     try {
       console.log('Loading applied jobs for user:', user?.role);
-      const response = await apiService.getAppliedJobs();
+      const response = await apiWithLoading.getAppliedJobs();
       console.log('Applied jobs API response:', response);
       
       if (response && response.success) {
@@ -139,7 +189,7 @@ const RecruiterPage = () => {
         console.log('Profile not loaded or unclear, debugging...');
         
         try {
-          const debugResponse = await apiService.debugStaffProfile();
+          const debugResponse = await apiWithLoading.debugStaffProfile();
           console.log('Debug response:', debugResponse);
           
           if (debugResponse.success) {
@@ -186,7 +236,7 @@ const RecruiterPage = () => {
       }
       
       try {
-        const response = await apiService.applyForJob(
+        const response = await apiWithLoading.applyForJob(
           selectedRecruiter.id,
           job.id,
           job.title,
@@ -226,7 +276,7 @@ const RecruiterPage = () => {
     
     try {
       // Get students with application status for this job
-      const response = await apiService.getStudentsApplicationStatus(job.id);
+      const response = await apiWithLoading.getStudentsApplicationStatus(job.id);
       
       if (response.success) {
         setStudentsForModal(response.data || []);
@@ -249,7 +299,7 @@ const RecruiterPage = () => {
     }
     
     try {
-      const response = await apiService.applyStudentsToJob(
+      const response = await apiWithLoading.applyStudentsToJob(
         selectedJob.id,
         selectedRecruiter.id,
         selectedStudentIds
@@ -292,7 +342,7 @@ const RecruiterPage = () => {
   const loadRecruiters = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getAllRecruiters();
+      const response = await apiWithLoading.getAllRecruiters();
       
       if (response.success && response.data) {
         // Format recruiters data for display
@@ -330,7 +380,7 @@ const RecruiterPage = () => {
   // Load job counts for recruiters
   const loadJobCounts = async (recruitersList) => {
     try {
-      const jobsResponse = await apiService.getAllActiveJobs();
+      const jobsResponse = await apiWithLoading.getAllActiveJobs();
       
       if (jobsResponse.success && jobsResponse.data) {
         const jobCounts = {};
@@ -357,7 +407,7 @@ const RecruiterPage = () => {
   // Load jobs for selected recruiter
   const loadRecruiterJobs = async () => {
     try {
-      const jobsResponse = await apiService.getAllActiveJobs();
+      const jobsResponse = await apiWithLoading.getAllActiveJobs();
       
       if (jobsResponse.success && jobsResponse.data) {
         // Filter jobs for selected recruiter
@@ -402,7 +452,7 @@ const RecruiterPage = () => {
   // Load detailed recruiter data when selected
   const loadRecruiterDetails = async (recruiterId) => {
     try {
-      const response = await apiService.getRecruiterById(recruiterId);
+      const response = await apiWithLoading.getRecruiterById(recruiterId);
       
       if (response.success && response.data) {
         return response.data;
@@ -435,7 +485,7 @@ const RecruiterPage = () => {
   const loadRecruiterReviews = async () => {
     try {
       setReviewLoading(true);
-      const response = await apiService.getRecruiterReviews(selectedRecruiter.id);
+      const response = await apiWithLoading.getRecruiterReviews(selectedRecruiter.id);
       
       if (response.success && response.data && response.data.reviews) {
         // Store all reviews in candidateReviews (we'll use this as our combined reviews list)
@@ -475,7 +525,7 @@ const RecruiterPage = () => {
     
     try {
       setReviewSubmitting(true);
-      const response = await apiService.addRecruiterReview(
+      const response = await apiWithLoading.addRecruiterReview(
         selectedRecruiter.id,
         newReview.rating,
         newReview.comment
@@ -606,7 +656,7 @@ const RecruiterPage = () => {
   // Load follow status
   const loadFollowStatus = async () => {
     try {
-      const response = await apiService.getFollowStatus(selectedRecruiter.id);
+      const response = await apiWithLoading.getFollowStatus(selectedRecruiter.id);
       if (response.success) {
         setIsFollowing(response.data.isFollowing);
       }
@@ -632,9 +682,9 @@ const RecruiterPage = () => {
     try {
       let response;
       if (isFollowing) {
-        response = await apiService.unfollowRecruiter(selectedRecruiter.id);
+        response = await apiWithLoading.unfollowRecruiter(selectedRecruiter.id);
       } else {
-        response = await apiService.followRecruiter(selectedRecruiter.id);
+        response = await apiWithLoading.followRecruiter(selectedRecruiter.id);
       }
       
       if (response.success) {
@@ -713,6 +763,12 @@ const RecruiterPage = () => {
                 </h2>
                 <p className="company-meta">
                   {selectedRecruiter.industry} | {selectedRecruiter.location}
+                  {selectedRecruiter.address && (
+                    <span className="address-display"> | {selectedRecruiter.address}</span>
+                  )}
+                  {selectedRecruiter.pincode && (
+                    <span className="pincode-display"> - {selectedRecruiter.pincode}</span>
+                  )}
                 </p>
                 <p className="recruiter-experience">
                   Hiring Experience: {selectedRecruiter.experience}
@@ -1079,15 +1135,41 @@ const RecruiterPage = () => {
   // Show recruiters list - REAL-TIME DATA
   return (
     <div className="recruiter-page">
+      {/* Hero Section with Background Image */}
+      <div className="recruiter-search-section" style={{backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(/recruiterbanner.jpg)`}}>
+        <h1 className="page-title">Find Your Recruiter</h1>
+        <div className="recruiter-search-container">
+          <div className="dual-search-inputs">
+            <input 
+              type="text" 
+              placeholder="Search by Recruiter Name..." 
+              value={recruiterNameSearch}
+              onChange={(e) => setRecruiterNameSearch(e.target.value)}
+              className="search-input recruiter-name-search"
+            />
+            <input 
+              type="text" 
+              placeholder="Search by Job..." 
+              value={jobSearch}
+              onChange={(e) => setJobSearch(e.target.value)}
+              className="search-input job-search"
+            />
+            <button className="search-btn" onClick={() => {}}>
+              <FaSearch />
+              Search
+            </button>
+          </div>
+        </div>
+      </div>
+
       <section className="recruiters-list-section">
-        <h1>Recruiters</h1>
         <div className="real-time-notice">
           <p>📡 <strong>Live Data:</strong> All recruiter information is updated in real-time from our database</p>
         </div>
         
-        {recruiters.length > 0 ? (
+        {filteredRecruiters.length > 0 ? (
           <div className="recruiters-grid">
-            {recruiters.map(recruiter => (
+            {filteredRecruiters.map(recruiter => (
               <div 
                 key={recruiter.id} 
                 className="recruiter-card"
@@ -1116,8 +1198,8 @@ const RecruiterPage = () => {
           </div>
         ) : (
           <div className="no-recruiters-found">
-            <h3>No recruiters found</h3>
-            <p>Please check back later or contact support if this issue persists.</p>
+            <h3>No recruiters found matching your criteria</h3>
+            <p>Try adjusting your search terms or check back later.</p>
           </div>
         )}
       </section>

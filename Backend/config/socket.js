@@ -49,6 +49,11 @@ const initializeSocketServer = (server) => {
     // Store user connection
     activeConnections.set(socket.user.userId, socket);
     
+    // Join user-specific room for notifications
+    if (socket.user.userId !== 'anonymous') {
+      socket.join(`user_${socket.user.userId}`);
+    }
+    
     // Send unread notifications count on connection
     sendUnreadNotificationsCount(socket);
     

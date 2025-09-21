@@ -397,6 +397,19 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   }
 };
 
+/**
+ * Get all users
+ */
+const getAllUsers = async () => {
+  try {
+    const users = await dynamoService.scanItems(USERS_TABLE, {});
+    return users;
+  } catch (error) {
+    console.error('Error getting all users:', error);
+    return [];
+  }
+};
+
 module.exports = {
   createUser,
   findUserByEmail,
@@ -406,6 +419,7 @@ module.exports = {
   getUserByRegistrationNumber,
   updateUser,
   getUsersByRole,
+  getAllUsers,
   searchUsersByRoleAndQuery,
   deleteUser,
   authenticateUser,

@@ -77,6 +77,121 @@
   box-shadow: 0 4px 12px rgba(72, 99, 247, 0.3);
 }
 
+.home-search-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.home-clear-btn {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  min-width: 100px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.home-clear-btn:hover {
+  background: #e2e8f0;
+  color: #475569;
+  transform: translateY(-1px);
+}
+
+.clear-search-btn {
+  background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 16px;
+}
+
+.clear-search-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 99, 247, 0.3);
+}
+
+.clean-sector-role {
+  font-size: 13px;
+  color: #10b981;
+  font-weight: 500;
+  margin: 4px 0;
+  background: #f0fdf4;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  border: 1px solid #bbf7d0;
+}
+
+.clean-location-info {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  margin: 2px 0;
+  background: #f9fafb;
+  padding: 3px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  border: 1px solid #e5e7eb;
+}
+
+/* Staff Dashboard Sector/Role Form Styles */
+.staff-form-grid select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #333;
+  cursor: pointer;
+  background: white;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+.staff-form-grid select:hover,
+.staff-form-grid select:focus {
+  border-color: #4863f7;
+  box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+  outline: none;
+}
+
+.staff-form-grid select:disabled {
+  background-color: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+
+.staff-form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.staff-form-group select[required] + label::after {
+  content: ' *';
+  color: #ef4444;
+}
+
 /* Trending Staff Section */
 .home-trending-staff-section {
   padding: 60px 40px;
@@ -321,15 +436,43 @@
   border-radius: 2px;
 }
 
+/* Loading and No Data States */
+.loading-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  color: #64748b;
+  font-size: 16px;
+}
+
+.no-jobs-message,
+.no-staff-message,
+.no-courses-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  color: #64748b;
+  font-size: 16px;
+  text-align: center;
+}
+
+.no-jobs-message p,
+.no-staff-message p,
+.no-courses-message p {
+  margin: 0;
+  font-weight: 500;
+}
+
 /* Job cards from RecruiterPage */
 .job-cards-grid {
   display: grid;
-
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, auto);
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
+  padding: 0 20px;
 }
 
 .job-card {
@@ -1078,9 +1221,12 @@
     min-width: 0;
   }
 
-  .home-search-btn {
+  .home-search-btn,
+  .home-clear-btn {
     flex: 1;
     min-width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
   }
 
   .home-section-header {

@@ -64,7 +64,54 @@ const authenticate = async (req, res, next) => {
  */
 const protect = authenticate;
 
+/**
+ * Authenticate user (alias for authenticate)
+ */
+const authenticateUser = authenticate;
+
+/**
+ * Authenticate admin
+ */
+const authenticateAdmin = async (req, res, next) => {
+  try {
+    // Get token from header
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. No admin token provided.'
+      });
+    }
+    
+    // Extract token
+    const token = authHeader.split(' ')[1];
+    
+    // Verify admin token
+    const decoded = jwtUtils.verifyToken(token);
+    
+    if (!decoded || decoded.role !== 'admin') {
+      return res.status(401).json({
+        success: false,
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+    
+    // Add admin to request object
+    req.admin = decoded;
+    next();
+  } catch (error) {
+    console.error('Admin authentication error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Admin authentication failed.'
+    });
+  }
+};
+
 module.exports = {
   authenticate,
+  authenticateUser,
+  authenticateAdmin,
   protect
 };

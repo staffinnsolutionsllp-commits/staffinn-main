@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import * as XLSX from 'xlsx';
 import './RecruiterDashboard.css';
@@ -12,6 +12,7 @@ import apiService from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
 import HiddenUser from '../HiddenUser/HiddenUser';
+import GovernmentSchemes from './GovernmentSchemes';
 import './HiddenNotification.css';
 
 const RecruiterDashboard = () => {
@@ -87,8 +88,7 @@ const RecruiterDashboard = () => {
     const [candidateFilters, setCandidateFilters] = useState({
         search: '',
         status: 'all',
-        position: 'all',
-        experience: 'all'
+        jobId: 'all'
     });
 
     // Real-time chart data with default values
@@ -221,7 +221,7 @@ const RecruiterDashboard = () => {
         if (currentUser && currentUser.role === 'recruiter') {
             loadRecruiterProfile();
             loadJobPostings();
-            loadCandidates();
+            loadCandidates(candidateFilters);
             loadDashboardStats();
             loadAppliedInstitutes();
             loadHiringHistory();
@@ -305,11 +305,11 @@ const RecruiterDashboard = () => {
         }
     };
     
-    // Load candidates who applied for jobs
-    const loadCandidates = async () => {
+    // Load candidates who applied for jobs with search and filter support
+    const loadCandidates = async (searchFilters = {}) => {
         try {
             setCandidatesLoading(true);
-            const response = await apiService.getRecruiterCandidates();
+            const response = await apiService.getRecruiterCandidates(searchFilters);
             
             if (response.success) {
                 setCandidates(response.data || []);
@@ -660,13 +660,38 @@ const RecruiterDashboard = () => {
         }));
     };
 
-    // Handle candidate filter changes
+    // Debounce function for search input
+    const debounce = useCallback((func, delay) => {
+        let timeoutId;
+        return (...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(null, args), delay);
+        };
+    }, []);
+
+    // Debounced search function
+    const debouncedSearch = useCallback(
+        debounce((filters) => {
+            loadCandidates(filters);
+        }, 300),
+        []
+    );
+
+    // Handle candidate filter changes with real-time search
     const handleCandidateFilterChange = (e) => {
         const { name, value } = e.target;
-        setCandidateFilters(prev => ({
-            ...prev,
+        const newFilters = {
+            ...candidateFilters,
             [name]: value
-        }));
+        };
+        setCandidateFilters(newFilters);
+        
+        // Use debounced search for text input, immediate search for dropdowns
+        if (name === 'search') {
+            debouncedSearch(newFilters);
+        } else {
+            loadCandidates(newFilters);
+        }
     };
 
     // Filter jobs based on search and filters
@@ -681,21 +706,8 @@ const RecruiterDashboard = () => {
         return matchesSearch && matchesStatus && matchesDepartment;
     });
 
-    // Filter candidates based on search and filters (exclude hired and rejected)
-    const filteredCandidates = candidates.filter(candidate => {
-        const matchesSearch = candidate.name.toLowerCase().includes(candidateFilters.search.toLowerCase()) ||
-                             candidate.position.toLowerCase().includes(candidateFilters.search.toLowerCase()) ||
-                             candidate.skills.toLowerCase().includes(candidateFilters.search.toLowerCase());
-        
-        const matchesStatus = candidateFilters.status === 'all' || candidate.status.toLowerCase() === candidateFilters.status;
-        const matchesPosition = candidateFilters.position === 'all' || candidate.position.toLowerCase().includes(candidateFilters.position.toLowerCase());
-        const matchesExperience = candidateFilters.experience === 'all' || candidate.experience.toLowerCase().includes(candidateFilters.experience.toLowerCase());
-        
-        // Only show Applied candidates in Candidate Search
-        const isApplied = candidate.status === 'Applied';
-
-        return matchesSearch && matchesStatus && matchesPosition && matchesExperience && isApplied;
-    });
+    // Use candidates directly since filtering is done on the server side
+    const filteredCandidates = candidates;
 
     // Handle hiring candidate directly
     const handleHireCandidate = async (candidate) => {
@@ -719,7 +731,7 @@ const RecruiterDashboard = () => {
                     }]);
                     
                     // Reload candidates to update status
-                    await loadCandidates();
+                    await loadCandidates(candidateFilters);
                     
                     // Reload dashboard stats to update Hires count
                     await loadDashboardStats();
@@ -750,7 +762,7 @@ const RecruiterDashboard = () => {
                 
                 if (response.success) {
                     // Reload candidates to update list
-                    await loadCandidates();
+                    await loadCandidates(candidateFilters);
                     
                     alert(`${candidate.name} has been rejected.`);
                 } else {
@@ -940,9 +952,37 @@ const RecruiterDashboard = () => {
         }
     };
 
+    // Validate experience field to accept both formats: "3-5" and single numbers like "2", "5"
+    const validateExperience = (experience) => {
+        if (!experience || !experience.trim()) {
+            return false;
+        }
+        
+        const trimmed = experience.trim();
+        
+        // Check for single number format (e.g., "2", "5", "10")
+        if (/^\d+$/.test(trimmed)) {
+            return true;
+        }
+        
+        // Check for range format (e.g., "3-5", "2-4", "0-2")
+        if (/^\d+-\d+$/.test(trimmed)) {
+            return true;
+        }
+        
+        return false;
+    };
+
     // Handle job form submission - REAL-TIME UPDATE
     const handleJobSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validate experience field
+        if (!validateExperience(jobForm.experience)) {
+            alert('Please enter a valid experience format. Examples: "2" for 2 years, "3-5" for 3-5 years range.');
+            return;
+        }
+        
         setLoading(true);
         
         try {
@@ -1423,6 +1463,9 @@ const RecruiterDashboard = () => {
                     <h3>{profileForm.companyName || currentUser?.name || 'Your Company'}</h3>
                 </div>
                 <ul className="recruiter-sidebar-menu">
+                    <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>
+                        My Profile
+                    </li>
                     <li className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
                         Dashboard Overview
                     </li>
@@ -1441,8 +1484,8 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'news' ? 'active' : ''} onClick={() => setActiveTab('news')}>
                         News
                     </li>
-                    <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>
-                        My Profile
+                    <li className={activeTab === 'government-schemes' ? 'active' : ''} onClick={() => setActiveTab('government-schemes')}>
+                        Government Schemes
                     </li>
                 </ul>
             </div>
@@ -1457,6 +1500,7 @@ const RecruiterDashboard = () => {
                     {activeTab === 'hiring' && 'Hiring History'}
                     {activeTab === 'institutes' && 'Institutes'}
                     {activeTab === 'news' && 'News'}
+                    {activeTab === 'government-schemes' && 'Government Schemes'}
                     {activeTab === 'profile' && 'My Profile'}
                 </h1>
 
@@ -1548,7 +1592,8 @@ const RecruiterDashboard = () => {
                                             value={jobForm.experience}
                                             onChange={handleInputChange}
                                             required
-                                            placeholder="e.g. 3-5 years"
+                                            placeholder="e.g. 3-5 or 2 (years)"
+                                            title="Enter experience as a single number (e.g., 2) or range (e.g., 3-5)"
                                         />
                                     </div>
                                 </div>
@@ -2087,56 +2132,53 @@ const RecruiterDashboard = () => {
                         </div>
 
                         <div className="recruiter-search-section">
-                            <div className="recruiter-search-row">
-                                <input 
-                                    type="text" 
-                                    placeholder="Search by name, skills, or experience..." 
-                                    className="recruiter-search-input large"
-                                    name="search"
-                                    value={candidateFilters.search}
-                                    onChange={handleCandidateFilterChange}
-                                />
-                                <button className="recruiter-primary-button">Search</button>
-                            </div>
-                            <div className="recruiter-filter-row">
-                                <select 
-                                    className="recruiter-filter-select"
-                                    name="status"
-                                    value={candidateFilters.status}
-                                    onChange={handleCandidateFilterChange}
-                                >
-                                    <option value="all">All Status</option>
-                                    <option value="new">New</option>
-                                    <option value="shortlisted">Shortlisted</option>
-                                    <option value="interviewed">Interviewed</option>
-                                    <option value="hired">Hired</option>
-                                    <option value="rejected">Rejected</option>
-                                </select>
-                                <select 
-                                    className="recruiter-filter-select"
-                                    name="position"
-                                    value={candidateFilters.position}
-                                    onChange={handleCandidateFilterChange}
-                                >
-                                    <option value="all">All Positions</option>
-                                    <option value="developer">Developer</option>
-                                    <option value="designer">Designer</option>
-                                    <option value="product">Product</option>
-                                    <option value="marketing">Marketing</option>
-                                    <option value="analyst">Analyst</option>
-                                    <option value="manager">Manager</option>
-                                </select>
-                                <select 
-                                    className="recruiter-filter-select"
-                                    name="experience"
-                                    value={candidateFilters.experience}
-                                    onChange={handleCandidateFilterChange}
-                                >
-                                    <option value="all">Experience Level</option>
-                                    <option value="entry">Entry Level</option>
-                                    <option value="mid">Mid Level</option>
-                                    <option value="senior">Senior</option>
-                                </select>
+                            <div className="recruiter-search-container">
+                                <div className="search-input-container">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search by name, skills, or experience..." 
+                                        className="recruiter-search-input large"
+                                        name="search"
+                                        value={candidateFilters.search}
+                                        onChange={handleCandidateFilterChange}
+                                    />
+                                    {candidatesLoading && (
+                                        <div className="search-loading-indicator">
+                                            <div className="loading-spinner"></div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="search-filters">
+                                    <select 
+                                        className="recruiter-filter-select"
+                                        name="status"
+                                        value={candidateFilters.status}
+                                        onChange={handleCandidateFilterChange}
+                                        disabled={candidatesLoading}
+                                    >
+                                        <option value="all">All Status</option>
+                                        <option value="hired">Hired</option>
+                                        <option value="rejected">Rejected</option>
+                                        <option value="new">New</option>
+                                    </select>
+                                    <select 
+                                        className="recruiter-filter-select"
+                                        name="jobId"
+                                        value={candidateFilters.jobId}
+                                        onChange={handleCandidateFilterChange}
+                                        disabled={candidatesLoading}
+                                    >
+                                        <option value="all">Select Job</option>
+                                        {jobPostings.map(job => (
+                                            <option key={job.jobId} value={job.jobId}>{job.title}</option>
+                                        ))}
+                                    </select>
+                                    {candidatesLoading && (
+                                        <div className="filter-loading-text">
+                                            Searching...
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -2158,8 +2200,8 @@ const RecruiterDashboard = () => {
                                             Loading candidates...
                                         </td>
                                     </tr>
-                                ) : filteredCandidates.length > 0 ? (
-                                    filteredCandidates.map(candidate => (
+                                ) : candidates.length > 0 ? (
+                                    candidates.map(candidate => (
                                         <tr key={candidate.id}>
                                             <td>{candidate.name}</td>
                                             <td>{candidate.position}</td>
@@ -2203,7 +2245,7 @@ const RecruiterDashboard = () => {
                                 )}
                             </tbody>
                         </table>
-                        {filteredCandidates.length === 0 && (
+                        {candidates.length === 0 && !candidatesLoading && (
                             <div style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
                                 No candidates found matching your criteria.
                             </div>
@@ -2528,6 +2570,12 @@ const RecruiterDashboard = () => {
                                 <p>No institutes have applied to your jobs yet.</p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'government-schemes' && (
+                    <div className="recruiter-government-schemes-tab">
+                        <GovernmentSchemes />
                     </div>
                 )}
 

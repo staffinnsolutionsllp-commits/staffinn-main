@@ -104,6 +104,10 @@ const registerStaff = async (req, res) => {
       skills: '',
       address: '',
       pincode: '',
+      sector: '',
+      role: '',
+      state: '',
+      city: '',
       availability: 'available',
       visibility: 'public',
       experiences: [],
@@ -299,6 +303,10 @@ const toggleProfileMode = async (req, res) => {
         skills: '',
         address: '',
         pincode: '',
+        sector: '',
+        role: '',
+        state: '',
+        city: '',
         availability: 'available',
         visibility: 'public',
         experiences: [],
@@ -405,6 +413,32 @@ const getStaffProfileById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to get staff profile'
+    });
+  }
+};
+
+/**
+ * Get trending staff profiles based on profile views (Public)
+ * @route GET /api/staff/trending
+ */
+const getTrendingStaff = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+    console.log('Getting trending staff profiles with limit:', limit);
+    
+    const trendingStaffProfiles = await staffModel.getTrendingStaffProfiles(limit);
+    console.log('Found trending staff profiles:', trendingStaffProfiles.length);
+    
+    res.status(200).json({
+      success: true,
+      data: trendingStaffProfiles
+    });
+    
+  } catch (error) {
+    console.error('Get trending staff profiles error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get trending staff profiles'
     });
   }
 };
@@ -701,6 +735,40 @@ const deleteStaff = async (req, res) => {
   }
 };
 
+/**
+ * Search staff profiles (Public)
+ * @route GET /api/staff/search
+ */
+const searchStaff = async (req, res) => {
+  try {
+    const searchParams = {
+      skills: req.query.skills,
+      location: req.query.location,
+      availability: req.query.availability,
+      sector: req.query.sector,
+      role: req.query.role,
+      state: req.query.state,
+      city: req.query.city
+    };
+    
+    console.log('Search staff with params:', searchParams);
+    
+    const staffProfiles = await staffModel.searchStaffProfiles(searchParams);
+    
+    res.status(200).json({
+      success: true,
+      data: staffProfiles
+    });
+    
+  } catch (error) {
+    console.error('Search staff error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to search staff profiles'
+    });
+  }
+};
+
 module.exports = {
   registerStaff,
   getStaffProfile,
@@ -708,9 +776,11 @@ module.exports = {
   toggleProfileMode,
   getActiveStaffProfiles,
   getStaffProfileById,
+  getTrendingStaff,
   uploadFiles,
   removeProfilePhoto,
   deleteCertificate,
   getAllStaff,
-  deleteStaff
+  deleteStaff,
+  searchStaff
 };

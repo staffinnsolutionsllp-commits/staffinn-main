@@ -270,11 +270,12 @@ const getAllRecruiterCandidates = async (recruiterId) => {
             skills: staff.skills || 'Not specified',
             status: application.status,
             date: application.appliedAt,
-            experience: 'Not specified',
+            experience: staff.experience || 'Not specified',
             email: staff.email,
             phone: staff.phone,
             staffId: staff.userId,
-            applicationId: application.applicationId
+            applicationId: application.applicationId,
+            jobId: application.jobId // Include jobId for filtering
           });
         }
       }
@@ -288,13 +289,47 @@ const getAllRecruiterCandidates = async (recruiterId) => {
 };
 
 /**
- * Get candidates who applied to recruiter's jobs
+ * Get candidates who applied to recruiter's jobs with enhanced search
  * @param {string} recruiterId - Recruiter ID
+ * @param {object} searchFilters - Search and filter parameters
  * @returns {Promise<Array>} - Array of candidates
  */
-const getRecruiterCandidates = async (recruiterId) => {
+const getRecruiterCandidates = async (recruiterId, searchFilters = {}) => {
   try {
-    return await getAllRecruiterCandidates(recruiterId);
+    const allCandidates = await getAllRecruiterCandidates(recruiterId);
+    
+    // Apply search and filters
+    let filteredCandidates = allCandidates;
+    
+    // Search by name, skills, or experience
+    if (searchFilters.search) {
+      const searchTerm = searchFilters.search.toLowerCase();
+      filteredCandidates = filteredCandidates.filter(candidate => 
+        candidate.name.toLowerCase().includes(searchTerm) ||
+        (candidate.skills && candidate.skills.toLowerCase().includes(searchTerm)) ||
+        (candidate.experience && candidate.experience.toLowerCase().includes(searchTerm))
+      );
+    }
+    
+    // Filter by status
+    if (searchFilters.status && searchFilters.status !== 'all') {
+      if (searchFilters.status === 'hired') {
+        filteredCandidates = filteredCandidates.filter(candidate => candidate.status === 'Hired');
+      } else if (searchFilters.status === 'rejected') {
+        filteredCandidates = filteredCandidates.filter(candidate => candidate.status === 'Rejected');
+      } else if (searchFilters.status === 'new') {
+        filteredCandidates = filteredCandidates.filter(candidate => candidate.status === 'Applied');
+      }
+    }
+    
+    // Filter by specific job
+    if (searchFilters.jobId && searchFilters.jobId !== 'all') {
+      filteredCandidates = filteredCandidates.filter(candidate => 
+        candidate.jobId === searchFilters.jobId
+      );
+    }
+    
+    return filteredCandidates;
   } catch (error) {
     console.error('Get recruiter candidates error:', error);
     return [];

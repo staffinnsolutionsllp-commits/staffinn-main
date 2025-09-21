@@ -2020,8 +2020,181 @@ module.exports = {
   getJobCandidates
 };
 
+/**
+ * Government Schemes Management APIs
+ */
+
+/**
+ * Get all government schemes
+ * @route GET /api/admin/government-schemes
+ */
+const getAllGovernmentSchemes = async (req, res) => {
+  try {
+    const governmentSchemeModel = require('../models/governmentSchemeModel');
+    const schemes = await governmentSchemeModel.getAllSchemes();
+    
+    res.status(200).json({
+      success: true,
+      data: schemes
+    });
+  } catch (error) {
+    console.error('Get all government schemes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get government schemes'
+    });
+  }
+};
+
+/**
+ * Add new government scheme
+ * @route POST /api/admin/government-schemes
+ */
+const addGovernmentScheme = async (req, res) => {
+  try {
+    const { schemeName, schemeLink, description, visibility } = req.body;
+    
+    if (!schemeName || !schemeLink || !visibility) {
+      return res.status(400).json({
+        success: false,
+        message: 'Scheme name, link, and visibility are required'
+      });
+    }
+    
+    // Validate URL format
+    try {
+      new URL(schemeLink);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid URL format for scheme link'
+      });
+    }
+    
+    // Validate visibility
+    if (!['All', 'Staff', 'Recruiter'].includes(visibility)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid visibility option'
+      });
+    }
+    
+    const governmentSchemeModel = require('../models/governmentSchemeModel');
+    const scheme = await governmentSchemeModel.addScheme({
+      schemeName,
+      schemeLink,
+      description: description || '',
+      visibility
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: 'Government scheme added successfully',
+      data: scheme
+    });
+  } catch (error) {
+    console.error('Add government scheme error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add government scheme'
+    });
+  }
+};
+
+/**
+ * Update government scheme
+ * @route PUT /api/admin/government-schemes/:schemeId
+ */
+const updateGovernmentScheme = async (req, res) => {
+  try {
+    const { schemeId } = req.params;
+    const { schemeName, schemeLink, description, visibility } = req.body;
+    
+    if (!schemeName || !schemeLink || !visibility) {
+      return res.status(400).json({
+        success: false,
+        message: 'Scheme name, link, and visibility are required'
+      });
+    }
+    
+    // Validate URL format
+    try {
+      new URL(schemeLink);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid URL format for scheme link'
+      });
+    }
+    
+    // Validate visibility
+    if (!['All', 'Staff', 'Recruiter'].includes(visibility)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid visibility option'
+      });
+    }
+    
+    const governmentSchemeModel = require('../models/governmentSchemeModel');
+    const updatedScheme = await governmentSchemeModel.updateScheme(schemeId, {
+      schemeName,
+      schemeLink,
+      description: description || '',
+      visibility
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Government scheme updated successfully',
+      data: updatedScheme
+    });
+  } catch (error) {
+    console.error('Update government scheme error:', error);
+    if (error.message === 'Scheme not found') {
+      return res.status(404).json({
+        success: false,
+        message: 'Government scheme not found'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update government scheme'
+    });
+  }
+};
+
+/**
+ * Delete government scheme
+ * @route DELETE /api/admin/government-schemes/:schemeId
+ */
+const deleteGovernmentScheme = async (req, res) => {
+  try {
+    const { schemeId } = req.params;
+    
+    const governmentSchemeModel = require('../models/governmentSchemeModel');
+    await governmentSchemeModel.deleteScheme(schemeId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Government scheme deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete government scheme error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete government scheme'
+    });
+  }
+};
+
 // Import and re-export issue controller functions for admin routes
 const issueController = require('./issueController');
 module.exports.getAllIssues = issueController.getAllIssues;
 module.exports.resolveIssue = issueController.resolveIssue;
 module.exports.deleteIssue = issueController.deleteIssue;
+
+// Export government schemes functions
+module.exports.getAllGovernmentSchemes = getAllGovernmentSchemes;
+module.exports.addGovernmentScheme = addGovernmentScheme;
+module.exports.updateGovernmentScheme = updateGovernmentScheme;
+module.exports.deleteGovernmentScheme = deleteGovernmentScheme;

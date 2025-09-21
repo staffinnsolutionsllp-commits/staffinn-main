@@ -311,4 +311,34 @@ router.get('/institute/student/:studentId', authenticateAdmin, adminController.g
  */
 router.get('/institute/courses', authenticateAdmin, adminController.getAllCourses);
 
+// Government Schemes management routes
+
+/**
+ * @route GET /api/admin/government-schemes
+ * @desc Get all government schemes
+ * @access Private (Admin)
+ */
+router.get('/government-schemes', authenticateAdmin, adminController.getAllGovernmentSchemes);
+
+/**
+ * @route POST /api/admin/government-schemes
+ * @desc Add new government scheme
+ * @access Private (Admin)
+ */
+router.post('/government-schemes', authenticateAdmin, adminController.addGovernmentScheme);
+
+/**
+ * @route PUT /api/admin/government-schemes/:schemeId
+ * @desc Update government scheme
+ * @access Private (Admin)
+ */
+router.put('/government-schemes/:schemeId', authenticateAdmin, adminController.updateGovernmentScheme);
+
+/**
+ * @route DELETE /api/admin/government-schemes/:schemeId
+ * @desc Delete government scheme
+ * @access Private (Admin)
+ */
+router.delete('/government-schemes/:schemeId', authenticateAdmin, adminController.deleteGovernmentScheme);
+
 module.exports = router;

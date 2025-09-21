@@ -298,10 +298,10 @@ const jobPostingSchema = Joi.object({
 
   experience: Joi.string()
     .required()
-    .min(3)
+    .pattern(/^\d+$|^\d+-\d+$/)
     .max(50)
     .messages({
-      'string.min': 'Experience requirement must be at least 3 characters long',
+      'string.pattern.base': 'Experience must be a single number (e.g., "2") or range (e.g., "3-5")',
       'string.max': 'Experience requirement cannot exceed 50 characters',
       'any.required': 'Experience requirement is required'
     }),

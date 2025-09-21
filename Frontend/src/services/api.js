@@ -1143,6 +1143,55 @@ const apiService = {
     }
   },
 
+  getTrendingStaff: async (limit = 6) => {
+    try {
+      const response = await fetch(`${API_URL}/staff/trending?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status} - ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Get trending staff error:', error);
+      return { success: false, message: 'Failed to get trending staff' };
+    }
+  },
+
+  searchStaff: async (searchParams) => {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      // Add search parameters to query string
+      Object.keys(searchParams).forEach(key => {
+        if (searchParams[key] && searchParams[key].trim()) {
+          queryParams.append(key, searchParams[key]);
+        }
+      });
+      
+      const response = await fetch(`${API_URL}/staff/search?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`${response.status} - ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Search staff error:', error);
+      return { success: false, message: 'Failed to search staff' };
+    }
+  },
+
   // Recruiter Profile API
   updateRecruiterProfile: async (profileData) => {
     try {
@@ -1243,14 +1292,23 @@ const apiService = {
     }
   },
 
-  getRecruiterCandidates: async () => {
+  getRecruiterCandidates: async (searchFilters = {}) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      const response = await fetch(`${API_URL}/recruiter/candidates`, {
+      // Build query parameters for search and filters
+      const queryParams = new URLSearchParams();
+      if (searchFilters.search) queryParams.append('search', searchFilters.search);
+      if (searchFilters.status) queryParams.append('status', searchFilters.status);
+      if (searchFilters.jobId) queryParams.append('jobId', searchFilters.jobId);
+      
+      const queryString = queryParams.toString();
+      const url = `${API_URL}/recruiter/candidates${queryString ? `?${queryString}` : ''}`;
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1616,6 +1674,51 @@ const apiService = {
     } catch (error) {
       console.error('Get job by ID error:', error);
       return { success: false, message: 'Failed to get job' };
+    }
+  },
+
+  getTrendingJobs: async (limit = 8) => {
+    try {
+      const response = await fetch(`${API_URL}/jobs/trending?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get trending jobs error:', error);
+      return { success: false, message: 'Failed to get trending jobs' };
+    }
+  },
+
+  getTodaysJobs: async (limit = 10) => {
+    try {
+      const response = await fetch(`${API_URL}/jobs/todays-jobs?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get todays jobs error:', error);
+      return { success: false, message: 'Failed to get todays jobs' };
+    }
+  },
+
+  getTrendingCourses: async (limit = 6) => {
+    try {
+      const response = await fetch(`${API_URL}/institutes/courses/trending?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get trending courses error:', error);
+      return { success: false, message: 'Failed to get trending courses' };
     }
   },
 
@@ -2415,122 +2518,87 @@ const apiService = {
       // Create FormData for file uploads
       const formData = new FormData();
       
-      // Deep clone placement data to avoid modifying original
-      const processedData = JSON.parse(JSON.stringify(placementData));
+      // Process placement data
+      const processedData = {
+        averageSalary: placementData.averageSalary || '',
+        highestPackage: placementData.highestPackage || '',
+        topHiringCompanies: [],
+        recentPlacementSuccess: []
+      };
       
-      // Process company data and add files with simple index-based naming
-      if (processedData.topHiringCompanies) {
-        processedData.topHiringCompanies.forEach((company, index) => {
+      // Process company data and add files
+      if (placementData.topHiringCompanies) {
+        placementData.topHiringCompanies.forEach((company, index) => {
           console.log(`🏢 Processing company ${index}:`, {
             name: company.name,
             hasLogo: !!company.logo,
             logoIsFile: company.logo instanceof File,
-            logoType: typeof company.logo,
-            logoValue: company.logo instanceof File ? company.logo.name : (typeof company.logo === 'string' ? company.logo.substring(0, 50) : company.logo)
+            logoType: typeof company.logo
           });
           
-          // Check if logo is a File object (new upload)
+          const companyData = {
+            name: company.name || ''
+          };
+          
+          // Handle logo file or URL
           if (company.logo instanceof File) {
             const fieldName = `companyLogo_${index}`;
             formData.append(fieldName, company.logo);
-            console.log(`📁 Added company logo file: ${fieldName} for ${company.name}`);
-            company.logo = null; // Will be replaced with S3 URL by backend
-          }
-          // Check if logo is a blob URL (should be converted to null)
-          else if (typeof company.logo === 'string' && company.logo.startsWith('blob:')) {
-            console.log(`❌ Removing blob URL for ${company.name}: ${company.logo}`);
-            company.logo = null;
-          }
-          // Check if logo is a valid S3 URL (keep it)
-          else if (typeof company.logo === 'string' && company.logo.includes('http') && !company.logo.startsWith('blob:')) {
-            console.log(`🔗 Keeping existing S3 URL for ${company.name}: ${company.logo}`);
-            // Keep the URL as is
-          }
-          // Otherwise set to null
-          else {
-            company.logo = null;
-            console.log(`❌ No valid logo for ${company.name}`);
+            console.log(`📁 Added company logo file: ${fieldName}`);
+            companyData.logo = null; // Will be set by backend
+          } else if (typeof company.logo === 'string' && company.logo.includes('http') && !company.logo.startsWith('blob:')) {
+            companyData.logo = company.logo; // Keep existing S3 URL
+            console.log(`🔗 Keeping existing S3 URL: ${company.logo}`);
+          } else {
+            companyData.logo = null;
           }
           
-          // Clean up temporary properties
-          delete company.logoPreview;
-          delete company.id;
-          delete company.isRemoved;
-          delete company.isExisting;
-          delete company.hasNewFile;
-          delete company.fileId;
+          processedData.topHiringCompanies.push(companyData);
         });
       }
       
-      // Process student data and add files with simple index-based naming
-      if (processedData.recentPlacementSuccess) {
-        processedData.recentPlacementSuccess.forEach((student, index) => {
+      // Process student data and add files
+      if (placementData.recentPlacementSuccess) {
+        placementData.recentPlacementSuccess.forEach((student, index) => {
           console.log(`👨🎓 Processing student ${index}:`, {
             name: student.name,
             hasPhoto: !!student.photo,
             photoIsFile: student.photo instanceof File,
-            photoType: typeof student.photo,
-            photoValue: student.photo instanceof File ? student.photo.name : (typeof student.photo === 'string' ? student.photo.substring(0, 50) : student.photo)
+            photoType: typeof student.photo
           });
           
-          // Check if photo is a File object (new upload)
+          const studentData = {
+            name: student.name || '',
+            company: student.company || '',
+            position: student.position || ''
+          };
+          
+          // Handle photo file or URL
           if (student.photo instanceof File) {
             const fieldName = `studentPhoto_${index}`;
             formData.append(fieldName, student.photo);
-            console.log(`📁 Added student photo file: ${fieldName} for ${student.name}`);
-            student.photo = null; // Will be replaced with S3 URL by backend
-          }
-          // Check if photo is a blob URL (should be converted to null)
-          else if (typeof student.photo === 'string' && student.photo.startsWith('blob:')) {
-            console.log(`❌ Removing blob URL for ${student.name}: ${student.photo}`);
-            student.photo = null;
-          }
-          // Check if photo is a valid S3 URL (keep it)
-          else if (typeof student.photo === 'string' && student.photo.includes('http') && !student.photo.startsWith('blob:')) {
-            console.log(`🔗 Keeping existing S3 URL for ${student.name}: ${student.photo}`);
-            // Keep the URL as is
-          }
-          // Otherwise set to null
-          else {
-            student.photo = null;
-            console.log(`❌ No valid photo for ${student.name}`);
+            console.log(`📁 Added student photo file: ${fieldName}`);
+            studentData.photo = null; // Will be set by backend
+          } else if (typeof student.photo === 'string' && student.photo.includes('http') && !student.photo.startsWith('blob:')) {
+            studentData.photo = student.photo; // Keep existing S3 URL
+            console.log(`🔗 Keeping existing S3 URL: ${student.photo}`);
+          } else {
+            studentData.photo = null;
           }
           
-          // Clean up temporary properties
-          delete student.photoPreview;
-          delete student.id;
-          delete student.isRemoved;
-          delete student.isExisting;
-          delete student.hasNewFile;
-          delete student.fileId;
+          processedData.recentPlacementSuccess.push(studentData);
         });
       }
       
       // Add placement data as JSON string
       formData.append('placementData', JSON.stringify(processedData));
 
-      console.log('📊 Sending placement data to backend:', {
-        averageSalary: processedData.averageSalary,
-        highestPackage: processedData.highestPackage,
-        companiesCount: processedData.topHiringCompanies?.length || 0,
-        studentsCount: processedData.recentPlacementSuccess?.length || 0
-      });
-      
-      // Log FormData contents
-      console.log('📄 FormData contents:');
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
-        } else {
-          console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) + '...' : value}`);
-        }
-      }
+      console.log('📊 Sending placement data to backend:', processedData);
 
       const response = await fetch(`${API_URL}/institutes/placement-section`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`
-          // Don't set Content-Type for FormData, let browser set it with boundary
         },
         body: formData
       });
@@ -2564,6 +2632,12 @@ const apiService = {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response error:', response.status, errorText);
+        return { success: false, message: `Server error: ${response.status}` };
+      }
       
       const result = await response.json();
       console.log('Get placement section response:', result);
@@ -2604,33 +2678,165 @@ const apiService = {
     }
   },
 
-  // Institute Industry Collaboration API
-  updateIndustryCollaborations: async (formData) => {
+  // Real-time file upload for Industry Collaborations
+  uploadCollaborationImage: async (file) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      console.log('🚀 Starting industry collaboration update with FormData');
-      
-      // Log FormData contents
-      console.log('📄 FormData contents:');
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: File(${value.name}, ${value.size} bytes)`);
-        } else {
-          console.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) + '...' : value}`);
-        }
+      // Validate file
+      if (!file) {
+        throw new Error('No file provided');
       }
 
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Image size should be less than 5MB');
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+      }
+
+      const formData = new FormData();
+      formData.append('collaborationImage', file);
+
+      console.log('🚀 Uploading collaboration image:', file.name);
+
+      const response = await fetch(`${API_URL}/institutes/upload-collaboration-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Image upload error:', response.status, errorText);
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Collaboration image uploaded:', result);
+      return result;
+    } catch (error) {
+      console.error('Upload collaboration image error:', error);
+      return { success: false, message: error.message || 'Failed to upload image' };
+    }
+  },
+
+  uploadMouPdf: async (file) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      // Validate file
+      if (!file) {
+        throw new Error('No file provided');
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('PDF size should be less than 10MB');
+      }
+
+      if (file.type !== 'application/pdf') {
+        throw new Error('Please select a valid PDF file');
+      }
+
+      const formData = new FormData();
+      formData.append('mouPdf', file);
+
+      console.log('🚀 Uploading MOU PDF:', file.name);
+
+      const response = await fetch(`${API_URL}/institutes/upload-mou-pdf`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('PDF upload error:', response.status, errorText);
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ MOU PDF uploaded:', result);
+      return result;
+    } catch (error) {
+      console.error('Upload MOU PDF error:', error);
+      return { success: false, message: error.message || 'Failed to upload PDF' };
+    }
+  },
+
+  deleteCollaborationImage: async (imageUrl) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/delete-collaboration-image`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ imageUrl })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete collaboration image error:', error);
+      return { success: false, message: 'Failed to delete collaboration image' };
+    }
+  },
+
+  deleteMouPdf: async (pdfUrl) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/delete-mou-pdf`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ pdfUrl })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete MOU PDF error:', error);
+      return { success: false, message: 'Failed to delete MOU PDF' };
+    }
+  },
+
+  // Institute Industry Collaboration API
+  updateIndustryCollaborations: async (collabData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('🚀 Updating industry collaborations with data:', collabData);
+      
       const response = await fetch(`${API_URL}/institutes/industry-collaborations`, {
         method: 'PUT',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-          // Don't set Content-Type for FormData, let browser set it with boundary
         },
-        body: formData
+        body: JSON.stringify(collabData)
       });
       
       if (!response.ok) {
@@ -3075,6 +3281,113 @@ const apiService = {
     }
   },
 
+  // Chart data API for Institute Dashboard
+  getEnrollmentTrends: async (year, monthRange) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/dashboard/enrollment-trends?year=${year}&monthRange=${monthRange}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get enrollment trends error:', error);
+      return { success: false, message: 'Failed to get enrollment trends' };
+    }
+  },
+
+  getPlacementTrends: async (year, monthRange) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/dashboard/placement-trends?year=${year}&monthRange=${monthRange}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get placement trends error:', error);
+      return { success: false, message: 'Failed to get placement trends' };
+    }
+  },
+
+  // User Notification API endpoints
+  getUserNotifications: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/notifications`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get user notifications error:', error);
+      return { success: false, message: 'Failed to get notifications' };
+    }
+  },
+
+  markNotificationAsRead: async (notificationId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Mark notification as read error:', error);
+      return { success: false, message: 'Failed to mark notification as read' };
+    }
+  },
+
+  getNotificationCount: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/notifications/count`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get notification count error:', error);
+      return { success: false, message: 'Failed to get notification count' };
+    }
+  },
+
   // Progress tracking API
   markContentComplete: async (courseId, contentId, contentType) => {
     try {
@@ -3169,6 +3482,48 @@ const apiService = {
           progressPercentage: 0
         }
       };
+    }
+  },
+
+  // Government Schemes API
+  getGovernmentSchemes: async () => {
+    try {
+      const response = await fetch(`${API_URL}/government-schemes`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get government schemes error:', error);
+      return { success: false, message: 'Failed to get government schemes' };
+    }
+  },
+
+  getGovernmentSchemesByVisibility: async (visibility) => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const url = visibility 
+        ? `${API_URL}/government-schemes/by-visibility?visibility=${visibility}`
+        : `${API_URL}/government-schemes/by-visibility`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get government schemes by visibility error:', error);
+      return { success: false, message: 'Failed to get government schemes' };
     }
   }
 

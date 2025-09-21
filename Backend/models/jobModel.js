@@ -315,6 +315,137 @@ const incrementApplicationCount = async (jobId) => {
   }
 };
 
+/**
+ * Get trending jobs sorted by application count
+ * @param {number} limit - Number of jobs to return
+ * @returns {Promise<Array>} - Array of trending jobs with recruiter info
+ */
+const getTrendingJobs = async (limit = 8) => {
+  try {
+    // Get all active jobs
+    const activeJobs = await getAllActiveJobsWithRecruiters();
+    
+    if (!activeJobs || activeJobs.length === 0) {
+      return [];
+    }
+    
+    // Get application counts from job applications table
+    const jobApplicationModel = require('./jobApplicationModel');
+    
+    const jobsWithApplicationCounts = await Promise.all(
+      activeJobs.map(async (job) => {
+        try {
+          // Get applications for this job from the job applications table
+          const applications = await jobApplicationModel.getJobApplications(job.jobId);
+          const applicationCount = applications ? applications.length : 0;
+          
+          return {
+            ...job,
+            applicationCount,
+            // Keep the original applications field for backward compatibility
+            applications: job.applications || 0
+          };
+        } catch (error) {
+          console.error('Error getting application count for job:', job.jobId, error);
+          return {
+            ...job,
+            applicationCount: 0,
+            applications: job.applications || 0
+          };
+        }
+      })
+    );
+    
+    // Sort by application count (descending) and then by posted date (newest first)
+    const sortedJobs = jobsWithApplicationCounts.sort((a, b) => {
+      if (b.applicationCount !== a.applicationCount) {
+        return b.applicationCount - a.applicationCount;
+      }
+      return new Date(b.postedDate) - new Date(a.postedDate);
+    });
+    
+    // Return limited results
+    return sortedJobs.slice(0, limit);
+  } catch (error) {
+    console.error('Error getting trending jobs:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get jobs posted today with recruiter information
+ * @param {number} limit - Number of jobs to return
+ * @returns {Promise<Array>} - Array of today's jobs with recruiter info
+ */
+const getTodaysJobs = async (limit = 10) => {
+  try {
+    // Get today's date in ISO format (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
+    
+    // Get tomorrow's date in ISO format (start of next day)
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowISO = tomorrow.toISOString();
+    
+    // Get jobs posted today
+    const params = {
+      FilterExpression: '#status = :status AND #postedDate >= :todayStart AND #postedDate < :tomorrowStart',
+      ExpressionAttributeNames: {
+        '#status': 'status',
+        '#postedDate': 'postedDate'
+      },
+      ExpressionAttributeValues: {
+        ':status': 'Active',
+        ':todayStart': todayISO,
+        ':tomorrowStart': tomorrowISO
+      }
+    };
+    
+    const jobs = await dynamoService.scanItems(JOBS_TABLE, params);
+    
+    // Get recruiter information for each job
+    const jobsWithRecruiters = await Promise.all(
+      jobs.map(async (job) => {
+        try {
+          // Get recruiter info
+          const recruiter = await userModel.findUserById(job.recruiterId);
+          
+          return {
+            ...job,
+            recruiterInfo: recruiter ? {
+              companyName: recruiter.name || recruiter.companyName,
+              industry: recruiter.industry || 'Technology',
+              location: recruiter.location || job.location,
+              website: recruiter.website,
+              recruiterName: recruiter.recruiterName || 'HR Manager',
+              designation: recruiter.designation || 'HR Manager',
+              verified: true
+            } : null
+          };
+        } catch (error) {
+          console.error('Error getting recruiter info for job:', job.jobId, error);
+          return {
+            ...job,
+            recruiterInfo: null
+          };
+        }
+      })
+    );
+    
+    // Sort by posted date (newest first) and limit results
+    const sortedJobs = jobsWithRecruiters
+      .sort((a, b) => new Date(b.postedDate) - new Date(a.postedDate))
+      .slice(0, limit);
+    
+    return sortedJobs;
+  } catch (error) {
+    console.error('Error getting today\'s jobs:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   createJob,
   getJobById,
@@ -324,5 +455,7 @@ module.exports = {
   updateJob,
   deleteJob,
   searchJobs,
-  incrementApplicationCount
+  incrementApplicationCount,
+  getTrendingJobs,
+  getTodaysJobs
 };

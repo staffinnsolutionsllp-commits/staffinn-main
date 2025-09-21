@@ -25,17 +25,34 @@ const institutePlacementModel = {
     try {
       const timestamp = new Date().toISOString();
       
+      // Ensure data is properly formatted for DynamoDB
       const item = {
         instituteplacement: `${instituteName}-${instituteId}`,
         instituteId: instituteId,
         instituteName: instituteName,
         averageSalary: placementData.averageSalary || '',
         highestPackage: placementData.highestPackage || '',
-        topHiringCompanies: placementData.topHiringCompanies || [],
-        recentPlacementSuccess: placementData.recentPlacementSuccess || [],
+        topHiringCompanies: (placementData.topHiringCompanies || []).map(company => ({
+          name: company.name || '',
+          logo: company.logo || null
+        })),
+        recentPlacementSuccess: (placementData.recentPlacementSuccess || []).map(student => ({
+          name: student.name || '',
+          company: student.company || '',
+          position: student.position || '',
+          photo: student.photo || null
+        })),
         createdAt: timestamp,
         updatedAt: timestamp
       };
+
+      console.log('Saving placement data to DynamoDB:', {
+        instituteplacement: item.instituteplacement,
+        averageSalary: item.averageSalary,
+        highestPackage: item.highestPackage,
+        companiesCount: item.topHiringCompanies.length,
+        studentsCount: item.recentPlacementSuccess.length
+      });
 
       const command = new PutCommand({
         TableName: TABLE_NAME,
@@ -43,6 +60,7 @@ const institutePlacementModel = {
       });
 
       await docClient.send(command);
+      console.log('Placement data saved successfully to DynamoDB');
       return item;
     } catch (error) {
       console.error('Error creating/updating placement section:', error);

@@ -809,6 +809,122 @@ class AdminAPI {
     }
   }
 
+  /**
+   * Notification APIs
+   */
+  
+  // Send notification to users
+  async sendNotification(notificationData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/notifications/send`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(notificationData)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send notification');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Send notification error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Government Schemes APIs
+   */
+  
+  // Get all government schemes
+  async getGovernmentSchemes() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/government-schemes`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get government schemes');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get government schemes error:', error);
+      throw error;
+    }
+  }
+
+  // Add new government scheme
+  async addGovernmentScheme(schemeData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/government-schemes`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(schemeData)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to add government scheme');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Add government scheme error:', error);
+      throw error;
+    }
+  }
+
+  // Update government scheme
+  async updateGovernmentScheme(schemeId, schemeData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/government-schemes/${schemeId}`, {
+        method: 'PUT',
+        headers: this.getHeaders(),
+        body: JSON.stringify(schemeData)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update government scheme');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Update government scheme error:', error);
+      throw error;
+    }
+  }
+
+  // Delete government scheme
+  async deleteGovernmentScheme(schemeId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/government-schemes/${schemeId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete government scheme');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Delete government scheme error:', error);
+      throw error;
+    }
+  }
+
   // Logout
   logout() {
     this.removeToken();

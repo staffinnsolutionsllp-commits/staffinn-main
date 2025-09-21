@@ -1,17 +1,22 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import apiService from '../../services/api';
+import apiWithLoading from '../../services/apiWithLoading';
 import './InstitutePageList.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCheckCircle, FaSearch } from 'react-icons/fa';
 import InstitutepageImage from '../../assets/Institutepage.jpg';
+import { useGlobalLoading } from '../../hooks/useGlobalLoading';
 
 const InstitutePageList = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [nameLocationSearch, setNameLocationSearch] = useState('');
+  const [courseSearch, setCourseSearch] = useState('');
   const [filter, setFilter] = useState('');
   const [institutes, setInstitutes] = useState([]);
   const [filteredInstitutes, setFilteredInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Use global loading hook
+  const { withLoading } = useGlobalLoading();
 
   // Load institutes from API
   useEffect(() => {
@@ -21,22 +26,37 @@ const InstitutePageList = () => {
   const loadInstitutes = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getAllInstitutes();
+      const response = await apiWithLoading.getAllInstitutes();
       
       if (response.success && response.data) {
         // Transform API data to match component expectations
-        const transformedInstitutes = response.data.map(institute => ({
-          id: institute.instituteId,
-          name: institute.instituteName,
-          location: institute.address,
-          phone: institute.phone,
-          email: institute.email,
-          website: institute.website,
-          experience: institute.experience,
-          badges: institute.badges || [],
-          profileImage: institute.profileImage,
-          isBrainaryVerified: institute.isLive || false,
-          isTrendingAchiever: institute.isLive || false
+        const transformedInstitutes = await Promise.all(response.data.map(async (institute) => {
+          // Fetch courses for each institute
+          let courses = [];
+          try {
+            const coursesResponse = await apiWithLoading.getPublicCourses(institute.instituteId);
+            if (coursesResponse.success && coursesResponse.data) {
+              courses = coursesResponse.data;
+            }
+          } catch (error) {
+            console.error(`Error fetching courses for institute ${institute.instituteId}:`, error);
+          }
+          
+          return {
+            id: institute.instituteId,
+            name: institute.instituteName,
+            location: institute.address,
+            pincode: institute.pincode,
+            phone: institute.phone,
+            email: institute.email,
+            website: institute.website,
+            experience: institute.experience,
+            badges: institute.badges || [],
+            profileImage: institute.profileImage,
+            courses: courses,
+            isBrainaryVerified: institute.isLive || false,
+            isTrendingAchiever: institute.isLive || false
+          };
         }));
         setInstitutes(transformedInstitutes);
         setFilteredInstitutes(transformedInstitutes);
@@ -68,15 +88,28 @@ const InstitutePageList = () => {
     }
   };
 
-  // Filter institutes based on search term and selected filter
+  // Filter institutes based on search terms and selected filter
   useEffect(() => {
     let results = institutes;
     
-    // Apply search term filter
-    if (searchTerm) {
+    // Apply name/location/pincode search filter
+    if (nameLocationSearch) {
       results = results.filter(institute => 
-        institute.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        institute.location.toLowerCase().includes(searchTerm.toLowerCase())
+        institute.name.toLowerCase().includes(nameLocationSearch.toLowerCase()) ||
+        institute.location.toLowerCase().includes(nameLocationSearch.toLowerCase()) ||
+        (institute.pincode && institute.pincode.toString().includes(nameLocationSearch))
+      );
+    }
+    
+    // Apply course search filter
+    if (courseSearch) {
+      results = results.filter(institute => 
+        institute.courses && institute.courses.length > 0 && institute.courses.some(course => 
+          course.courseName?.toLowerCase().includes(courseSearch.toLowerCase()) ||
+          course.courseTitle?.toLowerCase().includes(courseSearch.toLowerCase()) ||
+          course.name?.toLowerCase().includes(courseSearch.toLowerCase()) ||
+          course.title?.toLowerCase().includes(courseSearch.toLowerCase())
+        )
       );
     }
     
@@ -88,22 +121,34 @@ const InstitutePageList = () => {
     }
     
     setFilteredInstitutes(results);
-  }, [searchTerm, filter]);
+  }, [nameLocationSearch, courseSearch, filter, institutes]);
 
   return (
     <div className="institute-list-page">
       {/* Hero Section with Background Image */}
       <div className="institute-search-section" style={{backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${InstitutepageImage})`}}>
         <h1 className="page-title">Find Your Institute</h1>
-        <div className="search-container">
-          <input 
-            type="text" 
-            placeholder="Search by name or location..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-          <FaSearch className="search-icon" />
+        <div className="institute-search-container">
+          <div className="dual-search-inputs">
+            <input 
+              type="text" 
+              placeholder="Search by Name/Location/Pincode..." 
+              value={nameLocationSearch}
+              onChange={(e) => setNameLocationSearch(e.target.value)}
+              className="search-input name-location-search"
+            />
+            <input 
+              type="text" 
+              placeholder="Search by Courses..." 
+              value={courseSearch}
+              onChange={(e) => setCourseSearch(e.target.value)}
+              className="search-input course-search"
+            />
+            <button className="search-btn" onClick={() => withLoading(() => Promise.resolve(), 'Searching institutes...')}>
+              <FaSearch />
+              Search
+            </button>
+          </div>
         </div>
       </div>
 
@@ -180,7 +225,10 @@ const InstitutePageList = () => {
               <div className="institute-details">
                 <div className="info-item">
                   <FaMapMarkerAlt />
-                  <span>{institute.location}</span>
+                  <span>
+                    {institute?.location}
+                    {institute?.pincode && `, ${institute.pincode}`}
+                  </span>
                 </div>
                 <div className="info-item">
                   <FaPhone />

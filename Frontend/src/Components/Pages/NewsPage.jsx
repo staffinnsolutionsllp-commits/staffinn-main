@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import apiService from '../../services/api';
+import apiWithLoading from '../../services/apiWithLoading';
 import NewsDisplayAPI from '../../services/newsDisplayApi';
 import io from 'socket.io-client';
 import './NewsPage.css';
@@ -137,29 +137,9 @@ const NewsPage = () => {
   
 
   
-  const jobAlerts = [
-    {
-      id: 1,
-      company: "Google",
-      role: "Software Engineer",
-      location: "Bangalore",
-      posted: "2 hours ago"
-    },
-    {
-      id: 2,
-      company: "Amazon",
-      role: "Data Scientist",
-      location: "Hyderabad",
-      posted: "5 hours ago"
-    },
-    {
-      id: 3,
-      company: "Flipkart",
-      role: "Product Manager",
-      location: "Remote",
-      posted: "1 day ago"
-    }
-  ];
+  // Real-time job alerts state
+  const [jobAlerts, setJobAlerts] = useState([]);
+  const [jobAlertsLoading, setJobAlertsLoading] = useState(true);
 
   // State management
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -170,6 +150,10 @@ const NewsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [playingVideo, setPlayingVideo] = useState(null);
+  
+  // Popular Tags state
+  const [popularTags, setPopularTags] = useState([]);
+  const [searchKeywords, setSearchKeywords] = useState([]);
 
   // Toggle save state for articles
   const toggleSave = (articleId) => {
@@ -177,6 +161,72 @@ const NewsPage = () => {
       ...prev,
       [articleId]: !prev[articleId]
     }));
+  };
+  
+  // Extract keywords from text
+  const extractKeywords = (text) => {
+    if (!text) return [];
+    
+    const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them'];
+    
+    return text
+      .toLowerCase()
+      .replace(/[^a-zA-Z\s]/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !commonWords.includes(word))
+      .slice(0, 10);
+  };
+  
+  // Generate popular tags from news articles
+  const generatePopularTags = () => {
+    const keywordCount = {};
+    
+    // Extract keywords from all news articles
+    newsArticles.forEach(article => {
+      const titleKeywords = extractKeywords(article.title);
+      const descriptionKeywords = extractKeywords(article.description || article.details);
+      const allKeywords = [...titleKeywords, ...descriptionKeywords];
+      
+      allKeywords.forEach(keyword => {
+        keywordCount[keyword] = (keywordCount[keyword] || 0) + 1;
+      });
+    });
+    
+    // Add search keywords with higher weight
+    searchKeywords.forEach(keyword => {
+      keywordCount[keyword] = (keywordCount[keyword] || 0) + 3;
+    });
+    
+    // Sort by frequency and get top 15
+    const sortedTags = Object.entries(keywordCount)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 15)
+      .map(([keyword, count]) => ({
+        name: keyword.charAt(0).toUpperCase() + keyword.slice(1),
+        count
+      }));
+    
+    setPopularTags(sortedTags);
+  };
+  
+  // Handle tag click for filtering
+  const handleTagClick = (tagName) => {
+    // Add to search keywords for future popularity
+    setSearchKeywords(prev => {
+      const updated = [tagName.toLowerCase(), ...prev.slice(0, 19)];
+      return [...new Set(updated)];
+    });
+    
+    // Filter news by tag
+    const filtered = newsArticles.filter(article => {
+      const searchText = `${article.title} ${article.description || article.details}`.toLowerCase();
+      return searchText.includes(tagName.toLowerCase());
+    });
+    
+    if (filtered.length > 0) {
+      // Scroll to news feed and highlight matching articles
+      document.querySelector('.news-feed')?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
 
@@ -234,10 +284,18 @@ const NewsPage = () => {
     return true;
   });
 
+  // Generate popular tags when news articles change
+  useEffect(() => {
+    if (newsArticles.length > 0) {
+      generatePopularTags();
+    }
+  }, [newsArticles, searchKeywords]);
+  
   // Load news data and initialize real-time updates on component mount
   useEffect(() => {
     loadAllNews();
     loadNewsAdminData();
+    loadJobAlerts();
     setNewsFilter('all');
     
     // Initialize socket connection for real-time updates
@@ -379,10 +437,11 @@ const NewsPage = () => {
       window.location.reload();
     });
     
-    // Set up periodic refresh to catch new news
+    // Set up periodic refresh to catch new news and job alerts
     const refreshInterval = setInterval(() => {
-      console.log('Auto-refreshing news...');
+      console.log('Auto-refreshing news and job alerts...');
       loadAllNews();
+      loadJobAlerts();
     }, 30000); // Refresh every 30 seconds
     
     // Listen for custom news update events
@@ -437,6 +496,63 @@ const NewsPage = () => {
     }
   };
   
+  // Load today's jobs for Job Alerts
+  const loadJobAlerts = async () => {
+    try {
+      setJobAlertsLoading(true);
+      console.log('Loading today\'s jobs for Job Alerts...');
+      
+      const response = await apiWithLoading.getTodaysJobs(5); // Limit to 5 jobs
+      
+      if (response.success && response.data) {
+        const formattedJobs = response.data.map(job => ({
+          id: job.jobId,
+          company: job.recruiterInfo?.companyName || 'Company',
+          role: job.title,
+          location: job.location,
+          posted: formatJobPostedTime(job.postedDate),
+          recruiterId: job.recruiterId,
+          jobId: job.jobId,
+          salary: job.salary,
+          experience: job.experience,
+          jobType: job.jobType
+        }));
+        
+        console.log('Formatted job alerts:', formattedJobs);
+        setJobAlerts(formattedJobs);
+      } else {
+        console.log('No job alerts found or API failed');
+        setJobAlerts([]);
+      }
+    } catch (error) {
+      console.error('Error loading job alerts:', error);
+      setJobAlerts([]);
+    } finally {
+      setJobAlertsLoading(false);
+    }
+  };
+  
+  // Format job posted time
+  const formatJobPostedTime = (postedDate) => {
+    const now = new Date();
+    const posted = new Date(postedDate);
+    const diffInHours = Math.floor((now - posted) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      return 'Just posted';
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
+    } else {
+      return 'Today';
+    }
+  };
+  
+  // Handle View Job button click
+  const handleViewJob = (job) => {
+    // Navigate to recruiter page with job focus
+    window.open(`/recruiter/${job.recruiterId}#job-${job.jobId}`, '_blank');
+  };
+
   // Load all news from API
   const loadAllNews = async () => {
     try {
@@ -468,7 +584,7 @@ const NewsPage = () => {
       }
       
       // Try to get all news from the combined endpoint
-      let response = await apiService.getAllNews();
+      let response = await apiWithLoading.getAllNews();
       console.log('getAllNews response:', response);
       
       let allNews = [];
@@ -494,7 +610,7 @@ const NewsPage = () => {
 
           
           // Load institute news
-          const instituteResponse = await apiService.getNewsByCategory('institute');
+          const instituteResponse = await apiWithLoading.getNewsByCategory('institute');
           console.log('Institute news response:', instituteResponse);
           if (instituteResponse.success && instituteResponse.data) {
             const instituteNews = Array.isArray(instituteResponse.data) ? instituteResponse.data : [];
@@ -506,7 +622,7 @@ const NewsPage = () => {
           }
           
           // Load staff news
-          const staffResponse = await apiService.getNewsByCategory('staff');
+          const staffResponse = await apiWithLoading.getNewsByCategory('staff');
           console.log('Staff news response:', staffResponse);
           if (staffResponse.success && staffResponse.data) {
             const staffNews = Array.isArray(staffResponse.data) ? staffResponse.data : [];
@@ -518,7 +634,7 @@ const NewsPage = () => {
           }
           
           // Load recruiter news
-          const recruiterResponse = await apiService.getNewsByCategory('recruiter');
+          const recruiterResponse = await apiWithLoading.getNewsByCategory('recruiter');
           console.log('Recruiter news response:', recruiterResponse);
           if (recruiterResponse.success && recruiterResponse.data) {
             const recruiterNews = Array.isArray(recruiterResponse.data) ? recruiterResponse.data : [];
@@ -732,6 +848,28 @@ const NewsPage = () => {
       </section>
 
 
+
+      {/* Popular Tags Section - Above News Feed */}
+      {popularTags.length > 0 && (
+        <section className="popular-tags-main">
+          <div className="content-container">
+            <h2>Popular Tags</h2>
+            <div className="tags-cloud-main">
+              {popularTags.slice(0, 10).map((tag, index) => (
+                <button 
+                  key={index} 
+                  className="tag-main"
+                  onClick={() => handleTagClick(tag.name)}
+                  title={`${tag.count} mentions`}
+                >
+                  {tag.name}
+                  <span className="tag-count-main">{tag.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="content-container">
         {/* Main Column */}
@@ -952,19 +1090,50 @@ const NewsPage = () => {
             </div>
             
             <div className="alerts-list">
-              {jobAlerts.map(job => (
-                <div key={job.id} className="job-alert-card">
-                  <h3>{job.role}</h3>
-                  <div className="job-company">{job.company}</div>
-                  <div className="job-meta">
-                    <span className="job-location">{job.location}</span>
-                    <span className="job-time">{job.posted}</span>
-                  </div>
-                  <button className="view-job-btn">View Job <FaExternalLinkAlt /></button>
+              {jobAlertsLoading ? (
+                <div className="loading-job-alerts">
+                  <p>Loading today's job alerts...</p>
                 </div>
-              ))}
+              ) : jobAlerts.length > 0 ? (
+                jobAlerts.map(job => (
+                  <div key={job.id} className="job-alert-card">
+                    <h3>{job.role}</h3>
+                    <div className="job-company">{job.company}</div>
+                    <div className="job-meta">
+                      <span className="job-location">📍 {job.location}</span>
+                      <span className="job-time">🕒 {job.posted}</span>
+                    </div>
+                    {job.salary && (
+                      <div className="job-salary">💰 {job.salary}</div>
+                    )}
+                    {job.experience && (
+                      <div className="job-experience">⏱ {job.experience}</div>
+                    )}
+                    <button 
+                      className="view-job-btn"
+                      onClick={() => handleViewJob(job)}
+                    >
+                      View Job <FaExternalLinkAlt />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="no-job-alerts">
+                  <p>No new jobs posted today.</p>
+                  <p style={{fontSize: '0.9rem', color: '#666', marginTop: '5px'}}>
+                    Check back later for fresh opportunities!
+                  </p>
+                </div>
+              )}
             </div>
-            <button className="more-jobs-btn">View All Job Alerts</button>
+            {jobAlerts.length > 0 && (
+              <button 
+                className="more-jobs-btn"
+                onClick={() => window.open('/recruiter', '_blank')}
+              >
+                View All Jobs
+              </button>
+            )}
           </section>
 
 
@@ -975,15 +1144,23 @@ const NewsPage = () => {
           <section className="popular-tags">
             <h2>Popular Tags</h2>
             <div className="tags-cloud">
-              <a href="#" className="tag">Remote Jobs</a>
-              <a href="#" className="tag">Startups</a>
-              <a href="#" className="tag">AI</a>
-              <a href="#" className="tag">Data Science</a>
-              <a href="#" className="tag">Software Engineering</a>
-              <a href="#" className="tag">Career Advice</a>
-              <a href="#" className="tag">Resume Tips</a>
-              <a href="#" className="tag">Salary Negotiation</a>
-              <a href="#" className="tag">Work-Life Balance</a>
+              {popularTags.length > 0 ? (
+                popularTags.map((tag, index) => (
+                  <button 
+                    key={index} 
+                    className="tag"
+                    onClick={() => handleTagClick(tag.name)}
+                    title={`${tag.count} mentions`}
+                  >
+                    {tag.name}
+                    <span className="tag-count">{tag.count}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="no-tags">
+                  <p>Loading popular tags...</p>
+                </div>
+              )}
             </div>
           </section>
         </div>

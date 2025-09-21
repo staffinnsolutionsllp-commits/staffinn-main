@@ -15,10 +15,10 @@ function NotificationBell({ isLoggedIn }) {
     
     try {
       setLoading(true);
-      const response = await apiService.getNotifications(10, false);
+      const response = await apiService.getUserNotifications();
       if (response.success) {
-        setNotifications(response.data);
-        setUnreadCount(response.unreadCount || 0);
+        setNotifications(response.data || []);
+        setUnreadCount(response.count || 0);
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -32,13 +32,9 @@ function NotificationBell({ isLoggedIn }) {
     try {
       const response = await apiService.markNotificationAsRead(notificationId);
       if (response.success) {
-        // Update local state
+        // Remove notification from list (mark as read removes it)
         setNotifications(prev => 
-          prev.map(notif => 
-            notif.notificationId === notificationId 
-              ? { ...notif, read: true }
-              : notif
-          )
+          prev.filter(notif => notif.notificationsId !== notificationId)
         );
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
@@ -50,34 +46,18 @@ function NotificationBell({ isLoggedIn }) {
   // Mark all as read
   const markAllAsRead = async () => {
     try {
-      const response = await apiService.markAllNotificationsAsRead();
-      if (response.success) {
-        setNotifications(prev => 
-          prev.map(notif => ({ ...notif, read: true }))
-        );
-        setUnreadCount(0);
-      }
+      // Mark each notification as read
+      const markPromises = notifications.map(notif => 
+        apiService.markNotificationAsRead(notif.notificationsId)
+      );
+      
+      await Promise.all(markPromises);
+      
+      // Clear all notifications and reset count
+      setNotifications([]);
+      setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
-    }
-  };
-
-  // Delete notification
-  const deleteNotification = async (notificationId) => {
-    try {
-      const response = await apiService.deleteNotification(notificationId);
-      if (response.success) {
-        setNotifications(prev => 
-          prev.filter(notif => notif.notificationId !== notificationId)
-        );
-        // Update unread count if the deleted notification was unread
-        const deletedNotif = notifications.find(n => n.notificationId === notificationId);
-        if (deletedNotif && !deletedNotif.read) {
-          setUnreadCount(prev => Math.max(0, prev - 1));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to delete notification:', error);
     }
   };
 
@@ -99,14 +79,34 @@ function NotificationBell({ isLoggedIn }) {
     return date.toLocaleDateString();
   };
 
-  // Fetch notifications on mount and set up polling
+  // Fetch notifications on mount and set up real-time updates
   useEffect(() => {
     if (isLoggedIn) {
       fetchNotifications();
       
-      // Poll for new notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+      // Set up Socket.IO for real-time notifications
+      if (window.io) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const socket = window.io('http://localhost:4001', {
+            auth: { token }
+          });
+          
+          // Listen for new notifications
+          socket.on('new_notification', (notification) => {
+            setNotifications(prev => [notification, ...prev]);
+            setUnreadCount(prev => prev + 1);
+          });
+          
+          return () => {
+            socket.disconnect();
+          };
+        }
+      } else {
+        // Fallback to polling if Socket.IO is not available
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+      }
     }
   }, [isLoggedIn]);
 
@@ -183,8 +183,8 @@ function NotificationBell({ isLoggedIn }) {
             ) : (
               notifications.map((notification) => (
                 <div 
-                  key={notification.notificationId}
-                  className={`notification-item ${!notification.read ? 'unread' : ''}`}
+                  key={notification.notificationsId}
+                  className="notification-item unread"
                 >
                   <div className="notification-content">
                     <div className="notification-title">{notification.title}</div>
@@ -192,21 +192,12 @@ function NotificationBell({ isLoggedIn }) {
                     <div className="notification-time">{formatTimeAgo(notification.createdAt)}</div>
                   </div>
                   <div className="notification-actions">
-                    {!notification.read && (
-                      <button 
-                        className="mark-read-btn"
-                        onClick={() => markAsRead(notification.notificationId)}
-                        title="Mark as read"
-                      >
-                        ✓
-                      </button>
-                    )}
                     <button 
-                      className="delete-btn"
-                      onClick={() => deleteNotification(notification.notificationId)}
-                      title="Delete notification"
+                      className="mark-read-btn"
+                      onClick={() => markAsRead(notification.notificationsId)}
+                      title="Mark as read"
                     >
-                      ×
+                      ✓
                     </button>
                   </div>
                 </div>

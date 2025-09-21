@@ -4,8 +4,11 @@ import React, { useState, useEffect, useContext } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../services/api";
+import axios from 'axios';
 import HiddenUser from '../HiddenUser/HiddenUser';
 import StaffCourses from './StaffCourses';
+import GovernmentSchemes from './GovernmentSchemes';
+import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import './HiddenNotification.css';
 import './Dashboard.css';
 import './HiddenNotification.css';
@@ -101,6 +104,10 @@ const StaffDashboard = ({ currentUser }) => {
         skills: '',
         profilePhoto: null,
         resumeUrl: null,
+        sector: '',
+        role: '',
+        state: '',
+        city: '',
         
         // Education fields
         education: {
@@ -114,6 +121,17 @@ const StaffDashboard = ({ currentUser }) => {
         isActiveStaff: false,
         profileVisibility: 'private'
     });
+
+    // Available roles based on selected sector
+    const [availableRoles, setAvailableRoles] = useState([]);
+    const sectors = getSectors();
+    
+    // State and City data
+    const [states, setStates] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [selectedState, setSelectedState] = useState('');
+    const [selectedCity, setSelectedCity] = useState('');
+    const API_KEY = 'Rzk1SnVRU3NDTWpzb2ZiMERwU1RKTXRpT0R4Nmh0ZmhsZHlNM0pacw==';
 
     // Seeker profile state (simplified)
     const [seekerProfile, setSeekerProfile] = useState({
@@ -133,7 +151,65 @@ const StaffDashboard = ({ currentUser }) => {
             loadDashboardData();
         }
         setupSocketConnection();
+        fetchStates();
     }, []);
+    
+    // Fetch states from API
+    const fetchStates = async () => {
+        try {
+            const response = await axios.get(
+                'https://api.countrystatecity.in/v1/countries/IN/states',
+                { headers: { "X-CSCAPI-KEY": API_KEY } }
+            );
+            setStates(response.data);
+        } catch (error) {
+            console.error('Error fetching states:', error);
+        }
+    };
+    
+    // Fetch cities when state is selected
+    useEffect(() => {
+        const fetchCities = async () => {
+            if (!selectedState) {
+                setCities([]);
+                return;
+            }
+            try {
+                const response = await fetch(
+                    `https://api.countrystatecity.in/v1/countries/IN/states/${selectedState}/cities`,
+                    { 
+                        method: 'GET',
+                        headers: { "X-CSCAPI-KEY": API_KEY }
+                    }
+                );
+                const data = await response.json();
+                setCities(data);
+            } catch (error) {
+                console.error('Error fetching cities:', error);
+            }
+        };
+        fetchCities();
+    }, [selectedState]);
+    
+    // Set selected city after cities are loaded and profile city is available
+    useEffect(() => {
+        if (cities.length > 0 && profile.city && !selectedCity) {
+            const cityObj = cities.find(c => c.name === profile.city);
+            if (cityObj) {
+                setSelectedCity(cityObj.id.toString());
+            }
+        }
+    }, [cities, profile.city, selectedCity]);
+    
+    // Set selected state after states and profile are loaded
+    useEffect(() => {
+        if (states.length > 0 && profile.state && !selectedState) {
+            const stateObj = states.find(s => s.name === profile.state);
+            if (stateObj) {
+                setSelectedState(stateObj.iso2);
+            }
+        }
+    }, [states, profile.state, selectedState]);
     
     // Setup socket connection for real-time updates
     const setupSocketConnection = () => {
@@ -355,6 +431,10 @@ const StaffDashboard = ({ currentUser }) => {
                     skills: profileData.skills || '',
                     profilePhoto: profileData.profilePhoto || null,
                     resumeUrl: profileData.resumeUrl || null,
+                    sector: profileData.sector || '',
+                    role: profileData.role || '',
+                    state: profileData.state || '',
+                    city: profileData.city || '',
                     education: profileData.education || {
                         tenth: { percentage: '', year: '', school: '' },
                         twelfth: { percentage: '', year: '', school: '' },
@@ -365,6 +445,14 @@ const StaffDashboard = ({ currentUser }) => {
                     isActiveStaff: profileData.isActiveStaff || false,
                     profileVisibility: profileData.profileVisibility || 'private'
                 });
+                
+                // Update available roles if sector is set
+                if (profileData.sector) {
+                    const roles = getRolesForSector(profileData.sector);
+                    setAvailableRoles(roles);
+                }
+                
+                // State and city will be set by useEffect hooks after data is loaded
                 
                 // Check if user is hidden
                 setIsHidden(profileData.profileVisibility === 'private');
@@ -423,10 +511,47 @@ const StaffDashboard = ({ currentUser }) => {
             }
         }
         
-        setProfile({
-            ...profile,
+        // Handle sector change - update available roles
+        if (name === 'sector') {
+            const roles = getRolesForSector(value);
+            setAvailableRoles(roles);
+            setProfile(prev => ({
+                ...prev,
+                [name]: value,
+                role: '' // Reset role when sector changes
+            }));
+            return;
+        }
+        
+        // Handle state change - update cities and profile
+        if (name === 'state') {
+            const selectedStateName = states.find(s => s.iso2 === value)?.name || '';
+            setSelectedState(value);
+            setSelectedCity(''); // Reset city when state changes
+            setCities([]);
+            setProfile(prev => ({
+                ...prev,
+                state: selectedStateName,
+                city: '' // Reset city when state changes
+            }));
+            return;
+        }
+        
+        // Handle city change - update profile
+        if (name === 'city') {
+            const selectedCityName = cities.find(c => c.id === parseInt(value))?.name || '';
+            setSelectedCity(value);
+            setProfile(prev => ({
+                ...prev,
+                city: selectedCityName
+            }));
+            return;
+        }
+        
+        setProfile(prev => ({
+            ...prev,
             [name]: type === 'checkbox' ? checked : value
-        });
+        }));
     };
 
     // Handler for seeker profile changes
@@ -488,11 +613,22 @@ const StaffDashboard = ({ currentUser }) => {
                 address: profile.address,
                 pincode: profile.pincode,
                 skills: profile.skills,
+                sector: profile.sector,
+                role: profile.role,
+                state: profile.state,
+                city: profile.city,
                 education: profile.education,
                 visibility: profile.visibility,
                 availability: profile.availability,
                 experiences: experiences.filter(exp => exp.role || exp.company) // Only include filled experiences
             };
+            
+            console.log('Saving profile with state and city:', {
+                state: profile.state,
+                city: profile.city,
+                selectedState,
+                selectedCity
+            });
             
             const response = await api.updateStaffProfile(updateData);
             
@@ -858,6 +994,14 @@ const StaffDashboard = ({ currentUser }) => {
                     >
                         <i className="fas fa-graduation-cap"></i>
                         My Courses
+                    </button>
+                    
+                    <button 
+                        className={`staff-nav-item ${activeTab === 'government-schemes' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('government-schemes')}
+                    >
+                        <i className="fas fa-university"></i>
+                        Government Schemes
                     </button>
                 </nav>
             </div>
@@ -1284,12 +1428,42 @@ const StaffDashboard = ({ currentUser }) => {
                                                     </div>
                                                 </div>
                                                 <div className="staff-form-group">
-                                                    <label>Address</label>
+                                                    <label>Address (House No. / Street / Area)</label>
                                                     <textarea 
                                                         name="address" 
                                                         value={profile.address} 
                                                         onChange={handleProfileChange}
+                                                        placeholder="Enter house number, street, area details"
                                                     ></textarea>
+                                                </div>
+                                                <div className="staff-form-grid">
+                                                    <div className="staff-form-group">
+                                                        <label>State</label>
+                                                        <select 
+                                                            name="state" 
+                                                            value={selectedState} 
+                                                            onChange={handleProfileChange}
+                                                        >
+                                                            <option value="">Select State</option>
+                                                            {states.map((state) => (
+                                                                <option key={state.iso2} value={state.iso2}>{state.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="staff-form-group">
+                                                        <label>City</label>
+                                                        <select 
+                                                            name="city" 
+                                                            value={selectedCity} 
+                                                            onChange={handleProfileChange}
+                                                            disabled={!selectedState}
+                                                        >
+                                                            <option value="">Select City</option>
+                                                            {cities.map((city) => (
+                                                                <option key={city.id} value={city.id}>{city.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
                                                 </div>
                                                 <div className="staff-form-group">
                                                     <label>Pincode</label>
@@ -1303,6 +1477,37 @@ const StaffDashboard = ({ currentUser }) => {
                                                 </div>
                                                 
                                                 <h3>Professional Information</h3>
+                                                <div className="staff-form-grid">
+                                                    <div className="staff-form-group">
+                                                        <label>Choose Your Sector</label>
+                                                        <select 
+                                                            name="sector" 
+                                                            value={profile.sector} 
+                                                            onChange={handleProfileChange}
+                                                            required
+                                                        >
+                                                            <option value="">Select Sector</option>
+                                                            {sectors.map((sector, index) => (
+                                                                <option key={index} value={sector}>{sector}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="staff-form-group">
+                                                        <label>Choose Your Role</label>
+                                                        <select 
+                                                            name="role" 
+                                                            value={profile.role} 
+                                                            onChange={handleProfileChange}
+                                                            disabled={!profile.sector}
+                                                            required
+                                                        >
+                                                            <option value="">Select Role</option>
+                                                            {availableRoles.map((role, index) => (
+                                                                <option key={index} value={role}>{role}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
                                                 <div className="staff-form-group">
                                                     <label>Skills (separate with commas)</label>
                                                     <input 
@@ -1310,6 +1515,7 @@ const StaffDashboard = ({ currentUser }) => {
                                                         name="skills" 
                                                         value={profile.skills} 
                                                         onChange={handleProfileChange}
+                                                        placeholder="e.g., Communication, Problem Solving, Time Management"
                                                     />
                                                 </div>
 
@@ -1747,6 +1953,17 @@ const StaffDashboard = ({ currentUser }) => {
                             <p>Courses you've enrolled in and your learning progress</p>
                         </div>
                         <StaffCourses />
+                    </div>
+                )}
+
+                {/* Government Schemes Tab */}
+                {activeTab === 'government-schemes' && (
+                    <div className="staff-government-schemes-section">
+                        <div className="staff-page-header">
+                            <h1>Government Schemes</h1>
+                            <p>Explore government schemes and opportunities for skill development and employment</p>
+                        </div>
+                        <GovernmentSchemes />
                     </div>
                 )}
 

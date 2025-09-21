@@ -4,6 +4,7 @@
  */
 const userModel = require('../models/userModel');
 const jobModel = require('../models/jobModel');
+const jobApplicationModel = require('../models/jobApplicationModel');
 const jwtUtils = require('../utils/jwtUtils');
 const { validateJobPosting } = require('../utils/validation');
 
@@ -252,11 +253,63 @@ const getJobById = async (req, res) => {
   }
 };
 
+/**
+ * Get trending jobs (public)
+ * @route GET /api/jobs/trending
+ */
+const getTrendingJobs = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 8;
+    
+    // Get trending jobs sorted by application count
+    const trendingJobs = await jobModel.getTrendingJobs(limit);
+    
+    res.status(200).json({
+      success: true,
+      data: trendingJobs
+    });
+    
+  } catch (error) {
+    console.error('Get trending jobs error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get trending jobs'
+    });
+  }
+};
+
+/**
+ * Get today's jobs for Job Alerts (public)
+ * @route GET /api/jobs/todays-jobs
+ */
+const getTodaysJobs = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    
+    // Get today's jobs with recruiter info
+    const todaysJobs = await jobModel.getTodaysJobs(limit);
+    
+    res.status(200).json({
+      success: true,
+      data: todaysJobs
+    });
+    
+  } catch (error) {
+    console.error('Get todays jobs error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get todays jobs'
+    });
+  }
+};
+
 module.exports = {
   createJob,
   getJobsByRecruiter,
   getAllActiveJobs,
   updateJob,
   deleteJob,
-  getJobById
+  getJobById,
+  getTrendingJobs,
+  getTodaysJobs
 };

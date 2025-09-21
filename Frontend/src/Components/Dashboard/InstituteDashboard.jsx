@@ -4,6 +4,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { useNavigate } from 'react-router-dom';
 import apiService from '../../services/api';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
+import { useGlobalLoading } from '../../hooks/useGlobalLoading';
 
 import './InstituteDashboard.css';
 import './BadgeStyles.css';
@@ -49,13 +50,26 @@ const InstituteDashboard = () => {
         placementRate: 0,
         placedStudents: 0,
         avgSalaryPackage: 0,
-        industryPartners: 24
+        industryPartners: 0
     });
+    
+    // Filter states for charts
+    const [chartFilters, setChartFilters] = useState({
+        year: new Date().getFullYear(),
+        monthRange: 12 // Default to 12 months
+    });
+    
+    // Chart data states
+    const [enrollmentData, setEnrollmentData] = useState([]);
+    const [placementData, setPlacementData] = useState([]);
     const [students, setStudents] = useState([]);
     const [courses, setCourses] = useState([]);
     
     // Use profile photo sync hook
     const { updateAllImages } = useProfilePhotoSync(profileData.profileImage, 'institute');
+    
+    // Use global loading hook
+    const { withLoading } = useGlobalLoading();
 
     // Load profile data on component mount
     useEffect(() => {
@@ -66,7 +80,13 @@ const InstituteDashboard = () => {
         loadPlacementSectionData();
         loadIndustryCollabData();
         loadEventNewsData();
+        loadChartData();
     }, []);
+    
+    // Load chart data when filters change
+    useEffect(() => {
+        loadChartData();
+    }, [chartFilters]);
     
     // Refresh dashboard data when switching to overview or placements tab
     useEffect(() => {
@@ -78,12 +98,28 @@ const InstituteDashboard = () => {
         }
     }, [activeTab]);
     
+    // Update filtered students when students data changes
+    useEffect(() => {
+        const updateFilters = async () => {
+            if (students.length > 0) {
+                await filterStudents(searchQuery, placementStatusFilter);
+            }
+        };
+        updateFilters();
+    }, [students]);
+    
     const loadDashboardData = async () => {
         try {
-            const [statsResponse, courseCountResponse] = await Promise.all([
+            const [statsResponse, courseCountResponse, industryCollabResponse] = await Promise.all([
                 apiService.getDashboardStats(),
-                apiService.getActiveCourseCount()
+                apiService.getActiveCourseCount(),
+                apiService.getIndustryCollaborations()
             ]);
+            
+            // Calculate industry partners from collaboration cards
+            const industryPartners = industryCollabResponse.success && industryCollabResponse.data 
+                ? (industryCollabResponse.data.collaborationCards || []).length 
+                : 0;
             
             setDashboardStats({
                 totalStudents: statsResponse.success ? statsResponse.data.totalStudents : 0,
@@ -91,7 +127,7 @@ const InstituteDashboard = () => {
                 placementRate: statsResponse.success ? statsResponse.data.placementRate : 0,
                 placedStudents: statsResponse.success ? statsResponse.data.placedStudents : 0,
                 avgSalaryPackage: statsResponse.success ? statsResponse.data.avgSalaryPackage : 0,
-                industryPartners: 24 // Static for now
+                industryPartners: industryPartners
             });
         } catch (error) {
             console.error('Error loading dashboard data:', error);
@@ -101,7 +137,7 @@ const InstituteDashboard = () => {
                 placementRate: 0,
                 placedStudents: 0,
                 avgSalaryPackage: 0,
-                industryPartners: 24
+                industryPartners: 0
             });
         }
     };
@@ -116,6 +152,7 @@ const InstituteDashboard = () => {
             const response = await apiService.getStudents();
             if (response.success) {
                 setStudents(response.data);
+                setFilteredStudents(response.data); // Initialize filtered students
             }
         } catch (error) {
             console.error('Error loading students:', error);
@@ -143,43 +180,49 @@ const InstituteDashboard = () => {
                 console.log('Setting placement section data:', response.data);
                 setPlacementSectionData(response.data);
                 
-                const newFormData = {
-                    averageSalary: response.data.averageSalary || '',
-                    highestPackage: response.data.highestPackage || '',
-                    topHiringCompanies: (response.data.topHiringCompanies || []).map((company, index) => {
-                        // Check if logo is a valid URL string
-                        const validLogo = company.logo && typeof company.logo === 'string' && company.logo.includes('http') ? company.logo : null;
-                        return {
-                            id: `existing_company_${index}_${Date.now()}`,
-                            name: company.name || '',
-                            logo: validLogo,
-                            logoPreview: validLogo,
-                            isExisting: true,
-                            hasNewFile: false,
-                            isRemoved: false
-                        };
-                    }),
-                    recentPlacementSuccess: (response.data.recentPlacementSuccess || []).map((placement, index) => {
-                        // Check if photo is a valid URL string
-                        const validPhoto = placement.photo && typeof placement.photo === 'string' && placement.photo.includes('http') ? placement.photo : null;
-                        return {
-                            id: `existing_student_${index}_${Date.now()}`,
-                            name: placement.name || '',
-                            company: placement.company || '',
-                            position: placement.position || '',
-                            photo: validPhoto,
-                            photoPreview: validPhoto,
-                            isExisting: true,
-                            hasNewFile: false,
-                            isRemoved: false
-                        };
-                    })
-                };
+                // Only update form if it's empty or if we're loading for the first time
+                const isFormEmpty = !placementSectionForm.averageSalary && 
+                                   !placementSectionForm.highestPackage && 
+                                   placementSectionForm.topHiringCompanies.length === 0 && 
+                                   placementSectionForm.recentPlacementSuccess.length === 0;
                 
-                console.log('Setting placement form data:', newFormData);
-                setPlacementSectionForm(newFormData);
-            } else {
-                // Initialize with empty form if no data exists
+                if (isFormEmpty || !placementSectionData) {
+                    const newFormData = {
+                        averageSalary: response.data.averageSalary || '',
+                        highestPackage: response.data.highestPackage || '',
+                        topHiringCompanies: (response.data.topHiringCompanies || []).map((company, index) => {
+                            const validLogo = company.logo && typeof company.logo === 'string' && company.logo.includes('http') ? company.logo : null;
+                            return {
+                                id: `existing_company_${index}_${Date.now()}`,
+                                name: company.name || '',
+                                logo: validLogo,
+                                logoPreview: validLogo,
+                                isExisting: true,
+                                hasNewFile: false,
+                                isRemoved: false
+                            };
+                        }),
+                        recentPlacementSuccess: (response.data.recentPlacementSuccess || []).map((placement, index) => {
+                            const validPhoto = placement.photo && typeof placement.photo === 'string' && placement.photo.includes('http') ? placement.photo : null;
+                            return {
+                                id: `existing_student_${index}_${Date.now()}`,
+                                name: placement.name || '',
+                                company: placement.company || '',
+                                position: placement.position || '',
+                                photo: validPhoto,
+                                photoPreview: validPhoto,
+                                isExisting: true,
+                                hasNewFile: false,
+                                isRemoved: false
+                            };
+                        })
+                    };
+                    
+                    console.log('Setting placement form data:', newFormData);
+                    setPlacementSectionForm(newFormData);
+                }
+            } else if (!placementSectionData) {
+                // Initialize with empty form only if no existing data
                 setPlacementSectionForm({
                     averageSalary: '',
                     highestPackage: '',
@@ -189,13 +232,15 @@ const InstituteDashboard = () => {
             }
         } catch (error) {
             console.error('Error loading placement section data:', error);
-            // Initialize with empty form on error
-            setPlacementSectionForm({
-                averageSalary: '',
-                highestPackage: '',
-                topHiringCompanies: [],
-                recentPlacementSuccess: []
-            });
+            // Only initialize with empty form if no existing data
+            if (!placementSectionData) {
+                setPlacementSectionForm({
+                    averageSalary: '',
+                    highestPackage: '',
+                    topHiringCompanies: [],
+                    recentPlacementSuccess: []
+                });
+            }
         }
     };
 
@@ -432,30 +477,45 @@ const InstituteDashboard = () => {
     const [editingStudentId, setEditingStudentId] = useState(null);
     const [showPlacementHistoryModal, setShowPlacementHistoryModal] = useState(false);
     const [selectedStudentPlacementHistory, setSelectedStudentPlacementHistory] = useState([]);
+    
+    // Search and filter states for student management
+    const [searchQuery, setSearchQuery] = useState('');
+    const [placementStatusFilter, setPlacementStatusFilter] = useState('all');
+    const [filteredStudents, setFilteredStudents] = useState([]);
 
-    // Sample data for charts
-    const enrollmentData = [
-        { name: 'Jan', students: 120, completed: 40 },
-        { name: 'Feb', students: 135, completed: 45 },
-        { name: 'Mar', students: 150, completed: 50 },
-        { name: 'Apr', students: 165, completed: 58 },
-        { name: 'May', students: 180, completed: 65 },
-    ];
-
-    const placementData = [
-        { name: 'Q1', rate: 68 },
-        { name: 'Q2', rate: 72 },
-        { name: 'Q3', rate: 75 },
-        { name: 'Q4', rate: 78 },
-    ];
-
-    const courseCompletionData = [
-        { name: 'Completed', value: 350 },
-        { name: 'In Progress', value: 580 },
-        { name: 'Dropped', value: 70 },
-    ];
-
-    const COLORS = ['#00C49F', '#0088FE', '#FF8042'];
+    // Load chart data based on filters
+    const loadChartData = async () => {
+        try {
+            // Load enrollment trends data
+            const enrollmentResponse = await apiService.getEnrollmentTrends(chartFilters.year, chartFilters.monthRange);
+            if (enrollmentResponse.success) {
+                setEnrollmentData(enrollmentResponse.data);
+            }
+            
+            // Load placement success rate data
+            const placementResponse = await apiService.getPlacementTrends(chartFilters.year, chartFilters.monthRange);
+            if (placementResponse.success) {
+                setPlacementData(placementResponse.data);
+            }
+        } catch (error) {
+            console.error('Error loading chart data:', error);
+            // Set fallback data
+            setEnrollmentData([
+                { name: 'Jan', students: 0, completed: 0 },
+                { name: 'Feb', students: 0, completed: 0 },
+                { name: 'Mar', students: 0, completed: 0 },
+                { name: 'Apr', students: 0, completed: 0 },
+                { name: 'May', students: 0, completed: 0 },
+            ]);
+            setPlacementData([
+                { name: 'Jan', rate: 0 },
+                { name: 'Feb', rate: 0 },
+                { name: 'Mar', rate: 0 },
+                { name: 'Apr', rate: 0 },
+                { name: 'May', rate: 0 },
+            ]);
+        }
+    };
 
 
 
@@ -598,6 +658,99 @@ const InstituteDashboard = () => {
         setSelectedStudent(null);
         setSelectedStudentPlacementHistory([]);
     };
+    
+    // Search and filter functionality
+    const handleSearch = async () => {
+        await withLoading(
+            () => filterStudents(searchQuery, placementStatusFilter),
+            'Searching students...'
+        );
+    };
+    
+    const filterStudents = async (query, statusFilter) => {
+        let filtered = [...students];
+        
+        // If no search query and no status filter, show all students
+        if (!query.trim() && statusFilter === 'all') {
+            setFilteredStudents(filtered);
+            return;
+        }
+        
+        // Create a map to store placement history for each student
+        const studentPlacementMap = new Map();
+        
+        // Fetch placement history for students that need it
+        const studentsNeedingHistory = query.trim() || statusFilter !== 'all' ? filtered : [];
+        
+        for (const student of studentsNeedingHistory) {
+            try {
+                const response = await apiService.getStudentApplicationHistory(student.instituteStudntsID);
+                if (response.success && response.data) {
+                    studentPlacementMap.set(student.instituteStudntsID, response.data);
+                }
+            } catch (error) {
+                console.error('Error fetching placement history for student:', student.instituteStudntsID, error);
+                studentPlacementMap.set(student.instituteStudntsID, []);
+            }
+        }
+        
+        // Apply search filter
+        if (query.trim()) {
+            const searchTerm = query.toLowerCase().trim();
+            
+            filtered = students.filter(student => {
+                // Search by student name
+                const nameMatch = student.fullName?.toLowerCase().includes(searchTerm);
+                
+                // Search by company name in placement history
+                const placementHistory = studentPlacementMap.get(student.instituteStudntsID) || [];
+                const companyMatch = placementHistory.some(record => 
+                    record.companyName?.toLowerCase().includes(searchTerm)
+                );
+                
+                return nameMatch || companyMatch;
+            });
+        }
+        
+        // Apply placement status filter
+        if (statusFilter !== 'all') {
+            filtered = filtered.filter(student => {
+                const placementHistory = studentPlacementMap.get(student.instituteStudntsID) || [];
+                return placementHistory.some(record => {
+                    const status = record.status?.toLowerCase();
+                    if (statusFilter === 'hired') {
+                        return status === 'hired';
+                    } else if (statusFilter === 'rejected') {
+                        return status === 'rejected';
+                    }
+                    return false;
+                });
+            });
+        }
+        
+        setFilteredStudents(filtered);
+    };
+    
+    // Handle search input change
+    const handleSearchInputChange = async (e) => {
+        const value = e.target.value;
+        setSearchQuery(value);
+        
+        // If search is cleared, reset to show all students
+        if (!value.trim()) {
+            await filterStudents('', placementStatusFilter);
+        }
+    };
+    
+    // Handle placement status filter change
+    const handlePlacementStatusFilterChange = async (e) => {
+        const value = e.target.value;
+        setPlacementStatusFilter(value);
+        await withLoading(
+            () => filterStudents(searchQuery, value),
+            'Filtering students...'
+        );
+    };
 
     // Handle form submissions
     const handleStudentSubmit = async (e) => {
@@ -649,6 +802,10 @@ const InstituteDashboard = () => {
                     loadDashboardData(), // Refresh dashboard stats for real-time sync
                     loadStudents() // Refresh student list
                 ]);
+                // Reapply current filters after loading students
+                setTimeout(async () => {
+                    await filterStudents(searchQuery, placementStatusFilter);
+                }, 100);
                 // If on placements tab, refresh placement data as well
                 if (activeTab === 'placements') {
                     await refreshPlacementData();
@@ -872,79 +1029,67 @@ const InstituteDashboard = () => {
         try {
             setLoading(true);
             
-            // Create FormData for file uploads
-            const formData = new FormData();
+            // Validate form data before submission
+            if (!placementSectionForm.averageSalary && !placementSectionForm.highestPackage && 
+                placementSectionForm.topHiringCompanies.length === 0 && 
+                placementSectionForm.recentPlacementSuccess.length === 0) {
+                alert('Please fill at least one field before submitting.');
+                return;
+            }
             
-            // Prepare placement data without File objects
+            // Prepare placement data for submission
             const placementData = {
-                averageSalary: placementSectionForm.averageSalary,
-                highestPackage: placementSectionForm.highestPackage,
-                topHiringCompanies: [],
-                recentPlacementSuccess: []
+                averageSalary: placementSectionForm.averageSalary || '',
+                highestPackage: placementSectionForm.highestPackage || '',
+                topHiringCompanies: placementSectionForm.topHiringCompanies.map((company, index) => {
+                    const companyData = {
+                        name: company.name || ''
+                    };
+                    
+                    // Handle logo file or existing URL
+                    if (company.logoFileId && companyFilesRef.current.has(company.logoFileId)) {
+                        companyData.logo = companyFilesRef.current.get(company.logoFileId);
+                    } else if (typeof company.logo === 'string' && company.logo.includes('http') && !company.logo.startsWith('blob:')) {
+                        companyData.logo = company.logo;
+                    } else {
+                        companyData.logo = null;
+                    }
+                    
+                    return companyData;
+                }),
+                recentPlacementSuccess: placementSectionForm.recentPlacementSuccess.map((placement, index) => {
+                    const placementData_item = {
+                        name: placement.name || '',
+                        company: placement.company || '',
+                        position: placement.position || ''
+                    };
+                    
+                    // Handle photo file or existing URL
+                    if (placement.photoFileId && studentFilesRef.current.has(placement.photoFileId)) {
+                        placementData_item.photo = studentFilesRef.current.get(placement.photoFileId);
+                    } else if (typeof placement.photo === 'string' && placement.photo.includes('http') && !placement.photo.startsWith('blob:')) {
+                        placementData_item.photo = placement.photo;
+                    } else {
+                        placementData_item.photo = null;
+                    }
+                    
+                    return placementData_item;
+                })
             };
-            
-            // Process company data and add files to FormData
-            placementSectionForm.topHiringCompanies.forEach((company, index) => {
-                const companyData = {
-                    name: company.name,
-                    hasNewFile: company.hasNewFile || false,
-                    isExisting: company.isExisting || false,
-                    isRemoved: company.isRemoved || false
-                };
-                
-                // Get File object from ref using the stored ID
-                if (company.logoFileId && companyFilesRef.current.has(company.logoFileId)) {
-                    const file = companyFilesRef.current.get(company.logoFileId);
-                    formData.append(`companyLogo_${index}`, file);
-                    companyData.hasNewFile = true;
-                    companyData.logo = null;
-                } else if (typeof company.logo === 'string' && company.logo.includes('http') && !company.logo.startsWith('blob:')) {
-                    companyData.logo = company.logo; // Keep existing S3 URL
-                } else {
-                    companyData.logo = null;
-                }
-                
-                placementData.topHiringCompanies.push(companyData);
-            });
-            
-            // Process student data and add files to FormData
-            placementSectionForm.recentPlacementSuccess.forEach((placement, index) => {
-                const placementData_item = {
-                    name: placement.name,
-                    company: placement.company,
-                    position: placement.position,
-                    hasNewFile: placement.hasNewFile || false,
-                    isExisting: placement.isExisting || false,
-                    isRemoved: placement.isRemoved || false
-                };
-                
-                // Get File object from ref using the stored ID
-                if (placement.photoFileId && studentFilesRef.current.has(placement.photoFileId)) {
-                    const file = studentFilesRef.current.get(placement.photoFileId);
-                    formData.append(`studentPhoto_${index}`, file);
-                    placementData_item.hasNewFile = true;
-                    placementData_item.photo = null;
-                } else if (typeof placement.photo === 'string' && placement.photo.includes('http') && !placement.photo.startsWith('blob:')) {
-                    placementData_item.photo = placement.photo; // Keep existing S3 URL
-                } else {
-                    placementData_item.photo = null;
-                }
-                
-                placementData.recentPlacementSuccess.push(placementData_item);
-            });
-            
-            // Add placement data as JSON
-            formData.append('placementData', JSON.stringify(placementData));
             
             console.log('Submitting placement data:', placementData);
             
-            const response = await apiService.updatePlacementSection(formData);
+            const response = await apiService.updatePlacementSection(placementData);
             
             if (response.success) {
                 alert('Placement section updated successfully!');
                 
-                // Wait a moment for the backend to process
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Clear file refs after successful upload
+                companyFilesRef.current.clear();
+                studentFilesRef.current.clear();
+                
+                // Wait for backend processing
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 
                 // Reload placement section data to get the updated URLs
                 await loadPlacementSectionData();
@@ -952,13 +1097,9 @@ const InstituteDashboard = () => {
                 // Refresh dashboard stats to ensure real-time sync
                 await loadDashboardData();
                 
-                // Force refresh of placement tab data if currently active
-                if (activeTab === 'placements') {
-                    await refreshPlacementData();
-                }
-                
                 console.log('Placement section updated and data reloaded');
             } else {
+                console.error('Placement section update failed:', response);
                 alert(response.message || 'Failed to update placement section');
             }
         } catch (error) {
@@ -1051,6 +1192,10 @@ const InstituteDashboard = () => {
                         loadDashboardData(), // Refresh dashboard stats for real-time sync
                         loadStudents() // Refresh student list
                     ]);
+                    // Reapply current filters after loading students
+                    setTimeout(async () => {
+                        await filterStudents(searchQuery, placementStatusFilter);
+                    }, 100);
                     // If on placements tab, refresh placement data as well
                     if (activeTab === 'placements') {
                         await refreshPlacementData();
@@ -1438,6 +1583,10 @@ const InstituteDashboard = () => {
                                     <span>{profileData.address}</span>
                                 </div>
                                 <div className="institute-contact-item">
+                                    <strong>Pincode:</strong>
+                                    <span>{profileData.pincode}</span>
+                                </div>
+                                <div className="institute-contact-item">
                                     <strong>Phone:</strong>
                                     <span>{profileData.phone}</span>
                                 </div>
@@ -1624,7 +1773,35 @@ const InstituteDashboard = () => {
                             <div className="institute-metric-card">
                                 <h3>Industry Partners</h3>
                                 <p className="institute-metric-value">{dashboardStats.industryPartners}</p>
-                                <p className="institute-metric-trend positive">Static data</p>
+                                <p className="institute-metric-trend positive">Real-time data</p>
+                            </div>
+                        </div>
+
+                        <div className="institute-chart-filters">
+                            <div className="institute-filter-group">
+                                <label>Year:</label>
+                                <select 
+                                    value={chartFilters.year} 
+                                    onChange={(e) => setChartFilters({...chartFilters, year: parseInt(e.target.value)})}
+                                    className="institute-filter-select"
+                                >
+                                    {Array.from({length: 5}, (_, i) => new Date().getFullYear() - i).map(year => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="institute-filter-group">
+                                <label>Time Range:</label>
+                                <select 
+                                    value={chartFilters.monthRange} 
+                                    onChange={(e) => setChartFilters({...chartFilters, monthRange: parseInt(e.target.value)})}
+                                    className="institute-filter-select"
+                                >
+                                    <option value={3}>Up to 3 months</option>
+                                    <option value={6}>Up to 6 months</option>
+                                    <option value={9}>Up to 9 months</option>
+                                    <option value={12}>Up to 12 months</option>
+                                </select>
                             </div>
                         </div>
 
@@ -1658,66 +1835,7 @@ const InstituteDashboard = () => {
                             </div>
                         </div>
 
-                        <div className="institute-charts-row">
-                            <div className="institute-chart-container">
-                                <h3>Course Completion Rate</h3>
-                                <ResponsiveContainer width="100%" height={300}>
-                                    <PieChart>
-                                        <Pie
-                                            data={courseCompletionData}
-                                            cx="50%"
-                                            cy="50%"
-                                            labelLine={false}
-                                            outerRadius={80}
-                                            fill="#8884d8"
-                                            dataKey="value"
-                                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                        >
-                                            {courseCompletionData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                            <div className="institute-stat-boxes">
-                                <div className="institute-stat-box">
-                                    <h4>Pending Approvals</h4>
-                                    <p className="institute-stat-number">15</p>
-                                    <p className="institute-stat-description">Student profiles awaiting verification</p>
-                                </div>
-                                <div className="institute-stat-box">
-                                    <h4>Upcoming Job Fairs</h4>
-                                    <p className="institute-stat-number">3</p>
-                                    <p className="institute-stat-description">Scheduled in the next 30 days</p>
-                                </div>
-                                <div className="institute-stat-box">
-                                    <h4>Government Schemes</h4>
-                                    <p className="institute-stat-number">5</p>
-                                    <p className="institute-stat-description">Available for enrollment</p>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div className="institute-upcoming-events">
-                            <h3>Upcoming Events & Job Fairs</h3>
-                            <div className="institute-events-grid">
-                                {events.slice(0, 3).map(event => (
-                                    <div className="institute-event-card" key={event.id}>
-                                        <div className="institute-event-date">
-                                            <span className="institute-day">{new Date(event.date).getDate()}</span>
-                                            <span className="institute-month">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
-                                        </div>
-                                        <div className="institute-event-details">
-                                            <h4>{event.title}</h4>
-                                            <p>Organized by: {event.company}</p>
-                                            <p>Expected Participants: {event.participants}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
                     </div>
                 )}
 
@@ -1730,30 +1848,41 @@ const InstituteDashboard = () => {
 
                         <div className="institute-search-section">
                             <div className="institute-search-row">
-                                <input type="text" placeholder="Search students by name, course, or status..." className="institute-search-input large" />
-                                <button className="institute-primary-button">Search</button>
+                                <input 
+                                    type="text" 
+                                    placeholder="Search by student name or company name..." 
+                                    className="institute-search-input large"
+                                    value={searchQuery}
+                                    onChange={handleSearchInputChange}
+                                    onKeyPress={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleSearch();
+                                        }
+                                    }}
+                                />
+                                <button 
+                                    className="institute-primary-button"
+                                    onClick={handleSearch}
+                                >
+                                    Search
+                                </button>
                             </div>
                             <div className="institute-filter-row">
-                                <select className="institute-filter-select">
-                                    <option value="all">All Status</option>
-                                    <option value="active">Active</option>
-                                    <option value="completed">Completed</option>
-                                    <option value="dropped">Dropped</option>
-                                </select>
-                                <select className="institute-filter-select">
-                                    <option value="all">All Courses</option>
-                                    <option value="web">Web Development</option>
-                                    <option value="data">Data Science</option>
-                                    <option value="marketing">Digital Marketing</option>
-                                    <option value="design">UI/UX Design</option>
-                                </select>
-                                <select className="institute-filter-select">
+                                <select 
+                                    className="institute-filter-select"
+                                    value={placementStatusFilter}
+                                    onChange={handlePlacementStatusFilterChange}
+                                    disabled={loading}
+                                >
                                     <option value="all">All Placement Status</option>
-                                    <option value="placed">Placed</option>
-                                    <option value="interviewing">Interviewing</option>
-                                    <option value="searching">Searching</option>
-                                    <option value="not-eligible">Not Eligible Yet</option>
+                                    <option value="hired">Hired</option>
+                                    <option value="rejected">Rejected</option>
                                 </select>
+                                {(searchQuery.trim() || placementStatusFilter !== 'all') && (
+                                    <div style={{display: 'flex', alignItems: 'center', marginLeft: '15px', color: '#64748b', fontSize: '0.9rem'}}>
+                                        Showing {filteredStudents.length} of {students.length} students
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -1769,7 +1898,7 @@ const InstituteDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {students.length > 0 ? students.map(student => (
+                                {filteredStudents.length > 0 ? filteredStudents.map(student => (
                                     <tr key={student.instituteStudntsID}>
                                         <td>{student.fullName}</td>
                                         <td>{student.email}</td>
@@ -1908,10 +2037,6 @@ const InstituteDashboard = () => {
                     <div className="institute-placements-tab">
                         <div className="institute-tab-header">
                             <h1>Placement & Recruitment</h1>
-                            <div>
-                                <button className="institute-primary-button">Schedule Campus Drive</button>
-                                <button className="institute-action-button">Organize Job Fair</button>
-                            </div>
                         </div>
 
                         <div className="institute-metrics-grid">
@@ -2326,7 +2451,7 @@ const InstituteDashboard = () => {
                                                     <input
                                                         type="file"
                                                         accept="image/*"
-                                                        onChange={(e) => {
+                                                        onChange={async (e) => {
                                                             const file = e.target.files[0];
                                                             if (file) {
                                                                 if (file.size > 5 * 1024 * 1024) {
@@ -2340,21 +2465,52 @@ const InstituteDashboard = () => {
                                                                     return;
                                                                 }
                                                                 
+                                                                // Show loading state
                                                                 const updatedCards = [...industryCollabForm.collaborationCards];
-                                                                // Clean up previous blob URL if it exists
-                                                                if (updatedCards[index].imagePreview && updatedCards[index].imagePreview.startsWith('blob:')) {
-                                                                    URL.revokeObjectURL(updatedCards[index].imagePreview);
-                                                                }
-                                                                updatedCards[index].image = file;
-                                                                updatedCards[index].imagePreview = URL.createObjectURL(file);
-                                                                updatedCards[index].hasNewFile = true;
-                                                                updatedCards[index].isRemoved = false;
-                                                                console.log(`Image selected for collaboration card: ${file.name}`);
+                                                                updatedCards[index].imagePreview = 'uploading';
                                                                 setIndustryCollabForm({...industryCollabForm, collaborationCards: updatedCards});
+                                                                
+                                                                try {
+                                                                    // Upload image in real-time
+                                                                    const uploadResult = await apiService.uploadCollaborationImage(file);
+                                                                    
+                                                                    if (uploadResult.success) {
+                                                                        const finalUpdatedCards = [...industryCollabForm.collaborationCards];
+                                                                        // Clean up previous blob URL if it exists
+                                                                        if (finalUpdatedCards[index].imagePreview && finalUpdatedCards[index].imagePreview.startsWith('blob:')) {
+                                                                            URL.revokeObjectURL(finalUpdatedCards[index].imagePreview);
+                                                                        }
+                                                                        finalUpdatedCards[index].image = uploadResult.data.imageUrl;
+                                                                        finalUpdatedCards[index].imagePreview = uploadResult.data.imageUrl;
+                                                                        finalUpdatedCards[index].hasNewFile = false;
+                                                                        finalUpdatedCards[index].isRemoved = false;
+                                                                        console.log(`Image uploaded for collaboration card: ${uploadResult.data.imageUrl}`);
+                                                                        setIndustryCollabForm({...industryCollabForm, collaborationCards: finalUpdatedCards});
+                                                                    } else {
+                                                                        alert(uploadResult.message || 'Failed to upload image');
+                                                                        // Reset to previous state
+                                                                        const resetCards = [...industryCollabForm.collaborationCards];
+                                                                        resetCards[index].imagePreview = resetCards[index].image;
+                                                                        setIndustryCollabForm({...industryCollabForm, collaborationCards: resetCards});
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('Image upload error:', error);
+                                                                    alert('Failed to upload image. Please try again.');
+                                                                    // Reset to previous state
+                                                                    const resetCards = [...industryCollabForm.collaborationCards];
+                                                                    resetCards[index].imagePreview = resetCards[index].image;
+                                                                    setIndustryCollabForm({...industryCollabForm, collaborationCards: resetCards});
+                                                                }
                                                             }
                                                         }}
                                                     />
-                                                    {card.imagePreview && (
+                                                    {card.imagePreview === 'uploading' ? (
+                                                        <div className="image-preview-container">
+                                                            <div className="upload-progress">
+                                                                <span>Uploading...</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : card.imagePreview && (
                                                         <div className="image-preview-container">
                                                             <img 
                                                                 src={card.imagePreview} 
@@ -2368,8 +2524,19 @@ const InstituteDashboard = () => {
                                                             />
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
+                                                                onClick={async () => {
                                                                     const updatedCards = [...industryCollabForm.collaborationCards];
+                                                                    const imageUrl = updatedCards[index].image;
+                                                                    
+                                                                    // Delete from S3 if it's a server URL
+                                                                    if (imageUrl && typeof imageUrl === 'string' && imageUrl.includes('http')) {
+                                                                        try {
+                                                                            await apiService.deleteCollaborationImage(imageUrl);
+                                                                        } catch (error) {
+                                                                            console.error('Failed to delete image from S3:', error);
+                                                                        }
+                                                                    }
+                                                                    
                                                                     // Only revoke blob URLs, not server URLs
                                                                     if (updatedCards[index].imagePreview && updatedCards[index].imagePreview.startsWith('blob:')) {
                                                                         URL.revokeObjectURL(updatedCards[index].imagePreview);
@@ -2465,7 +2632,7 @@ const InstituteDashboard = () => {
                                                     <input
                                                         type="file"
                                                         accept=".pdf"
-                                                        onChange={(e) => {
+                                                        onChange={async (e) => {
                                                             const file = e.target.files[0];
                                                             if (file) {
                                                                 console.log(`📄 PDF file selected:`, {
@@ -2484,30 +2651,56 @@ const InstituteDashboard = () => {
                                                                     return;
                                                                 }
                                                                 
+                                                                // Show loading state
                                                                 const updatedMous = [...industryCollabForm.mouItems];
-                                                                // Store the actual File object directly and ensure proper state update
-                                                                updatedMous[index] = {
-                                                                    ...updatedMous[index],
-                                                                    pdfFile: file, // Direct File object assignment
-                                                                    hasNewFile: true,
-                                                                    isRemoved: false,
-                                                                    pdfUrl: '' // Clear any existing URL
-                                                                };
-                                                                console.log(`📁 PDF file selected for MOU:`, {
-                                                                    mouTitle: updatedMous[index].title,
-                                                                    fileName: file.name,
-                                                                    fileSize: file.size,
-                                                                    fileType: file.type,
-                                                                    hasNewFile: true,
-                                                                    index: index
-                                                                });
+                                                                updatedMous[index].pdfUrl = 'uploading';
                                                                 setIndustryCollabForm({...industryCollabForm, mouItems: updatedMous});
+                                                                
+                                                                try {
+                                                                    // Upload PDF in real-time
+                                                                    const uploadResult = await apiService.uploadMouPdf(file);
+                                                                    
+                                                                    if (uploadResult.success) {
+                                                                        const finalUpdatedMous = [...industryCollabForm.mouItems];
+                                                                        finalUpdatedMous[index] = {
+                                                                            ...finalUpdatedMous[index],
+                                                                            pdfFile: null,
+                                                                            pdfUrl: uploadResult.data.pdfUrl,
+                                                                            hasNewFile: false,
+                                                                            isRemoved: false
+                                                                        };
+                                                                        console.log(`📁 PDF uploaded for MOU:`, {
+                                                                            mouTitle: finalUpdatedMous[index].title,
+                                                                            pdfUrl: uploadResult.data.pdfUrl
+                                                                        });
+                                                                        setIndustryCollabForm({...industryCollabForm, mouItems: finalUpdatedMous});
+                                                                    } else {
+                                                                        alert(uploadResult.message || 'Failed to upload PDF');
+                                                                        // Reset to previous state
+                                                                        const resetMous = [...industryCollabForm.mouItems];
+                                                                        resetMous[index].pdfUrl = resetMous[index].pdfUrl === 'uploading' ? '' : resetMous[index].pdfUrl;
+                                                                        setIndustryCollabForm({...industryCollabForm, mouItems: resetMous});
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('PDF upload error:', error);
+                                                                    alert('Failed to upload PDF. Please try again.');
+                                                                    // Reset to previous state
+                                                                    const resetMous = [...industryCollabForm.mouItems];
+                                                                    resetMous[index].pdfUrl = resetMous[index].pdfUrl === 'uploading' ? '' : resetMous[index].pdfUrl;
+                                                                    setIndustryCollabForm({...industryCollabForm, mouItems: resetMous});
+                                                                }
                                                             }
                                                         }}
                                                     />
-                                                    {(mou.pdfFile || (mou.pdfUrl && mou.pdfUrl.trim() !== '')) && (
+                                                    {mou.pdfUrl === 'uploading' ? (
                                                         <div className="pdf-preview-container">
-                                                            <span className="pdf-indicator">📄 {mou.pdfFile ? mou.pdfFile.name : 'Existing PDF'}</span>
+                                                            <div className="upload-progress">
+                                                                <span>Uploading PDF...</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (mou.pdfFile || (mou.pdfUrl && mou.pdfUrl.trim() !== '')) && (
+                                                        <div className="pdf-preview-container">
+                                                            <span className="pdf-indicator">📄 {mou.pdfFile ? mou.pdfFile.name : 'PDF Document'}</span>
                                                             {mou.pdfUrl && mou.pdfUrl.trim() !== '' && !mou.pdfFile && (
                                                                 <a 
                                                                     href={mou.pdfUrl} 
@@ -2524,10 +2717,21 @@ const InstituteDashboard = () => {
                                                             )}
                                                             <button
                                                                 type="button"
-                                                                onClick={() => {
+                                                                onClick={async () => {
                                                                     const updatedMous = [...industryCollabForm.mouItems];
+                                                                    const pdfUrl = updatedMous[index].pdfUrl;
+                                                                    
+                                                                    // Delete from S3 if it's a server URL
+                                                                    if (pdfUrl && typeof pdfUrl === 'string' && pdfUrl.includes('http')) {
+                                                                        try {
+                                                                            await apiService.deleteMouPdf(pdfUrl);
+                                                                        } catch (error) {
+                                                                            console.error('Failed to delete PDF from S3:', error);
+                                                                        }
+                                                                    }
+                                                                    
                                                                     updatedMous[index].pdfFile = null;
-                                                                    updatedMous[index].pdfUrl = null;
+                                                                    updatedMous[index].pdfUrl = '';
                                                                     updatedMous[index].hasNewFile = false;
                                                                     updatedMous[index].isRemoved = true;
                                                                     console.log(`PDF removed for MOU: ${mou.title}`);
@@ -2540,7 +2744,7 @@ const InstituteDashboard = () => {
                                                             </button>
                                                         </div>
                                                     )}
-                                                    {!mou.pdfFile && (!mou.pdfUrl || mou.pdfUrl.trim() === '') && (
+                                                    {!mou.pdfFile && (!mou.pdfUrl || mou.pdfUrl.trim() === '') && mou.pdfUrl !== 'uploading' && (
                                                         <div className="pdf-placeholder">
                                                             <span>No PDF selected</span>
                                                         </div>
@@ -3779,6 +3983,16 @@ const InstituteDashboard = () => {
                                         value={profileData.address}
                                         onChange={(e) => setProfileData(prev => ({...prev, address: e.target.value}))}
                                         rows="3"
+                                        required
+                                    />
+                                </div>
+                                <div className="institute-form-group">
+                                    <label>Pincode *</label>
+                                    <input
+                                        type="text"
+                                        value={profileData.pincode}
+                                        onChange={(e) => setProfileData(prev => ({...prev, pincode: e.target.value}))}
+                                        placeholder="e.g., 110001"
                                         required
                                     />
                                 </div>

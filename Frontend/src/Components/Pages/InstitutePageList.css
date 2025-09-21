@@ -27,32 +27,66 @@
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   }
   
-  .search-container {
+  .institute-search-container {
     position: relative;
-    max-width: 600px;
+    max-width: 1200px;
     margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 20px 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
   }
   
-  .search-icon {
-    position: relative;
-    margin-top: 22px;
-  left: -40px;
-
-  
-   
-    color: #6b7280;
-    font-size: 1.2rem;
+  .dual-search-inputs {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
   }
   
   .search-input {
-    width: 50%;
-    
-  
-    
-    font-size: 1rem;
+    flex: 1;
+    height: 56px;
+    padding: 0 20px;
+    border: 1px solid rgba(72, 99, 247, 0.2);
+    border-radius: 8px;
+    font-size: 16px;
+    color: #333;
+    background: white;
     outline: none;
-   
     transition: all 0.3s ease;
+    min-width: 250px;
+  }
+  
+  .search-input:focus {
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+  }
+  
+  .search-btn {
+    height: 56px;
+    padding: 0 32px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+    background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-width: 140px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+  }
+  
+  .search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(72, 99, 247, 0.4);
   }
   
   
@@ -306,6 +340,21 @@
     }
   }
   
+  @media (max-width: 768px) {
+    .dual-search-inputs {
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .search-input {
+      width: 100%;
+    }
+    
+    .search-btn {
+      width: 100%;
+    }
+  }
+  
   @media (max-width: 480px) {
     .page-title {
       font-size: 2rem;
@@ -326,5 +375,9 @@
   
     .search-input {
       font-size: 0.9rem;
+    }
+    
+    .institute-search-container {
+      padding: 16px 20px;
     }
   }

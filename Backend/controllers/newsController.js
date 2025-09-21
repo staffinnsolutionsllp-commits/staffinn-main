@@ -106,8 +106,8 @@ const newsController = {
 
   // Get news by category
   getNewsByCategory: async (req, res) => {
+    const { category } = req.params;
     try {
-      const { category } = req.params;
       console.log(`Getting news for category: ${category}`);
       
       let newsData = [];

@@ -31,8 +31,7 @@ const uploadFile = async (file, key) => {
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype,
-      CacheControl: 'max-age=31536000' // Cache for 1 year
-      // Removed ACL as bucket doesn't allow ACLs
+      CacheControl: 'max-age=31536000'
     };
 
     const command = new PutObjectCommand(uploadParams);

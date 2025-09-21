@@ -172,6 +172,50 @@ const getActiveStaffProfiles = async () => {
 };
 
 /**
+ * Get trending staff profiles based on profile views (for public display)
+ * @param {number} limit - Number of profiles to return
+ * @returns {Promise<Array>} - Array of trending staff profiles
+ */
+const getTrendingStaffProfiles = async (limit = 6) => {
+  try {
+    const scanParams = {
+      FilterExpression: 'isActiveStaff = :isActive AND profileVisibility = :visibility',
+      ExpressionAttributeValues: {
+        ':isActive': true,
+        ':visibility': 'public'
+      }
+    };
+    
+    const profiles = await dynamoService.scanItems(STAFF_TABLE, scanParams);
+    
+    // Filter out blocked users by checking user table
+    const userModel = require('./userModel');
+    const filteredProfiles = [];
+    
+    for (const profile of profiles) {
+      try {
+        const user = await userModel.findUserById(profile.userId);
+        // Only include if user exists and is not blocked
+        if (user && !user.isBlocked) {
+          filteredProfiles.push(profile);
+        }
+      } catch (error) {
+        console.error('Error checking user block status:', error);
+        // If error checking user, exclude from results for safety
+      }
+    }
+    
+    // Sort by profile views (descending) and take the specified limit
+    return filteredProfiles
+      .sort((a, b) => (b.profileViews || 0) - (a.profileViews || 0))
+      .slice(0, limit);
+  } catch (error) {
+    console.error('Get trending staff profiles error:', error);
+    throw new Error('Failed to get trending staff profiles');
+  }
+};
+
+/**
  * Get all staff profiles (Admin only)
  * @returns {Promise<Array>} - Array of all staff profiles
  */
@@ -210,13 +254,13 @@ const deleteStaffProfile = async (userId) => {
 };
 
 /**
- * Search staff profiles by skills or location
+ * Search staff profiles by skills, location, sector, role, or availability
  * @param {object} searchParams - Search parameters
  * @returns {Promise<Array>} - Array of matching staff profiles
  */
 const searchStaffProfiles = async (searchParams) => {
   try {
-    const { skills, location, availability } = searchParams;
+    const { skills, location, availability, sector, role, state, city } = searchParams;
     
     let filterExpression = 'isActiveStaff = :isActive AND profileVisibility = :visibility';
     const expressionAttributeValues = {
@@ -236,6 +280,30 @@ const searchStaffProfiles = async (searchParams) => {
       expressionAttributeValues[':location'] = location.toLowerCase();
     }
     
+    // Add state filter
+    if (state && state.trim()) {
+      filterExpression += ' AND (#state = :state OR contains(address, :state))';
+      expressionAttributeValues[':state'] = state;
+    }
+    
+    // Add city filter
+    if (city && city.trim()) {
+      filterExpression += ' AND (#city = :city OR contains(address, :city))';
+      expressionAttributeValues[':city'] = city;
+    }
+    
+    // Add sector filter
+    if (sector && sector.trim()) {
+      filterExpression += ' AND sector = :sector';
+      expressionAttributeValues[':sector'] = sector;
+    }
+    
+    // Add role filter
+    if (role && role.trim()) {
+      filterExpression += ' AND #role = :role';
+      expressionAttributeValues[':role'] = role;
+    }
+    
     // Add availability filter
     if (availability && availability !== 'all') {
       filterExpression += ' AND availability = :availability';
@@ -246,6 +314,22 @@ const searchStaffProfiles = async (searchParams) => {
       FilterExpression: filterExpression,
       ExpressionAttributeValues: expressionAttributeValues
     };
+    
+    // Add ExpressionAttributeNames for reserved keywords
+    const expressionAttributeNames = {};
+    if (role && role.trim()) {
+      expressionAttributeNames['#role'] = 'role';
+    }
+    if (state && state.trim()) {
+      expressionAttributeNames['#state'] = 'state';
+    }
+    if (city && city.trim()) {
+      expressionAttributeNames['#city'] = 'city';
+    }
+    
+    if (Object.keys(expressionAttributeNames).length > 0) {
+      scanParams.ExpressionAttributeNames = expressionAttributeNames;
+    }
     
     const profiles = await dynamoService.scanItems(STAFF_TABLE, scanParams);
     
@@ -452,6 +536,7 @@ module.exports = {
   getStaffProfile,
   updateStaffProfile,
   getActiveStaffProfiles,
+  getTrendingStaffProfiles,
   getAllStaffProfiles,
   deleteStaffProfile,
   searchStaffProfiles,
@@ -460,5 +545,6 @@ module.exports = {
   getStaffStats,
   bulkUpdateProfiles,
   addExperience,
-  removeExperience
+  removeExperience,
+  searchStaffProfiles
 };

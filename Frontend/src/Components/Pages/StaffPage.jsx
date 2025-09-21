@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from "../../context/AuthContext";
-import api from "../../services/api";
+import apiWithLoading from "../../services/apiWithLoading";
+import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import './StaffPage.css';
 import Footer from '../Footer/Footer';
 import RegistrationPopup from '../Register/RegistrationPopup';
@@ -19,14 +20,14 @@ function StaffPage() {
     // Selected filter values
     const [selectedState, setSelectedState] = useState('');
     const [selectedCity, setSelectedCity] = useState('');
-    const [selectedArea, setSelectedArea] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('');
+    const [selectedSector, setSelectedSector] = useState('');
+    const [selectedRole, setSelectedRole] = useState('');
     const [selectedExperience, setSelectedExperience] = useState('');
     const [selectedAvailability, setSelectedAvailability] = useState('');
     const [minimumRating, setMinimumRating] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedSector, setSelectedSector] = useState('');
-    const [selectedSkill, setSelectedSkill] = useState('');
+    const [skillsInput, setSkillsInput] = useState('');
+    const [availableRoles, setAvailableRoles] = useState([]);
 
     // Loading and error states
     const [loading, setLoading] = useState(false);
@@ -37,15 +38,7 @@ function StaffPage() {
     const [filteredStaff, setFilteredStaff] = useState([]);
 
    const API_KEY = 'Rzk1SnVRU3NDTWpzb2ZiMERwU1RKTXRpT0R4Nmh0ZmhsZHlNM0pacw==';
-    
-    // Categories for filtering
-    const categories = [
-        'Technical Staff',
-        'Skilled Labor', 
-        'Education & Training',
-        'Medical & Healthcare',
-        'General Staff'
-    ];
+    const sectors = getSectors();
     
     // Experience levels
     const experienceLevels = [
@@ -65,19 +58,23 @@ function StaffPage() {
     // Rating options
     const ratingOptions = ['3', '4', '5'];
 
-    // Skills options
-    const skills = [
-        'Web Development', 'Mobile Development', 'Data Science', 'Machine Learning', 
-        'Electrical Work', 'Plumbing', 'Carpentry', 'Painting', 'Gardening',
-        'Nursing', 'Teaching', 'Accounting', 'Marketing', 'Design'
-    ];
+    // Update available roles when sector changes
+    useEffect(() => {
+        if (selectedSector) {
+            const roles = getRolesForSector(selectedSector);
+            setAvailableRoles(roles);
+            setSelectedRole(''); // Reset role when sector changes
+        } else {
+            setAvailableRoles([]);
+            setSelectedRole('');
+        }
+    }, [selectedSector]);
 
     // State for profile preview
     const [selectedStaff, setSelectedStaff] = useState(null);
     
     // State for registration popup
     const [showRegistrationPopup, setShowRegistrationPopup] = useState(false);
-    const [selectedRole, setSelectedRole] = useState(null);
 
     // State for modal and view mode
     const [showModal, setShowModal] = useState(false);
@@ -149,7 +146,7 @@ function StaffPage() {
             setLoading(true);
             setError(null);
             
-            const response = await api.getActiveStaffProfiles();
+            const response = await apiWithLoading.getActiveStaffProfiles();
             
             if (response.success) {
                 setStaffMembers(response.data);
@@ -180,29 +177,44 @@ function StaffPage() {
             );
         }
 
-        // Location filter  
+        // State filter
         if (selectedState) {
             const selectedStateName = states.find(state => state.iso2 === selectedState)?.name;
             if (selectedStateName) {
                 filtered = filtered.filter(staff => 
-                    staff.address?.toLowerCase().includes(selectedStateName.toLowerCase())
+                    staff.state === selectedStateName
                 );
             }
         }
 
+        // City filter
         if (selectedCity) {
             const selectedCityName = cities.find(city => city.id === parseInt(selectedCity))?.name;
             if (selectedCityName) {
                 filtered = filtered.filter(staff => 
-                    staff.address?.toLowerCase().includes(selectedCityName.toLowerCase())
+                    staff.city === selectedCityName
                 );
             }
         }
 
-        // Skill filter
-        if (selectedSkill) {
+        // Skills filter (text input)
+        if (skillsInput.trim()) {
             filtered = filtered.filter(staff => 
-                staff.skills?.toLowerCase().includes(selectedSkill.toLowerCase())
+                staff.skills?.toLowerCase().includes(skillsInput.toLowerCase())
+            );
+        }
+        
+        // Sector filter
+        if (selectedSector) {
+            filtered = filtered.filter(staff => 
+                staff.sector === selectedSector
+            );
+        }
+        
+        // Role filter
+        if (selectedRole) {
+            filtered = filtered.filter(staff => 
+                staff.role === selectedRole
             );
         }
 
@@ -253,7 +265,7 @@ function StaffPage() {
         }
 
         setFilteredStaff(filtered);
-    }, [staffMembers, searchTerm, selectedState, selectedCity, selectedSkill, selectedExperience, selectedAvailability, minimumRating, states, cities]);
+    }, [staffMembers, searchTerm, selectedState, selectedCity, skillsInput, selectedSector, selectedRole, selectedExperience, selectedAvailability, minimumRating, states, cities]);
 
     // Get experience level from staff data
     const getExperienceLevel = (staff) => {
@@ -287,11 +299,11 @@ function StaffPage() {
         try {
             // Record profile view
             if (user) {
-                await api.recordProfileView(staff.userId);
+                await apiWithLoading.recordProfileView(staff.userId);
             }
             
             // Fetch detailed staff profile
-            const response = await api.getStaffProfileById(staff.userId);
+            const response = await apiWithLoading.getStaffProfileById(staff.userId);
             
             if (response.success) {
                 const detailedProfile = response.data;
@@ -327,7 +339,7 @@ function StaffPage() {
     const loadReviews = async (staffId, offset = 0) => {
         try {
             setReviewsLoading(true);
-            const response = await api.getReviews(staffId, 10, offset);
+            const response = await apiWithLoading.getReviews(staffId, 10, offset);
             
             if (response.success) {
                 if (offset === 0) {
@@ -358,7 +370,7 @@ function StaffPage() {
         }
         
         try {
-            const response = await api.addReview(selectedStaff.userId, reviewRating, reviewFeedback);
+            const response = await apiWithLoading.addReview(selectedStaff.userId, reviewRating, reviewFeedback);
             
             if (response.success) {
                 alert('Review submitted successfully!');
@@ -442,7 +454,7 @@ function StaffPage() {
         try {
             console.log('Recording contact interaction:', { staffData, contactType });
             
-            const response = await api.recordContact({
+            const response = await apiWithLoading.recordContact({
                 staffId: staffData.userId,
                 contactMethod: contactType
             });
@@ -513,8 +525,9 @@ function StaffPage() {
         console.log('Searching with filters:', {
             selectedState,
             selectedCity,
-            selectedArea,
-            selectedCategory
+            selectedSector,
+            selectedRole,
+            skillsInput
         });
     };
 
@@ -546,19 +559,27 @@ function StaffPage() {
                         ))}
                     </select>
 
-                    <select value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)}>
-                        <option value="">Select Area</option>
-                        {areas.map((area, index) => (
-                            <option key={index} value={area}>{area}</option>
+                    <select value={selectedSector} onChange={(e) => setSelectedSector(e.target.value)}>
+                        <option value="">Select Sector</option>
+                        {sectors.map((sector, index) => (
+                            <option key={index} value={sector}>{sector}</option>
                         ))}
                     </select>
 
-                    <select value={selectedSkill} onChange={(e) => setSelectedSkill(e.target.value)}>
-                        <option value="">Select Skill</option>
-                        {skills.map((skill, index) => (
-                            <option key={index} value={skill}>{skill}</option>
+                    <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} disabled={!selectedSector}>
+                        <option value="">Select Role</option>
+                        {availableRoles.map((role, index) => (
+                            <option key={index} value={role}>{role}</option>
                         ))}
                     </select>
+
+                    <input 
+                        type="text" 
+                        placeholder="Enter Skills" 
+                        value={skillsInput}
+                        onChange={(e) => setSkillsInput(e.target.value)}
+                        className="search-input"
+                    />
 
                     <button className="search-btn" onClick={handleSearch}>Search</button>
                 </div>
@@ -673,10 +694,16 @@ function StaffPage() {
                                         </div>
                                     </div>
                                     
-                                    <div className="clean-location">
-                                        <span className="location-icon">📍</span>
-                                        <span>{staff.address || 'Location not specified'}</span>
-                                    </div>
+                                    {staff.sector && staff.role && (
+                                        <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
+                                    )}
+                                    {staff.address && staff.city && staff.state && (
+                                        <div className="clean-location-info">
+                                            {staff.address}, {staff.city}, {staff.state}{staff.pincode ? `, ${staff.pincode}` : ''}
+                                        </div>
+                                    )}
+                                    
+
                                     
                                     <div className="clean-details">
                                         <span>Experience: {getExperienceLevel(staff)}</span>
@@ -925,8 +952,28 @@ function StaffPage() {
                                         <h4>Profile Details</h4>
                                         <div className="clean-detail-item">
                                             <span className="detail-icon">📍</span>
-                                            <span>{selectedStaff.address || 'Location not specified'}</span>
+                                            <span>
+                                                {selectedStaff.address && selectedStaff.city && selectedStaff.state 
+                                                    ? `${selectedStaff.address}, ${selectedStaff.city}, ${selectedStaff.state}${selectedStaff.pincode ? `, ${selectedStaff.pincode}` : ''}` 
+                                                    : (selectedStaff.state && selectedStaff.city 
+                                                        ? `${selectedStaff.city}, ${selectedStaff.state}${selectedStaff.pincode ? `, ${selectedStaff.pincode}` : ''}` 
+                                                        : (selectedStaff.address || 'Location not specified')
+                                                    )
+                                                }
+                                            </span>
                                         </div>
+                                        {selectedStaff.sector && (
+                                            <div className="clean-detail-item">
+                                                <span className="detail-label">Sector:</span>
+                                                <span>{selectedStaff.sector}</span>
+                                            </div>
+                                        )}
+                                        {selectedStaff.role && (
+                                            <div className="clean-detail-item">
+                                                <span className="detail-label">Role:</span>
+                                                <span>{selectedStaff.role}</span>
+                                            </div>
+                                        )}
                                         <div className="clean-detail-item">
                                             <span className="detail-label">Phone:</span>
                                             <span>{selectedStaff.phone}</span>

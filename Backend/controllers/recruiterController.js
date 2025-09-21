@@ -428,6 +428,8 @@ const getAllRecruitersPublic = async (req, res) => {
         companyName: useProfile.companyName || recruiter.name || recruiter.fullName || 'Company Name',
         industry: useProfile.industry || 'Technology',
         location: useProfile.location || 'India',
+        address: useProfile.address,
+        pincode: useProfile.pincode,
         verified: true,
         recruiterName: useProfile.recruiterName || recruiter.fullName || 'HR Manager',
         designation: useProfile.designation || 'HR Manager',
@@ -511,6 +513,8 @@ const getRecruiterByIdPublic = async (req, res) => {
       companyName: useProfile.companyName || recruiter.name,
       industry: useProfile.industry || 'Technology',
       location: useProfile.location || 'India',
+      address: useProfile.address,
+      pincode: useProfile.pincode,
       verified: true,
       recruiterName: useProfile.recruiterName || 'HR Manager',
       designation: useProfile.designation || 'HR Manager',
@@ -626,7 +630,7 @@ const deleteRecruiter = async (req, res) => {
 };
 
 /**
- * Get candidates who applied to recruiter's jobs
+ * Get candidates who applied to recruiter's jobs with search and filter support
  * @route GET /api/recruiter/candidates
  */
 const getRecruiterCandidates = async (req, res) => {
@@ -638,8 +642,15 @@ const getRecruiterCandidates = async (req, res) => {
       });
     }
 
+    // Extract search and filter parameters from query
+    const searchFilters = {
+      search: req.query.search || '',
+      status: req.query.status || 'all',
+      jobId: req.query.jobId || 'all'
+    };
+
     const recruiterModel = require('../models/recruiterModel');
-    const candidates = await recruiterModel.getRecruiterCandidates(req.user.userId);
+    const candidates = await recruiterModel.getRecruiterCandidates(req.user.userId, searchFilters);
     
     res.status(200).json({
       success: true,

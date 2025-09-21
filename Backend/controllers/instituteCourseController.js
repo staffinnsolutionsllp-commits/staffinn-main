@@ -760,6 +760,90 @@ const fixContentUrls = async (req, res) => {
   }
 };
 
+// Get trending courses sorted by enrollment count
+const getTrendingCourses = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+    
+    // Get all active courses
+    const params = {
+      FilterExpression: 'isActive = :isActive',
+      ExpressionAttributeValues: {
+        ':isActive': true
+      }
+    };
+    
+    const courses = await dynamoService.scanItems(COURSES_TABLE, params);
+    
+    if (!courses || courses.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+    
+    // Get enrollment counts for each course
+    const coursesWithEnrollments = await Promise.all(
+      courses.map(async (course) => {
+        try {
+          // Get enrollments for this course
+          const enrollmentParams = {
+            FilterExpression: 'courseId = :courseId',
+            ExpressionAttributeValues: {
+              ':courseId': course.coursesId
+            }
+          };
+          
+          const enrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, enrollmentParams);
+          const enrollmentCount = enrollments ? enrollments.length : 0;
+          
+          // Get institute info
+          const userModel = require('../models/userModel');
+          const institute = await userModel.findUserById(course.instituteId);
+          
+          return {
+            ...course,
+            enrollmentCount,
+            instituteInfo: institute ? {
+              instituteName: institute.name || institute.instituteName,
+              profileImage: institute.profileImage
+            } : null
+          };
+        } catch (error) {
+          console.error('Error getting enrollment count for course:', course.coursesId, error);
+          return {
+            ...course,
+            enrollmentCount: 0,
+            instituteInfo: null
+          };
+        }
+      })
+    );
+    
+    // Sort by enrollment count (descending) and then by creation date (newest first)
+    const sortedCourses = coursesWithEnrollments.sort((a, b) => {
+      if (b.enrollmentCount !== a.enrollmentCount) {
+        return b.enrollmentCount - a.enrollmentCount;
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    
+    // Return limited results
+    const trendingCourses = sortedCourses.slice(0, limit);
+    
+    res.status(200).json({
+      success: true,
+      data: trendingCourses
+    });
+  } catch (error) {
+    console.error('Error getting trending courses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get trending courses'
+    });
+  }
+};
+
 module.exports = {
   createCourse,
   getCourses,
@@ -775,5 +859,6 @@ module.exports = {
   updateProgress,
   getActiveCourseCount,
   debugCourseContent,
-  fixContentUrls
+  fixContentUrls,
+  getTrendingCourses
 };

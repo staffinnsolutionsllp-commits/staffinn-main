@@ -31,6 +31,20 @@ router.get('/recruiter', authenticate, jobController.getJobsByRecruiter);
 router.get('/public', jobController.getAllActiveJobs);
 
 /**
+ * @route GET /api/jobs/trending
+ * @desc Get trending jobs sorted by application count (public access)
+ * @access Public
+ */
+router.get('/trending', jobController.getTrendingJobs);
+
+/**
+ * @route GET /api/jobs/todays-jobs
+ * @desc Get jobs posted today for Job Alerts (public access)
+ * @access Public
+ */
+router.get('/todays-jobs', jobController.getTodaysJobs);
+
+/**
  * @route GET /api/jobs/:jobId
  * @desc Get job by ID with recruiter info
  * @access Public

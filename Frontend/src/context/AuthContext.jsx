@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import { createContext, useState, useEffect } from 'react';
-import apiService from '../services/api';
+import apiWithLoading from '../services/apiWithLoading';
 import BlockedUser from '../Components/BlockedUser/BlockedUser';
+import HourglassLoader from '../Components/common/HourglassLoader';
 
 // Create the context
 const AuthContext = createContext(undefined);
@@ -61,9 +62,9 @@ function AuthProvider({ children }) {
       
       // Use specific staff registration endpoint for staff role
       if (role.toLowerCase() === 'staff') {
-        response = await apiService.register(userData, role);
+        response = await apiWithLoading.register(userData, role);
       } else {
-        response = await apiService.register(userData, role);
+        response = await apiWithLoading.register(userData, role);
       }
       
       if (response.success) {
@@ -97,7 +98,7 @@ function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       console.log('Logging in user:', email);
-      const response = await apiService.login(email, password);
+      const response = await apiWithLoading.login(email, password);
       
       if (response.success) {
         console.log('Login successful:', response.data);
@@ -174,9 +175,9 @@ function AuthProvider({ children }) {
       
       // Use appropriate API endpoint based on user role
       if (currentUser?.role?.toLowerCase() === 'recruiter') {
-        response = await apiService.getRecruiterProfile();
+        response = await apiWithLoading.getRecruiterProfile();
       } else {
-        response = await apiService.getProfile();
+        response = await apiWithLoading.getProfile();
       }
       
       if (response.success) {

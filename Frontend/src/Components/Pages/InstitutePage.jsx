@@ -139,6 +139,7 @@ const InstitutePage = () => {
           name: response.data.instituteName,
           location: response.data.address,
           address: response.data.address,
+          pincode: response.data.pincode,
           phone: response.data.phone,
           email: response.data.email,
           website: response.data.website,
@@ -534,7 +535,10 @@ const InstitutePage = () => {
           <div className="institute-quick-info">
             <div className="info-item">
               <FaMapMarkerAlt />
-              <span>{instituteData?.address}</span>
+              <span>
+                {instituteData?.address}
+                {instituteData?.pincode && `, ${instituteData.pincode}`}
+              </span>
             </div>
             <div className="info-item">
               <FaPhone />

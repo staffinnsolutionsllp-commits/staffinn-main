@@ -26,6 +26,20 @@ router.get('/active-profiles', staffController.getActiveStaffProfiles);
 router.get('/profile/:staffId', staffController.getStaffProfileById);
 
 /**
+ * @route GET /api/staff/trending
+ * @desc Get trending staff profiles based on profile views (public)
+ * @access Public
+ */
+router.get('/trending', staffController.getTrendingStaff);
+
+/**
+ * @route GET /api/staff/search
+ * @desc Search staff profiles by sector, role, location, etc. (public)
+ * @access Public
+ */
+router.get('/search', staffController.searchStaff);
+
+/**
  * @route POST /api/staff/register
  * @desc Register a new staff member
  * @access Public

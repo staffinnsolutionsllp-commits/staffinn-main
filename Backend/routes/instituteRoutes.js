@@ -23,9 +23,15 @@ const {
   getPlacementSection,
   getPublicPlacementSection,
   getPublicDashboardStats,
+  getEnrollmentTrends,
+  getPlacementTrends,
   updateIndustryCollaborations,
   getIndustryCollaborations,
   getPublicIndustryCollaborations,
+  uploadCollaborationImage,
+  uploadMouPdf,
+  deleteCollaborationImage,
+  deleteMouPdf,
   serveMouPdf,
   upload,
   studentUpload,
@@ -69,7 +75,8 @@ const {
   updateProgress,
   getActiveCourseCount,
   debugCourseContent,
-  fixContentUrls
+  fixContentUrls,
+  getTrendingCourses
 } = require('../controllers/instituteCourseController');
 
 // Import quiz controller
@@ -87,6 +94,7 @@ router.get('/public/all', getAllLiveInstitutes);
 router.get('/public/:id', getInstituteById);
 router.get('/public/:instituteId/courses', getPublicCourses);
 router.get('/courses/:courseId/public', getPublicCourseById);
+router.get('/courses/trending', getTrendingCourses);
 router.get('/public/:id/placement-section', getPublicPlacementSection);
 router.get('/public/:id/dashboard-stats', getPublicDashboardStats);
 router.get('/public/:id/industry-collaborations', getPublicIndustryCollaborations);
@@ -114,8 +122,14 @@ router.put('/placement-section', placementUpload.any(), updatePlacementSection);
 router.get('/placement-section', getPlacementSection);
 
 // Industry collaboration routes
-router.put('/industry-collaborations', industryCollabUpload.any(), updateIndustryCollaborations);
+router.put('/industry-collaborations', updateIndustryCollaborations);
 router.get('/industry-collaborations', getIndustryCollaborations);
+
+// Real-time file upload routes for industry collaborations
+router.post('/upload-collaboration-image', industryCollabUpload.single('collaborationImage'), uploadCollaborationImage);
+router.post('/upload-mou-pdf', industryCollabUpload.single('mouPdf'), uploadMouPdf);
+router.delete('/delete-collaboration-image', deleteCollaborationImage);
+router.delete('/delete-mou-pdf', deleteMouPdf);
 
 // Student management routes
 router.post('/students', studentUpload.fields([
@@ -135,6 +149,10 @@ router.patch('/students/:studentId/placement-status', updatePlacementStatus);
 
 // Dashboard stats route
 router.get('/dashboard/stats', getDashboardStats);
+
+// Dashboard chart data routes
+router.get('/dashboard/enrollment-trends', getEnrollmentTrends);
+router.get('/dashboard/placement-trends', getPlacementTrends);
 
 // Events & News management routes
 router.post('/events-news', eventNewsUpload.single('bannerImage'), addEventNews);

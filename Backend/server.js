@@ -33,12 +33,15 @@ const hiringRoutes = require('./routes/hiringRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const userNotificationRoutes = require('./routes/userNotificationRoutes');
+const adminNotificationRoutes = require('./routes/adminNotificationRoutes');
 const newsRoutes = require('./routes/newsRoutes');
 const newsAdminRoutes = require('./routes/newsAdminRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const issueRoutes = require('./routes/issueRoutes');
 const assignmentRoutes = require('./routes/assignmentRoutes');
 const progressRoutes = require('./routes/progressRoutes');
+const governmentSchemesRoutes = require('./routes/governmentSchemesRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -85,12 +88,14 @@ app.use(`${API_PREFIX}/contact`, contactRoutes);
 app.use(`${API_PREFIX}/hiring`, hiringRoutes);
 app.use(`${API_PREFIX}/reviews`, reviewRoutes);
 app.use(`${API_PREFIX}/applications`, applicationRoutes);
-app.use(`${API_PREFIX}/notifications`, notificationRoutes);
+app.use(`${API_PREFIX}/notifications`, userNotificationRoutes);
+app.use(`${API_PREFIX}/admin/notifications`, adminNotificationRoutes);
 app.use(`${API_PREFIX}/news`, newsRoutes);
 app.use(`${API_PREFIX}/news-admin`, newsAdminRoutes);
 app.use(`${API_PREFIX}/admin`, adminRoutes);
 app.use(`${API_PREFIX}/issues`, issueRoutes);
 app.use(`${API_PREFIX}/assignments`, assignmentRoutes);
+app.use(`${API_PREFIX}/government-schemes`, governmentSchemesRoutes);
 app.use('/debug', debugRoutes);
 
 // Basic routes

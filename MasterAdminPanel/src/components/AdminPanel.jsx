@@ -12,6 +12,8 @@ import InstituteUsers from './institute/InstituteUsers';
 import InstituteStudents from './institute/InstituteStudents';
 import InstituteCourses from './institute/InstituteCourses';
 import Issues from './Issues';
+import Notifications from './Notifications';
+import GovernmentSchemes from './GovernmentSchemes';
 import adminAPI from '../services/adminApi';
 import './AdminPanel.css';
 
@@ -74,8 +76,16 @@ const AdminPanel = ({ adminData, onLogout }) => {
       }
     }
     
+    if (activeSection === 'notifications') {
+      return <Notifications />;
+    }
+    
     if (activeSection === 'issues') {
       return <Issues />;
+    }
+    
+    if (activeSection === 'government-schemes') {
+      return <GovernmentSchemes />;
     }
     
     return (
@@ -259,6 +269,20 @@ const AdminPanel = ({ adminData, onLogout }) => {
             )}
           </div>
 
+          {/* Notifications Section */}
+          <div className="nav-section">
+            <button
+              className={`nav-section-btn ${activeSection === 'notifications' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection('notifications');
+                setActiveSubSection('');
+              }}
+            >
+              <i className="fas fa-bell"></i>
+              {!sidebarCollapsed && <span>Notifications</span>}
+            </button>
+          </div>
+
           {/* Issues Section */}
           <div className="nav-section">
             <button
@@ -270,6 +294,20 @@ const AdminPanel = ({ adminData, onLogout }) => {
             >
               <i className="fas fa-exclamation-triangle"></i>
               {!sidebarCollapsed && <span>Issues</span>}
+            </button>
+          </div>
+
+          {/* Government Schemes Section */}
+          <div className="nav-section">
+            <button
+              className={`nav-section-btn ${activeSection === 'government-schemes' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection('government-schemes');
+                setActiveSubSection('');
+              }}
+            >
+              <i className="fas fa-university"></i>
+              {!sidebarCollapsed && <span>Government Schemes</span>}
             </button>
           </div>
         </nav>

@@ -15,14 +15,20 @@ import InstitutePageList from './Components/Pages/InstitutePageList.jsx'; // Add
 import NewsPage from './Components/Pages/NewsPage.jsx';
 import RecruiterPage from './Components/Pages/RecruiterPage.jsx';
 import CourseLearningPage from './Components/Pages/CourseLearningPage.jsx';
-import { AuthProvider, AuthContext } from './context';
+import LoadingExample from './Components/common/LoadingExample.jsx';
+import { AuthProvider, AuthContext, LoadingProvider } from './context';
+import HourglassLoader from './Components/common/HourglassLoader';
 import apiService from './services/api';
+import { useLenis } from './hooks/useLenis';
 import './App.css';
 
 function AppContent() {
     const [showLoginPopup, setShowLoginPopup] = useState(false);
     const [showRegistrationPopup, setShowRegistrationPopup] = useState(false);
     const authContext = useContext(AuthContext);
+    
+    // Initialize Lenis smooth scrolling
+    useLenis();
     
     if (!authContext) {
         return (
@@ -31,24 +37,9 @@ function AppContent() {
                 justifyContent: 'center', 
                 alignItems: 'center', 
                 height: '100vh',
-                flexDirection: 'column',
-                fontFamily: 'Arial, sans-serif'
+                backgroundColor: '#0c0c0c'
             }}>
-                <div style={{ marginBottom: '20px', fontSize: '18px' }}>Loading Staffinn...</div>
-                <div style={{ 
-                    width: '50px', 
-                    height: '50px', 
-                    border: '3px solid #f3f3f3',
-                    borderTop: '3px solid #3498db',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                }}></div>
-                <style>{`
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `}</style>
+                <HourglassLoader message="Loading Staffinn..." />
             </div>
         );
     }
@@ -129,6 +120,7 @@ function AppContent() {
                     <Route path="/recruiter" element={<RecruiterPage />} />
                     <Route path="/recruiter/:recruiterId" element={<RecruiterPage />} />
                     <Route path="/course/:courseId" element={<CourseLearningPage />} />
+                    <Route path="/loading-demo" element={<LoadingExample />} />
                     <Route 
                         path="/dashboard/staff" 
                         element={isLoggedIn && currentUser?.role?.toLowerCase() === 'staff' ? 
@@ -171,9 +163,11 @@ function AppContent() {
 function App() {
     return (
         <Router>
-            <AuthProvider>
-                <AppContent />
-            </AuthProvider>
+            <LoadingProvider>
+                <AuthProvider>
+                    <AppContent />
+                </AuthProvider>
+            </LoadingProvider>
         </Router>
     );
 }
