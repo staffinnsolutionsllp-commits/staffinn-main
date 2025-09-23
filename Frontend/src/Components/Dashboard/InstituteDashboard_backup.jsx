@@ -14,8 +14,9 @@ import './HiringStyles.css';
 import './PlacementSection.css';
 import './EventNewsStyles.css';
 import './CourseCardStyles.css';
+import './GovernmentSchemesStyles.css';
+import './ModalScrollFix.css';
 import CourseQuizManager from './CourseQuizManager';
-import GovtSchemeModal from './GovtSchemeModal';
 
 const InstituteDashboard = () => {
     const navigate = useNavigate();
@@ -73,17 +74,6 @@ const InstituteDashboard = () => {
     
     // Use global loading hook
     const { withLoading } = useGlobalLoading();
-    
-    // Government schemes states
-    const [instituteGovtSchemes, setInstituteGovtSchemes] = useState([]);
-    const [governmentSchemes, setGovernmentSchemes] = useState([]);
-    const [govtSchemeForm, setGovtSchemeForm] = useState({
-        schemeName: '',
-        description: '',
-        link: ''
-    });
-    const [selectedGovtScheme, setSelectedGovtScheme] = useState(null);
-    const [showGovtSchemeModal, setShowGovtSchemeModal] = useState(false);
 
     // Load profile data on component mount
     useEffect(() => {
@@ -95,7 +85,7 @@ const InstituteDashboard = () => {
         loadIndustryCollabData();
         loadEventNewsData();
         loadChartData();
-        loadInstituteGovtSchemes();
+        loadGovernmentSchemes();
     }, []);
     
     // Load chart data when filters change
@@ -318,17 +308,16 @@ const InstituteDashboard = () => {
         }
     };
 
-    const loadInstituteGovtSchemes = async () => {
+    const loadGovernmentSchemes = async () => {
         try {
-            const response = await apiService.getInstituteGovtSchemes();
-            if (response.success && response.data) {
-                setInstituteGovtSchemes(response.data);
-            } else {
-                setInstituteGovtSchemes([]);
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const response = await apiService.getInstituteGovernmentSchemes(user.id);
+            if (response.success) {
+                setGovernmentSchemes(response.data || []);
             }
         } catch (error) {
-            console.error('Error loading institute government schemes:', error);
-            setInstituteGovtSchemes([]);
+            console.error('Error loading government schemes:', error);
+            setGovernmentSchemes([]);
         }
     };
 
@@ -500,6 +489,14 @@ const InstituteDashboard = () => {
     });
 
     const [industryCollabData, setIndustryCollabData] = useState(null);
+    
+    // Government schemes state
+    const [governmentSchemes, setGovernmentSchemes] = useState([]);
+    const [schemeForm, setSchemeForm] = useState({
+        schemeName: '',
+        description: '',
+        link: ''
+    });
 
     // Student view/edit states
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -633,6 +630,11 @@ const InstituteDashboard = () => {
         setModalType('');
         setSelectedStudent(null);
         setEditingStudentId(null);
+        setSchemeForm({
+            schemeName: '',
+            description: '',
+            link: ''
+        });
         // Reset image states
         setImageFile(null);
         setImagePreview(profileData.profileImage || null);
@@ -655,10 +657,6 @@ const InstituteDashboard = () => {
         setNewsForm({
             title: '', date: '', company: '', venue: '', expectedParticipants: '', details: '', type: 'News', verified: false, bannerImage: null
         });
-        setGovtSchemeForm({
-            schemeName: '', description: '', link: ''
-        });
-        setSelectedGovtScheme(null);
     };
     
     // Handle viewing placement history
@@ -1143,76 +1141,6 @@ const InstituteDashboard = () => {
         }
     };
 
-    const handleGovtSchemeSubmit = async (e) => {
-        e.preventDefault();
-        
-        try {
-            setLoading(true);
-            
-            // Transform form data to match backend expectations
-            const submitData = {
-                schemeName: govtSchemeForm.schemeName,
-                schemeDescription: govtSchemeForm.description,
-                link: govtSchemeForm.link
-            };
-            
-            let response;
-            if (modalType === 'editGovtScheme' && selectedGovtScheme) {
-                response = await apiService.updateInstituteGovtScheme(selectedGovtScheme.instituteSchemeId, submitData);
-            } else {
-                response = await apiService.addInstituteGovtScheme(submitData);
-            }
-            
-            if (response.success) {
-                alert(`Government scheme ${modalType === 'editGovtScheme' ? 'updated' : 'added'} successfully!`);
-                await loadInstituteGovtSchemes();
-                closeModal();
-            } else {
-                alert(response.message || `Failed to ${modalType === 'editGovtScheme' ? 'update' : 'add'} government scheme`);
-            }
-        } catch (error) {
-            console.error(`Error ${modalType === 'editGovtScheme' ? 'updating' : 'adding'} government scheme:`, error);
-            alert(`Failed to ${modalType === 'editGovtScheme' ? 'update' : 'add'} government scheme. Please try again.`);
-        } finally {
-            setLoading(false);
-        }
-    };
-    
-    const handleViewGovtScheme = (scheme) => {
-        setSelectedGovtScheme(scheme);
-        setShowGovtSchemeModal(true);
-    };
-    
-    const handleEditGovtScheme = (scheme) => {
-        setGovtSchemeForm({
-            schemeName: scheme.schemeName || '',
-            description: scheme.description || '',
-            link: scheme.link || ''
-        });
-        setSelectedGovtScheme(scheme);
-        openModal('editGovtScheme');
-    };
-    
-    const handleDeleteGovtScheme = async (schemeId, schemeName) => {
-        if (window.confirm(`Are you sure you want to delete "${schemeName}"? This action cannot be undone.`)) {
-            try {
-                setLoading(true);
-                const response = await apiService.deleteInstituteGovtScheme(schemeId);
-                if (response.success) {
-                    alert('Government scheme deleted successfully!');
-                    await loadInstituteGovtSchemes();
-                } else {
-                    alert(response.message || 'Failed to delete government scheme');
-                }
-            } catch (error) {
-                console.error('Error deleting government scheme:', error);
-                alert('Failed to delete government scheme');
-            } finally {
-                setLoading(false);
-            }
-        }
-    };
-
     const handleIndustryCollabSubmit = async (e) => {
         e.preventDefault();
         
@@ -1277,6 +1205,67 @@ const InstituteDashboard = () => {
             alert('Failed to update industry collaborations. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSchemeSubmit = async (e) => {
+        e.preventDefault();
+        
+        // Validate form fields
+        if (!schemeForm.schemeName.trim()) {
+            alert('Scheme name is required');
+            return;
+        }
+        
+        if (!schemeForm.description.trim()) {
+            alert('Description is required');
+            return;
+        }
+        
+        if (!schemeForm.link.trim()) {
+            alert('Link is required');
+            return;
+        }
+        
+        try {
+            setLoading(true);
+            
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const response = await apiService.addInstituteGovernmentScheme(user.id, schemeForm);
+            
+            if (response.success) {
+                alert('Government scheme added successfully!');
+                await loadGovernmentSchemes();
+                closeModal();
+            } else {
+                alert(response.message || 'Failed to add government scheme');
+            }
+        } catch (error) {
+            console.error('Error adding government scheme:', error);
+            alert('Failed to add government scheme. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteScheme = async (schemeId, schemeName) => {
+        if (window.confirm(`Are you sure you want to delete "${schemeName}"? This action cannot be undone.`)) {
+            try {
+                setLoading(true);
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const response = await apiService.deleteInstituteGovernmentScheme(user.id, schemeId);
+                if (response.success) {
+                    alert('Government scheme deleted successfully!');
+                    await loadGovernmentSchemes();
+                } else {
+                    alert(response.message || 'Failed to delete government scheme');
+                }
+            } catch (error) {
+                console.error('Error deleting government scheme:', error);
+                alert('Failed to delete government scheme');
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -2915,47 +2904,27 @@ const InstituteDashboard = () => {
                     <div className="institute-govt-tab">
                         <div className="institute-tab-header">
                             <h1>Government Schemes & Projects</h1>
-                            <button className="institute-primary-button" onClick={() => openModal('govtScheme')}>+ Add Government Scheme</button>
+                            <button className="institute-primary-button" onClick={() => openModal('addScheme')}>+ Add Scheme</button>
                         </div>
                         
-                        <div className="institute-govt-schemes-grid">
-                            {instituteGovtSchemes.length > 0 ? instituteGovtSchemes.map(scheme => (
-                                <div className="institute-govt-scheme-card" key={scheme.instituteSchemeId}>
-                                    <div className="institute-scheme-header">
-                                        <h3>{scheme.schemeName}</h3>
-                                        <span className={`institute-scheme-status ${scheme.status ? scheme.status.toLowerCase() : 'pending'}`}>
-                                            {scheme.status}
-                                        </span>
-                                    </div>
-                                    <div className="institute-scheme-details">
-                                        <p><strong>Description:</strong> {scheme.description ? scheme.description.substring(0, 100) + '...' : 'No description available'}</p>
-                                        <p><strong>Link:</strong> <a href={scheme.link} target="_blank" rel="noopener noreferrer">View Details</a></p>
-                                    </div>
+                        <div className="institute-schemes-grid">
+                            {governmentSchemes.length > 0 ? governmentSchemes.map(scheme => (
+                                <div className="institute-scheme-card" key={scheme.instgovsch}>
+                                    <h3>{scheme.schemeName}</h3>
+                                    <p>{scheme.description}</p>
                                     <div className="institute-scheme-actions">
+                                        <a href={scheme.link} target="_blank" rel="noopener noreferrer" className="institute-scheme-link">View Details</a>
                                         <button 
-                                            className="institute-table-action view" 
-                                            onClick={() => handleViewGovtScheme(scheme)}
-                                        >
-                                            View Details
-                                        </button>
-                                        <button 
-                                            className="institute-table-action edit" 
-                                            onClick={() => handleEditGovtScheme(scheme)}
-                                            style={{backgroundColor: '#28a745', color: 'white', marginRight: '5px'}}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button 
-                                            className="institute-table-action delete" 
-                                            onClick={() => handleDeleteGovtScheme(scheme.instituteSchemeId, scheme.schemeName)}
+                                            className="institute-delete-scheme-btn" 
+                                            onClick={() => handleDeleteScheme(scheme.instgovsch, scheme.schemeName)}
                                         >
                                             Delete
                                         </button>
                                     </div>
                                 </div>
                             )) : (
-                                <div style={{textAlign: 'center', padding: '40px', color: '#666', gridColumn: '1 / -1'}}>
-                                    <p>No government schemes added yet. Click "Add Government Scheme" to get started.</p>
+                                <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                    <p>No government schemes added yet. Click "Add Scheme" to get started.</p>
                                 </div>
                             )}
                         </div>
@@ -3080,17 +3049,10 @@ const InstituteDashboard = () => {
                 </div>
             )}
 
-            {/* Government Scheme View Modal */}
-            <GovtSchemeModal 
-                showGovtSchemeModal={showGovtSchemeModal}
-                selectedGovtScheme={selectedGovtScheme}
-                setShowGovtSchemeModal={setShowGovtSchemeModal}
-            />
-
             {/* Modal for forms */}
             {showModal && (
                 <div className="institute-modal-overlay" onClick={closeModal}>
-                    <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="institute-modal-content scrollable" onClick={(e) => e.stopPropagation()}>
                         <div className="institute-modal-header">
                             <h2>
                                 {modalType === 'student' && 'Add New Student'}
@@ -3102,12 +3064,12 @@ const InstituteDashboard = () => {
                                 {modalType === 'editEvent' && 'Edit Event'}
                                 {modalType === 'news' && 'Add News'}
                                 {modalType === 'editNews' && 'Edit News'}
-                                {modalType === 'govtScheme' && 'Add Government Scheme'}
-                                {modalType === 'editGovtScheme' && 'Edit Government Scheme'}
                                 {modalType === 'profile' && 'Edit Profile'}
+                                {modalType === 'addScheme' && 'Add Government Scheme'}
                             </h2>
                             <button className="institute-close-button" onClick={closeModal}>×</button>
                         </div>
+                        <div className="institute-modal-body">
 
                         {/* View Student Profile Modal */}
                         {modalType === 'viewStudent' && (
@@ -3273,14 +3235,15 @@ const InstituteDashboard = () => {
                         )}
 
                         {/* Government Scheme Form */}
-                        {(modalType === 'govtScheme' || modalType === 'editGovtScheme') && (
-                            <form onSubmit={handleGovtSchemeSubmit} className="institute-modal-form">
+                        {modalType === 'addScheme' && (
+                            <form onSubmit={handleSchemeSubmit} className="institute-modal-form">
                                 <div className="institute-form-group">
                                     <label>Scheme Name *</label>
                                     <input
                                         type="text"
-                                        value={govtSchemeForm.schemeName}
-                                        onChange={(e) => setGovtSchemeForm({...govtSchemeForm, schemeName: e.target.value})}
+                                        value={schemeForm.schemeName}
+                                        onChange={(e) => setSchemeForm({...schemeForm, schemeName: e.target.value})}
+                                        placeholder="Enter scheme name"
                                         required
                                     />
                                 </div>
@@ -3288,38 +3251,55 @@ const InstituteDashboard = () => {
                                 <div className="institute-form-group">
                                     <label>Description *</label>
                                     <textarea
-                                        value={govtSchemeForm.description}
-                                        onChange={(e) => setGovtSchemeForm({...govtSchemeForm, description: e.target.value})}
+                                        value={schemeForm.description}
+                                        onChange={(e) => {
+                                            const words = e.target.value.split(' ').filter(word => word.length > 0);
+                                            if (words.length <= 30) {
+                                                setSchemeForm({...schemeForm, description: e.target.value});
+                                            }
+                                        }}
+                                        placeholder="Enter scheme description (max 30 words)"
                                         rows="4"
-                                        placeholder="Describe the government scheme..."
                                         required
                                     />
+                                    <div className="word-counter">
+                                        {schemeForm.description.split(' ').filter(word => word.length > 0).length}/30 words
+                                    </div>
                                 </div>
                                 
                                 <div className="institute-form-group">
                                     <label>Link *</label>
                                     <input
                                         type="url"
-                                        value={govtSchemeForm.link}
-                                        onChange={(e) => setGovtSchemeForm({...govtSchemeForm, link: e.target.value})}
-                                        placeholder="https://example.com/scheme-details"
+                                        value={schemeForm.link}
+                                        onChange={(e) => setSchemeForm({...schemeForm, link: e.target.value})}
+                                        placeholder="https://example.com"
                                         required
                                     />
                                 </div>
                                 
                                 <div className="institute-form-buttons">
-                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>
-                                        Cancel
-                                    </button>
                                     <button type="submit" className="institute-primary-button" disabled={loading}>
-                                        {loading ? 'Saving...' : (modalType === 'editGovtScheme' ? 'Update Scheme' : 'Add Scheme')}
+                                        {loading ? 'Adding...' : 'Add Scheme'}
                                     </button>
+                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                                 </div>
                             </form>
                         )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                        {/* Student Form */}
-                        {(modalType === 'student' || modalType === 'editStudent') && (
+            {/* Student Form Modal */}
+            {(modalType === 'student' || modalType === 'editStudent') && (
+                <div className="institute-modal-overlay" onClick={closeModal}>
+                    <div className="institute-modal-content scrollable" onClick={(e) => e.stopPropagation()}>
+                        <div className="institute-modal-header">
+                            <h2>{modalType === 'student' ? 'Add New Student' : 'Edit Student'}</h2>
+                            <button className="institute-close-button" onClick={closeModal}>×</button>
+                        </div>
+                        <div className="institute-modal-body">
                             <form onSubmit={handleStudentSubmit} className="institute-modal-form">
                                 <h4>Basic Personal Details</h4>
                                 <div className="institute-form-grid">
@@ -3559,10 +3539,20 @@ const InstituteDashboard = () => {
                                     <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                                 </div>
                             </form>
-                        )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                        {/* Course Form */}
-                        {(modalType === 'course' || modalType === 'editCourse') && (
+            {/* Course Form Modal */}
+            {(modalType === 'course' || modalType === 'editCourse') && (
+                <div className="institute-modal-overlay" onClick={closeModal}>
+                    <div className="institute-modal-content scrollable" onClick={(e) => e.stopPropagation()}>
+                        <div className="institute-modal-header">
+                            <h2>{modalType === 'course' ? 'Add New Course' : 'Edit Course'}</h2>
+                            <button className="institute-close-button" onClick={closeModal}>×</button>
+                        </div>
+                        <div className="institute-modal-body">
                             <form onSubmit={handleCourseSubmit} className="institute-modal-form">
                                 {modalType === 'editCourse' && (
                                     <div style={{backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '4px', marginBottom: '15px', fontSize: '12px', color: '#666'}}>
@@ -3891,10 +3881,20 @@ const InstituteDashboard = () => {
                                     <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                                 </div>
                             </form>
-                        )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                        {/* Event Form */}
-                        {(modalType === 'event' || modalType === 'editEvent') && (
+            {/* Event Form Modal */}
+            {(modalType === 'event' || modalType === 'editEvent') && (
+                <div className="institute-modal-overlay" onClick={closeModal}>
+                    <div className="institute-modal-content scrollable" onClick={(e) => e.stopPropagation()}>
+                        <div className="institute-modal-header">
+                            <h2>{modalType === 'event' ? 'Add New Event' : 'Edit Event'}</h2>
+                            <button className="institute-close-button" onClick={closeModal}>×</button>
+                        </div>
+                        <div className="institute-modal-body">
                             <form onSubmit={handleEventSubmit} className="institute-modal-form">
                                 <div className="institute-form-grid">
                                     <div className="institute-form-group">
@@ -3998,8 +3998,16 @@ const InstituteDashboard = () => {
                             </form>
                         )}
 
-                        {/* News Form */}
-                        {(modalType === 'news' || modalType === 'editNews') && (
+
+            {/* News Form Modal */}
+            {(modalType === 'news' || modalType === 'editNews') && (
+                <div className="institute-modal-overlay" onClick={closeModal}>
+                    <div className="institute-modal-content scrollable" onClick={(e) => e.stopPropagation()}>
+                        <div className="institute-modal-header">
+                            <h2>{modalType === 'news' ? 'Add News' : 'Edit News'}</h2>
+                            <button className="institute-close-button" onClick={closeModal}>×</button>
+                        </div>
+                        <div className="institute-modal-body">
                             <form onSubmit={handleNewsSubmit} className="institute-modal-form">
                                 <div className="institute-form-grid">
                                     <div className="institute-form-group">
@@ -4101,10 +4109,20 @@ const InstituteDashboard = () => {
                                     <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                                 </div>
                             </form>
-                        )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                        {/* Profile Form */}
-                        {modalType === 'profile' && (
+            {/* Profile Form Modal */}
+            {modalType === 'profile' && (
+                <div className="institute-modal-overlay" onClick={closeModal}>
+                    <div className="institute-modal-content scrollable" onClick={(e) => e.stopPropagation()}>
+                        <div className="institute-modal-header">
+                            <h2>Edit Profile</h2>
+                            <button className="institute-close-button" onClick={closeModal}>×</button>
+                        </div>
+                        <div className="institute-modal-body">
                             <form onSubmit={handleProfileUpdate} className="institute-modal-form">
                                 <div className="institute-form-group">
                                     <label>Profile Image</label>
@@ -4295,7 +4313,7 @@ const InstituteDashboard = () => {
                                     <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                                 </div>
                             </form>
-                        )}
+                        </div>
                     </div>
                 </div>
             )}

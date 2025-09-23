@@ -852,21 +852,19 @@ const NewsPage = () => {
       {/* Popular Tags Section - Above News Feed */}
       {popularTags.length > 0 && (
         <section className="popular-tags-main">
-          <div className="content-container">
-            <h2>Popular Tags</h2>
-            <div className="tags-cloud-main">
-              {popularTags.slice(0, 10).map((tag, index) => (
-                <button 
-                  key={index} 
-                  className="tag-main"
-                  onClick={() => handleTagClick(tag.name)}
-                  title={`${tag.count} mentions`}
-                >
-                  {tag.name}
-                  <span className="tag-count-main">{tag.count}</span>
-                </button>
-              ))}
-            </div>
+          <h2>Popular Tags</h2>
+          <div className="tags-cloud-main">
+            {popularTags.slice(0, 10).map((tag, index) => (
+              <button 
+                key={index} 
+                className="tag-main"
+                onClick={() => handleTagClick(tag.name)}
+                title={`${tag.count} mentions`}
+              >
+                {tag.name}
+                <span className="tag-count-main">{tag.count}</span>
+              </button>
+            ))}
           </div>
         </section>
       )}

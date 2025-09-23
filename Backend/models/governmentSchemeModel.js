@@ -14,7 +14,8 @@ const GOVERNMENT_SCHEMES_TABLE = 'staffinn-government-schemes';
 const getAllSchemes = async () => {
   try {
     const schemes = await dynamoService.scanItems(GOVERNMENT_SCHEMES_TABLE);
-    return schemes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Sort by createdAt in ascending order (oldest first) to show schemes in the order they were added
+    return schemes.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   } catch (error) {
     console.error('Error getting all schemes:', error);
     throw error;
@@ -61,7 +62,7 @@ const getSchemeById = async (schemeId) => {
   try {
     const scheme = await dynamoService.getItem(GOVERNMENT_SCHEMES_TABLE, { 
       govschemes: 'SCHEME',
-      schemeId 
+      schemesnum: schemeId 
     });
     return scheme;
   } catch (error) {
@@ -80,6 +81,7 @@ const addScheme = async (schemeData) => {
     
     const scheme = {
       govschemes: 'SCHEME',
+      schemesnum: schemeId,
       schemeId,
       schemeName: schemeData.schemeName,
       schemeLink: schemeData.schemeLink,
@@ -131,7 +133,7 @@ const deleteScheme = async (schemeId) => {
   try {
     await dynamoService.deleteItem(GOVERNMENT_SCHEMES_TABLE, {
       govschemes: 'SCHEME',
-      schemeId
+      schemesnum: schemeId
     });
     return true;
   } catch (error) {

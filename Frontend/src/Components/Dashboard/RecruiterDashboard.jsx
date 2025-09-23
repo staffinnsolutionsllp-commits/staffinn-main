@@ -28,6 +28,9 @@ const RecruiterDashboard = () => {
     // Hidden user state
     const [isHidden, setIsHidden] = useState(false);
     const [showHiddenModal, setShowHiddenModal] = useState(false);
+    
+    // Mobile sidebar state
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
     // Job form state
     const [jobForm, setJobForm] = useState({
@@ -1339,6 +1342,17 @@ const RecruiterDashboard = () => {
     
 
     
+    // Toggle mobile sidebar
+    const toggleMobileSidebar = () => {
+        setIsMobileSidebarOpen(!isMobileSidebarOpen);
+    };
+    
+    // Handle tab change and close mobile sidebar
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setIsMobileSidebarOpen(false);
+    };
+    
     // Download all students details as Excel
     const downloadStudentsExcel = () => {
         if (!selectedInstituteStudents || selectedInstituteStudents.length === 0) {
@@ -1451,7 +1465,14 @@ const RecruiterDashboard = () => {
                 </div>
             )}
             
-            <div className="recruiter-dashboard-sidebar">
+            {/* Mobile Hamburger Button */}
+            <button className="recruiter-mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <div className={`recruiter-dashboard-sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
                 <div className="recruiter-company-info">
                     {profilePhoto && profilePhoto !== '' ? (
                         <img src={profilePhoto} alt="Company Logo" className="recruiter-company-logo" data-recruiter-image />
@@ -1463,28 +1484,28 @@ const RecruiterDashboard = () => {
                     <h3>{profileForm.companyName || currentUser?.name || 'Your Company'}</h3>
                 </div>
                 <ul className="recruiter-sidebar-menu">
-                    <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>
+                    <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => handleTabChange('profile')}>
                         My Profile
                     </li>
-                    <li className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
+                    <li className={activeTab === 'overview' ? 'active' : ''} onClick={() => handleTabChange('overview')}>
                         Dashboard Overview
                     </li>
-                    <li className={activeTab === 'jobs' ? 'active' : ''} onClick={() => setActiveTab('jobs')}>
+                    <li className={activeTab === 'jobs' ? 'active' : ''} onClick={() => handleTabChange('jobs')}>
                         Job Management
                     </li>
-                    <li className={activeTab === 'candidates' ? 'active' : ''} onClick={() => setActiveTab('candidates')}>
+                    <li className={activeTab === 'candidates' ? 'active' : ''} onClick={() => handleTabChange('candidates')}>
                         Candidate Search
                     </li>
-                    <li className={activeTab === 'hiring' ? 'active' : ''} onClick={() => setActiveTab('hiring')}>
+                    <li className={activeTab === 'hiring' ? 'active' : ''} onClick={() => handleTabChange('hiring')}>
                         Hiring History
                     </li>
-                    <li className={activeTab === 'institutes' ? 'active' : ''} onClick={() => setActiveTab('institutes')}>
+                    <li className={activeTab === 'institutes' ? 'active' : ''} onClick={() => handleTabChange('institutes')}>
                         Institutes
                     </li>
-                    <li className={activeTab === 'news' ? 'active' : ''} onClick={() => setActiveTab('news')}>
+                    <li className={activeTab === 'news' ? 'active' : ''} onClick={() => handleTabChange('news')}>
                         News
                     </li>
-                    <li className={activeTab === 'government-schemes' ? 'active' : ''} onClick={() => setActiveTab('government-schemes')}>
+                    <li className={activeTab === 'government-schemes' ? 'active' : ''} onClick={() => handleTabChange('government-schemes')}>
                         Government Schemes
                     </li>
                 </ul>

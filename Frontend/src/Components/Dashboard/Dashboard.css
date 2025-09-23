@@ -7,6 +7,65 @@
   background-color: #f5f7ff;
   color: #2d3748;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  position: relative;
+}
+
+/* Mobile Hamburger Button */
+.staff-mobile-sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1001;
+  background: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.staff-mobile-sidebar-toggle span {
+  width: 20px;
+  height: 2px;
+  background-color: #374151;
+  border-radius: 1px;
+  transition: all 0.3s ease;
+}
+
+.staff-mobile-sidebar-toggle:hover span {
+  background-color: #4863f7;
+}
+
+/* Recruiter Mobile Hamburger Button */
+.recruiter-mobile-sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1001;
+  background: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recruiter-mobile-sidebar-toggle span {
+  width: 20px;
+  height: 2px;
+  background-color: #374151;
+  border-radius: 1px;
+  transition: all 0.3s ease;
+}
+
+.recruiter-mobile-sidebar-toggle:hover span {
+  background-color: #4863f7;
 }
 
 /* Sidebar Styles */
@@ -21,6 +80,26 @@
   flex-direction: column;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
   z-index: 10;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+}
+
+.recruiter-dashboard-sidebar,
+.institute-dashboard-sidebar {
+  width: 280px;
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
 }
 
 .staff-sidebar-header {
@@ -1884,34 +1963,73 @@ select:focus {
 }
 
 @media (max-width: 992px) {
-  .staff-dashboard {
-    flex-direction: column;
+  .staff-mobile-sidebar-toggle {
+    display: flex;
   }
   
   .staff-dashboard-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    background: white;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .staff-dashboard-sidebar.mobile-open {
+    left: 0;
+  }
+  
+  .staff-dashboard-content {
     width: 100%;
-    height: auto;
-    position: relative;
+    padding: 1.5rem;
+    padding-top: 5rem;
   }
   
   .staff-sidebar-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 1rem;
+    flex-direction: column;
+    padding: 1.5rem 0;
   }
   
   .staff-nav-item {
-    padding: 0.75rem 1rem;
+    padding: 0.9rem 1.5rem;
     white-space: nowrap;
   }
   
   .staff-nav-item.active::before {
-    display: none;
+    display: block;
   }
   
-  .staff-dashboard-content {
-    padding: 1.5rem;
+  /* Recruiter Dashboard Mobile */
+  .recruiter-mobile-sidebar-toggle {
+    display: flex;
   }
+  
+  .recruiter-dashboard-sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 280px;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    background: white;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .recruiter-dashboard-sidebar.mobile-open {
+    left: 0;
+  }
+  
+  .recruiter-dashboard-content {
+    width: 100%;
+    padding: 1.5rem;
+    padding-top: 5rem;
+  }
+}
 
   .staff-profile-content {
     padding: 0;
@@ -1952,6 +2070,23 @@ select:focus {
 @media (max-width: 768px) {
   .staff-dashboard-content {
     padding: 1rem;
+  }
+  
+  /* Move profile photo section to top in mobile staff dashboard */
+  .staff-profile-right {
+    order: -1;
+    border-left: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .staff-seeker-profile-right {
+    order: -1;
+    border-left: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
   }
   
   .staff-stats-container,
@@ -2052,4 +2187,165 @@ select:focus {
   .staff-submit-btn {
     width: 100%;
   }
+}
+/* Mobile hamburger menu styles for institute dashboard */
+.mobile-hamburger {
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    background: #2c3e50;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+/* Institute dashboard mobile responsive styles */
+@media (max-width: 768px) {
+    .mobile-hamburger {
+        display: block;
+    }
+    
+    .institute-dashboard {
+        flex-direction: column;
+    }
+    
+    .institute-dashboard-sidebar {
+        position: fixed;
+        top: 0;
+        left: -300px;
+        width: 280px;
+        height: 100vh;
+        background: white;
+        z-index: 1000;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        overflow-y: auto;
+    }
+    
+    .institute-dashboard-sidebar.mobile-open {
+        left: 0;
+    }
+    
+    .institute-dashboard-content {
+        margin-left: 0;
+        padding: 80px 15px 20px;
+        width: 100%;
+    }
+    
+    .institute-metrics-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .institute-charts-row {
+        flex-direction: column;
+    }
+    
+    .institute-chart-container {
+        margin-bottom: 20px;
+    }
+    
+    .institute-data-table {
+        font-size: 12px;
+        overflow-x: auto;
+    }
+    
+    .institute-data-table th,
+    .institute-data-table td {
+        padding: 8px 4px;
+        min-width: 100px;
+    }
+    
+    .institute-table-action {
+        padding: 4px 8px;
+        font-size: 11px;
+        margin: 2px;
+    }
+    
+    .institute-form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-modal-content {
+        width: 95%;
+        max-height: 90vh;
+        margin: 5vh auto;
+    }
+    
+    .institute-tab-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .institute-tab-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .institute-primary-button,
+    .institute-action-button {
+        padding: 8px 16px;
+        font-size: 14px;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .institute-course-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-events-management-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-events-grid,
+    .institute-news-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-search-section {
+        margin-bottom: 20px;
+    }
+    
+    .institute-search-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .institute-search-input {
+        width: 100%;
+    }
+    
+    .institute-filter-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
+
+/* Mobile header adjustments */
+@media (max-width: 768px) {
+    /* Adjust logo positioning to avoid hamburger overlap */
+    .header-container .logo {
+        margin-left: 60px !important;
+    }
+    
+    /* Fix hamburger positioning for website pages */
+    .mobile-menu-toggle {
+        position: absolute !important;
+        left: 15px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        z-index: 1001 !important;
+    }
+    
+    /* Ensure hamburger doesn't interfere with dashboard navigation */
+    .header-container.dashboard-header .mobile-menu-toggle {
+        display: none !important;
+    }
 }

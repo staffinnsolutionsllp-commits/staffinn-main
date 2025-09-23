@@ -3525,7 +3525,112 @@ const apiService = {
       console.error('Get government schemes by visibility error:', error);
       return { success: false, message: 'Failed to get government schemes' };
     }
-  }
+  },
+
+  // Institute Government Schemes API
+  addInstituteGovtScheme: async (schemeData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/government-schemes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(schemeData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Add institute government scheme error:', error);
+      return { success: false, message: 'Failed to add government scheme' };
+    }
+  },
+
+  getInstituteGovtSchemes: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/government-schemes`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get institute government schemes error:', error);
+      return { success: false, message: 'Failed to get government schemes' };
+    }
+  },
+
+  updateInstituteGovtScheme: async (schemeId, schemeData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/government-schemes/${schemeId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(schemeData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update institute government scheme error:', error);
+      return { success: false, message: 'Failed to update government scheme' };
+    }
+  },
+
+  deleteInstituteGovtScheme: async (schemeId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/government-schemes/${schemeId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete institute government scheme error:', error);
+      return { success: false, message: 'Failed to delete government scheme' };
+    }
+  },
+
+  // Public Institute Government Schemes API
+  getPublicInstituteGovtSchemes: async (instituteId) => {
+    try {
+      const response = await fetch(`${API_URL}/institutes/public/${instituteId}/government-schemes`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get public institute government schemes error:', error);
+      return { success: false, message: 'Failed to get government schemes' };
+    }
+  },
+
+
 
 };
 

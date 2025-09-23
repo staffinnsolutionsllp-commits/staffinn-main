@@ -397,15 +397,77 @@ a {
   
   .dashboard {
     padding: 1rem;
+    min-height: calc(100vh - 80px);
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .dashboard-title {
+    font-size: 1.5rem;
   }
   
   .dashboard-stats {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .stat-card {
+    padding: 1rem;
   }
   
   .dashboard-table {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+  }
+  
+  .dashboard-table th,
+  .dashboard-table td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .content-header {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .content-body {
+    padding: 1rem;
+  }
+  
+  .action-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard {
+    padding: 0.5rem;
+  }
+  
+  .dashboard-title {
+    font-size: 1.25rem;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .content-header {
+    padding: 0.5rem;
+  }
+  
+  .content-body {
+    padding: 0.75rem;
   }
 }

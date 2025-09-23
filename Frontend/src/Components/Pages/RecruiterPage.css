@@ -14,19 +14,20 @@
   .recruiter-search-section {
     background-size: cover;
     background-position: center;
-    padding: 80px 60px;
+    padding: 120px 60px;
     border-radius: 10px;
     text-align: center;
     position: relative;
     color: white;
     margin-bottom: 40px;
+    min-height: 500px;
   }
   
   .page-title {
     font-size: 3rem;
     font-weight: 700;
     color: white;
-    margin-bottom: 30px;
+    margin-bottom: 50px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
   }
   

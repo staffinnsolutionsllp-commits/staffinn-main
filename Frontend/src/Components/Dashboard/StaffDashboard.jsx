@@ -35,6 +35,9 @@ const StaffDashboard = ({ currentUser }) => {
     const [isHidden, setIsHidden] = useState(false);
     const [showHiddenModal, setShowHiddenModal] = useState(false);
     
+    // Mobile sidebar state
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+    
     // Contact History State
     const [contactHistory, setContactHistory] = useState([]);
     const [contactStats, setContactStats] = useState({
@@ -915,6 +918,17 @@ const StaffDashboard = ({ currentUser }) => {
             setActiveTab('profile');
         }
     }, [isActiveStaff, activeTab]);
+    
+    // Toggle mobile sidebar
+    const toggleMobileSidebar = () => {
+        setIsMobileSidebarOpen(!isMobileSidebarOpen);
+    };
+    
+    // Handle tab change and close mobile sidebar
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setIsMobileSidebarOpen(false);
+    };
 
     return (
         <div className="staff-dashboard">
@@ -942,8 +956,15 @@ const StaffDashboard = ({ currentUser }) => {
                 </div>
             )}
             
+            {/* Mobile Hamburger Button */}
+            <button className="staff-mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
             {/* Sidebar Navigation */}
-            <div className="staff-dashboard-sidebar">
+            <div className={`staff-dashboard-sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
                 <div className="staff-sidebar-header">
                     <div className="staff-user-avatar">
                         {profile.profilePhoto ? (
@@ -965,7 +986,7 @@ const StaffDashboard = ({ currentUser }) => {
                     {isActiveStaff && (
                         <button 
                             className={`staff-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('dashboard')}
+                            onClick={() => handleTabChange('dashboard')}
                         >
                             <i className="fas fa-tachometer-alt"></i>
                             Dashboard
@@ -974,7 +995,7 @@ const StaffDashboard = ({ currentUser }) => {
                     
                     <button 
                         className={`staff-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('profile')}
+                        onClick={() => handleTabChange('profile')}
                     >
                         <i className="fas fa-user"></i>
                         My Profile
@@ -982,7 +1003,7 @@ const StaffDashboard = ({ currentUser }) => {
 
                     <button 
                         className={`staff-nav-item ${activeTab === 'contact-history' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('contact-history')}
+                        onClick={() => handleTabChange('contact-history')}
                     >
                         <i className="fas fa-history"></i>
                         Contact History
@@ -990,7 +1011,7 @@ const StaffDashboard = ({ currentUser }) => {
                     
                     <button 
                         className={`staff-nav-item ${activeTab === 'courses' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('courses')}
+                        onClick={() => handleTabChange('courses')}
                     >
                         <i className="fas fa-graduation-cap"></i>
                         My Courses
@@ -998,7 +1019,7 @@ const StaffDashboard = ({ currentUser }) => {
                     
                     <button 
                         className={`staff-nav-item ${activeTab === 'government-schemes' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('government-schemes')}
+                        onClick={() => handleTabChange('government-schemes')}
                     >
                         <i className="fas fa-university"></i>
                         Government Schemes

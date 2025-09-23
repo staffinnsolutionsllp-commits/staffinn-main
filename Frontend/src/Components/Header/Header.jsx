@@ -23,6 +23,7 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
     const [showDropdown, setShowDropdown] = useState(false);
     const [showDashboardMessage, setShowDashboardMessage] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
     
     // Function to handle redirect from registration to login
@@ -125,6 +126,10 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
         navigate('/news');
     };
 
+    const toggleMobileMenu = () => {
+        setIsMobileMenuOpen(!isMobileMenuOpen);
+    };
+
     const closeLoginModal = () => {
         setShowLoginModal(false);
         setEmail('');
@@ -161,12 +166,18 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                     <img src={assets.Logo} alt="STAFFINN" className="logo-image" />
                 </div>
 
-                <nav className="nav-menu">
+                <button className="mobile-menu-toggle" onClick={toggleMobileMenu}>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+
+                <nav className={`nav-menu ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
                     <ul className="nav-list">
-                        <li><Link to="/staff" className="nav-link">Staff</Link></li>
-                        <li><Link to="/institute" className="nav-link">Institute</Link></li>
-                        <li><a href="/recruiter" className="nav-link">Recruiter</a></li>
-                        <li><Link to="/news" className="news-btn">News</Link></li>
+                        <li><Link to="/staff" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}><span className="first-letter-orange">S</span>taff</Link></li>
+                        <li><Link to="/institute" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}><span className="first-letter-blue">I</span>nstitute</Link></li>
+                        <li><a href="/recruiter" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}><span className="first-letter-green">R</span>ecruiter</a></li>
+                        <li><Link to="/news" className="news-btn" onClick={() => setIsMobileMenuOpen(false)}>News</Link></li>
                     </ul>
                 </nav>
 

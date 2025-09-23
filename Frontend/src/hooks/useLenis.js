@@ -15,6 +15,25 @@ export const useLenis = () => {
       infinite: false,
     });
 
+    // Prevent Lenis from handling scroll events on specific elements
+    const preventLenisElements = [
+      '.clean-modal-content',
+      '.staff-dashboard-sidebar',
+      '.recruiter-dashboard-sidebar', 
+      '.institute-dashboard-sidebar'
+    ];
+
+    const handleWheel = (e) => {
+      const target = e.target.closest(preventLenisElements.join(','));
+      if (target) {
+        e.stopPropagation();
+        lenis.stop();
+        setTimeout(() => lenis.start(), 100);
+      }
+    };
+
+    document.addEventListener('wheel', handleWheel, { capture: true });
+
     function raf(time) {
       lenis.raf(time);
       requestAnimationFrame(raf);
@@ -23,6 +42,7 @@ export const useLenis = () => {
     requestAnimationFrame(raf);
 
     return () => {
+      document.removeEventListener('wheel', handleWheel, { capture: true });
       lenis.destroy();
     };
   }, []);

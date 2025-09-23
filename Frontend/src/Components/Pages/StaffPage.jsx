@@ -10,7 +10,11 @@ import RegistrationPopup from '../Register/RegistrationPopup';
 import StaffpageImage from '../../assets/Staffpage.jpg';
 
 function StaffPage() {
-    const { user } = useContext(AuthContext);
+    const { user, isStaff } = useContext(AuthContext);
+    
+    // State to track if user has staff profile
+    const [hasStaffProfile, setHasStaffProfile] = useState(false);
+    const [checkingStaffProfile, setCheckingStaffProfile] = useState(true);
     
     // States for API data
     const [states, setStates] = useState([]);
@@ -135,6 +139,38 @@ function StaffPage() {
         };
         fetchCities();
     }, [selectedState]);
+
+    // Check if current user has staff profile
+    useEffect(() => {
+        const checkUserStaffProfile = async () => {
+            if (!user) {
+                setCheckingStaffProfile(false);
+                return;
+            }
+            
+            try {
+                // Check if user is already registered as staff
+                if (isStaff()) {
+                    setHasStaffProfile(true);
+                    setCheckingStaffProfile(false);
+                    return;
+                }
+                
+                // Check if user has staff profile in DynamoDB
+                const response = await apiWithLoading.getStaffProfile();
+                if (response.success && response.data) {
+                    setHasStaffProfile(true);
+                }
+            } catch (error) {
+                // If error (like 404), user doesn't have staff profile
+                console.log('User does not have staff profile');
+            } finally {
+                setCheckingStaffProfile(false);
+            }
+        };
+        
+        checkUserStaffProfile();
+    }, [user, isStaff]);
 
     // Fetch active staff profiles from backend
     useEffect(() => {
@@ -322,6 +358,7 @@ function StaffPage() {
                     education: detailedProfile.education || {}
                 });
                 setViewMode('profile');
+                document.dispatchEvent(new CustomEvent('modal-open'));
                 setShowModal(true);
                 
                 // Load reviews for this staff member
@@ -404,6 +441,7 @@ function StaffPage() {
 
     // Close modal
     const closeModal = () => {
+        document.dispatchEvent(new CustomEvent('modal-close'));
         setShowModal(false);
         setSelectedStaff(null);
         setViewMode('profile');
@@ -877,19 +915,21 @@ function StaffPage() {
                 </div>
             </section>
             
-            {/* Call to Action Section */}
-            <section className="cta-section">
-                <div className="cta-content">
-                    <h2>Are You a Skilled Professional?</h2>
-                    <p>Join our platform to connect with top recruiters and find your next opportunity</p>
-                    <button className="cta-button" onClick={handleRegisterClick}>Register as Staff</button>
-                </div>
-            </section>
+            {/* Call to Action Section - Only show if user is not registered as staff */}
+            {!checkingStaffProfile && !hasStaffProfile && (
+                <section className="cta-section">
+                    <div className="cta-content">
+                        <h2>Are You a Skilled Professional?</h2>
+                        <p>Join our platform to connect with top recruiters and find your next opportunity</p>
+                        <button className="cta-button" onClick={handleRegisterClick}>Register as Staff</button>
+                    </div>
+                </section>
+            )}
 
             {/* Clean Staff Profile Modal */}
             {showModal && selectedStaff && (
                 <div className="clean-modal-overlay" onClick={closeModal}>
-                    <div className="clean-modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="clean-modal-content" onClick={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()}>
                         <div className="clean-modal-header">
                             <div className="clean-modal-info">
                                 <div className="clean-modal-avatar">

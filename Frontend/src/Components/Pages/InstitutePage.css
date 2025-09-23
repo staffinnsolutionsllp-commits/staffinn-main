@@ -269,6 +269,19 @@ button {
   font-family: inherit;
 }
 
+/* Institute Search Section (Hero) */
+.institute-search-section {
+  background-size: cover;
+  background-position: center;
+  padding: 120px 60px;
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  color: white;
+  margin-bottom: 40px;
+  min-height: 500px;
+}
+
 /* Header Section */
 .institute-header {
   background-color: #ffffff;
@@ -1104,11 +1117,37 @@ button {
   padding: 1rem;
   background-color: #2563eb;
   color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .scheme-header h3 {
   margin-bottom: 0;
   font-size: 1.25rem;
+}
+
+.scheme-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.scheme-status.active {
+  background-color: #10b981;
+}
+
+.scheme-status.pending {
+  background-color: #f59e0b;
+}
+
+.scheme-status.inactive {
+  background-color: #6b7280;
 }
 
 .scheme-content {
@@ -1122,17 +1161,22 @@ button {
 }
 
 .scheme-button {
+  display: inline-block;
   padding: 0.5rem 1rem;
   background-color: #60a5fa;
   color: white;
   border: none;
   border-radius: 4px;
   font-weight: 500;
+  text-decoration: none;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .scheme-button:hover {
   background-color: #2563eb;
+  color: white;
+  text-decoration: none;
 }
 
 .scholarship-section {

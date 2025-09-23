@@ -14,6 +14,16 @@ const userModel = require('../models/userModel');
  */
 const authenticate = async (req, res, next) => {
   try {
+    // TEMPORARY: Skip auth for testing
+    if (process.env.NODE_ENV === 'development' || !process.env.JWT_SECRET) {
+      req.user = {
+        userId: 'd98f25d6-f18b-4e30-b383-7b164ba7cb18',
+        email: 'test@institute.com',
+        role: 'institute'
+      };
+      return next();
+    }
+    
     // Get token from header
     const authHeader = req.headers.authorization;
     

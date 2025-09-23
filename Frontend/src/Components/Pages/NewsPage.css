@@ -1401,8 +1401,10 @@
   
   .tags-cloud-main {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
   }
   
   .tag-main {
@@ -1419,6 +1421,8 @@
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   
   .tag-main:hover {

@@ -89,6 +89,15 @@ const {
   getUserQuizProgress
 } = require('../controllers/quizController');
 
+// Import institute government scheme controller
+const {
+  addInstituteGovernmentScheme,
+  getInstituteGovernmentSchemes,
+  getPublicInstituteGovernmentSchemes,
+  updateInstituteGovernmentScheme,
+  deleteInstituteGovernmentScheme
+} = require('../controllers/instituteGovernmentSchemeController');
+
 // Public routes (no authentication required)
 router.get('/public/all', getAllLiveInstitutes);
 router.get('/public/:id', getInstituteById);
@@ -99,6 +108,7 @@ router.get('/public/:id/placement-section', getPublicPlacementSection);
 router.get('/public/:id/dashboard-stats', getPublicDashboardStats);
 router.get('/public/:id/industry-collaborations', getPublicIndustryCollaborations);
 router.get('/public/:instituteId/events-news', getPublicEventNews);
+router.get('/public/:instituteId/government-schemes', getPublicInstituteGovernmentSchemes);
 router.get('/mou-pdf/:filename', serveMouPdf); // Public PDF serving route
 router.post('/verify-registration', verifyRegistrationNumber);
 
@@ -192,6 +202,12 @@ router.post('/quiz/:quizId/submit', submitQuiz);
 router.post('/content/:contentId/quiz/submit', submitContentQuiz);
 router.get('/quiz/:quizId/results', getUserQuizResults);
 router.get('/courses/:courseId/quiz-progress', getUserQuizProgress);
+
+// Government schemes routes
+router.post('/government-schemes', addInstituteGovernmentScheme);
+router.get('/government-schemes', getInstituteGovernmentSchemes);
+router.put('/government-schemes/:schemeId', updateInstituteGovernmentScheme);
+router.delete('/government-schemes/:schemeId', deleteInstituteGovernmentScheme);
 
 // Admin routes
 router.get('/all', getAllInstitutes);

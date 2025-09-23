@@ -44,6 +44,7 @@ const InstitutePage = () => {
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [showEnrollmentSuccess, setShowEnrollmentSuccess] = useState(false);
+  const [governmentSchemes, setGovernmentSchemes] = useState([]);
 
 
 
@@ -85,12 +86,6 @@ const InstitutePage = () => {
     { id: 3, name: 'Kiran Bedi', role: 'Alumni', rating: 4.8, comment: 'The skills I learned here are still relevant in my career 5 years later' },
   ]);
 
-  const governmentSchemes = [
-    { id: 1, name: 'PMKVY', details: 'Pradhan Mantri Kaushal Vikas Yojana - Skill training and certification' },
-    { id: 2, name: 'NAPS', details: 'National Apprenticeship Promotion Scheme - On-the-job training' },
-    { id: 3, name: 'DDU-GKY', details: 'Deen Dayal Upadhyaya Grameen Kaushalya Yojana - Rural youth training' },
-  ];
-
   // Fetch institute data based on ID
   useEffect(() => {
     if (id) {
@@ -100,6 +95,7 @@ const InstitutePage = () => {
       fetchIndustryCollabData();
       fetchEventNewsData();
       fetchCourses();
+      fetchGovernmentSchemes();
     }
   }, [id]);
   
@@ -284,6 +280,23 @@ const InstitutePage = () => {
     } catch (error) {
       console.error('Error fetching courses:', error);
       setCourses([]);
+    }
+  };
+
+  const fetchGovernmentSchemes = async () => {
+    try {
+      console.log('Fetching government schemes for institute:', id);
+      const response = await apiService.getPublicInstituteGovtSchemes(id);
+      if (response.success && response.data) {
+        console.log('Government schemes fetched successfully:', response.data);
+        setGovernmentSchemes(response.data);
+      } else {
+        console.log('No government schemes found or API error:', response);
+        setGovernmentSchemes([]);
+      }
+    } catch (error) {
+      console.error('Error fetching government schemes:', error);
+      setGovernmentSchemes([]);
     }
   };
 
@@ -965,44 +978,32 @@ const InstitutePage = () => {
             </div>
 
             <div className="schemes-grid">
-              {governmentSchemes.map(scheme => (
-                <div key={scheme.id} className="scheme-card">
-                  <div className="scheme-header">
-                    <h3>{scheme.name}</h3>
+              {governmentSchemes && governmentSchemes.length > 0 ? (
+                governmentSchemes.map(scheme => (
+                  <div key={scheme.instituteSchemeId} className="scheme-card">
+                    <div className="scheme-header">
+                      <h3>{scheme.schemeName}</h3>
+                    </div>
+                    <div className="scheme-content">
+                      <p>{scheme.description}</p>
+                      {scheme.link && (
+                        <a 
+                          href={scheme.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="scheme-button"
+                        >
+                          Learn More
+                        </a>
+                      )}
+                    </div>
                   </div>
-                  <div className="scheme-content">
-                    <p>{scheme.details}</p>
-                    <button className="scheme-button">Learn More</button>
-                  </div>
+                ))
+              ) : (
+                <div className="empty-section">
+                  <p>No government schemes available at this institute yet.</p>
                 </div>
-              ))}
-            </div>
-
-            <div className="scholarship-section">
-              <h3>Scholarships & Financial Aid</h3>
-              <div className="scholarship-list">
-                <div className="scholarship-item">
-                  <div className="scholarship-icon">🎓</div>
-                  <div className="scholarship-details">
-                    <h4>Merit-Based Scholarship</h4>
-                    <p>Up to 50% fee waiver for academically excellent students</p>
-                  </div>
-                </div>
-                <div className="scholarship-item">
-                  <div className="scholarship-icon">📊</div>
-                  <div className="scholarship-details">
-                    <h4>Financial Need-Based Assistance</h4>
-                    <p>Support for economically disadvantaged students</p>
-                  </div>
-                </div>
-                <div className="scholarship-item">
-                  <div className="scholarship-icon">👩‍💻</div>
-                  <div className="scholarship-details">
-                    <h4>Women in Tech Scholarship</h4>
-                    <p>Special scholarships to encourage women in technology fields</p>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </section>
         )}
@@ -1734,7 +1735,6 @@ const InstitutePage = () => {
             <h4>For Students</h4>
             <ul className="footer-links">
               <li><a href="#">Career Guidance</a></li>
-              <li><a href="#">Scholarships</a></li>
               <li><a href="#">Internships</a></li>
               <li><a href="#">Placement Assistance</a></li>
               <li><a href="#">Student Login</a></li>

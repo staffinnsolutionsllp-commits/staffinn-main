@@ -94,5 +94,18 @@
     }
   },
   "user-quiz-progress": {},
-  "staffinn-institute-courses": {}
+  "staffinn-institute-courses": {},
+  "institute-government-schemes": {
+    "66f43c44-7bd6-4ae5-9187-514b68cb9445": {
+      "institutegovschm": "66f43c44-7bd6-4ae5-9187-514b68cb9445",
+      "instgovsch": "66f43c44-7bd6-4ae5-9187-514b68cb9445",
+      "instituteId": "test-institute-123",
+      "schemeId": "66f43c44-7bd6-4ae5-9187-514b68cb9445",
+      "schemeName": "Model Test Scheme",
+      "description": "Created using the model",
+      "link": "https://model-test.com",
+      "createdAt": "2025-09-22T13:06:49.542Z",
+      "updatedAt": "2025-09-22T13:06:49.542Z"
+    }
+  }
 }
