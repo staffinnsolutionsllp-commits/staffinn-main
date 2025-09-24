@@ -18,6 +18,13 @@ body {
   line-height: 1.6;
 }
 
+/* Modal scroll prevention */
+body.modal-open {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+}
+
 .app {
   min-height: 100vh;
   display: flex;

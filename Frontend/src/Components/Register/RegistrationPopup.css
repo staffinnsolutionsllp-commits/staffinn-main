@@ -28,6 +28,8 @@
     justify-content: center;
     align-items: center;
     z-index: 1050;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Popup Container */
@@ -46,6 +48,8 @@
     animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     scrollbar-width: thin;
     scrollbar-color: var(--primary-color) var(--background-light);
+    margin: 2rem auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .registration-popup::-webkit-scrollbar {
@@ -337,6 +341,18 @@
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
+}
+
+/* Global modal scroll prevention */
+.modal-open {
+    overflow: hidden !important;
+}
+
+/* Ensure modal overlays are scrollable */
+.registration-popup-overlay,
+.popup-overlay,
+.login-modal {
+    overscroll-behavior: contain;
 }
 
 /* Responsive Design */

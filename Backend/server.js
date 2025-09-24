@@ -53,7 +53,17 @@ const API_VERSION = 'v1';
 const API_PREFIX = `/api/${API_VERSION}`;
 
 // Basic middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://staffinn-frontend-app.s3-website.ap-south-1.amazonaws.com',
+    'http://localhost:5173',
+    'http://localhost:5174', 
+    'http://localhost:5175'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

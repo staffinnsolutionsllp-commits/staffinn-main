@@ -43,6 +43,22 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
         }
     }, [isLoggedIn, currentUser]);
 
+    // Prevent body scroll when login modal is open
+    useEffect(() => {
+        if (showLoginModal) {
+            document.body.style.overflow = 'hidden';
+            document.body.classList.add('modal-open');
+        } else {
+            document.body.style.overflow = 'unset';
+            document.body.classList.remove('modal-open');
+        }
+        
+        return () => {
+            document.body.style.overflow = 'unset';
+            document.body.classList.remove('modal-open');
+        };
+    }, [showLoginModal]);
+
     const handleLogin = async (e) => {
         e.preventDefault();
         

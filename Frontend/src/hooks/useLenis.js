@@ -20,7 +20,12 @@ export const useLenis = () => {
       '.clean-modal-content',
       '.staff-dashboard-sidebar',
       '.recruiter-dashboard-sidebar', 
-      '.institute-dashboard-sidebar'
+      '.institute-dashboard-sidebar',
+      '.registration-popup',
+      '.registration-popup-overlay',
+      '.login-modal',
+      '.popup-overlay',
+      '.popup-content'
     ];
 
     const handleWheel = (e) => {
@@ -32,7 +37,17 @@ export const useLenis = () => {
       }
     };
 
+    const handleTouchMove = (e) => {
+      const target = e.target.closest(preventLenisElements.join(','));
+      if (target) {
+        e.stopPropagation();
+        lenis.stop();
+        setTimeout(() => lenis.start(), 100);
+      }
+    };
+
     document.addEventListener('wheel', handleWheel, { capture: true });
+    document.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false });
 
     function raf(time) {
       lenis.raf(time);
@@ -43,6 +58,7 @@ export const useLenis = () => {
 
     return () => {
       document.removeEventListener('wheel', handleWheel, { capture: true });
+      document.removeEventListener('touchmove', handleTouchMove, { capture: true });
       lenis.destroy();
     };
   }, []);

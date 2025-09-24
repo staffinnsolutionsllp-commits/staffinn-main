@@ -53,6 +53,15 @@
     cursor: pointer;
   }
   
+  .footer-content-center li a {
+    color: #d9d9d9;
+    text-decoration: none;
+  }
+  
+  .footer-content-center li a:hover {
+    color: white;
+  }
+  
   .footer-social-icons img {
     width: 40px;
     margin-right: 15px;

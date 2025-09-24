@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React from 'react'
+import { Link } from 'react-router-dom'
 import './Footer.css'
 import { assets } from '../../assets/assets'
 const Footer = () => {
@@ -8,7 +9,7 @@ const Footer = () => {
         <div className="footer-content">
             <div className="footer-content-left">
                 <img src={assets.Logo} alt="" />
-                <p>Lorem Ipsum dolor sit amet consectetur adipisicing elit. Ullam atque corrupti enim totam in voluptates eveniet facere assumenda magni, minima consequatur sequi sit laboriosam quos eligendi repellendus et blanditiis. Vitae. </p>
+                <p>Staffinn is a comprehensive platform connecting skilled professionals, educational institutes, and recruiters. We bridge the gap between talent and opportunity through innovative technology, providing seamless recruitment solutions and career development resources for the modern workforce.</p>
                 <div className="footer-social-icons">
                     <img src={assets.facebook_icon} alt="" />
                     <img src={assets.twitter_icon} alt="" />
@@ -18,9 +19,11 @@ const Footer = () => {
             <div className="footer-content-center">
                 <h2>COMPANY</h2>
                 <ul>
-                    <li>Home</li>
-                    <li>About us</li>
-                    <li>Live Tracking</li>
+                    <li><Link to="/">Home</Link></li>
+                    <li><Link to="/staff">Staff</Link></li>
+                    <li><Link to="/recruiter">Recruiter</Link></li>
+                    <li><Link to="/institute">Institute</Link></li>
+                    <li><Link to="/news">News</Link></li>
                     <li>Privacy policy</li>
                 </ul>
             </div>
@@ -28,7 +31,7 @@ const Footer = () => {
                <h2>GET IN TOUCH</h2>
                <ul>
                 <li>+1-212-456-7890</li>
-                <li>contact@staffinn.com</li>
+                <li>staffinnsolutionsllp@gmail.com</li>
                </ul>
             </div>
         </div>    

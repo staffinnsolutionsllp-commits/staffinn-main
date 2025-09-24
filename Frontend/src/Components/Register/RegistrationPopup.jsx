@@ -562,6 +562,16 @@ const RegistrationPopup = ({ onClose, onRegister, onLoginRedirect }) => {
    const [isRegistering, setIsRegistering] = useState(false);
    const [registrationError, setRegistrationError] = useState('');
 
+   // Prevent body scroll when modal is open
+   React.useEffect(() => {
+       document.body.style.overflow = 'hidden';
+       document.body.classList.add('modal-open');
+       return () => {
+           document.body.style.overflow = 'unset';
+           document.body.classList.remove('modal-open');
+       };
+   }, []);
+
    const handleRegisterClick = (role) => {
        setSelectedRole(role);
        setRegistrationError('');
