@@ -10,7 +10,7 @@ class ProgressSocketService {
     try {
       if (!this.socket) {
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001';
-        const socketUrl = API_URL.replace('/api/v1', '');
+        const socketUrl = API_URL.includes('localhost') ? API_URL.replace('/api/v1', '') : API_URL;
         
         this.socket = io(socketUrl, {
           transports: ['websocket', 'polling'],
