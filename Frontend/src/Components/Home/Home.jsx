@@ -5,8 +5,8 @@ import axios from 'axios';
 import './Home.css';
 import Footer from '../Footer/Footer';
 import HomeImage from '../../assets/Home.jpg';
-import JobCard from '../Common/JobCard';
-import CourseCard from '../Common/CourseCard';
+import JobCard from '../common/JobCard';
+import CourseCard from '../common/CourseCard';
 import apiWithLoading from '../../services/apiWithLoading';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 
