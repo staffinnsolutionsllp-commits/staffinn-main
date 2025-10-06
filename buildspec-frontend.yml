@@ -1,0 +1,20 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+  pre_build:
+    commands:
+      - echo Installing Frontend dependencies...
+  build:
+    commands:
+      - echo Building Frontend...
+      - cd Frontend
+      - npm install
+      - npm run build
+  post_build:
+    commands:
+      - echo Frontend build completed
+artifacts:
+  files:
+    - 'Frontend/dist/**/*'

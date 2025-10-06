@@ -1,0 +1,20 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+  pre_build:
+    commands:
+      - echo Installing Master Admin dependencies...
+  build:
+    commands:
+      - echo Building Master Admin Panel...
+      - cd MasterAdminPanel
+      - npm install
+      - npm run build
+  post_build:
+    commands:
+      - echo Master Admin build completed
+artifacts:
+  files:
+    - 'MasterAdminPanel/dist/**/*'

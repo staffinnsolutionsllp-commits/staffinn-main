@@ -1,0 +1,21 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+  pre_build:
+    commands:
+      - echo Installing Backend dependencies...
+  build:
+    commands:
+      - echo Building Backend...
+      - cd Backend
+      - npm install --production
+  post_build:
+    commands:
+      - echo Backend build completed
+artifacts:
+  files:
+    - 'Backend/**/*'
+    - 'appspec.yml'
+    - 'scripts/**/*'
