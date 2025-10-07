@@ -5,16 +5,35 @@ phases:
       nodejs: 18
   pre_build:
     commands:
-      - echo Installing Frontend dependencies...
+      - echo Installing dependencies for all applications...
   build:
     commands:
-      - echo Building Frontend...
+      - echo Building all frontend applications...
+      # Build Frontend
       - cd Frontend
       - npm install
       - npm run build
+      - cd ..
+      # Build Master Admin Panel
+      - cd MasterAdminPanel
+      - npm install
+      - npm run build
+      - cd ..
+      # Build News Admin Panel
+      - cd NewsAdminPanel
+      - npm install
+      - npm run build
+      - cd ..
   post_build:
     commands:
-      - echo Frontend build completed
+      - echo All applications build completed
+      - echo Deploying to S3 buckets...
+      - aws s3 sync Frontend/dist/ s3://staffinn-frontend-app --delete
+      - aws s3 sync MasterAdminPanel/dist/ s3://staffinn-master-admin --delete
+      - aws s3 sync NewsAdminPanel/dist/ s3://staffinn-news-admin --delete
+      - echo All deployments completed
 artifacts:
   files:
     - 'Frontend/dist/**/*'
+    - 'MasterAdminPanel/dist/**/*'
+    - 'NewsAdminPanel/dist/**/*'
