@@ -284,9 +284,9 @@
 }
 
 .submit-btn {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: white;
-    border: none;
+    background: var(--primary-color) !important;
+    color: white !important;
+    border: none !important;
     box-shadow: 0 4px 15px rgba(72, 99, 247, 0.2);
     margin-top: 20px;
 }

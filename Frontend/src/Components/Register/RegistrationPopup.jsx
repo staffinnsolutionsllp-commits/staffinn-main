@@ -191,8 +191,7 @@ const InstituteRegistrationForm = ({ onRegister }) => {
        email: '',
        password: '',
        confirmPassword: '',
-       phoneNumber: '',
-       registrationNumber: ''
+       phoneNumber: ''
    });
    const [formQuality, setFormQuality] = useState(0);
    const [qualityMessage, setQualityMessage] = useState("Start filling the form to register your institute!");
@@ -350,19 +349,7 @@ const InstituteRegistrationForm = ({ onRegister }) => {
                    }
                </div>
 
-               <div className="input-group">
-                   <input 
-                       type="text"
-                       placeholder="Registration Number *"
-                       value={formData.registrationNumber}
-                       onChange={(e) => handleInputChange('registrationNumber', e.target.value.toUpperCase())}
-                       className={fieldErrors.registrationNumber || errors.registrationNumber ? 'error' : ''}
-                       required
-                   />
-                   {(fieldErrors.registrationNumber || errors.registrationNumber) && 
-                       <span className="error-text">{fieldErrors.registrationNumber || errors.registrationNumber}</span>
-                   }
-               </div>
+
 
                <button type="submit" className="submit-btn">Register</button>
            </form>
@@ -377,8 +364,7 @@ const RecruiterRegistrationForm = ({ onRegister }) => {
        email: '',
        password: '',
        confirmPassword: '',
-       phoneNumber: '',
-       website: ''
+       phoneNumber: ''
    });
    const [formQuality, setFormQuality] = useState(0);
    const [qualityMessage, setQualityMessage] = useState("Start filling the form to become a recruiter!");
@@ -536,19 +522,7 @@ const RecruiterRegistrationForm = ({ onRegister }) => {
                    }
                </div>
 
-               <div className="input-group">
-                   <input 
-                       type="url"
-                       placeholder="Website *"
-                       value={formData.website}
-                       onChange={(e) => handleInputChange('website', e.target.value)}
-                       className={fieldErrors.website || errors.website ? 'error' : ''}
-                       required
-                   />
-                   {(fieldErrors.website || errors.website) && 
-                       <span className="error-text">{fieldErrors.website || errors.website}</span>
-                   }
-               </div>
+
 
                <button type="submit" className="submit-btn">Register</button>
            </form>
