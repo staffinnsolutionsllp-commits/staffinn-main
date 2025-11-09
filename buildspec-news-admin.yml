@@ -1,0 +1,20 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+  pre_build:
+    commands:
+      - echo Installing News Admin dependencies...
+  build:
+    commands:
+      - echo Building News Admin Panel...
+      - cd NewsAdminPanel
+      - npm install
+      - npm run build
+  post_build:
+    commands:
+      - echo News Admin build completed
+artifacts:
+  files:
+    - 'NewsAdminPanel/dist/**/*'

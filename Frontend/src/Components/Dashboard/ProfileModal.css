@@ -1,0 +1,245 @@
+/* Profile Modal Styles */
+.recruiter-profile-modal {
+    background: white;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.recruiter-profile-content {
+    padding: 20px;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.profile-photo img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.profile-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #4863f7;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: bold;
+}
+
+.profile-info h3 {
+    margin: 0 0 10px 0;
+    color: #1f2937;
+    font-size: 24px;
+}
+
+.profile-info p {
+    margin: 5px 0;
+    color: #6b7280;
+}
+
+.profile-section {
+    margin-bottom: 25px;
+}
+
+.profile-section h4 {
+    color: #1f2937;
+    margin-bottom: 15px;
+    font-size: 18px;
+    border-bottom: 2px solid #4863f7;
+    padding-bottom: 5px;
+}
+
+.skills-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.skill-tag {
+    background: #e0e7ff;
+    color: #4338ca;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.experience-item, .certificate-item {
+    background: #f9fafb;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 4px solid #4863f7;
+}
+
+.experience-item h5, .certificate-item h5 {
+    margin: 0 0 8px 0;
+    color: #1f2937;
+    font-size: 16px;
+}
+
+.experience-item p, .certificate-item p {
+    margin: 4px 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* Profile Photo Upload Styles */
+.profile-photo-upload {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 2px dashed #d1d5db;
+}
+
+.current-photo {
+    flex-shrink: 0;
+}
+
+.profile-photo-preview {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #4863f7;
+}
+
+.photo-placeholder {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: #4863f7;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: bold;
+}
+
+.photo-upload-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.upload-photo-btn, .remove-photo-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.upload-photo-btn {
+    background: #4863f7;
+    color: white;
+}
+
+.upload-photo-btn:hover {
+    background: #3b4de8;
+}
+
+.upload-photo-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.remove-photo-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.remove-photo-btn:hover {
+    background: #dc2626;
+}
+
+/* Enhanced Document Preview Styles */
+.document-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: 200px;
+}
+
+.document-preview img {
+    transition: transform 0.2s ease;
+}
+
+.document-preview img:hover {
+    transform: scale(1.05);
+}
+
+.certificates-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 400px;
+}
+
+.institute-documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.institute-document-item {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.institute-document-item strong {
+    display: block;
+    margin-bottom: 10px;
+    color: #495057;
+    font-size: 14px;
+}
+
+/* Document preview button styles */
+.document-preview button {
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.document-preview button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Certificate preview styles */
+.certificates-preview > div {
+    transition: transform 0.2s ease;
+}
+
+.certificates-preview > div:hover {
+    transform: translateY(-2px);
+}
+
+.certificates-preview button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(255,193,7,0.3);
+}

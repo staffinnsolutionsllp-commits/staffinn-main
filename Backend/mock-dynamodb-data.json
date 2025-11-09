@@ -1,0 +1,126 @@
+{
+  "staffinn-users": {},
+  "staffinn-staff-profiles": {},
+  "staffinn-institute-profiles": {
+    "institute-1": {
+      "instituteId": "institute-1",
+      "instituteName": "Test Institute 1",
+      "email": "institute1@test.com",
+      "location": "Test City 1",
+      "createdAt": "2024-01-15T10:00:00.000Z"
+    },
+    "institute-2": {
+      "instituteId": "institute-2",
+      "instituteName": "Test Institute 2",
+      "email": "institute2@test.com",
+      "location": "Test City 2",
+      "createdAt": "2024-02-20T10:00:00.000Z"
+    }
+  },
+  "staffinn-institute-students": {},
+  "staffinn-courses": {
+    "course-1": {
+      "coursesId": "course-1",
+      "instituteId": "institute-1",
+      "courseName": "Advanced Programming",
+      "createdAt": "2024-01-30T10:00:00.000Z"
+    },
+    "course-2": {
+      "coursesId": "course-2",
+      "instituteId": "institute-1",
+      "courseName": "Database Management",
+      "createdAt": "2024-02-02T10:00:00.000Z"
+    },
+    "course-3": {
+      "coursesId": "course-3",
+      "instituteId": "institute-2",
+      "courseName": "Machine Learning Basics",
+      "createdAt": "2024-02-05T10:00:00.000Z"
+    }
+  },
+  "staffinn-contact-history": {},
+  "staffinn-hiring-records": {},
+  "staffinn-notifications": {},
+  "staffinn-jobs": {
+    "job-1": {
+      "jobId": "job-1",
+      "recruiterId": "recruiter-1",
+      "jobTitle": "Software Developer",
+      "company": "Test Company 1",
+      "createdAt": "2024-02-01T10:00:00.000Z"
+    },
+    "job-2": {
+      "jobId": "job-2",
+      "recruiterId": "recruiter-2",
+      "jobTitle": "Data Analyst",
+      "company": "Test Company 2",
+      "createdAt": "2024-02-05T10:00:00.000Z"
+    },
+    "job-3": {
+      "jobId": "job-3",
+      "recruiterId": "recruiter-3",
+      "jobTitle": "Project Manager",
+      "company": "Test Company 3",
+      "createdAt": "2024-02-10T10:00:00.000Z"
+    }
+  },
+  "staffinn-job-applications": {},
+  "recruiter-news": {
+    "7cb85fa4-7e2a-4e89-8363-56404a244e0a": {
+      "recruiterNewsID": "7cb85fa4-7e2a-4e89-8363-56404a244e0a",
+      "recruiterId": "test-recruiter-123",
+      "recruiterName": "Test Recruiter",
+      "title": "Test News for Admin Panel",
+      "date": "2025-08-25",
+      "company": "Test Company",
+      "venue": "Test Venue",
+      "expectedParticipants": 50,
+      "details": "This is a test news item created to verify admin panel integration.",
+      "type": "News",
+      "verified": true,
+      "bannerImage": null,
+      "isVisible": true,
+      "createdAt": "2025-08-25T17:47:12.515Z",
+      "updatedAt": "2025-08-25T17:47:12.515Z"
+    }
+  },
+  "staffinn-issue-section": {},
+  "staffinn-admin": {
+    "admin": {
+      "adminId": "admin",
+      "password": "$2b$10$wAXm8VPM19FIPmL4wm6d7OphtWJNd55sRSJTM1QUyv.AbfL7SG6be",
+      "createdAt": "2025-09-11T17:14:56.304Z",
+      "updatedAt": "2025-09-11T17:14:56.304Z"
+    }
+  },
+  "user-quiz-progress": {},
+  "staffinn-institute-courses": {},
+  "institute-government-schemes": {
+    "66f43c44-7bd6-4ae5-9187-514b68cb9445": {
+      "institutegovschm": "66f43c44-7bd6-4ae5-9187-514b68cb9445",
+      "instgovsch": "66f43c44-7bd6-4ae5-9187-514b68cb9445",
+      "instituteId": "test-institute-123",
+      "schemeId": "66f43c44-7bd6-4ae5-9187-514b68cb9445",
+      "schemeName": "Model Test Scheme",
+      "description": "Created using the model",
+      "link": "https://model-test.com",
+      "createdAt": "2025-09-22T13:06:49.542Z",
+      "updatedAt": "2025-09-22T13:06:49.542Z"
+    }
+  },
+  "staffinn-users-dev": {},
+  "staffinn-staff-profiles-dev": {},
+  "staffinn-contact-history-dev": {},
+  "staffinn-notifications-dev": {},
+  "staffinn-institute-courses-dev": {},
+  "staffinn-institute-students-dev": {},
+  "staffinn-issue-section-dev": {},
+  "staffinn-admin-dev": {
+    "admin": {
+      "adminId": "admin",
+      "password": "$2b$10$I.Xr5ohbqu7DFuDARhGs2uKgbXD5jipoG2zN6mUh9hIBMN4B2pY8C",
+      "createdAt": "2025-09-24T11:48:49.165Z",
+      "updatedAt": "2025-09-24T11:48:49.166Z"
+    }
+  }
+}

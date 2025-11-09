@@ -1,0 +1,383 @@
+/* InstituteListPage.css */
+
+.institute-list-page {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+  
+  /* Search Section with Background Image */
+  .institute-search-section {
+    background-size: cover;
+  background-position: center;
+  padding: 80px 60px;
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  color: white;
+  }
+  
+  .page-title {
+    font-size: 3rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 30px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  
+  .institute-search-container {
+    position: relative;
+    max-width: 1200px;
+    margin-top: 50px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 20px 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+  }
+  
+  .dual-search-inputs {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+  }
+  
+  .search-input {
+    flex: 1;
+    height: 56px;
+    padding: 0 20px;
+    border: 1px solid rgba(72, 99, 247, 0.2);
+    border-radius: 8px;
+    font-size: 16px;
+    color: #333;
+    background: white;
+    outline: none;
+    transition: all 0.3s ease;
+    min-width: 250px;
+  }
+  
+  .search-input:focus {
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+  }
+  
+  .search-btn {
+    height: 56px;
+    padding: 0 32px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+    background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-width: 140px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+  }
+  
+  .search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(72, 99, 247, 0.4);
+  }
+  
+  
+  
+  /* Filters Section - Now above institute cards */
+  .institute-filters {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  .institute-filters h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1e40af;
+    margin-bottom: 20px;
+  }
+  
+  .filter-options {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+  
+  .filter-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .filter-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #4863f7;
+  }
+  
+  .filter-option label {
+    font-size: 0.95rem;
+    color: #4b5563;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  
+  /* Institutes Grid */
+  .institutes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+  }
+  
+  .institute-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    padding: 25px;
+    transition: all 0.3s ease;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .institute-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .institute-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .institute-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  
+  .institute-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .institute-name {
+    flex: 1;
+  }
+  
+  .institute-name h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #1e40af;
+    margin-bottom: 5px;
+  }
+  
+  .brainary-verified {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 50px;
+    margin-top: 6px;
+  }
+  
+  .brainary-verified svg {
+    color: #10b981;
+    font-size: 0.9rem;
+  }
+  
+  .institute-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+  
+  .badge {
+    background-color: #1e40af;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 50px;
+  }
+  
+  .institute-details {
+    margin-bottom: 20px;
+  }
+  
+  .info-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: #4b5563;
+  }
+  
+  .info-item svg {
+    color: #4863f7;
+    min-width: 16px;
+  }
+  
+  .info-item.experience {
+    font-weight: 600;
+    color: #1f2937;
+    margin-top: 5px;
+  }
+  
+  .institute-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 10px;
+  }
+  
+  .view-institute-btn, 
+  .contact-institute-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+  
+  .view-institute-btn {
+    background-color: #4863f7;
+    color: white;
+    border: none;
+  }
+  
+  .view-institute-btn:hover {
+    background-color: #3a4fd8;
+    transform: translateY(-2px);
+  }
+  
+  .contact-institute-btn {
+    background-color: white;
+    color: #4863f7;
+    border: 1px solid #4863f7;
+  }
+  
+  .contact-institute-btn:hover {
+    background-color: #f0f4ff;
+    transform: translateY(-2px);
+  }
+  
+  .no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 50px 20px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+  
+  .no-results h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #1e40af;
+    margin-bottom: 10px;
+  }
+  
+  .no-results p {
+    color: #6b7280;
+  }
+  
+  /* Responsive Styles */
+  @media (max-width: 992px) {
+    .filter-options {
+      gap: 20px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .page-title {
+      font-size: 2.5rem;
+    }
+  
+    .institutes-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .institute-card {
+      max-width: 100%;
+    }
+  
+    .institute-actions {
+      flex-direction: column;
+    }
+  
+    .filter-options {
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .dual-search-inputs {
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .search-input {
+      width: 100%;
+    }
+    
+    .search-btn {
+      width: 100%;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .page-title {
+      font-size: 2rem;
+    }
+  
+    .institute-header {
+      flex-direction: column;
+      text-align: center;
+    }
+  
+    .institute-badges {
+      justify-content: center;
+    }
+  
+    .institute-search-section {
+      padding: 40px 20px;
+    }
+  
+    .search-input {
+      font-size: 0.9rem;
+    }
+    
+    .institute-search-container {
+      padding: 16px 20px;
+    }
+  }

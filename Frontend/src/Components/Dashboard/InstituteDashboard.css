@@ -1,0 +1,2592 @@
+/* InstituteDashboard.css - Updated with institute- prefix */
+.institute-dashboard {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f9fafb;
+    padding-top: 80px; /* Space for fixed navbar */
+}
+
+/* Mobile Hamburger Menu */
+.mobile-hamburger {
+    display: none;
+    position: fixed;
+    top: 90px;
+    left: 15px;
+    z-index: 1001;
+    background-color: #1e3a8a;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.mobile-hamburger:hover {
+    background-color: #1e40af;
+    transform: scale(1.05);
+}
+
+/* Sidebar Styles */
+.institute-dashboard-sidebar {
+    width: 250px;
+    background-color: #1e3a8a;
+    color: #fff;
+    padding: 20px 0;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 80px; /* Start below navbar */
+    height: calc(100vh - 80px); /* Full height minus navbar */
+    overflow-y: auto;
+    z-index: 100;
+    transition: transform 0.3s ease;
+}
+
+.institute-dashboard-sidebar.mobile-open {
+    transform: translateX(0);
+}
+
+.institute-info {
+    padding: 0 20px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.institute-logo {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    object-fit: cover;
+    margin-bottom: 10px;
+    background: white;
+    padding: 5px;
+}
+
+.institute-sidebar-menu {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.institute-sidebar-menu li {
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    font-size: 0.95rem;
+}
+
+.institute-sidebar-menu li:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left-color: rgba(255, 255, 255, 0.5);
+}
+
+.institute-sidebar-menu li.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-left-color: #4863f7;
+    font-weight: 600;
+}
+
+/* Main Content Styles */
+.institute-dashboard-content {
+    flex: 1;
+    margin-left: 250px;
+    padding: 25px;
+    overflow-y: auto;
+    position: relative;
+    z-index: 1;
+}
+
+.institute-dashboard-content h1 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+/* Profile Tab Styles */
+.institute-profile-tab {
+    max-width: 1000px;
+}
+
+.institute-profile-details-card {
+    background-color: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+}
+
+.institute-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    margin-bottom: 30px;
+    padding-bottom: 25px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.institute-profile-logo {
+    width: 120px;
+    height: 120px;
+    border-radius: 15px;
+    object-fit: cover;
+    background: #f8fafc;
+    padding: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.institute-profile-info h2 {
+    margin: 0 0 10px 0;
+    color: #1e293b;
+    font-size: 1.8rem;
+}
+
+.institute-experience-text {
+    color: #64748b;
+    font-size: 1.1rem;
+    margin: 10px 0 15px 0;
+    font-style: italic;
+}
+
+.institute-profile-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.institute-profile-badge {
+    background-color: #4863f7;
+    color: white;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.institute-profile-contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.institute-contact-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 15px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border-left: 4px solid #4863f7;
+}
+
+.institute-contact-item strong {
+    color: #374151;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-contact-item span {
+    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Events Management Styles */
+.institute-events-management-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.institute-event-management-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-event-management-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.institute-event-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.institute-event-card-header h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+    font-weight: 600;
+    flex: 1;
+    line-height: 1.3;
+}
+
+.institute-event-type-badge {
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-event-type-badge.event {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.institute-event-type-badge.news {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.institute-event-type-badge.workshop {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.institute-event-card-details {
+    margin-bottom: 15px;
+}
+
+.institute-event-card-details p {
+    margin: 8px 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.institute-event-card-details strong {
+    color: #374151;
+    font-weight: 600;
+}
+
+.institute-verification-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.institute-verification-badge.verified {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.institute-verification-badge.pending {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.institute-event-card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Modal Styles */
+.institute-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+    backdrop-filter: blur(2px);
+    /* Prevent background scroll and scroll chaining */
+    overflow: hidden;
+    overscroll-behavior: contain;
+    /* Disable smooth scrolling for modal overlay */
+    scroll-behavior: auto !important;
+}
+
+.institute-modal-content {
+    background-color: white;
+    border-radius: 15px;
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    animation: modalSlideIn 0.3s ease-out;
+    position: relative;
+    /* Prevent scroll chaining to parent and ensure independent scrolling */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    /* Force normal scroll behavior to prevent Lenis interference */
+    scroll-behavior: auto !important;
+    /* Create isolated stacking context */
+    isolation: isolate;
+    /* Optimize for scrolling performance */
+    transform: translateZ(0);
+    will-change: scroll-position;
+    /* Ensure scrolling works on all browsers */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Modal Error State */
+.institute-modal-error {
+    padding: 30px;
+    text-align: center;
+    color: #dc2626;
+}
+
+.institute-modal-error h3 {
+    margin: 0 0 10px 0;
+    color: #dc2626;
+}
+
+.institute-modal-error p {
+    margin: 0 0 20px 0;
+    color: #64748b;
+}
+
+.institute-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 30px;
+    border-bottom: 2px solid #f1f5f9;
+    background-color: #f8fafc;
+    border-radius: 15px 15px 0 0;
+}
+
+.institute-modal-header h2 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.institute-close-button {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    color: #64748b;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.institute-close-button:hover {
+    background-color: #f1f5f9;
+    color: #374151;
+}
+
+.institute-modal-form {
+    padding: 30px;
+}
+
+.institute-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.institute-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.institute-form-group label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-form-group input,
+.institute-form-group select,
+.institute-form-group textarea {
+    padding: 12px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background-color: #fff;
+}
+
+.institute-form-group input:focus,
+.institute-form-group select:focus,
+.institute-form-group textarea:focus {
+    outline: none;
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+    background-color: #fefefe;
+}
+
+.institute-form-group textarea {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.institute-checkbox-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+}
+
+.institute-checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.institute-checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #4863f7;
+}
+
+.institute-form-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Course Management Styles */
+.course-modules-section {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    background: #f8f9fa;
+}
+
+.course-module-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.module-header {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.module-header input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.module-content-section {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e9ecef;
+}
+
+.module-content-section h5 {
+    margin-bottom: 10px;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.content-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.content-item input[type="text"] {
+    flex: 2;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.content-item select {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.content-item input[type="file"] {
+    flex: 2;
+    padding: 4px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.institute-primary-button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.institute-secondary-button {
+    padding: 12px 24px;
+    background-color: #f8fafc;
+    color: #64748b;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.institute-secondary-button:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+/* Dashboard Overview Styles */
+.institute-dashboard-overview {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Metrics Grid */
+.institute-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.institute-metric-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.institute-metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.institute-metric-card h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.institute-metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 10px 0;
+    color: #1e293b;
+}
+
+.institute-metric-trend {
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.institute-metric-trend.positive {
+    color: #10b981;
+}
+
+.institute-metric-trend.negative {
+    color: #ef4444;
+}
+
+/* Chart Filters */
+.institute-chart-filters {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 25px;
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.institute-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.institute-filter-group label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.9rem;
+    min-width: 80px;
+}
+
+/* Charts */
+.institute-charts-row {
+    display: flex;
+    gap: 25px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.institute-chart-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    flex: 1;
+    min-width: 300px;
+}
+
+.institute-chart-container h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+/* Stat Boxes */
+.institute-stat-boxes {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex: 1;
+    min-width: 250px;
+}
+
+.institute-stat-box {
+    background-color: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    flex: 1;
+}
+
+.institute-stat-box h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #334155;
+    font-size: 1rem;
+}
+
+.institute-stat-box .institute-stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 5px 0;
+    color: #4863f7;
+}
+
+.institute-stat-box .institute-stat-description {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 5px 0 0;
+}
+
+/* Upcoming Events */
+.institute-upcoming-events {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+}
+
+.institute-upcoming-events h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+.institute-events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.institute-event-card {
+    background-color: #f8fafc;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+}
+
+.institute-event-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.institute-event-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    height: 70px;
+    background-color: #4863f7;
+    color: white;
+    border-radius: 8px;
+    padding: 5px;
+}
+
+.institute-event-date .institute-day {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.institute-event-date .institute-month {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.institute-event-details {
+    flex: 1;
+}
+
+.institute-event-details h4 {
+    margin: 0 0 5px;
+    color: #1e293b;
+    font-size: 1rem;
+}
+
+.institute-event-details p {
+    margin: 3px 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Tables */
+.institute-data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.institute-data-table.full-width {
+    margin: 20px 0;
+}
+
+.institute-data-table th, 
+.institute-data-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.institute-data-table th {
+    font-weight: 600;
+    color: #64748b;
+    background-color: #f8fafc;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.institute-data-table tr:hover {
+    background-color: #f1f5f9;
+}
+
+.institute-data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.institute-status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.institute-status-badge.active {
+    background-color: #dcfce7;
+    color: #16a34a;
+}
+
+.institute-status-badge.completed {
+    background-color: #dbeafe;
+    color: #2563eb;
+}
+
+.institute-status-badge.dropped {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.institute-status-badge.placed {
+    background-color: #d1fae5;
+    color: #059669;
+}
+
+.institute-status-badge.interviewing {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.institute-status-badge.searching {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+.institute-status-badge.not-eligible-yet {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+.institute-status-badge.pending {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.institute-status-badge.hired {
+    background-color: #d1fae5;
+    color: #059669;
+}
+
+.institute-status-badge.rejected {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.institute-status-badge.applied {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+.institute-status-badge.not-placed {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+/* Placement History Modal Styles */
+.institute-placement-history-content {
+    padding: 0;
+    min-height: 200px;
+}
+
+.institute-placement-history-content .institute-data-table {
+    margin: 0;
+}
+
+.institute-placement-history-content .institute-data-table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 15px;
+}
+
+.institute-placement-history-content .institute-data-table td {
+    padding: 15px;
+    vertical-align: middle;
+}
+
+.institute-placement-history-content .institute-status-badge {
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.institute-table-action {
+    padding: 6px 12px;
+    border: 1px solid #e2e8f0;
+    background-color: white;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    margin-right: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.institute-table-action:hover:not(:disabled) {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #374151;
+    transform: translateY(-1px);
+}
+
+.institute-table-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.institute-table-action.view {
+    color: #2563eb;
+    border-color: #dbeafe;
+}
+
+.institute-table-action.view:hover:not(:disabled) {
+    background-color: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.institute-table-action.edit {
+    color: #059669;
+    border-color: #d1fae5;
+}
+
+.institute-table-action.edit:hover:not(:disabled) {
+    background-color: #ecfdf5;
+    border-color: #86efac;
+    color: #047857;
+}
+
+.institute-table-action.delete {
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.institute-table-action.delete:hover:not(:disabled) {
+    background-color: #fef2f2;
+    border-color: #fca5a5;
+}
+
+/* Tab Header */
+.institute-tab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.institute-tab-header > div {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.institute-primary-button {
+    padding: 12px 20px;
+    background-color: #4863f7;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.institute-primary-button:hover {
+    background-color: #3a4fd8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.3);
+}
+
+.institute-action-button {
+    padding: 12px 20px;
+    background-color: white;
+    color: #4863f7;
+    border: 1px solid #4863f7;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.institute-action-button:hover {
+    background-color: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Tab Section */
+.institute-tab-section {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+}
+
+.institute-tab-section h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #334155;
+    font-size: 1.1rem;
+}
+
+/* Students Tab */
+.institute-students-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Search & Filter Styles */
+.institute-search-section {
+    margin-bottom: 25px;
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.institute-search-row,
+.institute-filter-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.institute-search-row {
+    align-items: center;
+}
+
+.institute-filter-row {
+    justify-content: flex-start;
+}
+
+.institute-search-input {
+    padding: 10px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 200px;
+    transition: all 0.3s ease;
+}
+
+.institute-search-input.large {
+    padding: 12px 15px;
+    font-size: 1rem;
+}
+
+.institute-search-input:focus {
+    outline: none;
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+}
+
+.institute-filter-select {
+    padding: 10px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background-color: white;
+    min-width: 150px;
+    font-size: 0.9rem;
+    color: #64748b;
+    transition: all 0.3s ease;
+}
+
+.institute-filter-select:focus {
+    outline: none;
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+    color: #374151;
+}
+
+.institute-search-section.searching {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.institute-search-section.searching::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e2e8f0;
+    border-top: 2px solid #4863f7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Course Cards */
+.institute-course-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 25px;
+}
+
+.institute-course-card {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #f1f5f9;
+}
+
+.institute-course-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: #4863f7;
+}
+
+.institute-course-card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #1e293b;
+    font-size: 1.2rem;
+    border-bottom: 2px solid #4863f7;
+    padding-bottom: 10px;
+}
+
+.institute-course-details {
+    margin-bottom: 20px;
+}
+
+.institute-detail-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    padding: 5px 0;
+}
+
+.institute-detail-item .institute-label {
+    color: #64748b;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.institute-detail-item .institute-value {
+    color: #1e293b;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.institute-course-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.institute-course-actions .institute-action-button {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+/* Events Tab */
+.institute-events-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Courses Tab */
+.institute-courses-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Placements Tab */
+.institute-placements-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Government Schemes Tab Styles */
+.institute-govt-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+.institute-govt-schemes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.institute-govt-scheme-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #10b981;
+}
+
+.institute-govt-scheme-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.institute-scheme-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.institute-scheme-header h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+    font-weight: 600;
+    flex: 1;
+    line-height: 1.3;
+}
+
+.institute-scheme-status {
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-scheme-status.active {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.institute-scheme-status.pending {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.institute-scheme-status.completed {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.institute-scheme-status.suspended {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.institute-scheme-details {
+    margin-bottom: 15px;
+}
+
+.institute-scheme-details p {
+    margin: 8px 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.institute-scheme-details strong {
+    color: #374151;
+    font-weight: 600;
+}
+
+.institute-scheme-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Government Scheme Modal Styles */
+.institute-govt-scheme-details {
+    padding: 0;
+    min-height: 200px;
+}
+
+.institute-scheme-info {
+    padding: 25px;
+}
+
+.institute-scheme-info h3 {
+    margin: 0 0 20px 0;
+    color: #1e293b;
+    font-size: 1.4rem;
+    font-weight: 700;
+    border-bottom: 2px solid #10b981;
+    padding-bottom: 10px;
+}
+
+.institute-scheme-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+    padding: 20px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-scheme-meta p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.institute-scheme-meta strong {
+    color: #374151;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-scheme-description,
+.institute-scheme-eligibility,
+.institute-scheme-process,
+.institute-scheme-contact {
+    margin-bottom: 25px;
+    padding: 20px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border-left: 4px solid #10b981;
+}
+
+.institute-scheme-description:last-child,
+.institute-scheme-eligibility:last-child,
+.institute-scheme-process:last-child,
+.institute-scheme-contact:last-child {
+    margin-bottom: 0;
+}
+
+.institute-scheme-description h4,
+.institute-scheme-eligibility h4,
+.institute-scheme-process h4,
+.institute-scheme-contact h4 {
+    margin: 0 0 12px 0;
+    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-scheme-description p,
+.institute-scheme-eligibility p,
+.institute-scheme-process p,
+.institute-scheme-contact p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+/* Generic Tab Styles */
+.institute-collaborations-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+.institute-collaborations-tab h1,
+.institute-govt-tab h1 {
+    color: #1e293b;
+    margin-bottom: 15px;
+}
+
+/* Responsive Styles */
+@media (max-width: 1200px) {
+    .institute-dashboard-sidebar {
+        width: 220px;
+    }
+    
+    .institute-dashboard-content {
+        margin-left: 220px;
+    }
+}
+
+@media (max-width: 992px) {
+    .institute-dashboard {
+        padding-top: 60px; /* Smaller navbar on mobile */
+    }
+
+    .mobile-hamburger {
+        display: block;
+    }
+
+    .institute-dashboard-sidebar {
+        position: fixed;
+        top: 80px;
+        left: 0;
+        width: 280px;
+        height: calc(100vh - 80px);
+        transform: translateX(-100%);
+        z-index: 1000;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .institute-dashboard-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .institute-dashboard-content {
+        margin-left: 0;
+        padding: 15px;
+        padding-top: 60px; /* Space for hamburger menu */
+    }
+
+    .institute-sidebar-menu {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .institute-sidebar-menu li {
+        flex: 1;
+        min-width: 150px;
+        text-align: center;
+        padding: 10px 15px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        font-size: 0.85rem;
+    }
+
+    .institute-sidebar-menu li.active {
+        border-left-color: transparent;
+        border-bottom-color: #4863f7;
+    }
+
+    .institute-info {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .institute-logo {
+        width: 60px;
+        height: 60px;
+    }
+
+    .institute-info h3 {
+        font-size: 1rem;
+    }
+
+    .institute-modal-content {
+        max-width: 95vw;
+        margin: 10px;
+    }
+
+    .institute-modal-header {
+        padding: 20px;
+    }
+
+    .institute-modal-form {
+        padding: 20px;
+    }
+
+    .institute-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .institute-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-chart-filters {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+
+    .institute-filter-group {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .institute-filter-group label {
+        min-width: auto;
+        font-size: 0.85rem;
+    }
+
+    .institute-charts-row {
+        flex-direction: column;
+    }
+
+    .institute-chart-container {
+        overflow-x: auto;
+        min-width: auto;
+    }
+
+    .institute-tab-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .institute-data-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .institute-course-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-events-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-events-management-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-govt-schemes-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-profile-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+
+    .institute-profile-contact-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-search-row,
+    .institute-filter-row {
+        flex-direction: column;
+    }
+
+    .institute-search-input,
+    .institute-filter-select {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .institute-sidebar-menu {
+        flex-direction: column;
+    }
+
+    .institute-sidebar-menu li {
+        min-width: auto;
+        text-align: left;
+        border-left: 4px solid transparent;
+        border-bottom: none;
+    }
+
+    .institute-sidebar-menu li.active {
+        border-left-color: #4863f7;
+        border-bottom-color: transparent;
+    }
+
+    .institute-scheme-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .institute-scheme-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .institute-scheme-actions .institute-table-action {
+        width: 100%;
+        text-align: center;
+        margin-right: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .institute-dashboard-content {
+        padding: 10px;
+    }
+
+    .institute-modal-overlay {
+        padding: 10px;
+    }
+
+    .institute-modal-header {
+        padding: 15px;
+    }
+
+    .institute-modal-form {
+        padding: 15px;
+    }
+
+    .institute-form-buttons {
+        flex-direction: column;
+    }
+
+    .institute-primary-button,
+    .institute-secondary-button,
+    .institute-action-button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .institute-event-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .institute-event-date {
+        width: 60px;
+        margin: 0 auto;
+    }
+}
+
+/* Loading and Animation Classes */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #64748b;
+    font-size: 1.1rem;
+}
+
+/* Modal Loading State */
+.institute-modal-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    color: #64748b;
+    font-size: 1rem;
+}
+
+.institute-modal-loading::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e2e8f0;
+    border-top: 2px solid #4863f7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal Scroll Fix - Disable Lenis when modals are open */
+body.modal-open {
+    overflow: hidden !important;
+    /* Disable Lenis smooth scroll when modal is open */
+    scroll-behavior: auto !important;
+    /* Prevent any scroll restoration */
+    overscroll-behavior: contain;
+}
+
+/* Ensure modal content and all children use normal scroll behavior */
+body.modal-open *,
+.institute-modal-content,
+.institute-modal-content * {
+    scroll-behavior: auto !important;
+    /* Prevent smooth scrolling interference */
+    -webkit-scroll-behavior: auto !important;
+}
+
+/* Force modal content to be scrollable */
+.institute-modal-content {
+    /* Ensure the modal content can scroll */
+    contain: layout style paint;
+    /* Create a new scroll context */
+    transform: translate3d(0, 0, 0);
+}
+
+/* Scrollbar Styles */
+.institute-dashboard-content::-webkit-scrollbar,
+.institute-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.institute-dashboard-content::-webkit-scrollbar-track,
+.institute-modal-content::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+.institute-dashboard-content::-webkit-scrollbar-thumb,
+.institute-modal-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+    border: 1px solid #f1f5f9;
+}
+
+.institute-dashboard-content::-webkit-scrollbar-thumb:hover,
+.institute-modal-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Enhanced scrollbar for better visibility in modals */
+.institute-modal-content::-webkit-scrollbar {
+    width: 10px;
+}
+
+.institute-modal-content::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border: 2px solid #f8fafc;
+}
+
+.institute-modal-content::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Student Profile View Modal Styles */
+.institute-student-profile-view {
+    padding: 0;
+    min-height: 200px;
+    position: relative;
+}
+
+.institute-student-profile-view .loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 10;
+}
+
+.institute-profile-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border-left: 4px solid #4863f7;
+}
+
+.institute-profile-section:last-child {
+    margin-bottom: 0;
+}
+
+.institute-profile-section h4 {
+    margin: 0 0 15px 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.institute-profile-section h5 {
+    margin: 0 0 10px 0;
+    color: #374151;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.institute-profile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.institute-profile-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 12px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-profile-item strong {
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.institute-profile-item span {
+    color: #1e293b;
+    font-size: 0.95rem;
+    font-weight: 500;
+    word-break: break-word;
+}
+
+.institute-academic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.institute-academic-section {
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-academic-section h5 {
+    margin: 0 0 10px 0;
+    color: #4863f7;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 5px;
+}
+
+.institute-academic-section p {
+    margin: 5px 0;
+    font-size: 0.85rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.institute-academic-section p strong {
+    color: #374151;
+    font-weight: 600;
+}
+
+.institute-skills-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.institute-skill-tag {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid #93c5fd;
+}
+
+.institute-documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.institute-document-item {
+    padding: 12px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.institute-document-item strong {
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.institute-document-item a {
+    color: #4863f7;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.institute-document-item a:hover {
+    color: #3a4fd8;
+    text-decoration: underline;
+}
+
+.institute-certificates-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.institute-certificates-list a {
+    color: #4863f7;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.institute-certificates-list a:hover {
+    background-color: #eff6ff;
+    color: #3a4fd8;
+    text-decoration: underline;
+}
+
+/* Skills Input Styles */
+.institute-skills-input-container {
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 50px;
+    background-color: #fff;
+    transition: border-color 0.3s ease;
+}
+
+.institute-skills-input-container:focus-within {
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+}
+
+.institute-skills-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.institute-skill-tag-input {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #93c5fd;
+}
+
+.institute-remove-skill-btn {
+    background: none;
+    border: none;
+    color: #1d4ed8;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.institute-remove-skill-btn:hover {
+    background-color: rgba(29, 78, 216, 0.1);
+}
+
+.institute-skills-input-container input {
+    border: none;
+    outline: none;
+    padding: 8px 0;
+    font-size: 0.95rem;
+    width: 100%;
+    background: transparent;
+}
+
+/* Image Preview Styles for Placement Section */
+.image-preview-container {
+    position: relative;
+    display: inline-block;
+    margin: 0.5rem 0;
+}
+
+.image-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 2px solid #e5e7eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.image-remove-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.image-remove-btn:hover {
+    background-color: #dc2626;
+    transform: scale(1.1);
+}
+
+.institute-company-item,
+.institute-placement-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 15px;
+}
+
+.institute-company-item input,
+.institute-placement-item input {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.institute-company-item input[type="file"],
+.institute-placement-item input[type="file"] {
+    padding: 6px;
+    font-size: 0.85rem;
+}
+
+.institute-add-btn {
+    padding: 10px 16px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 10px;
+}
+
+.institute-add-btn:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+}
+
+.institute-remove-btn {
+    padding: 8px 12px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    align-self: flex-start;
+}
+
+.institute-remove-btn:hover {
+    background-color: #dc2626;
+}
+
+.institute-placement-form {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.institute-companies-section,
+.institute-placements-section {
+    margin-top: 10px;
+}
+
+.file-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.file-input-container input[type="file"] {
+    padding: 6px;
+    font-size: 0.85rem;
+}
+
+.file-input-container .image-preview-container {
+    align-self: flex-start;
+}
+
+/* Industry Collaboration Styles */
+.institute-collaboration-form {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.institute-collaboration-cards-section,
+.institute-mou-items-section {
+    margin-top: 10px;
+}
+
+.institute-collaboration-card-item,
+.institute-mou-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.institute-collaboration-card-item:hover,
+.institute-mou-item:hover {
+    border-color: #4863f7;
+    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.1);
+}
+
+.institute-collaboration-card-item input,
+.institute-collaboration-card-item textarea,
+.institute-mou-item input,
+.institute-mou-item textarea {
+    padding: 12px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background-color: white;
+}
+
+.institute-collaboration-card-item input:focus,
+.institute-collaboration-card-item textarea:focus,
+.institute-mou-item input:focus,
+.institute-mou-item textarea:focus {
+    outline: none;
+    border-color: #4863f7;
+    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+}
+
+.institute-collaboration-card-item textarea,
+.institute-mou-item textarea {
+    resize: vertical;
+    font-family: inherit;
+    min-height: 80px;
+}
+
+.institute-collaboration-card-item input[type="file"],
+.institute-mou-item input[type="file"] {
+    padding: 8px;
+    font-size: 0.9rem;
+    background-color: #f8fafc;
+    border-style: dashed;
+}
+
+.institute-collaboration-card-item .file-input-container,
+.institute-mou-item .file-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.institute-collaboration-card-item .image-placeholder,
+.institute-mou-item .pdf-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    background-color: #f1f5f9;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.pdf-preview-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background-color: #fef3c7;
+    border: 1px solid #fbbf24;
+    border-radius: 8px;
+    margin: 8px 0;
+}
+
+.pdf-indicator {
+    color: #92400e;
+    font-weight: 500;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pdf-remove-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.pdf-remove-btn:hover {
+    background-color: #dc2626;
+    transform: scale(1.1);
+}
+
+.institute-collaboration-card-item .institute-remove-btn,
+.institute-mou-item .institute-remove-btn {
+    align-self: flex-end;
+    margin-top: 10px;
+    padding: 10px 16px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.institute-collaboration-card-item .institute-remove-btn:hover,
+.institute-mou-item .institute-remove-btn:hover {
+    background-color: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.institute-collaboration-cards-section .institute-add-btn,
+.institute-mou-items-section .institute-add-btn {
+    width: 100%;
+    padding: 15px 20px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.institute-collaboration-cards-section .institute-add-btn:hover,
+.institute-mou-items-section .institute-add-btn:hover {
+    background-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+.institute-collaboration-cards-section .institute-add-btn::before {
+    content: '+';
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.institute-mou-items-section .institute-add-btn::before {
+    content: '📄';
+    font-size: 1rem;
+}
+
+/* Industry Collaboration Tab Styles */
+.institute-collaborations-tab {
+    animation: fadeIn 0.3s ease;
+}
+
+.institute-collaborations-tab .institute-tab-header {
+    margin-bottom: 30px;
+}
+
+.institute-collaborations-tab .institute-tab-header h1 {
+    color: #1e293b;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.institute-collaborations-tab .institute-tab-header p {
+    color: #64748b;
+    font-size: 1.1rem;
+    margin: 8px 0 0 0;
+    font-weight: 400;
+}
+
+.institute-collaborations-tab .institute-form-group {
+    margin-bottom: 35px;
+}
+
+.institute-collaborations-tab .institute-form-group > label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 15px;
+    display: block;
+    text-transform: none;
+    letter-spacing: normal;
+    border-bottom: 2px solid #4863f7;
+    padding-bottom: 8px;
+}
+
+.institute-collaborations-tab .institute-form-buttons {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid #f1f5f9;
+}
+
+.institute-collaborations-tab .institute-primary-button {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.institute-collaborations-tab .institute-primary-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(72, 99, 247, 0.3);
+}
+
+.institute-collaborations-tab .institute-primary-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Empty state styles */
+.empty-section {
+    text-align: center;
+    padding: 40px 20px;
+    color: #64748b;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border: 2px dashed #cbd5e1;
+    margin: 20px 0;
+}
+
+.empty-section p {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* MOU download link styles */
+.mou-download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #4863f7;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background-color: #eff6ff;
+    border: 1px solid #dbeafe;
+    transition: all 0.2s ease;
+    margin-top: 8px;
+}
+
+.mou-download-link:hover {
+    background-color: #dbeafe;
+    color: #3a4fd8;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(72, 99, 247, 0.2);
+}
+
+.mou-download-link::before {
+    content: '📄';
+    font-size: 0.9rem;
+}
+
+/* Responsive styles for industry collaboration */
+@media (max-width: 768px) {
+    .institute-collaboration-card-item,
+    .institute-mou-item {
+        padding: 15px;
+        gap: 10px;
+    }
+    
+    .institute-collaboration-card-item .file-input-container,
+    .institute-mou-item .file-input-container {
+        padding: 12px;
+    }
+    
+    .institute-collaborations-tab .institute-tab-header h1 {
+        font-size: 1.6rem;
+    }
+    
+    .institute-collaborations-tab .institute-tab-header p {
+        font-size: 1rem;
+    }
+    
+    .institute-collaboration-cards-section .institute-add-btn,
+    .institute-mou-items-section .institute-add-btn {
+        padding: 12px 16px;
+        font-size: 0.95rem;
+    }
+}
+
+/* Responsive styles for profile view */
+@media (max-width: 768px) {
+    .institute-profile-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-academic-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-documents-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .institute-profile-section {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+}
+/* Upload Progress Indicators */
+.upload-progress {
+  margin-top: 10px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.upload-progress.uploading {
+  background: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.upload-progress.success {
+  background: #e8f5e8;
+  border-color: #4caf50;
+}
+
+.upload-progress.error {
+  background: #ffebee;
+  border-color: #f44336;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 5px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #2196f3;
+  transition: width 0.3s ease;
+}
+
+.upload-status {
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.upload-status.success {
+  color: #4caf50;
+}
+
+.upload-status.error {
+  color: #f44336;
+}
