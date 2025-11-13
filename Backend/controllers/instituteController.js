@@ -41,49 +41,7 @@ console.log('✅ S3 Client initialized:', {
   hasCredentials: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
 });
 
-// Registration number validation service
-const registrationValidationService = {
-  validateRegistrationNumber: async (registrationNumber) => {
-    try {
-      // Basic format validation (6-20 characters, uppercase letters and numbers)
-      const formatValid = /^[A-Z0-9]{6,20}$/.test(registrationNumber);
-      
-      if (!formatValid) {
-        return { isValid: false, message: 'Invalid registration number format' };
-      }
-      
-      // Check if registration number already exists in database
-      const existingInstitute = await userModel.getUserByRegistrationNumber(registrationNumber);
-      if (existingInstitute) {
-        return { isValid: false, message: 'Registration number already exists' };
-      }
-      
-      // Additional validation patterns for common registration number formats
-      const commonPatterns = [
-        /^[A-Z]{2}[0-9]{6,12}$/, // State code + numbers (e.g., UP123456789)
-        /^[0-9]{6,15}$/, // Only numbers (e.g., 123456789)
-        /^[A-Z]{3,5}[0-9]{4,10}$/, // Institution code + numbers
-        /^REG[0-9]{6,12}$/, // REG prefix + numbers
-        /^INST[0-9]{6,12}$/ // INST prefix + numbers
-      ];
-      
-      const matchesPattern = commonPatterns.some(pattern => pattern.test(registrationNumber));
-      
-      if (!matchesPattern) {
-        return { 
-          isValid: false, 
-          message: 'Registration number format does not match standard patterns' 
-        };
-      }
-      
-      return { isValid: true, message: 'Registration number is valid' };
-      
-    } catch (error) {
-      console.error('Registration number validation error:', error);
-      return { isValid: false, message: 'Registration number validation failed' };
-    }
-  }
-};
+
 
 /**
  * Register a new institute
@@ -113,14 +71,7 @@ const registerInstitute = async (req, res) => {
       });
     }
     
-    // Validate registration number
-    const registrationValidation = await registrationValidationService.validateRegistrationNumber(value.registrationNumber);
-    if (!registrationValidation.isValid) {
-      return res.status(400).json({
-        success: false,
-        message: registrationValidation.message
-      });
-    }
+    // Registration number validation removed - no longer required
     
     // Optional: Check if email is verified (uncomment when email verification is implemented)
     // const isEmailVerified = await emailService.isEmailVerified(value.email);
@@ -138,7 +89,7 @@ const registerInstitute = async (req, res) => {
       password: value.password,
       phone: value.phoneNumber,
       role: 'institute',
-      registrationNumber: value.registrationNumber // Store registration number in users table for now
+      // registrationNumber removed - no longer required
     };
     
     // Create user in users table
@@ -194,7 +145,7 @@ const registerInstitute = async (req, res) => {
           email: user.email,
           role: user.role,
           phone: user.phone,
-          registrationNumber: user.registrationNumber
+          // registrationNumber removed
         },
         ...tokens
       }
@@ -401,41 +352,7 @@ const getInstituteById = async (req, res) => {
   }
 };
 
-/**
- * Verify registration number manually
- * @route POST /api/institute/verify-registration
- */
-const verifyRegistrationNumber = async (req, res) => {
-  try {
-    const { registrationNumber } = req.body;
-    
-    if (!registrationNumber) {
-      return res.status(400).json({
-        success: false,
-        message: 'Registration number is required'
-      });
-    }
-    
-    // Validate registration number
-    const validation = await registrationValidationService.validateRegistrationNumber(registrationNumber);
-    
-    res.status(200).json({
-      success: true,
-      data: {
-        registrationNumber,
-        isValid: validation.isValid,
-        message: validation.message
-      }
-    });
-    
-  } catch (error) {
-    console.error('Registration number verification error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Registration number verification failed'
-    });
-  }
-};
+
 
 /**
  * Get all institutes (Admin only)
@@ -2068,7 +1985,7 @@ module.exports = {
   getInstituteProfileDetails,
   getAllLiveInstitutes,
   getInstituteById,
-  verifyRegistrationNumber,
+
   getAllInstitutes,
   searchInstitutes,
   deleteInstitute,

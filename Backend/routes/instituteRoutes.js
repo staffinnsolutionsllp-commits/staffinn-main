@@ -13,7 +13,6 @@ const {
   getInstituteProfileDetails,
   getAllLiveInstitutes,
   getInstituteById,
-  verifyRegistrationNumber,
   getAllInstitutes,
   searchInstitutes,
   deleteInstitute,
@@ -110,7 +109,7 @@ router.get('/public/:id/industry-collaborations', getPublicIndustryCollaboration
 router.get('/public/:instituteId/events-news', getPublicEventNews);
 router.get('/public/:instituteId/government-schemes', getPublicInstituteGovernmentSchemes);
 router.get('/mou-pdf/:filename', serveMouPdf); // Public PDF serving route
-router.post('/verify-registration', verifyRegistrationNumber);
+
 
 // Registration route
 router.post('/register', registerInstitute);

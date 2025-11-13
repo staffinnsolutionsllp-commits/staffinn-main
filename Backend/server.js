@@ -56,13 +56,20 @@ const API_PREFIX = `/api/${API_VERSION}`;
 app.set('trust proxy', true);
 
 // Basic middleware
+// CORS configuration
+const allowedOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : [
+      'http://staffinn-frontend-app.s3-website.ap-south-1.amazonaws.com',
+      'https://admin.staffinn.com',
+      'https://staffinn.com',
+      'http://localhost:5173',
+      'http://localhost:5174', 
+      'http://localhost:5175'
+    ];
+
 app.use(cors({
-  origin: [
-    'http://staffinn-frontend-app.s3-website.ap-south-1.amazonaws.com',
-    'http://localhost:5173',
-    'http://localhost:5174', 
-    'http://localhost:5175'
-  ],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

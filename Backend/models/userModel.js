@@ -51,7 +51,7 @@ const createUser = async (userData) => {
     } else if (userData.role.toLowerCase() === 'institute') {
       user.instituteName = userData.instituteName || userData.name;
       user.phoneNumber = userData.phoneNumber || userData.phone || null;
-      user.registrationNumber = userData.registrationNumber || null;
+      // registrationNumber removed - no longer required
     }
     
     // Remove any extra fields that might have been passed
@@ -61,7 +61,7 @@ const createUser = async (userData) => {
     } else if (user.role === 'recruiter') {
       allowedFields.push('companyName', 'phoneNumber');
     } else if (user.role === 'institute') {
-      allowedFields.push('instituteName', 'phoneNumber', 'registrationNumber');
+      allowedFields.push('instituteName', 'phoneNumber');
     }
     
     // Filter user object to only include allowed fields
@@ -122,7 +122,7 @@ const findUserByEmail = async (email) => {
       } else if (user.role === 'institute') {
         cleanUser.instituteName = user.instituteName || user.name;
         cleanUser.phoneNumber = user.phoneNumber || user.phone;
-        cleanUser.registrationNumber = user.registrationNumber;
+        // registrationNumber removed
       }
       
       return cleanUser;
@@ -284,7 +284,7 @@ const findUserById = async (userId) => {
     } else if (user.role === 'institute') {
       cleanUser.instituteName = user.instituteName || user.name;
       cleanUser.phoneNumber = user.phoneNumber || user.phone;
-      cleanUser.registrationNumber = user.registrationNumber;
+      // registrationNumber removed
     }
     
     return cleanUser;
@@ -336,7 +336,7 @@ const authenticateUser = async (email, password) => {
     } else if (user.role === 'institute') {
       cleanUser.instituteName = user.instituteName;
       cleanUser.phoneNumber = user.phoneNumber;
-      cleanUser.registrationNumber = user.registrationNumber;
+      // registrationNumber removed
     }
     
     return cleanUser;

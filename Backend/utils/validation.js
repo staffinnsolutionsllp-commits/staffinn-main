@@ -33,14 +33,7 @@ const websiteSchema = Joi.string()
     'any.required': 'Website is required'
   });
 
-// Registration number validation schema
-const registrationNumberSchema = Joi.string()
-  .pattern(new RegExp('^[A-Z0-9]{6,20}$'))
-  .required()
-  .messages({
-    'string.pattern.base': 'Registration number must be 6-20 characters long and contain only uppercase letters and numbers',
-    'any.required': 'Registration number is required'
-  });
+
 
 // User registration validation schema (existing - keeping as is)
 const registerSchema = Joi.object({
@@ -452,14 +445,7 @@ const validateWebsite = (website) => {
   return validate(websiteSchema, website);
 };
 
-/**
- * Validate registration number
- * @param {string} registrationNumber - Registration number to validate
- * @returns {object} - Validation result
- */
-const validateRegistrationNumber = (registrationNumber) => {
-  return validate(registrationNumberSchema, registrationNumber);
-};
+
 
 module.exports = {
   // Existing exports (keeping as is)
@@ -475,5 +461,5 @@ module.exports = {
   validatePasswordStrength,
   validateEmail,
   validateWebsite,
-  validateRegistrationNumber
+
 };
