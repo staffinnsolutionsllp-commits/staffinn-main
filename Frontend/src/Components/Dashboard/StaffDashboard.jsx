@@ -8,6 +8,7 @@ import axios from 'axios';
 import HiddenUser from '../HiddenUser/HiddenUser';
 import StaffCourses from './StaffCourses';
 import GovernmentSchemes from './GovernmentSchemes';
+import ContactHistory from '../Messages/ContactHistory';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import './HiddenNotification.css';
 import './Dashboard.css';
@@ -19,8 +20,21 @@ const StaffDashboard = ({ currentUser }) => {
     // State to track active tab
     const [activeTab, setActiveTab] = useState('profile');
     
+    // Handle URL tab parameter
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam) {
+            setActiveTab(tabParam);
+        }
+    }, []);
+    
     // State to track if user is in active staff mode or seeker mode
     const [isActiveStaff, setIsActiveStaff] = useState(false);
+    
+    // State for profile completion popup
+    const [showProfileCompletionPopup, setShowProfileCompletionPopup] = useState(false);
+    const [isFirstTimeToggle, setIsFirstTimeToggle] = useState(false);
     
     // Loading and error states
     const [loading, setLoading] = useState(false);
@@ -38,17 +52,7 @@ const StaffDashboard = ({ currentUser }) => {
     // Mobile sidebar state
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     
-    // Contact History State
-    const [contactHistory, setContactHistory] = useState([]);
-    const [contactStats, setContactStats] = useState({
-        totalContacts: 0,
-        callContacts: 0,
-        whatsappContacts: 0,
-        emailContacts: 0,
-        uniqueStaff: 0
-    });
-    const [contactLoading, setContactLoading] = useState(false);
-    const [contactError, setContactError] = useState(null);
+    // Contact History is now handled by the ContactHistory component
     
     // Dashboard data states
     const [dashboardData, setDashboardData] = useState({
@@ -150,12 +154,16 @@ const StaffDashboard = ({ currentUser }) => {
     // Load staff profile on component mount
     useEffect(() => {
         loadStaffProfile();
-        if (isActiveStaff) {
-            loadDashboardData();
-        }
         setupSocketConnection();
         fetchStates();
     }, []);
+    
+    // Load dashboard data when isActiveStaff changes
+    useEffect(() => {
+        if (isActiveStaff) {
+            loadDashboardData();
+        }
+    }, [isActiveStaff]);
     
     // Fetch states from API
     const fetchStates = async () => {
@@ -309,67 +317,7 @@ const StaffDashboard = ({ currentUser }) => {
         }
     };
 
-    // Load contact history when tab changes to contact-history
-    useEffect(() => {
-        if (activeTab === 'contact-history') {
-            loadContactHistory();
-        }
-    }, [activeTab]);
-
-    // Load contact history from backend
-    const loadContactHistory = async () => {
-        try {
-            setContactLoading(true);
-            setContactError(null);
-            
-            const historyResponse = await api.getContactHistory();
-            
-            if (historyResponse.success) {
-                const contacts = historyResponse.data || [];
-                setContactHistory(contacts);
-                
-                // Calculate stats from contact data
-                const stats = {
-                    totalContacts: contacts.length,
-                    callContacts: contacts.filter(c => c.contactMethod === 'call').length,
-                    whatsappContacts: contacts.filter(c => c.contactMethod === 'whatsapp').length,
-                    emailContacts: contacts.filter(c => c.contactMethod === 'email').length,
-                    uniqueStaff: new Set(contacts.map(c => c.staffId)).size
-                };
-                setContactStats(stats);
-            } else {
-                throw new Error(historyResponse.message || 'Failed to load contact history');
-            }
-        } catch (error) {
-            console.error('Failed to load contact history:', error);
-            setContactError('Failed to load contact history');
-            setContactHistory([]);
-        } finally {
-            setContactLoading(false);
-        }
-    };
-
-    // Delete contact record
-    const deleteContactRecord = async (contactId) => {
-        if (!confirm('Are you sure you want to delete this contact record?')) {
-            return;
-        }
-        
-        try {
-            const response = await api.deleteContact(contactId);
-            
-            if (response.success) {
-                alert('Contact record deleted successfully!');
-                // Reload contact history
-                await loadContactHistory();
-            } else {
-                throw new Error(response.message || 'Failed to delete contact record');
-            }
-        } catch (error) {
-            console.error('Delete contact error:', error);
-            alert('Failed to delete contact record: ' + error.message);
-        }
-    };
+    // Contact history is now handled by the ContactHistory component
 
     // Format date for display
     const formatDate = (dateString) => {
@@ -387,42 +335,20 @@ const StaffDashboard = ({ currentUser }) => {
         }
     };
 
-    // Get contact type icon
-    const getContactTypeIcon = (type) => {
-        switch (type) {
-            case 'call':
-                return '📞';
-            case 'whatsapp':
-                return '💬';
-            case 'email':
-                return '📧';
-            default:
-                return '📞';
-        }
-    };
-
-    // Get contact type color
-    const getContactTypeColor = (type) => {
-        switch (type) {
-            case 'call':
-                return '#10b981';
-            case 'whatsapp':
-                return '#25d366';
-            case 'email':
-                return '#3b82f6';
-            default:
-                return '#6b7280';
-        }
-    };
+    // Contact type utilities moved to ContactHistory component
 
     // Load staff profile from backend
     const loadStaffProfile = async () => {
         try {
             setLoading(true);
-            const response = await api.getStaffProfile();
+            console.log('🔄 Loading staff profile...');
             
-            if (response.success) {
+            const response = await api.getStaffProfile();
+            console.log('📝 Profile response:', response);
+            
+            if (response.success && response.data) {
                 const profileData = response.data;
+                console.log('📝 Profile data received:', profileData);
                 
                 // Update profile state
                 setProfile({
@@ -445,7 +371,7 @@ const StaffDashboard = ({ currentUser }) => {
                     },
                     visibility: profileData.visibility || 'public',
                     availability: profileData.availability || 'available',
-                    isActiveStaff: profileData.isActiveStaff || false,
+                    isActiveStaff: Boolean(profileData.isActiveStaff),
                     profileVisibility: profileData.profileVisibility || 'private'
                 });
                 
@@ -455,10 +381,9 @@ const StaffDashboard = ({ currentUser }) => {
                     setAvailableRoles(roles);
                 }
                 
-                // State and city will be set by useEffect hooks after data is loaded
-                
-                // Check if user is hidden
-                setIsHidden(profileData.profileVisibility === 'private');
+                // Check if user is hidden - only show hidden message for admin actions, not for seeker mode
+                // Don't show hidden message when user is in seeker mode (isActiveStaff = false)
+                setIsHidden(profileData.profileVisibility === 'private' && Boolean(profileData.isActiveStaff));
                 
                 // Update seeker profile state
                 setSeekerProfile({
@@ -471,8 +396,10 @@ const StaffDashboard = ({ currentUser }) => {
                     confirmPassword: ''
                 });
                 
-                // Update mode state
-                setIsActiveStaff(profileData.isActiveStaff || false);
+                // Update mode state - ensure boolean conversion and persistence
+                const activeStaffStatus = Boolean(profileData.isActiveStaff);
+                console.log('🔄 Setting isActiveStaff from profile:', activeStaffStatus, 'from value:', profileData.isActiveStaff);
+                setIsActiveStaff(activeStaffStatus);
                 
                 // Update experiences
                 if (profileData.experiences && profileData.experiences.length > 0) {
@@ -483,10 +410,13 @@ const StaffDashboard = ({ currentUser }) => {
                 if (profileData.certificates && profileData.certificates.length > 0) {
                     setCertificates(profileData.certificates);
                 }
+            } else {
+                console.error('❌ Profile load failed:', response.message);
+                setError('Failed to load profile data: ' + (response.message || 'Unknown error'));
             }
         } catch (error) {
-            console.error('Failed to load staff profile:', error);
-            setError('Failed to load profile data');
+            console.error('❌ Failed to load staff profile:', error);
+            setError('Failed to load profile data: ' + error.message);
         } finally {
             setLoading(false);
         }
@@ -602,14 +532,39 @@ const StaffDashboard = ({ currentUser }) => {
         });
     };
     
-    // Handler for profile form submission
-    const handleProfileSubmit = async (e) => {
+    // Handler for "Update and Go Live" button
+    const handleUpdateAndGoLive = async (e) => {
         e.preventDefault();
+        
+        console.log('🚀 Update and Go Live clicked');
+        console.log('Current profile state:', {
+            address: profile.address,
+            state: profile.state,
+            city: profile.city,
+            pincode: profile.pincode,
+            sector: profile.sector,
+            role: profile.role,
+            skills: profile.skills
+        });
+        
+        // Check mandatory fields
+        const missingFields = [];
+        if (!profile.address?.trim()) missingFields.push('Address (House No. / Street / Area)');
+        if (!profile.state?.trim()) missingFields.push('State');
+        if (!profile.city?.trim()) missingFields.push('City');
+        if (!profile.pincode?.trim()) missingFields.push('Pincode');
+        if (!profile.sector?.trim()) missingFields.push('Choose Your Sector');
+        if (!profile.role?.trim()) missingFields.push('Choose Your Role');
+        if (!profile.skills?.trim()) missingFields.push('Skills (separate with commas)');
+        
+        if (missingFields.length > 0) {
+            alert('Please fill all mandatory fields before going live:\n\n' + missingFields.join('\n'));
+            return;
+        }
         
         try {
             setLoading(true);
             
-            // Prepare update data
             const updateData = {
                 fullName: profile.fullName,
                 phone: profile.phone,
@@ -623,21 +578,20 @@ const StaffDashboard = ({ currentUser }) => {
                 education: profile.education,
                 visibility: profile.visibility,
                 availability: profile.availability,
-                experiences: experiences.filter(exp => exp.role || exp.company) // Only include filled experiences
+                experiences: experiences.filter(exp => exp.role || exp.company),
+                isActiveStaff: true,
+                profileVisibility: 'public'
             };
             
-            console.log('Saving profile with state and city:', {
-                state: profile.state,
-                city: profile.city,
-                selectedState,
-                selectedCity
-            });
+            console.log('📝 Sending update data:', updateData);
             
             const response = await api.updateStaffProfile(updateData);
+            console.log('📝 API response:', response);
             
             if (response.success) {
-                alert('Profile updated successfully!');
-                // Update user data in storage to prevent auth issues
+                alert('Profile updated and is now live as Active Staff!');
+                
+                // Update user data
                 const updatedUserData = {
                     ...userData,
                     fullName: profile.fullName,
@@ -646,19 +600,40 @@ const StaffDashboard = ({ currentUser }) => {
                 };
                 sessionStorage.setItem('currentUser', JSON.stringify(updatedUserData));
                 localStorage.setItem('currentUser', JSON.stringify(updatedUserData));
-                // Update context if available
+                
                 if (updateUser) {
                     updateUser(updatedUserData);
                 }
+                
+                // Close popup and reload
+                if (showProfileCompletionPopup) {
+                    setShowProfileCompletionPopup(false);
+                    setIsFirstTimeToggle(false);
+                }
+                
+                await loadStaffProfile();
+                setActiveTab('dashboard');
             } else {
-                throw new Error(response.message || 'Failed to update profile');
+                console.error('❌ API returned failure:', response);
+                if (response.missingFields?.length > 0) {
+                    alert('Please complete all mandatory fields:\n\n' + response.missingFields.join('\n'));
+                } else {
+                    throw new Error(response.message || 'Unknown error occurred');
+                }
             }
         } catch (error) {
-            console.error('Profile update error:', error);
-            alert('Failed to update profile: ' + error.message);
+            console.error('❌ Update and go live error:', error);
+            alert('Failed to update profile and go live: ' + error.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    // Handler for profile form submission (for seeker mode)
+    const handleProfileSubmit = async (e) => {
+        e.preventDefault();
+        // This is for seeker mode - just call the seeker profile submit
+        return handleSeekerProfileSubmit(e);
     };
 
     // Handler for seeker profile form submission
@@ -882,6 +857,13 @@ const StaffDashboard = ({ currentUser }) => {
     const handleToggleActiveStaff = async () => {
         const newActiveStaffState = !isActiveStaff;
         
+        // If trying to become active staff for the first time, show popup
+        if (newActiveStaffState && !profile.isActiveStaff) {
+            setIsFirstTimeToggle(true);
+            setShowProfileCompletionPopup(true);
+            return;
+        }
+        
         try {
             setLoading(true);
             
@@ -902,7 +884,12 @@ const StaffDashboard = ({ currentUser }) => {
                 // Reload profile to get updated data
                 await loadStaffProfile();
             } else {
-                throw new Error(response.message || 'Failed to toggle profile mode');
+                // Show validation error if profile is incomplete
+                if (response.missingFields && response.missingFields.length > 0) {
+                    alert('Please complete your profile first. Missing fields: ' + response.missingFields.join(', '));
+                } else {
+                    throw new Error(response.message || 'Failed to toggle profile mode');
+                }
             }
         } catch (error) {
             console.error('Toggle profile mode error:', error);
@@ -911,13 +898,44 @@ const StaffDashboard = ({ currentUser }) => {
             setLoading(false);
         }
     };
+    
+    // Handler for profile completion popup close
+    const handleProfileCompletionPopupClose = () => {
+        setShowProfileCompletionPopup(false);
+        setIsFirstTimeToggle(false);
+    };
+    
+    // Check if profile is complete for mandatory fields
+    const isProfileComplete = () => {
+        return profile.address && profile.address.trim() !== '' &&
+               profile.state && profile.state.trim() !== '' &&
+               profile.city && profile.city.trim() !== '' &&
+               profile.pincode && profile.pincode.trim() !== '' &&
+               profile.sector && profile.sector.trim() !== '' &&
+               profile.role && profile.role.trim() !== '' &&
+               profile.skills && profile.skills.trim() !== '';
+    };
 
-    // Update tab when mode changes
+    // Update tab when mode changes and persist isActiveStaff state
     useEffect(() => {
         if (!isActiveStaff && activeTab === 'dashboard') {
             setActiveTab('profile');
         }
+        // Store isActiveStaff state in sessionStorage for persistence
+        if (isActiveStaff !== undefined) {
+            sessionStorage.setItem('isActiveStaff', JSON.stringify(isActiveStaff));
+        }
     }, [isActiveStaff, activeTab]);
+    
+    // Restore isActiveStaff state on component mount
+    useEffect(() => {
+        const savedActiveStaff = sessionStorage.getItem('isActiveStaff');
+        if (savedActiveStaff !== null) {
+            const parsedValue = JSON.parse(savedActiveStaff);
+            console.log('🔄 Restoring isActiveStaff from session:', parsedValue);
+            setIsActiveStaff(parsedValue);
+        }
+    }, []);
     
     // Toggle mobile sidebar
     const toggleMobileSidebar = () => {
@@ -1026,6 +1044,61 @@ const StaffDashboard = ({ currentUser }) => {
                     </button>
                 </nav>
             </div>
+
+            {/* Profile Completion Popup */}
+            {showProfileCompletionPopup && (
+                <div className="staff-modal-overlay">
+                    <div className="staff-modal">
+                        <div className="staff-modal-header">
+                            <h3>Complete Your Profile</h3>
+                            <button 
+                                type="button"
+                                className="staff-modal-close"
+                                onClick={handleProfileCompletionPopupClose}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="staff-modal-content">
+                            <p>Please complete your profile first. After completing all details, click on Update and Go Live. Only then your profile will become live as a staff and others will be able to view it.</p>
+                            
+                            <div className="staff-mandatory-fields">
+                                <h4>Mandatory Fields:</h4>
+                                <ul>
+                                    <li>Address (House No. / Street / Area)</li>
+                                    <li>State</li>
+                                    <li>City</li>
+                                    <li>Pincode</li>
+                                    <li>Choose Your Sector</li>
+                                    <li>Choose Your Role</li>
+                                    <li>Skills (separate with commas)</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="staff-modal-actions">
+                            <button 
+                                type="button" 
+                                className="staff-cancel-btn"
+                                onClick={handleProfileCompletionPopupClose}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                className="staff-submit-btn"
+                                onClick={() => {
+                                    handleProfileCompletionPopupClose();
+                                    setActiveTab('profile');
+                                    // Set toggle to ON permanently after clicking Complete Profile
+                                    setIsActiveStaff(true);
+                                }}
+                            >
+                                Complete Profile
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Certificate Modal */}
             {showCertificateModal && (
@@ -1413,7 +1486,7 @@ const StaffDashboard = ({ currentUser }) => {
                                     </form>
                                 ) : (
                                     /* Active Staff Profile Form - Full detailed form */
-                                    <form onSubmit={handleProfileSubmit}>
+                                    <form onSubmit={(e) => e.preventDefault()}>
                                         <div className="staff-profile-main-grid">
                                             {/* Left Column */}
                                             <div className="staff-profile-left">
@@ -1448,22 +1521,26 @@ const StaffDashboard = ({ currentUser }) => {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="staff-form-group">
+                                                <div className="staff-form-group required">
                                                     <label>Address (House No. / Street / Area)</label>
                                                     <textarea 
                                                         name="address" 
                                                         value={profile.address} 
                                                         onChange={handleProfileChange}
                                                         placeholder="Enter house number, street, area details"
+                                                        className="required"
+                                                        required
                                                     ></textarea>
                                                 </div>
                                                 <div className="staff-form-grid">
-                                                    <div className="staff-form-group">
+                                                    <div className="staff-form-group required">
                                                         <label>State</label>
                                                         <select 
                                                             name="state" 
                                                             value={selectedState} 
                                                             onChange={handleProfileChange}
+                                                            className="required"
+                                                            required
                                                         >
                                                             <option value="">Select State</option>
                                                             {states.map((state) => (
@@ -1471,13 +1548,15 @@ const StaffDashboard = ({ currentUser }) => {
                                                             ))}
                                                         </select>
                                                     </div>
-                                                    <div className="staff-form-group">
+                                                    <div className="staff-form-group required">
                                                         <label>City</label>
                                                         <select 
                                                             name="city" 
                                                             value={selectedCity} 
                                                             onChange={handleProfileChange}
                                                             disabled={!selectedState}
+                                                            className="required"
+                                                            required
                                                         >
                                                             <option value="">Select City</option>
                                                             {cities.map((city) => (
@@ -1486,7 +1565,7 @@ const StaffDashboard = ({ currentUser }) => {
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div className="staff-form-group">
+                                                <div className="staff-form-group required">
                                                     <label>Pincode</label>
                                                     <input 
                                                         type="text" 
@@ -1494,17 +1573,20 @@ const StaffDashboard = ({ currentUser }) => {
                                                         value={profile.pincode} 
                                                         onChange={handleProfileChange}
                                                         placeholder="Enter pincode"
+                                                        className="required"
+                                                        required
                                                     />
                                                 </div>
                                                 
                                                 <h3>Professional Information</h3>
                                                 <div className="staff-form-grid">
-                                                    <div className="staff-form-group">
+                                                    <div className="staff-form-group required">
                                                         <label>Choose Your Sector</label>
                                                         <select 
                                                             name="sector" 
                                                             value={profile.sector} 
                                                             onChange={handleProfileChange}
+                                                            className="required"
                                                             required
                                                         >
                                                             <option value="">Select Sector</option>
@@ -1513,13 +1595,14 @@ const StaffDashboard = ({ currentUser }) => {
                                                             ))}
                                                         </select>
                                                     </div>
-                                                    <div className="staff-form-group">
+                                                    <div className="staff-form-group required">
                                                         <label>Choose Your Role</label>
                                                         <select 
                                                             name="role" 
                                                             value={profile.role} 
                                                             onChange={handleProfileChange}
                                                             disabled={!profile.sector}
+                                                            className="required"
                                                             required
                                                         >
                                                             <option value="">Select Role</option>
@@ -1529,7 +1612,7 @@ const StaffDashboard = ({ currentUser }) => {
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div className="staff-form-group">
+                                                <div className="staff-form-group required">
                                                     <label>Skills (separate with commas)</label>
                                                     <input 
                                                         type="text" 
@@ -1537,6 +1620,8 @@ const StaffDashboard = ({ currentUser }) => {
                                                         value={profile.skills} 
                                                         onChange={handleProfileChange}
                                                         placeholder="e.g., Communication, Problem Solving, Time Management"
+                                                        className="required"
+                                                        required
                                                     />
                                                 </div>
 
@@ -1794,11 +1879,12 @@ const StaffDashboard = ({ currentUser }) => {
                                                 </div>
                                                 
                                                 <button 
-                                                    type="submit" 
+                                                    type="button" 
                                                     className="staff-submit-btn"
                                                     disabled={loading}
+                                                    onClick={handleUpdateAndGoLive}
                                                 >
-                                                    {loading ? 'Saving...' : 'Save Changes'}
+                                                    {loading ? 'Updating...' : 'Update and Go Live'}
                                                 </button>
                                             </div>
 
@@ -1991,175 +2077,7 @@ const StaffDashboard = ({ currentUser }) => {
                 {/* Contact History Tab - Available for both modes */}
                 {activeTab === 'contact-history' && (
                     <div className="staff-contact-history-section">
-                        <div className="staff-page-header">
-                            <h1>Contact History</h1>
-                            <p>Track all the staff members you've contacted through Staffinn</p>
-                        </div>
-
-                        {/* Contact Statistics */}
-                        <div className="staff-contact-stats">
-                            <div className="staff-stat-card">
-                                <div className="staff-stat-icon" style={{ backgroundColor: '#4863f7' }}>
-                                    <i className="fas fa-phone"></i>
-                                </div>
-                                <div className="staff-stat-info">
-                                    <h3>Total Contacts</h3>
-                                    <p className="staff-stat-number">{contactStats.totalContacts}</p>
-                                </div>
-                            </div>
-                            <div className="staff-stat-card">
-                                <div className="staff-stat-icon" style={{ backgroundColor: '#10b981' }}>
-                                    <i className="fas fa-phone"></i>
-                                </div>
-                                <div className="staff-stat-info">
-                                    <h3>Phone Calls</h3>
-                                    <p className="staff-stat-number">{contactStats.callContacts}</p>
-                                </div>
-                            </div>
-                            <div className="staff-stat-card">
-                                <div className="staff-stat-icon" style={{ backgroundColor: '#25d366' }}>
-                                    <i className="fab fa-whatsapp"></i>
-                                </div>
-                                <div className="staff-stat-info">
-                                    <h3>WhatsApp</h3>
-                                    <p className="staff-stat-number">{contactStats.whatsappContacts}</p>
-                                </div>
-                            </div>
-                            <div className="staff-stat-card">
-                                <div className="staff-stat-icon" style={{ backgroundColor: '#3b82f6' }}>
-                                    <i className="fas fa-envelope"></i>
-                                </div>
-                                <div className="staff-stat-info">
-                                    <h3>Emails</h3>
-                                    <p className="staff-stat-number">{contactStats.emailContacts}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Contact History Table */}
-                        <div className="staff-contact-history-table">
-                            <div className="staff-section-header">
-                                <h3>Contact Records</h3>
-                                <button 
-                                    className="staff-refresh-btn"
-                                    onClick={loadContactHistory}
-                                    disabled={contactLoading}
-                                >
-                                    <i className="fas fa-sync-alt"></i> 
-                                    {contactLoading ? 'Loading...' : 'Refresh'}
-                                </button>
-                            </div>
-
-                            {contactLoading ? (
-                                <div className="staff-contact-loading">
-                                    <div className="staff-loading-spinner">Loading contact history...</div>
-                                </div>
-                            ) : contactError ? (
-                                <div className="staff-contact-error">
-                                    <p>{contactError}</p>
-                                    <button onClick={loadContactHistory}>Try Again</button>
-                                </div>
-                            ) : contactHistory.length > 0 ? (
-                                <div className="staff-table-responsive">
-                                    <table className="staff-contact-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Staff Member</th>
-                                                <th>Profession</th>
-                                                <th>Contact Type</th>
-                                                <th>Contact Details</th>
-                                                <th>Date & Time</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {contactHistory.map((contact) => (
-                                                <tr key={contact.contactId}>
-                                                    <td>
-                                                        <div className="staff-contact-member">
-                                                            <div className="staff-member-avatar">
-                                                                {contact.staffName ? contact.staffName.charAt(0) : 'S'}
-                                                            </div>
-                                                            <div className="staff-member-info">
-                                                                <h4>{contact.staffName}</h4>
-                                                                <p>{contact.staffEmail}</p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="staff-profession">
-                                                            <p>Professional</p>
-                                                            <small>General Skills</small>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="staff-contact-type">
-                                                            <span 
-                                                                className="staff-contact-badge"
-                                                                style={{ backgroundColor: getContactTypeColor(contact.contactMethod) }}
-                                                            >
-                                                                {getContactTypeIcon(contact.contactMethod)} {contact.contactMethod.charAt(0).toUpperCase() + contact.contactMethod.slice(1)}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="staff-contact-details">
-                                                            <p>{contact.staffPhone}</p>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="staff-contact-date">
-                                                            <p>{formatDate(contact.createdAt)}</p>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="staff-contact-actions">
-                                                            <button 
-                                                                className="staff-action-btn staff-contact-again-btn"
-                                                                onClick={() => {
-                                                                    if (contact.contactMethod === 'call') {
-                                                                        window.open(`tel:${contact.staffPhone}`, '_self');
-                                                                    } else if (contact.contactMethod === 'whatsapp') {
-                                                                        const message = `Hi ${contact.staffName}, I contacted you earlier through Staffinn. Following up on our previous discussion.`;
-                                                                        window.open(`https://wa.me/${contact.staffPhone.replace('+91-', '91')}?text=${encodeURIComponent(message)}`, '_blank');
-                                                                    } else if (contact.contactMethod === 'email') {
-                                                                        const subject = `Follow-up - Staffinn Contact`;
-                                                                        const body = `Hi ${contact.staffName},\n\nI contacted you earlier through Staffinn. Following up on our previous discussion.\n\nBest regards`;
-                                                                        window.open(`mailto:${contact.staffEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_self');
-                                                                    }
-                                                                }}
-                                                                title={`Contact again via ${contact.contactMethod}`}
-                                                            >
-                                                                {getContactTypeIcon(contact.contactMethod)}
-                                                            </button>
-                                                            <button 
-                                                                className="staff-action-btn staff-delete-btn"
-                                                                onClick={() => deleteContactRecord(contact.contactId)}
-                                                                title="Delete contact record"
-                                                            >
-                                                                <i className="fas fa-trash-alt"></i>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <div className="staff-no-contacts">
-                                    <div className="staff-empty-state">
-                                        <i className="fas fa-address-book"></i>
-                                        <h3>No Contact History</h3>
-                                        <p>You haven't contacted any staff members yet.</p>
-                                        <p>Visit the <strong>Staff Page</strong> to find and contact professionals.</p>
-                                        <a href="/staff" className="staff-browse-btn">
-                                            Browse Staff
-                                        </a>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <ContactHistory />
                     </div>
                 )}
             </div>

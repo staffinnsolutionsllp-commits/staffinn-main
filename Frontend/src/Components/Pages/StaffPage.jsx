@@ -7,9 +7,10 @@ import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import './StaffPage.css';
 import Footer from '../Footer/Footer';
 import RegistrationPopup from '../Register/RegistrationPopup';
+import ChatButton from '../Messages/ChatButton';
 import StaffpageImage from '../../assets/Staffpage.jpg';
 
-function StaffPage() {
+function StaffPage({ isLoggedIn, onShowLogin }) {
     const { user, isStaff } = useContext(AuthContext);
     
     // State to track if user has staff profile
@@ -332,6 +333,12 @@ function StaffPage() {
 
     // Handle view profile click
     const handleViewProfile = async (staff) => {
+        // Check authentication first
+        if (!isLoggedIn) {
+            onShowLogin();
+            return;
+        }
+        
         try {
             // Record profile view
             if (user) {
@@ -355,7 +362,8 @@ function StaffPage() {
                     resume: detailedProfile.resumeUrl,
                     certificates: detailedProfile.certificates || [],
                     workExperience: detailedProfile.experiences || [],
-                    education: detailedProfile.education || {}
+                    education: detailedProfile.education || {},
+                    area: detailedProfile.area
                 });
                 setViewMode('profile');
                 document.dispatchEvent(new CustomEvent('modal-open'));
@@ -735,9 +743,9 @@ function StaffPage() {
                                     {staff.sector && staff.role && (
                                         <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
                                     )}
-                                    {staff.address && staff.city && staff.state && (
+                                    {(staff.area || staff.city || staff.state || staff.pincode) && (
                                         <div className="clean-location-info">
-                                            {staff.address}, {staff.city}, {staff.state}{staff.pincode ? `, ${staff.pincode}` : ''}
+                                            {[staff.area, staff.city, staff.state, staff.pincode].filter(Boolean).join(', ')}
                                         </div>
                                     )}
                                     
@@ -748,7 +756,7 @@ function StaffPage() {
                                     </div>
                                     
                                     <div className="clean-rate">
-                                        <span>Contact for rates</span>
+                                        <span>Contact by Chat</span>
                                     </div>
                                     
                                     <div className="clean-skills">
@@ -766,12 +774,6 @@ function StaffPage() {
                                             onClick={() => handleViewProfile(staff)}
                                         >
                                             View Profile
-                                        </button>
-                                        <button 
-                                            className="clean-contact-btn"
-                                            onClick={() => handleCall(staff.phone, staff)}
-                                        >
-                                            📞
                                         </button>
                                     </div>
                                 </div>
@@ -961,7 +963,7 @@ function StaffPage() {
                             >
                                 Profile Details
                             </button>
-                            {selectedStaff.resume && (
+                            {selectedStaff.resume && user && user.role?.toLowerCase() === 'recruiter' && (
                                 <button 
                                     className={`clean-nav-tab ${viewMode === 'resume' ? 'active' : ''}`} 
                                     onClick={() => setViewMode('resume')}
@@ -993,13 +995,7 @@ function StaffPage() {
                                         <div className="clean-detail-item">
                                             <span className="detail-icon">📍</span>
                                             <span>
-                                                {selectedStaff.address && selectedStaff.city && selectedStaff.state 
-                                                    ? `${selectedStaff.address}, ${selectedStaff.city}, ${selectedStaff.state}${selectedStaff.pincode ? `, ${selectedStaff.pincode}` : ''}` 
-                                                    : (selectedStaff.state && selectedStaff.city 
-                                                        ? `${selectedStaff.city}, ${selectedStaff.state}${selectedStaff.pincode ? `, ${selectedStaff.pincode}` : ''}` 
-                                                        : (selectedStaff.address || 'Location not specified')
-                                                    )
-                                                }
+                                                {[selectedStaff.area, selectedStaff.city, selectedStaff.state, selectedStaff.pincode].filter(Boolean).join(', ') || 'Location not specified'}
                                             </span>
                                         </div>
                                         {selectedStaff.sector && (
@@ -1014,10 +1010,7 @@ function StaffPage() {
                                                 <span>{selectedStaff.role}</span>
                                             </div>
                                         )}
-                                        <div className="clean-detail-item">
-                                            <span className="detail-label">Phone:</span>
-                                            <span>{selectedStaff.phone}</span>
-                                        </div>
+
                                         <div className="clean-detail-item">
                                             <span className="detail-label">Email:</span>
                                             <span>{selectedStaff.email}</span>
@@ -1087,20 +1080,12 @@ function StaffPage() {
                                     <div className="clean-contact-section">
                                         <h4>Contact Options</h4>
                                         <div className="clean-contact-buttons">
-                                            <button 
-                                                className="contact-option-btn call-btn"
-                                                onClick={() => handleCall(selectedStaff.phone, selectedStaff)}
-                                            >
-                                                <span className="contact-icon">📞</span>
-                                                Call
-                                            </button>
-                                            <button 
-                                                className="contact-option-btn whatsapp-btn"
-                                                onClick={() => handleWhatsApp(selectedStaff.phone, selectedStaff.name, selectedStaff)}
-                                            >
-                                                <span className="contact-icon">💬</span>
-                                                WhatsApp
-                                            </button>
+                                            <ChatButton 
+                                                recipientId={selectedStaff.userId}
+                                                recipientName={selectedStaff.name}
+                                                size="medium"
+                                                className="contact-option-btn chat-btn"
+                                            />
                                             <button 
                                                 className="contact-option-btn email-btn"
                                                 onClick={() => handleEmail(selectedStaff.email, selectedStaff.name, selectedStaff)}
@@ -1108,6 +1093,15 @@ function StaffPage() {
                                                 <span className="contact-icon">📧</span>
                                                 Email
                                             </button>
+                                            {user && user.role?.toLowerCase() === 'recruiter' && (
+                                                <button 
+                                                    className="contact-option-btn whatsapp-btn"
+                                                    onClick={() => handleWhatsApp(selectedStaff.phone, selectedStaff.name, selectedStaff)}
+                                                >
+                                                    <span className="contact-icon">💬</span>
+                                                    WhatsApp
+                                                </button>
+                                            )}
                                         </div>
                                         
                                         {/* Show Mark as Hired section after contact is made */}
@@ -1138,7 +1132,7 @@ function StaffPage() {
                                 </div>
                             )}
 
-                            {viewMode === 'resume' && selectedStaff.resume && (
+                            {viewMode === 'resume' && selectedStaff.resume && user && user.role?.toLowerCase() === 'recruiter' && (
                                 <div className="modern-resume-view">
                                     <div className="resume-container">
                                         <div className="resume-header">

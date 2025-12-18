@@ -1,11 +1,15 @@
 /* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiService from '../../services/api';
+import messageApi from '../../services/messageApi';
 import './NotificationBell.css';
 
 function NotificationBell({ isLoggedIn }) {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -15,15 +19,24 @@ function NotificationBell({ isLoggedIn }) {
     
     try {
       setLoading(true);
-      const response = await apiService.getUserNotifications();
-      if (response.success) {
-        setNotifications(response.data || []);
-        setUnreadCount(response.count || 0);
+      const [notificationResponse, messageResponse] = await Promise.all([
+        apiService.getUserNotifications(),
+        messageApi.getUnreadCount()
+      ]);
+      
+      if (notificationResponse.success) {
+        setNotifications(notificationResponse.data || []);
+        setUnreadCount(notificationResponse.count || 0);
+      }
+      
+      if (messageResponse.success) {
+        setMessageUnreadCount(messageResponse.data.unreadCount || 0);
       }
     } catch (error) {
       // Silently handle errors to avoid console spam
       setNotifications([]);
       setUnreadCount(0);
+      setMessageUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -171,8 +184,10 @@ function NotificationBell({ isLoggedIn }) {
             strokeLinejoin="round"
           />
         </svg>
-        {unreadCount > 0 && (
-          <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+        {(unreadCount + messageUnreadCount) > 0 && (
+          <span className="notification-badge">
+            {(unreadCount + messageUnreadCount) > 99 ? '99+' : (unreadCount + messageUnreadCount)}
+          </span>
         )}
       </button>
 
@@ -180,6 +195,25 @@ function NotificationBell({ isLoggedIn }) {
         <div className="notification-dropdown">
           <div className="notification-header">
             <h3>Notifications</h3>
+            <div className="notification-tabs">
+              <button 
+                className="messages-tab"
+                onClick={() => {
+                  // Navigate to dashboard with contact-history tab
+                  const currentUser = JSON.parse(localStorage.getItem('currentUser') || sessionStorage.getItem('currentUser') || '{}');
+                  if (currentUser.role === 'staff') {
+                    navigate('/dashboard/staff?tab=contact-history');
+                  } else if (currentUser.role === 'recruiter') {
+                    navigate('/dashboard/recruiter?tab=contact-history');
+                  } else if (currentUser.role === 'institute') {
+                    navigate('/dashboard/institute?tab=contact-history');
+                  }
+                  setShowDropdown(false);
+                }}
+              >
+                Messages {messageUnreadCount > 0 && <span className="tab-badge">{messageUnreadCount}</span>}
+              </button>
+            </div>
             {unreadCount > 0 && (
               <button 
                 className="mark-all-read-btn"

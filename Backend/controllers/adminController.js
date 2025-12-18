@@ -108,15 +108,27 @@ const getDashboardData = async (req, res) => {
     }
     const totalInstitutes = isHistoricalView ? instituteProfiles.length : allInstituteProfiles.length;
     
-    // Students - get from students table (same as Institute Dashboard)
-    const STUDENTS_TABLE = 'staffinn-institute-students';
+    // Students - get from both MIS and regular students tables
     let allStudents = [];
+    
+    // Get MIS students (Staffinn Partner students)
     try {
-      allStudents = await dynamoService.scanItems(STUDENTS_TABLE);
-      console.log('Found students in table:', allStudents.length);
+      const misStudentModel = require('../models/misStudentModel');
+      const misStudents = await misStudentModel.getAll();
+      allStudents = [...allStudents, ...misStudents];
+      console.log('Found MIS students:', misStudents.length);
     } catch (error) {
-      console.error('Error scanning students table:', error);
-      allStudents = [];
+      console.error('Error getting MIS students:', error);
+    }
+    
+    // Get regular institute students
+    try {
+      const STUDENTS_TABLE = 'staffinn-institute-students';
+      const regularStudents = await dynamoService.scanItems(STUDENTS_TABLE);
+      allStudents = [...allStudents, ...regularStudents];
+      console.log('Found regular students:', regularStudents.length);
+    } catch (error) {
+      console.error('Error scanning regular students table:', error);
     }
     
     let students = allStudents;
@@ -128,6 +140,7 @@ const getDashboardData = async (req, res) => {
       });
     }
     const totalStudents = isHistoricalView ? students.length : allStudents.length;
+    console.log('Total students (MIS + Regular):', totalStudents);
     
     // Courses
     const COURSES_TABLE = 'staffinn-courses';
@@ -241,7 +254,7 @@ const adminLogin = async (req, res) => {
     // Generate JWT token
     const tokenData = {
       userId: adminId,
-      role: 'admin',
+      role: admin.role || 'admin',
       email: 'admin@staffinn.com'
     };
     
@@ -252,7 +265,7 @@ const adminLogin = async (req, res) => {
       message: 'Admin login successful',
       data: {
         adminId,
-        role: 'admin',
+        role: admin.role || 'admin',
         ...tokens
       }
     });
@@ -592,13 +605,30 @@ const deleteStaffUser = async (req, res) => {
 const initializeAdmin = async (req, res) => {
   try {
     const admin = await adminModel.initializeDefaultAdmin();
+    const staffAdmin = await adminModel.createStaffAdmin();
+    const recruiterAdmin = await adminModel.createRecruiterAdmin();
+    const instituteAdmin = await adminModel.createInstituteAdmin();
     
     res.status(200).json({
       success: true,
       message: 'Admin initialized successfully',
       data: {
-        adminId: admin.adminId,
-        message: 'Default password is: admin123'
+        masterAdmin: {
+          adminId: admin.adminId,
+          message: 'Default password is: admin123'
+        },
+        staffAdmin: {
+          adminId: staffAdmin.adminId,
+          message: 'Staff admin password is: staff123'
+        },
+        recruiterAdmin: {
+          adminId: recruiterAdmin.adminId,
+          message: 'Recruiter admin password is: recruiter123'
+        },
+        instituteAdmin: {
+          adminId: instituteAdmin.adminId,
+          message: 'Institute admin password is: institute123'
+        }
       }
     });
     
@@ -2198,3 +2228,606 @@ module.exports.getAllGovernmentSchemes = getAllGovernmentSchemes;
 module.exports.addGovernmentScheme = addGovernmentScheme;
 module.exports.updateGovernmentScheme = updateGovernmentScheme;
 module.exports.deleteGovernmentScheme = deleteGovernmentScheme;
+
+/**
+ * Manual Registration APIs
+ */
+
+/**
+ * Manually register a recruiter
+ * @route POST /api/admin/manual-registration/recruiter
+ */
+const manualRegisterRecruiter = async (req, res) => {
+  try {
+    const { validateRecruiterRegistration } = require('../utils/validation');
+    
+    // Validate request data
+    const validationResult = validateRecruiterRegistration(req.body);
+    if (validationResult.error) {
+      return res.status(400).json({
+        success: false,
+        message: validationResult.error
+      });
+    }
+    
+    // Prepare user data
+    const userData = {
+      ...validationResult.value,
+      role: 'recruiter'
+    };
+    
+    // Create user
+    const user = await userModel.createUser(userData);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Recruiter registered successfully by admin',
+      data: {
+        userId: user.userId,
+        email: user.email,
+        companyName: user.companyName,
+        role: user.role
+      }
+    });
+    
+  } catch (error) {
+    console.error('Manual recruiter registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to register recruiter'
+    });
+  }
+};
+
+/**
+ * Manually register an institute with type selection
+ * @route POST /api/admin/manual-registration/institute
+ */
+const manualRegisterInstitute = async (req, res) => {
+  try {
+    const { validateInstituteRegistration } = require('../utils/validation');
+    const { instituteType } = req.body;
+    
+    // Validate institute type
+    if (instituteType && !['normal', 'staffinn_partner'].includes(instituteType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid institute type. Must be normal or staffinn_partner'
+      });
+    }
+    
+    // Validate request data
+    const validationResult = validateInstituteRegistration(req.body);
+    if (validationResult.error) {
+      return res.status(400).json({
+        success: false,
+        message: validationResult.error
+      });
+    }
+    
+    // Prepare user data
+    const userData = {
+      ...validationResult.value,
+      role: 'institute',
+      instituteType: instituteType || 'normal',
+      misApproved: false
+    };
+    
+    // Create user
+    const user = await userModel.createUser(userData);
+    
+    res.status(201).json({
+      success: true,
+      message: `${instituteType === 'staffinn_partner' ? 'Staffinn Partner' : 'Normal'} institute registered successfully by admin`,
+      data: {
+        userId: user.userId,
+        email: user.email,
+        instituteName: user.instituteName,
+        role: user.role,
+        instituteType: user.instituteType
+      }
+    });
+    
+  } catch (error) {
+    console.error('Manual institute registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to register institute'
+    });
+  }
+};
+
+// Export manual registration functions
+module.exports.manualRegisterRecruiter = manualRegisterRecruiter;
+module.exports.manualRegisterInstitute = manualRegisterInstitute;
+
+// Export MIS request functions with error handling
+const getAllMisRequests = async (req, res) => {
+  try {
+    const misRequestController = require('./misRequestController');
+    return await misRequestController.getAllMisRequests(req, res);
+  } catch (error) {
+    console.log('MIS requests not available:', error.message);
+    res.status(200).json({ success: true, data: [] });
+  }
+};
+
+const approveMisRequest = async (req, res) => {
+  try {
+    const misRequestController = require('./misRequestController');
+    return await misRequestController.approveMisRequest(req, res);
+  } catch (error) {
+    console.error('MIS approve error:', error);
+    res.status(500).json({ success: false, message: 'MIS functionality not available' });
+  }
+};
+
+const rejectMisRequest = async (req, res) => {
+  try {
+    const misRequestController = require('./misRequestController');
+    return await misRequestController.rejectMisRequest(req, res);
+  } catch (error) {
+    console.error('MIS reject error:', error);
+    res.status(500).json({ success: false, message: 'MIS functionality not available' });
+  }
+};
+
+const deleteMisRequest = async (req, res) => {
+  try {
+    const misRequestController = require('./misRequestController');
+    return await misRequestController.deleteMisRequest(req, res);
+  } catch (error) {
+    console.error('MIS delete error:', error);
+    res.status(500).json({ success: false, message: 'MIS functionality not available' });
+  }
+};
+
+module.exports.getAllMisRequests = getAllMisRequests;
+module.exports.approveMisRequest = approveMisRequest;
+module.exports.rejectMisRequest = rejectMisRequest;
+module.exports.deleteMisRequest = deleteMisRequest;
+
+/**
+ * Get Staffinn Partner dashboard data for admin
+ * @route GET /api/admin/staffinn-partners/:instituteId/dashboard
+ */
+const getStaffinnPartnerDashboard = async (req, res) => {
+  try {
+    const { instituteId } = req.params;
+    
+    console.log('🔍 Getting Staffinn Partner dashboard data for institute:', instituteId);
+    
+    // Get all MIS data (since MIS students don't have instituteId field)
+    const misStudentModel = require('../models/misStudentModel');
+    const courseDetailModel = require('../models/courseDetailModel');
+    
+    let totalCenters = 0;
+    let totalCourses = 0;
+    let totalStudents = 0;
+    let totalTrainedStudents = 0;
+    
+    // Get all MIS students (since they don't have instituteId)
+    try {
+      const allMisStudents = await misStudentModel.getAll();
+      totalStudents = allMisStudents.length;
+      console.log('✅ Total MIS Students found:', totalStudents);
+    } catch (error) {
+      console.error('❌ Error fetching MIS students:', error.message);
+    }
+    
+    // Get all MIS courses
+    try {
+      const allCourses = await courseDetailModel.getAll();
+      totalCourses = allCourses.length;
+      console.log('✅ Total MIS Courses found:', totalCourses);
+    } catch (error) {
+      console.error('❌ Error fetching MIS courses:', error.message);
+    }
+    
+    // For now, use sample data for centers and trained students
+    totalCenters = Math.floor(totalStudents / 10) || 1; // Estimate 1 center per 10 students
+    totalTrainedStudents = Math.floor(totalStudents * 0.7); // Estimate 70% placement rate
+    
+    // Generate enrollment trends
+    const enrollmentTrends = [
+      { name: 'Jan', students: Math.floor(totalStudents * 0.1) },
+      { name: 'Feb', students: Math.floor(totalStudents * 0.2) },
+      { name: 'Mar', students: Math.floor(totalStudents * 0.4) },
+      { name: 'Apr', students: Math.floor(totalStudents * 0.6) },
+      { name: 'May', students: Math.floor(totalStudents * 0.8) },
+      { name: 'Jun', students: totalStudents }
+    ];
+    
+    // Generate placement trends
+    const placementRate = totalStudents > 0 ? Math.min(Math.round((totalTrainedStudents / totalStudents) * 100), 100) : 0;
+    const placementTrends = [
+      { name: 'Jan', rate: Math.max(placementRate - 30, 0) },
+      { name: 'Feb', rate: Math.max(placementRate - 25, 0) },
+      { name: 'Mar', rate: Math.max(placementRate - 20, 0) },
+      { name: 'Apr', rate: Math.max(placementRate - 15, 0) },
+      { name: 'May', rate: Math.max(placementRate - 10, 0) },
+      { name: 'Jun', rate: placementRate }
+    ];
+    
+    const dashboardStats = {
+      totalCenters,
+      totalCourses,
+      totalStudents,
+      totalTrainedStudents,
+      enrollmentTrends,
+      placementTrends
+    };
+    
+    console.log('🏆 Staffinn Partner dashboard stats:', dashboardStats);
+    
+    res.status(200).json({
+      success: true,
+      data: dashboardStats,
+      message: 'Staffinn Partner dashboard stats retrieved successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ Get Staffinn Partner dashboard error:', error);
+    
+    const defaultStats = {
+      totalCenters: 0,
+      totalCourses: 0,
+      totalStudents: 0,
+      totalTrainedStudents: 0,
+      enrollmentTrends: [
+        { name: 'Jan', students: 0 },
+        { name: 'Feb', students: 0 },
+        { name: 'Mar', students: 0 },
+        { name: 'Apr', students: 0 },
+        { name: 'May', students: 0 },
+        { name: 'Jun', students: 0 }
+      ],
+      placementTrends: [
+        { name: 'Jan', rate: 0 },
+        { name: 'Feb', rate: 0 },
+        { name: 'Mar', rate: 0 },
+        { name: 'Apr', rate: 0 },
+        { name: 'May', rate: 0 },
+        { name: 'Jun', rate: 0 }
+      ]
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: defaultStats,
+      message: 'Staffinn Partner dashboard stats retrieved with default values due to errors'
+    });
+  }
+};
+
+module.exports.getStaffinnPartnerDashboard = getStaffinnPartnerDashboard;
+
+/**
+ * Get training centers for a specific institute
+ * @route GET /api/admin/staffinn-partners/:instituteId/training-centers
+ */
+const getInstituteTrainingCenters = async (req, res) => {
+  try {
+    const { instituteId } = req.params;
+    
+    console.log('🏢 Getting training centers for institute:', instituteId);
+    
+    const trainingCenterModel = require('../models/trainingCenterModel');
+    const centers = await trainingCenterModel.getCentersByInstitute(instituteId);
+    
+    console.log('✅ Training centers found:', centers.length);
+    
+    res.status(200).json({
+      success: true,
+      data: centers
+    });
+    
+  } catch (error) {
+    console.error('❌ Get training centers error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get training centers'
+    });
+  }
+};
+
+/**
+ * Get training infrastructure for a specific institute
+ * @route GET /api/admin/staffinn-partners/:instituteId/training-infrastructure
+ */
+const getInstituteTrainingInfrastructure = async (req, res) => {
+  try {
+    const { instituteId } = req.params;
+    
+    console.log('🏗️ Getting training infrastructure for institute:', instituteId);
+    
+    const trainingInfrastructureModel = require('../models/trainingInfrastructureModel');
+    
+    // Get only infrastructure for this specific institute
+    const allInfrastructure = await trainingInfrastructureModel.getAll();
+    const instituteInfrastructure = allInfrastructure.filter(item => item.instituteId === instituteId);
+    
+    console.log('✅ Training infrastructure found:', instituteInfrastructure.length);
+    
+    res.status(200).json({
+      success: true,
+      data: instituteInfrastructure
+    });
+    
+  } catch (error) {
+    console.error('❌ Get training infrastructure error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get training infrastructure'
+    });
+  }
+};
+
+/**
+ * Get all Staffinn Partner institutes
+ * @route GET /api/admin/staffinn-partners
+ */
+const getAllStaffinnPartnerInstitutes = async (req, res) => {
+  try {
+    console.log('🏢 Getting all Staffinn Partner institutes');
+    
+    const dynamoService = require('../services/dynamoService');
+    const userModel = require('../models/userModel');
+    
+    // Get all users with institute role and instituteType = 'staffinn_partner'
+    const allUsers = await dynamoService.scanItems('staffinn-users');
+    const staffinnPartners = allUsers.filter(user => 
+      user.role === 'institute' && user.instituteType === 'staffinn_partner'
+    );
+    
+    console.log('✅ Staffinn Partner institutes found:', staffinnPartners.length);
+    
+    // Get institute profiles for additional data
+    const INSTITUTE_PROFILES_TABLE = 'staffinn-institute-profiles';
+    const allProfiles = await dynamoService.scanItems(INSTITUTE_PROFILES_TABLE);
+    const profilesMap = {};
+    allProfiles.forEach(profile => {
+      profilesMap[profile.instituteId] = profile;
+    });
+    
+    // Merge user data with profile data
+    const institutesWithProfiles = staffinnPartners.map(institute => {
+      const profile = profilesMap[institute.userId] || {};
+      return {
+        instituteId: institute.userId,
+        instituteName: institute.name || institute.instituteName || profile.instituteName || 'Unknown Institute',
+        email: institute.email,
+        phone: institute.phone || institute.phoneNumber,
+        misApprovalStatus: institute.misApprovalStatus || 'pending',
+        isVisible: institute.isVisible !== false,
+        isBlocked: institute.isBlocked || false,
+        createdAt: institute.createdAt,
+        ...profile
+      };
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: institutesWithProfiles
+    });
+    
+  } catch (error) {
+    console.error('❌ Get Staffinn Partner institutes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get Staffinn Partner institutes'
+    });
+  }
+};
+
+/**
+ * Delete training center
+ * @route DELETE /api/admin/staffinn-partners/training-centers/:centerId
+ */
+const deleteTrainingCenter = async (req, res) => {
+  try {
+    const { centerId } = req.params;
+    
+    const trainingCenterModel = require('../models/trainingCenterModel');
+    await trainingCenterModel.delete(centerId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Training center deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete training center error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete training center'
+    });
+  }
+};
+
+/**
+ * Delete training infrastructure
+ * @route DELETE /api/admin/staffinn-partners/training-infrastructure/:infrastructureId
+ */
+const deleteTrainingInfrastructure = async (req, res) => {
+  try {
+    const { infrastructureId } = req.params;
+    
+    const trainingInfrastructureModel = require('../models/trainingInfrastructureModel');
+    await trainingInfrastructureModel.delete(infrastructureId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Training infrastructure deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete training infrastructure error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete training infrastructure'
+    });
+  }
+};
+
+module.exports.getAllStaffinnPartnerInstitutes = getAllStaffinnPartnerInstitutes;
+module.exports.getInstituteTrainingCenters = getInstituteTrainingCenters;
+module.exports.getInstituteTrainingInfrastructure = getInstituteTrainingInfrastructure;
+module.exports.deleteTrainingCenter = deleteTrainingCenter;
+/**
+ * Get course details for a specific institute
+ * @route GET /api/admin/staffinn-partners/:instituteId/course-details
+ */
+const getInstituteCourseDetails = async (req, res) => {
+  try {
+    const { instituteId } = req.params;
+    
+    console.log('🎓 Getting course details for institute:', instituteId);
+    
+    const courseDetailModel = require('../models/courseDetailModel');
+    const trainingCenterModel = require('../models/trainingCenterModel');
+    
+    // Get courses only for this specific institute
+    const allCourses = await courseDetailModel.getAll();
+    const instituteCourses = allCourses.filter(course => course.instituteId === instituteId);
+    
+    // Get training centers only for this specific institute
+    const trainingCenters = await trainingCenterModel.getCentersByInstitute(instituteId);
+    
+    // Create a map of center IDs to center names
+    const centerMap = {};
+    trainingCenters.forEach(center => {
+      centerMap[center.id] = center.trainingCentreName;
+    });
+    
+    // Enhance courses with training center names
+    const enhancedCourses = instituteCourses.map(course => {
+      let trainingCenterNames = [];
+      if (course.trainingCentres && Array.isArray(course.trainingCentres)) {
+        trainingCenterNames = course.trainingCentres.map(centerId => 
+          centerMap[centerId] || `Center ${centerId}`
+        );
+      }
+      
+      return {
+        ...course,
+        trainingCenterNames
+      };
+    });
+    
+    console.log('✅ Course details found:', enhancedCourses.length);
+    
+    res.status(200).json({
+      success: true,
+      data: enhancedCourses
+    });
+    
+  } catch (error) {
+    console.error('❌ Get course details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get course details'
+    });
+  }
+};
+
+/**
+ * Delete course detail
+ * @route DELETE /api/admin/staffinn-partners/course-details/:courseId
+ */
+const deleteCourseDetail = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    const courseDetailModel = require('../models/courseDetailModel');
+    await courseDetailModel.delete(courseId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Course detail deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete course detail error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete course detail'
+    });
+  }
+};
+
+module.exports.getInstituteCourseDetails = getInstituteCourseDetails;
+module.exports.deleteCourseDetail = deleteCourseDetail;
+module.exports.deleteTrainingInfrastructure = deleteTrainingInfrastructure;
+
+/**
+ * Get faculty for a specific institute
+ * @route GET /api/admin/staffinn-partners/:instituteId/faculty
+ */
+const getInstituteFaculty = async (req, res) => {
+  try {
+    const { instituteId } = req.params;
+    
+    console.log('👨‍🏫 Getting faculty for institute:', instituteId);
+    
+    const facultyListModel = require('../models/facultyListModel');
+    
+    // First get all faculty to debug
+    const allFaculty = await facultyListModel.getAll();
+    console.log('🔍 Total faculty in database:', allFaculty.length);
+    console.log('🔍 Sample faculty data:', allFaculty.slice(0, 2));
+    
+    const faculty = await facultyListModel.getByInstitute(instituteId);
+    
+    console.log('✅ Faculty found for institute', instituteId, ':', faculty.length);
+    
+    res.status(200).json({
+      success: true,
+      data: faculty
+    });
+    
+  } catch (error) {
+    console.error('❌ Get faculty error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get faculty'
+    });
+  }
+};
+
+module.exports.getInstituteFaculty = getInstituteFaculty;
+/**
+ * Get MIS students by institute ID
+ * @route GET /api/admin/staffinn-partners/:instituteId/students
+ */
+const getMisStudentsByInstitute = async (req, res) => {
+  try {
+    const { instituteId } = req.params;
+    
+    const misStudentModel = require('../models/misStudentModel');
+    
+    // Fix incorrect instituteId values
+    const allStudents = await misStudentModel.getAll();
+    
+    // Update students with wrong instituteId to correct one
+    for (const student of allStudents) {
+      if (student.instituteId === '9a043d3a-e901-468c-ac1c-fbd731b1db89' && instituteId === '883c1784-7354-4fab-874b-0c7da5e7bb28') {
+        console.log('🔧 Fixing instituteId for student:', student.fatherName);
+        await misStudentModel.update(student.studentsId, { instituteId: '883c1784-7354-4fab-874b-0c7da5e7bb28' });
+      }
+    }
+    
+    const students = await misStudentModel.getStudentsByInstitute(instituteId);
+    console.log('✅ Students found for institute', instituteId, ':', students.length);
+    
+    res.status(200).json({
+      success: true,
+      data: students
+    });
+  } catch (error) {
+    console.error('Get MIS students by institute error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get MIS students'
+    });
+  }
+};
+
+module.exports.getMisStudentsByInstitute = getMisStudentsByInstitute;

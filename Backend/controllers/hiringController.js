@@ -339,20 +339,31 @@ const hireInstituteStudent = async (req, res) => {
       });
     }
     
-    // Update student placement details in institute database
+    // Update student placement details in institute database (only for regular institute students)
     const instituteStudentModel = require('../models/instituteStudentModel');
     const jobModel = require('../models/jobModel');
     
     // Get job details for placement record
     const jobDetails = await jobModel.getJobById(jobID);
     
-    const placementData = {
-      status: status === 'Hired' ? 'Placed' : 'Rejected',
-      recruiter: `${recruiterUser.name} (${recruiterProfile?.companyName || recruiterUser.name})`,
-      appliedJob: jobTitle
-    };
+    // Check if this is a MIS student by checking if they exist in MIS applications
+    const misJobApplicationModel = require('../models/misJobApplicationModel');
+    const misApplication = await misJobApplicationModel.checkExistingApplication(jobID, studentID);
+    const isMisStudent = !!misApplication;
     
-    await instituteStudentModel.updateStudentPlacementDetails(studentID, placementData);
+    if (!isMisStudent) {
+      // Only update placement details for regular institute students
+      const placementData = {
+        status: status === 'Hired' ? 'Placed' : 'Rejected',
+        recruiter: `${recruiterUser.name} (${recruiterProfile?.companyName || recruiterUser.name})`,
+        appliedJob: jobTitle
+      };
+      
+      await instituteStudentModel.updateStudentPlacementDetails(studentID, placementData);
+    } else {
+      // For MIS students, update the MIS job application status using the application ID
+      await misJobApplicationModel.updateStatus(misApplication.misApplicationId, status.toLowerCase());
+    }
     
     // Create hiring record
     const hiringData = {
@@ -365,10 +376,124 @@ const hireInstituteStudent = async (req, res) => {
       jobID,
       jobTitle,
       status,
-      studentSnapshot: studentSnapshot || null
+      studentSnapshot: studentSnapshot || null,
+      isMisStudent: isMisStudent
     };
     
     const hiringRecord = await hiringModel.createHiringRecord(hiringData);
+    
+    // Handle MIS student placement analytics
+    if (isMisStudent) {
+      try {
+        const misPlacementAnalyticsModel = require('../models/misPlacementAnalyticsModel');
+        
+        // First check if placement record already exists for this student and job
+        const existingRecord = await misPlacementAnalyticsModel.getMisPlacementByStudentAndJob(studentID, jobID);
+        
+        if (existingRecord) {
+          // Update existing record with new status
+          const updateData = {
+            status: status,
+            hiredDate: status === 'Hired' ? new Date().toISOString() : null,
+            rejectedDate: status === 'Rejected' ? new Date().toISOString() : null
+          };
+          
+          await misPlacementAnalyticsModel.updateMisPlacement(existingRecord.placementId, updateData);
+          console.log('✅ MIS placement analytics updated for student:', studentID, 'Job:', jobID, 'Status:', status);
+          
+          // Send real-time update to Staffinn Partner dashboard
+          const io = req.app.get('io');
+          if (io) {
+            io.emit('misPlacementUpdate', {
+              type: 'statusUpdate',
+              studentId: studentID,
+              jobId: jobID,
+              status: status,
+              placementId: existingRecord.placementId,
+              timestamp: new Date().toISOString()
+            });
+          }
+        } else {
+          // Create new record if it doesn't exist
+          const misStudentModel = require('../models/misStudentModel');
+          const batchModel = require('../models/batchModel');
+          
+          let student = null;
+          let center = 'MIS Center';
+          let sector = 'General';
+          let course = 'N/A';
+          let batchId = null;
+          
+          try {
+            student = await misStudentModel.getById(studentID);
+            const allBatches = await batchModel.getAll();
+            const studentBatch = allBatches.find(batch => 
+              batch.selectedStudents && batch.selectedStudents.includes(studentID)
+            );
+            
+            if (studentBatch) {
+              center = studentBatch.trainingCentreName || center;
+              course = studentBatch.courseName || course;
+              batchId = studentBatch.batchId;
+              
+              if (studentBatch.courseName) {
+                const courseName = studentBatch.courseName.toLowerCase();
+                if (courseName.includes('it') || courseName.includes('software')) {
+                  sector = 'Information Technology';
+                } else if (courseName.includes('retail')) {
+                  sector = 'Retail';
+                } else if (courseName.includes('healthcare')) {
+                  sector = 'Healthcare';
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching student/batch info:', error);
+          }
+          
+          const placementData = {
+            studentId: studentID,
+            studentName: student?.fatherName || studentSnapshot?.fullName || 'MIS Student',
+            qualification: student?.qualification || studentSnapshot?.qualification || 'N/A',
+            center: center,
+            sector: sector,
+            course: course,
+            batchId: batchId,
+            recruiterName: recruiterUser.name,
+            companyName: recruiterProfile?.companyName || recruiterUser.name,
+            jobTitle: jobTitle,
+            status: status,
+            appliedDate: new Date().toISOString(),
+            hiredDate: status === 'Hired' ? new Date().toISOString() : null,
+            rejectedDate: status === 'Rejected' ? new Date().toISOString() : null,
+            salaryPackage: jobDetails?.salary || 'Not specified',
+            instituteId: instituteID,
+            recruiterId: req.user.userId,
+            jobId: jobID
+          };
+          
+          const newRecord = await misPlacementAnalyticsModel.createMisPlacement(placementData);
+          console.log('✅ MIS placement analytics created for student:', studentID, 'Status:', status);
+          
+          // Send real-time update to Staffinn Partner dashboard
+          const io = req.app.get('io');
+          if (io) {
+            io.emit('misPlacementUpdate', {
+              type: 'newPlacement',
+              studentId: studentID,
+              jobId: jobID,
+              status: status,
+              placementId: newRecord.placementId,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+        
+      } catch (misAnalyticsError) {
+        console.error('Failed to update MIS placement analytics:', misAnalyticsError);
+        // Don't fail the hiring process if analytics update fails
+      }
+    }
     
     res.status(201).json({
       success: true,

@@ -22,6 +22,7 @@ const {
   getPlacementSection,
   getPublicPlacementSection,
   getPublicDashboardStats,
+  getDashboardStats,
   getEnrollmentTrends,
   getPlacementTrends,
   updateIndustryCollaborations,
@@ -32,6 +33,9 @@ const {
   deleteCollaborationImage,
   deleteMouPdf,
   serveMouPdf,
+  uploadMisAgreement,
+  getMisStatus,
+  getMisAgreement,
   upload,
   studentUpload,
   placementUpload,
@@ -45,7 +49,6 @@ const {
   getStudentById,
   updateStudent,
   deleteStudent,
-  getDashboardStats,
   updatePlacementStatus
 } = require('../controllers/instituteStudentController');
 
@@ -64,6 +67,8 @@ const {
 // Import course controller
 const {
   createCourse,
+  updateCourse,
+  getCourseById,
   getCourses,
   getPublicCourses,
   getPublicCourseById,
@@ -156,7 +161,7 @@ router.put('/students/:studentId', studentUpload.fields([
 router.delete('/students/:studentId', deleteStudent);
 router.patch('/students/:studentId/placement-status', updatePlacementStatus);
 
-// Dashboard stats route
+// Dashboard stats route (from institute controller)
 router.get('/dashboard/stats', getDashboardStats);
 
 // Dashboard chart data routes
@@ -182,6 +187,8 @@ const courseUpload = multer({
 });
 
 router.post('/courses', courseUpload.any(), createCourse);
+router.put('/courses/:courseId', courseUpload.any(), updateCourse);
+router.get('/courses/:courseId', getCourseById);
 router.get('/courses', getCourses);
 router.get('/active-courses-count', getActiveCourseCount);
 router.get('/courses/:courseId/debug', debugCourseContent);
@@ -208,9 +215,18 @@ router.get('/government-schemes', getInstituteGovernmentSchemes);
 router.put('/government-schemes/:schemeId', updateInstituteGovernmentScheme);
 router.delete('/government-schemes/:schemeId', deleteInstituteGovernmentScheme);
 
+// MIS Agreement routes (Staffinn Partner functionality)
+router.post('/upload-mis-agreement', industryCollabUpload.single('misAgreement'), uploadMisAgreement);
+router.get('/mis-status', getMisStatus);
+router.get('/mis-agreement', getMisAgreement);
+
 // Admin routes
 router.get('/all', getAllInstitutes);
 router.get('/search', searchInstitutes);
 router.delete('/:instituteId', deleteInstitute);
+
+// MIS Request routes (Staffinn Partner functionality)
+const misRequestRoutes = require('./misRequestRoutes');
+router.use('/mis-request', misRequestRoutes);
 
 module.exports = router;

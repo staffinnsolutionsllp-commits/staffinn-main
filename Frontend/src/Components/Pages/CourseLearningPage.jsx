@@ -144,7 +144,15 @@ const CourseLearningPage = () => {
       const response = await apiService.enrollInCourse(courseId);
       if (response.success) {
         setEnrollmentStatus({ enrolled: true, hasStarted: false, progressPercentage: 0 });
-        fetchCourseData(); // Refresh to get accessible content
+        
+        // For On Campus courses, show only success message
+        if (course.mode === 'On Campus' || course.mode === 'Offline') {
+          alert('You are successfully enrolled.');
+          return;
+        }
+        
+        // For Online courses, refresh to get accessible content
+        fetchCourseData();
       }
     } catch (error) {
       console.error('Error enrolling:', error);
@@ -986,6 +994,67 @@ const CourseLearningPage = () => {
                     <p>{course.syllabusOverview}</p>
                   </div>
                 )}
+
+                {/* Campus View Section for On Campus Courses */}
+                {(course.mode === 'On Campus' || course.mode === 'Offline') && course.onCampusFiles && course.onCampusFiles.length > 0 && (
+                  <div className="campus-view-section">
+                    <h3>Campus View</h3>
+                    <p>Explore our campus facilities and course materials</p>
+                    <div className="campus-view-grid">
+                      {course.onCampusFiles.map((file, index) => (
+                        <div key={file.fileId || index} className="campus-view-item">
+                          {file.fileType === 'image' ? (
+                            <div className="campus-image">
+                              <img 
+                                src={file.fileUrl} 
+                                alt={file.fileName || `Campus Image ${index + 1}`}
+                                className="campus-photo"
+                                onError={(e) => {
+                                  console.error('Image load error:', e.target.src);
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <div className="campus-file-info">
+                                <p className="campus-file-name">{file.fileName || `Campus Image ${index + 1}`}</p>
+                                <p className="campus-file-type">Campus Photo</p>
+                              </div>
+                            </div>
+                          ) : file.fileType === 'video' ? (
+                            <div className="campus-video">
+                              <video 
+                                controls 
+                                className="campus-video-player"
+                                poster={course.thumbnailUrl}
+                                onError={(e) => {
+                                  console.error('Video load error:', e.target.src);
+                                }}
+                              >
+                                <source src={file.fileUrl} type="video/mp4" />
+                                <source src={file.fileUrl} type="video/webm" />
+                                <source src={file.fileUrl} type="video/ogg" />
+                                Your browser does not support the video tag.
+                              </video>
+                              <div className="campus-file-info">
+                                <p className="campus-file-name">{file.fileName || `Campus Video ${index + 1}`}</p>
+                                <p className="campus-file-type">Campus Video</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="campus-unknown-file">
+                              <div className="campus-file-placeholder">
+                                <span>📄</span>
+                              </div>
+                              <div className="campus-file-info">
+                                <p className="campus-file-name">{file.fileName || `File ${index + 1}`}</p>
+                                <p className="campus-file-type">{file.fileType || 'Unknown'}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1167,7 +1236,7 @@ const CourseLearningPage = () => {
         <div className="course-sidebar">
           <div className="sidebar-header">
             <h3>Course content</h3>
-            {enrollmentStatus?.enrolled && (
+            {enrollmentStatus?.enrolled && (course.mode !== 'On Campus' && course.mode !== 'Offline') && (
               <div className="progress-info">
                 {calculateProgress()}% complete
               </div>
@@ -1189,7 +1258,40 @@ const CourseLearningPage = () => {
           )}
 
           <div className="course-sections">
-            {course.modules?.map((module, moduleIndex) => (
+            {(course.mode === 'On Campus' || course.mode === 'Offline') ? (
+              /* On Campus Course - Show enrollment message only */
+              <div className="course-section">
+                <div className="section-header">
+                  <div className="section-info">
+                    <h4>Course Information</h4>
+                    <span className="section-meta">
+                      On-Campus Learning
+                    </span>
+                  </div>
+                </div>
+                <div className="section-content">
+                  {enrollmentStatus?.enrolled ? (
+                    <div className="enrollment-success-message">
+                      <div className="success-icon">✅</div>
+                      <div className="success-text">
+                        <h4>You are successfully enrolled.</h4>
+                        <p>Please visit the campus for further instructions and class schedules.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="enrollment-info">
+                      <div className="info-icon">ℹ️</div>
+                      <div className="info-text">
+                        <h4>On-Campus Course</h4>
+                        <p>This is an on-campus course. After enrollment, you will receive further instructions about class schedules and campus visits.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Online Course - Show Modules */
+              course.modules?.map((module, moduleIndex) => (
               <div key={module.moduleId} className="course-section">
                 <div 
                   className="section-header"
@@ -1269,7 +1371,8 @@ const CourseLearningPage = () => {
                   </div>
                 )}
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

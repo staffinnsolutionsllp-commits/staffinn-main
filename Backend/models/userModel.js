@@ -51,6 +51,8 @@ const createUser = async (userData) => {
     } else if (userData.role.toLowerCase() === 'institute') {
       user.instituteName = userData.instituteName || userData.name;
       user.phoneNumber = userData.phoneNumber || userData.phone || null;
+      user.instituteType = userData.instituteType || 'normal'; // 'normal' or 'staffinn_partner'
+      user.misApproved = userData.misApproved || false; // For Staffinn Partner workflow
       // registrationNumber removed - no longer required
     }
     
@@ -61,7 +63,7 @@ const createUser = async (userData) => {
     } else if (user.role === 'recruiter') {
       allowedFields.push('companyName', 'phoneNumber');
     } else if (user.role === 'institute') {
-      allowedFields.push('instituteName', 'phoneNumber');
+      allowedFields.push('instituteName', 'phoneNumber', 'instituteType', 'misApproved');
     }
     
     // Filter user object to only include allowed fields
@@ -122,6 +124,13 @@ const findUserByEmail = async (email) => {
       } else if (user.role === 'institute') {
         cleanUser.instituteName = user.instituteName || user.name;
         cleanUser.phoneNumber = user.phoneNumber || user.phone;
+        cleanUser.instituteType = user.instituteType || 'normal';
+        cleanUser.misApproved = user.misApproved || false;
+        cleanUser.misApprovalStatus = user.misApprovalStatus;
+        cleanUser.misAgreementUrl = user.misAgreementUrl;
+        cleanUser.misAgreementFileName = user.misAgreementFileName;
+        cleanUser.misAgreementFileSize = user.misAgreementFileSize;
+        cleanUser.misAgreementUploadedAt = user.misAgreementUploadedAt;
         // registrationNumber removed
       }
       
@@ -284,6 +293,13 @@ const findUserById = async (userId) => {
     } else if (user.role === 'institute') {
       cleanUser.instituteName = user.instituteName || user.name;
       cleanUser.phoneNumber = user.phoneNumber || user.phone;
+      cleanUser.instituteType = user.instituteType || 'normal';
+      cleanUser.misApproved = user.misApproved || false;
+      cleanUser.misApprovalStatus = user.misApprovalStatus;
+      cleanUser.misAgreementUrl = user.misAgreementUrl;
+      cleanUser.misAgreementFileName = user.misAgreementFileName;
+      cleanUser.misAgreementFileSize = user.misAgreementFileSize;
+      cleanUser.misAgreementUploadedAt = user.misAgreementUploadedAt;
       // registrationNumber removed
     }
     
@@ -336,6 +352,13 @@ const authenticateUser = async (email, password) => {
     } else if (user.role === 'institute') {
       cleanUser.instituteName = user.instituteName;
       cleanUser.phoneNumber = user.phoneNumber;
+      cleanUser.instituteType = user.instituteType || 'normal';
+      cleanUser.misApproved = user.misApproved || false;
+      cleanUser.misApprovalStatus = user.misApprovalStatus;
+      cleanUser.misAgreementUrl = user.misAgreementUrl;
+      cleanUser.misAgreementFileName = user.misAgreementFileName;
+      cleanUser.misAgreementFileSize = user.misAgreementFileSize;
+      cleanUser.misAgreementUploadedAt = user.misAgreementUploadedAt;
       // registrationNumber removed
     }
     

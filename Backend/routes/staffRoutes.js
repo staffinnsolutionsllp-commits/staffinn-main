@@ -167,6 +167,13 @@ router.delete('/profile-photo', authenticate, staffController.removeProfilePhoto
  */
 router.delete('/certificate/:certificateId', authenticate, staffController.deleteCertificate);
 
+/**
+ * @route GET /api/staff/profile-completion-status
+ * @desc Check if profile is complete for going live
+ * @access Private
+ */
+router.get('/profile-completion-status', authenticate, staffController.getProfileCompletionStatus);
+
 // Admin only routes
 
 /**

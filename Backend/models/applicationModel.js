@@ -242,6 +242,21 @@ const getAppliedInstitutes = async (recruiterId) => {
     // Get unique institute IDs from job applications
     const instituteIdsFromJobApps = [...new Set(jobApplications.map(app => app.instituteID))];
     
+    // Also get MIS applications for this recruiter
+    let misApplications = [];
+    let instituteIdsFromMisApps = [];
+    try {
+      const misJobApplicationModel = require('./misJobApplicationModel');
+      const allMisApps = await dynamoService.scanItems('staffinn-mis-job-applications');
+      misApplications = allMisApps.filter(app => app.recruiterId === recruiterId);
+      instituteIdsFromMisApps = [...new Set(misApplications.map(app => app.instituteId))];
+    } catch (misError) {
+      console.error('Error fetching MIS applications:', misError);
+    }
+    
+    // Combine all institute IDs
+    const allInstituteIds = [...new Set([...instituteIdsFromJobApps, ...instituteIdsFromMisApps])];
+    
     // Get all institutes with profile data
     const params = {
       FilterExpression: '#role = :role',
@@ -268,12 +283,13 @@ const getAppliedInstitutes = async (recruiterId) => {
       })
     );
     
-    // Filter institutes that have applied to this recruiter's jobs (old flow OR new flow)
+    // Filter institutes that have applied to this recruiter's jobs (old flow OR new flow OR MIS flow)
     const appliedInstitutes = institutesWithProfiles.filter(institute => {
       const oldFlowApplications = institute.applications || [];
       const hasOldFlowApplication = oldFlowApplications.some(app => app.recruiterId === recruiterId);
       const hasNewFlowApplication = instituteIdsFromJobApps.includes(institute.userId);
-      return hasOldFlowApplication || hasNewFlowApplication;
+      const hasMisApplication = instituteIdsFromMisApps.includes(institute.userId);
+      return hasOldFlowApplication || hasNewFlowApplication || hasMisApplication;
     });
     
     // Format the response with applied jobs info
@@ -284,6 +300,9 @@ const getAppliedInstitutes = async (recruiterId) => {
       // Get new flow applications for this institute and recruiter
       const newFlowApps = jobApplications.filter(app => app.instituteID === institute.userId);
       
+      // Get MIS applications for this institute and recruiter
+      const misApps = misApplications.filter(app => app.instituteId === institute.userId);
+      
       // Group new flow applications by job
       const jobGroups = {};
       newFlowApps.forEach(app => {
@@ -291,7 +310,8 @@ const getAppliedInstitutes = async (recruiterId) => {
           jobGroups[app.jobID] = {
             jobId: app.jobID,
             students: [],
-            firstAppliedAt: app.timestamp
+            firstAppliedAt: app.timestamp,
+            type: 'regular'
           };
         }
         jobGroups[app.jobID].students.push(app);
@@ -300,9 +320,28 @@ const getAppliedInstitutes = async (recruiterId) => {
         }
       });
       
-      // Get job details for new flow applications
+      // Group MIS applications by job
+      misApps.forEach(app => {
+        if (!jobGroups[app.jobId]) {
+          jobGroups[app.jobId] = {
+            jobId: app.jobId,
+            students: [],
+            firstAppliedAt: app.createdAt,
+            type: 'mis'
+          };
+        } else {
+          // If job already exists from regular flow, mark as mixed
+          jobGroups[app.jobId].type = 'mixed';
+        }
+        jobGroups[app.jobId].students.push(app);
+        if (new Date(app.createdAt) < new Date(jobGroups[app.jobId].firstAppliedAt)) {
+          jobGroups[app.jobId].firstAppliedAt = app.createdAt;
+        }
+      });
+      
+      // Get job details for all applications
       const jobModel = require('./jobModel');
-      const newFlowJobApplications = await Promise.all(
+      const allJobApplications = await Promise.all(
         Object.values(jobGroups).map(async (group) => {
           try {
             const job = await jobModel.getJobById(group.jobId);
@@ -312,7 +351,8 @@ const getAppliedInstitutes = async (recruiterId) => {
               appliedAt: group.firstAppliedAt,
               status: 'Applied',
               studentsSnapshot: group.students,
-              isNewFlow: true
+              isNewFlow: true,
+              applicationType: group.type // 'regular', 'mis', or 'mixed'
             };
           } catch (error) {
             return {
@@ -321,7 +361,8 @@ const getAppliedInstitutes = async (recruiterId) => {
               appliedAt: group.firstAppliedAt,
               status: 'Applied',
               studentsSnapshot: group.students,
-              isNewFlow: true
+              isNewFlow: true,
+              applicationType: group.type
             };
           }
         })
@@ -329,8 +370,8 @@ const getAppliedInstitutes = async (recruiterId) => {
       
       // Combine old and new flow applications
       const allAppliedJobs = [
-        ...recruiterOldFlowApps.map(app => ({ ...app, isNewFlow: false })),
-        ...newFlowJobApplications
+        ...recruiterOldFlowApps.map(app => ({ ...app, isNewFlow: false, applicationType: 'legacy' })),
+        ...allJobApplications
       ];
       
       return {
@@ -345,6 +386,7 @@ const getAppliedInstitutes = async (recruiterId) => {
         description: institute.description || '',
         establishedYear: institute.establishedYear || '',
         isVerified: institute.isVerified || false,
+        isStaffinPartner: institute.instituteType === 'staffinn_partner' || institute.misApproved === true,
         badges: institute.badges || [],
         appliedJobs: allAppliedJobs,
         totalApplications: allAppliedJobs.length,
@@ -431,7 +473,7 @@ const getJobApplicationStudents = async (recruiterId, instituteId, jobId) => {
     // Fallback to old flow
     const institute = await dynamoService.getItem(USERS_TABLE, { userId: instituteId });
     if (!institute || institute.role !== 'institute') {
-      throw new Error('Institute not found');
+      return []; // Return empty array instead of throwing error
     }
     
     // Find the specific application
@@ -441,20 +483,23 @@ const getJobApplicationStudents = async (recruiterId, instituteId, jobId) => {
     );
     
     if (!application) {
-      throw new Error('Application not found');
+      return []; // Return empty array instead of throwing error
     }
     
     // Get students snapshot from the application
     const studentsSnapshot = application.studentsSnapshot || [];
     
     // Filter out students who have been hired or rejected
-    const processedStudentIds = await jobApplicationModel.getProcessedStudentIds(jobId);
-    
-    const availableStudents = studentsSnapshot.filter(student => 
-      !processedStudentIds.includes(student.instituteStudntsID)
-    );
-    
-    return availableStudents;
+    try {
+      const processedStudentIds = await jobApplicationModel.getProcessedStudentIds(jobId);
+      const availableStudents = studentsSnapshot.filter(student => 
+        !processedStudentIds.includes(student.instituteStudntsID)
+      );
+      return availableStudents;
+    } catch (error) {
+      console.error('Error getting processed student IDs:', error);
+      return studentsSnapshot; // Return all students if we can't get processed IDs
+    }
   } catch (error) {
     console.error('Get job application students error:', error);
     throw new Error('Failed to get students for job application');

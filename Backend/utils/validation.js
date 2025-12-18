@@ -227,7 +227,13 @@ const instituteRegistrationSchema = Joi.object({
       'any.required': 'Phone number is required'
     }),
   
-
+  instituteType: Joi.string()
+    .valid('normal', 'staffinn_partner')
+    .optional()
+    .default('normal')
+    .messages({
+      'any.only': 'Institute type must be normal or staffinn_partner'
+    }),
   
   role: Joi.string()
     .valid('institute', 'Institute')
@@ -314,6 +320,14 @@ const jobPostingSchema = Joi.object({
     .messages({
       'alternatives.match': 'Skills must be provided as an array or comma-separated string',
       'any.required': 'At least one skill is required'
+    }),
+
+  graduationYear: Joi.string()
+    .allow('')
+    .optional()
+    .max(50)
+    .messages({
+      'string.max': 'Graduation year cannot exceed 50 characters'
     }),
 
   status: Joi.string()

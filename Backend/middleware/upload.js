@@ -43,11 +43,22 @@ const fileFilter = (req, file, cb) => {
         break;
 
       case 'certificate':
-        // Allow only PDF files for certificates
-        if (file.mimetype === 'application/pdf') {
+        // Allow PDF and image files for certificates
+        const allowedCertTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        if (allowedCertTypes.includes(file.mimetype)) {
           cb(null, true);
         } else {
-          cb(new Error('Certificate must be a PDF file'), false);
+          cb(new Error('Certificate must be PDF, JPEG, or PNG format'), false);
+        }
+        break;
+
+      case 'document':
+        // Allow PDF and image files for documents (Aadhar, etc.)
+        const allowedDocTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        if (allowedDocTypes.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Document must be PDF, JPEG, or PNG format'), false);
         }
         break;
 
@@ -67,7 +78,8 @@ const uploadConfig = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
     files: 5, // Maximum 5 files per request
-    fields: 10, // Maximum 10 form fields
+    fields: 50, // Maximum 50 form fields (increased)
+    fieldSize: 2 * 1024 * 1024 // 2MB per field
   },
   fileFilter: fileFilter
 });

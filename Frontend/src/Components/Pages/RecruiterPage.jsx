@@ -5,10 +5,11 @@ import './RecruiterPage.css';
 import './AppliedButton.css';
 import apiWithLoading from '../../services/apiWithLoading';
 import { AuthContext } from '../../context/AuthContext';
-import StudentSelectionModal from '../common/StudentSelectionModal';
+import StudentApplicationModal from '../common/StudentApplicationModal';
+import JobCard from '../common/JobCard';
 import { FaSearch } from 'react-icons/fa';
 
-const RecruiterPage = () => {
+const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
   const { user } = useContext(AuthContext);
   const { recruiterId } = useParams();
   const navigate = useNavigate();
@@ -31,8 +32,6 @@ const RecruiterPage = () => {
   // Student selection modal state
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [studentsForModal, setStudentsForModal] = useState([]);
-  const [modalLoading, setModalLoading] = useState(false);
 
   // Load recruiters from backend on component mount
   useEffect(() => {
@@ -270,66 +269,28 @@ const RecruiterPage = () => {
   
   // Handle institute job application with student selection
   const handleInstituteJobApplication = async (job) => {
+    console.log('Opening student application modal for job:', job.title);
+    console.log('User profile for modal:', userProfile);
     setSelectedJob(job);
-    setModalLoading(true);
     setShowStudentModal(true);
-    
-    try {
-      // Get students with application status for this job
-      const response = await apiWithLoading.getStudentsApplicationStatus(job.id);
-      
-      if (response.success) {
-        setStudentsForModal(response.data || []);
-      } else {
-        console.error('Failed to get students:', response.message);
-        setStudentsForModal([]);
-      }
-    } catch (error) {
-      console.error('Error loading students:', error);
-      setStudentsForModal([]);
-    } finally {
-      setModalLoading(false);
-    }
   };
   
-  // Handle student application submission
-  const handleStudentApplication = async (selectedStudentIds) => {
-    if (!selectedJob || selectedStudentIds.length === 0) {
-      return;
+  // Handle closing student modal and updating applied jobs state
+  const handleStudentModalClose = () => {
+    console.log('Closing student modal');
+    
+    // Update the applied jobs state to show "Already Applied" if students were applied
+    if (selectedJob && selectedRecruiter) {
+      const jobKey = `${selectedRecruiter.id}-${selectedJob.id}`;
+      setAppliedJobs(prev => new Set([...prev, jobKey]));
+      console.log('Updated applied jobs for:', jobKey);
     }
     
-    try {
-      const response = await apiWithLoading.applyStudentsToJob(
-        selectedJob.id,
-        selectedRecruiter.id,
-        selectedStudentIds
-      );
-      
-      if (response.success) {
-        alert(`Successfully applied ${selectedStudentIds.length} student${selectedStudentIds.length !== 1 ? 's' : ''} to ${selectedJob.title}!`);
-        
-        // Update the applied jobs state to show "Already Applied"
-        const jobKey = `${selectedRecruiter.id}-${selectedJob.id}`;
-        setAppliedJobs(prev => new Set([...prev, jobKey]));
-        
-        // Reset modal state
-        setSelectedJob(null);
-        setStudentsForModal([]);
-      } else {
-        alert('Failed to apply students: ' + response.message);
-      }
-    } catch (error) {
-      console.error('Error applying students:', error);
-      alert('Failed to apply students to job');
-    }
-  };
-  
-  // Close student selection modal
-  const closeStudentModal = () => {
     setShowStudentModal(false);
     setSelectedJob(null);
-    setStudentsForModal([]);
   };
+  
+
 
   // Load recruiter jobs when a recruiter is selected
   useEffect(() => {
@@ -415,14 +376,22 @@ const RecruiterPage = () => {
           .filter(job => job.recruiterId === selectedRecruiter.id)
           .map(job => ({
             id: job.jobId,
+            jobId: job.jobId,
             title: job.title,
+            jobType: job.jobType,
             type: job.jobType,
             salary: job.salary,
             experience: job.experience,
             location: job.location,
             description: job.description,
+            department: job.department,
+            graduationYear: job.graduationYear,
             skills: Array.isArray(job.skills) ? job.skills : (job.skills ? job.skills.split(',').map(s => s.trim()) : []),
-            postedDate: formatPostedDate(job.postedDate)
+            postedDate: job.postedDate,
+            recruiterInfo: {
+              companyName: selectedRecruiter.companyName,
+              verified: true
+            }
           }));
         
         setRecruiterJobs(recruiterSpecificJobs);
@@ -549,7 +518,7 @@ const RecruiterPage = () => {
 
   // Filter jobs based on activeFilter and searchTerm
   const filteredJobs = recruiterJobs.filter(job => {
-    const matchesFilter = activeFilter === 'all' || job.type === activeFilter;
+    const matchesFilter = activeFilter === 'all' || job.jobType === activeFilter;
     const matchesSearch = !searchTerm || 
                          job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -841,6 +810,12 @@ const RecruiterPage = () => {
                   >
                     Freelance
                   </button>
+                  <button 
+                    className={`filter-btn ${activeFilter === 'Internship' ? 'active' : ''}`}
+                    onClick={() => setActiveFilter('Internship')}
+                  >
+                    Internship
+                  </button>
                 </div>
                 <div className="search-bar">
                   <input
@@ -854,76 +829,30 @@ const RecruiterPage = () => {
 
               {filteredJobs.length > 0 ? (
                 <div className="job-cards-grid">
-                  {filteredJobs.map(job => (
-                    <div className="job-card" key={job.id}>
-                      <div className="job-card-header">
-                        <h3 className="job-title">{job.title}</h3>
-                        <div className="job-type-container">
-                          <span className={`job-type ${job.type.toLowerCase().replace('-', '')}`}>
-                            {job.type}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="job-card-content">
-                        <div className="job-card-details">
-                          <div className="detail-item">
-                            <span className="detail-icon">💰</span>
-                            <span className="detail-text">{job.salary}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-icon">⏱</span>
-                            <span className="detail-text">{job.experience}</span>
-                          </div>
-                          <div className="detail-item">
-                            <span className="detail-icon">📍</span>
-                            <span className="detail-text">{job.location}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="job-description" style={{whiteSpace: 'pre-wrap'}}>{job.description}</div>
-                        
-                        <div className="job-skills">
-                          {job.skills.map((skill, index) => (
-                            <span className="skill-tag" key={index}>{skill}</span>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="job-card-footer">
-                        <span className="posted-date">Posted {job.postedDate}</span>
-                        {(() => {
-                          const jobKey = `${selectedRecruiter.id}-${job.id}`;
-                          const hasApplied = appliedJobs.has(jobKey);
-                          
-                          // For institutes, check if they can reapply (if they have new students)
-                          if (user && user.role === 'institute' && hasApplied) {
-                            return (
-                              <button 
-                                className="apply-btn"
-                                onClick={() => handleApplyNow(job)}
-                              >
-                                Apply Students
-                              </button>
-                            );
-                          }
-                          
-                          return hasApplied ? (
-                            <button className="apply-btn applied" disabled>
-                              <span className="checkmark">✓</span> Already Applied
-                            </button>
-                          ) : (
-                            <button 
-                              className="apply-btn"
-                              onClick={() => handleApplyNow(job)}
-                            >
-                              {user && user.role === 'institute' ? 'Apply Students' : 'Apply Now'}
-                            </button>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  ))}
+                  {filteredJobs.map(job => {
+                    const jobKey = `${selectedRecruiter.id}-${job.id}`;
+                    const hasApplied = appliedJobs.has(jobKey);
+                    
+                    let buttonText = 'Apply Now';
+                    let showButton = true;
+                    
+                    if (user && user.role === 'institute') {
+                      buttonText = 'Apply Students';
+                    } else if (hasApplied && user && user.role !== 'institute') {
+                      buttonText = '✓ Already Applied';
+                      showButton = false;
+                    }
+                    
+                    return (
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        onApply={() => handleApplyNow(job)}
+                        showApplyButton={showButton || (user && user.role === 'institute')}
+                        buttonText={buttonText}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="no-jobs-found">
@@ -1118,15 +1047,15 @@ const RecruiterPage = () => {
           </div>
         </div>
         
-        {/* Student Selection Modal */}
-        <StudentSelectionModal
+        {/* Student Application Modal */}
+        <StudentApplicationModal
           isOpen={showStudentModal}
-          onClose={closeStudentModal}
-          onApply={handleStudentApplication}
+          onClose={handleStudentModalClose}
           jobTitle={selectedJob?.title || ''}
           companyName={selectedRecruiter?.companyName || ''}
-          students={studentsForModal}
-          loading={modalLoading}
+          selectedJob={selectedJob}
+          selectedRecruiter={selectedRecruiter}
+          userProfile={userProfile}
         />
       </div>
     );
@@ -1173,7 +1102,13 @@ const RecruiterPage = () => {
               <div 
                 key={recruiter.id} 
                 className="recruiter-card"
-                onClick={() => handleRecruiterSelect(recruiter)}
+                onClick={() => {
+                  if (!isLoggedIn) {
+                    onShowLogin();
+                    return;
+                  }
+                  handleRecruiterSelect(recruiter);
+                }}
               >
                 <div className="recruiter-card-header">
                   <div className="recruiter-logo">
@@ -1191,7 +1126,19 @@ const RecruiterPage = () => {
                   </div>
                 </div>
                 <div className="recruiter-card-footer">
-                  <button className="view-recruiter-btn">View Details</button>
+                  <button 
+                    className="view-recruiter-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isLoggedIn) {
+                        onShowLogin();
+                        return;
+                      }
+                      handleRecruiterSelect(recruiter);
+                    }}
+                  >
+                    View Details
+                  </button>
                 </div>
               </div>
             ))}

@@ -1,0 +1,755 @@
+# STAFFINN - ACTUAL INSTITUTE FEATURES DOCUMENTATION
+================================================================================
+Complete breakdown of EXISTING and WORKING Institute features in the codebase
+Version: 1.0 | Date: January 2025
+================================================================================
+
+## TABLE OF CONTENTS
+1. PUBLIC INSTITUTE PAGE FEATURES
+2. INSTITUTE DASHBOARD FEATURES
+3. PROFILE MANAGEMENT SYSTEM
+4. STUDENT MANAGEMENT SYSTEM
+5. COURSE MANAGEMENT SYSTEM
+6. PLACEMENT SECTION MANAGEMENT
+7. INDUSTRY COLLABORATION FEATURES
+8. GOVERNMENT SCHEMES MANAGEMENT
+9. EVENTS & NEWS MANAGEMENT
+10. ANALYTICS & REPORTING
+11. TECHNICAL IMPLEMENTATION DETAILS
+
+================================================================================
+
+## 1. PUBLIC INSTITUTE PAGE FEATURES (/institute/:id)
+================================================================================
+
+### HERO SECTION WITH SEARCH
+**Feature Name:** "Institute Search Section"
+**Background:** Uses Institutepage.jpg image with overlay
+**Elements:**
+- Page title: "Find Your Institute"
+- Dual search functionality:
+  - Name/Location/Pincode search input
+  - Course search input
+- Search button with icon
+- Real-time filtering of results
+
+### INSTITUTE PROFILE HEADER
+**Feature Name:** "Institute Profile Display"
+**Data Source:** Real-time from DynamoDB institute-profiles table
+**Elements:**
+- Institute logo (150x150px) with fallback placeholder
+- Institute name with verification badge
+- Contact information display:
+  - Address with pincode
+  - Phone number
+  - Email address
+  - Website link
+- Experience description
+- Profile badges display
+- "View Offered Courses" CTA button
+
+### NAVIGATION TABS SYSTEM
+**Feature Name:** "Institute Content Navigation"
+**Tab Options:**
+1. **Courses & Programs** - Course listings and enrollment
+2. **Placements** - Placement statistics and success stories
+3. **Industry Collaborations** - Partnership cards and MOUs
+4. **Government Schemes** - Available government programs
+5. **Events & News** - Upcoming events and latest news
+
+### COURSES & PROGRAMS TAB
+**Feature Name:** "Course Catalog Display"
+**Real-time Data:** Courses filtered by institute ID
+**Course Categories:**
+- Online Courses (with module count)
+- On-Campus Courses (with file count)
+
+**Search & Filter Options:**
+- Real-time course search by name
+- Category filter (All, IT, Engineering, Management, Vocational)
+- Duration filter (2, 3, 6, 8+ months)
+- Certification filter (Government-Recognized, Industry-Specific)
+
+**Course Card Display:**
+- Course thumbnail image
+- Course name and status badge
+- Duration, fees, mode, category
+- Certification type
+- Instructor name
+- Enrollment status (for logged-in users)
+- Progress indicator (if enrolled)
+- "View Details" button (redirects to course learning page)
+
+### PLACEMENTS TAB
+**Feature Name:** "Placement Statistics & Success Stories"
+**Key Metrics Cards:**
+- Students Placed (real-time count)
+- Placement Rate (percentage)
+- Average Salary Package
+- Highest Package
+
+**Top Hiring Companies Section:**
+- Company logos grid (100x100px)
+- Company names
+- Fallback placeholders for missing logos
+
+**Recent Placement Success Section:**
+- Student profile photos (50x50px)
+- Student names
+- Company names
+- Job positions/roles
+- Fallback placeholders for missing photos
+
+### INDUSTRY COLLABORATIONS TAB
+**Feature Name:** "Partnership & Collaboration Display"
+**Collaboration Cards Section:**
+- Company logos (150x150px)
+- Collaboration titles
+- Company names
+- Collaboration types (Training Partner, Placement Partner, etc.)
+- Detailed descriptions
+
+**MOU Section:**
+- MOU document titles
+- Descriptions
+- PDF document links (opens in new tab)
+- Document availability indicators
+
+**Recruiter CTA Section:**
+- "Hire from Our Institute" button
+- "Schedule a Campus Drive" button
+
+### GOVERNMENT SCHEMES TAB
+**Feature Name:** "Government Programs Display"
+**Scheme Cards Display:**
+- Scheme names
+- Descriptions (max 30 words)
+- "Learn More" links (external URLs)
+- Empty state message when no schemes available
+
+### EVENTS & NEWS TAB
+**Feature Name:** "Events & News Display"
+**Upcoming Events Section:**
+- Event banner images (300x150px)
+- Event titles and types
+- Event dates (formatted display)
+- Company/organizer information
+- Venue information
+- Expected participants count
+- Event details (truncated with "Read More")
+- "Read More" modal popup
+
+**Latest News Section:**
+- News banner images (300x150px)
+- News titles and types
+- Publication dates
+- Company/source information
+- News details (truncated with "Read More")
+- "Read More" modal popup
+
+### REVIEWS & TESTIMONIALS SECTION
+**Feature Name:** "Institute Reviews System"
+**Overall Rating Display:**
+- Average rating (calculated from all reviews)
+- Star rating display (1-5 stars with half-star support)
+- Total review count
+
+**Review Cards:**
+- Reviewer avatar (60x60px placeholder)
+- Reviewer name and role (Student/Alumni/Recruiter)
+- Star rating display
+- Review comment text
+
+**Write Review Form:**
+- Name input field
+- Role selection (Student/Alumni/Recruiter)
+- Rating selection (1-5 stars)
+- Comment textarea
+- Submit/Cancel buttons
+
+### CONTACT SECTION
+**Feature Name:** "Institute Contact Information"
+**Contact Form:**
+- Full name input
+- Email address input
+- Phone number input
+- Inquiry type dropdown (Admission, Course Info, Placement, Partnership, Other)
+- Message textarea
+- Submit button
+
+**Contact Information Display:**
+- Campus map placeholder (500x300px)
+- Address details
+- Phone number
+- Email address
+- Social media links (FB, TW, LI, IG, YT)
+
+### FOOTER SECTION
+**Feature Name:** "Institute Footer Information"
+**Footer Columns:**
+- Institute information and badges
+- Quick links navigation
+- Programs/courses listing
+- Student resources links
+- Legal links (Privacy Policy, Terms, Refund Policy, Sitemap)
+
+================================================================================
+
+## 2. INSTITUTE DASHBOARD FEATURES
+================================================================================
+
+### SIDEBAR NAVIGATION
+**Feature Name:** "Institute Dashboard Navigation"
+**Fixed Position:** Left sidebar with institute logo
+**Menu Items:**
+1. **Dashboard** - Overview and analytics
+2. **My Profile** - Profile management
+3. **My Courses** - Course creation and management
+4. **My Placement** - Student management and placement tracking
+5. **My Achievements** (Dropdown):
+   - Placement - Placement section management
+   - Industry Collaboration - Partnership management
+   - Government Scheme - Scheme management
+
+**Mobile Responsive:**
+- Hamburger menu for mobile devices
+- Collapsible sidebar functionality
+
+### DASHBOARD OVERVIEW TAB
+**Feature Name:** "Institute Analytics Dashboard"
+**Key Metrics Cards:**
+- Total Students (real-time count)
+- Active Courses (real-time count)
+- Placement Rate (percentage with real-time data)
+- Industry Partners (collaboration count)
+
+**Interactive Charts:**
+- Student Enrollment Trends (Bar Chart)
+  - Monthly enrollment data
+  - Course completion data
+  - Configurable time ranges (3, 6, 9, 12 months)
+- Placement Success Rate (Line Chart)
+  - Monthly placement rates
+  - Trend analysis
+  - Year selection filter
+
+**Chart Filters:**
+- Year selector (current and previous 4 years)
+- Time range selector (3, 6, 9, 12 months)
+
+================================================================================
+
+## 3. PROFILE MANAGEMENT SYSTEM
+================================================================================
+
+### PROFILE PHOTO MANAGEMENT
+**Feature Name:** "Institute Logo Upload"
+**Functionality:**
+- Upload image files (JPEG, PNG, GIF, WebP, max 5MB)
+- Real-time preview with blob URLs
+- S3 upload with unique filenames
+- Remove photo option
+- Automatic fallback to placeholder
+- Real-time sync across all dashboard elements
+
+### INSTITUTE INFORMATION SECTION
+**Editable Fields:**
+- Institute Name (required)
+- Address (required)
+- Pincode
+- Phone Number (required)
+- Email (read-only, registration email)
+- Website URL (with validation)
+- Experience Description
+- Established Year
+
+### BADGES MANAGEMENT
+**Feature Name:** "Institute Badges System"
+**Functionality:**
+- Add/Remove badge items
+- Text input for each badge
+- Real-time display on public page
+- Dynamic badge array management
+
+### PROFILE STATUS MANAGEMENT
+**Feature Name:** "Live Profile Toggle"
+**Functionality:**
+- "Go Live" button to make profile public
+- Live status indicator
+- Profile visibility control
+- Real-time status updates
+
+================================================================================
+
+## 4. STUDENT MANAGEMENT SYSTEM
+================================================================================
+
+### STUDENT CREATION FORM
+**Feature Name:** "Add New Student Modal"
+**Basic Details Section:**
+- Full Name (required)
+- Email Address (required)
+- Phone Number (required)
+- Date of Birth
+- Gender selection
+- Address
+
+**Academic Information Section:**
+- 10th Grade Details (Board, Percentage, Year)
+- 12th Grade Details (Board, Percentage, Year)
+- Graduation Details (Degree, Specialization, Expected Year)
+- Currently Pursuing checkbox
+
+**Skills Management:**
+- Dynamic skills array
+- Add/Remove skills functionality
+- Skills display with tags
+
+**File Upload Section:**
+- Profile Photo (images, max 5MB)
+- Resume (PDF/DOC/DOCX, max 10MB)
+- Certificates (multiple files, PDF/images)
+- S3 upload with organized folder structure
+
+### STUDENT LISTINGS TABLE
+**Feature Name:** "Student Management Table"
+**Columns:**
+- Student Name
+- Email Address
+- Phone Number
+- Degree & Specialization
+- View Status (placement history)
+- Actions (View Profile, Edit, Delete)
+
+### STUDENT SEARCH & FILTERING
+**Feature Name:** "Advanced Student Search"
+**Search Capabilities:**
+- Real-time search by name or company (from placement history)
+- Debounced search (300ms delay)
+- Loading indicators during search
+
+**Filter Options:**
+- Placement status filter (All/Hired/Rejected)
+- Combined search and filter functionality
+- Results counter display
+
+### STUDENT PROFILE VIEWER
+**Feature Name:** "Detailed Student Profile Modal"
+**Profile Sections:**
+- Basic Details (name, email, phone, address, gender, DOB)
+- Academic Information (10th, 12th, graduation details)
+- Skills display with tags
+- Placement status badge
+- Documents section (profile photo, resume, certificates links)
+
+### STUDENT EDITING
+**Feature Name:** "Edit Student Modal"
+**Functionality:**
+- Pre-populated form with existing data
+- Same validation as creation
+- File upload handling for updates
+- Real-time updates to student list
+
+### PLACEMENT HISTORY TRACKING
+**Feature Name:** "Student Application History Modal"
+**Functionality:**
+- View complete job application history
+- Application status tracking (Hired/Rejected/Applied)
+- Recruiter and company information
+- Job titles and application dates
+- Real-time data from job applications table
+
+================================================================================
+
+## 5. COURSE MANAGEMENT SYSTEM
+================================================================================
+
+### COURSE CREATION FORM
+**Feature Name:** "Add New Course Modal"
+**Basic Course Information:**
+- Course Name (required)
+- Duration (required)
+- Fees (required)
+- Instructor Name (required)
+- Course Description (required)
+- Category selection (IT, Engineering, Management, Vocational)
+- Mode selection (Online, On Campus)
+- Prerequisites
+- Syllabus Overview
+- Certification Type
+
+**Thumbnail Upload:**
+- Course thumbnail image (max 5MB)
+- Real-time preview
+- S3 upload functionality
+
+**Online Course Features:**
+- Module management system
+- Content upload (videos, documents)
+- Quiz creation and management
+- Progress tracking system
+
+**On-Campus Course Features:**
+- Multiple file uploads (images, videos, documents)
+- File management system
+- Organized S3 storage
+
+### COURSE LISTINGS DISPLAY
+**Feature Name:** "Course Management Cards"
+**Course Categories:**
+- Online Courses section with module count
+- On-Campus Courses section with file count
+
+**Course Card Information:**
+- Course thumbnail display
+- Course name and details
+- Duration, fees, instructor, category, mode
+- Module/file count
+- Active/Inactive status
+- Action buttons (View Details, Edit Course)
+
+### COURSE EDITING
+**Feature Name:** "Edit Course Modal"
+**Functionality:**
+- Pre-populated form with existing course data
+- Module structure preservation for online courses
+- File management for on-campus courses
+- Real-time updates to course listings
+
+### COURSE CONTENT MANAGEMENT
+**Feature Name:** "Online Course Content System"
+**Module Management:**
+- Add/Remove modules
+- Module titles and descriptions
+- Content ordering system
+
+**Content Management:**
+- Video uploads (max 500MB)
+- Document uploads
+- Content type classification
+- Duration tracking
+
+**Quiz System:**
+- Quiz creation for modules
+- Question and answer management
+- Passing score configuration
+- Results tracking
+
+================================================================================
+
+## 6. PLACEMENT SECTION MANAGEMENT
+================================================================================
+
+### PLACEMENT STATISTICS FORM
+**Feature Name:** "Placement Metrics Management"
+**Editable Fields:**
+- Average Salary (text input, e.g., "6.5 LPA")
+- Highest Package (text input, e.g., "24 LPA")
+
+### TOP HIRING COMPANIES MANAGEMENT
+**Feature Name:** "Company Management System"
+**Functionality:**
+- Add/Remove company entries
+- Company name input
+- Company logo upload (images, max 5MB)
+- Real-time image preview
+- S3 upload with organized folder structure
+- Image removal with S3 cleanup
+
+### RECENT PLACEMENT SUCCESS MANAGEMENT
+**Feature Name:** "Student Success Stories System"
+**Functionality:**
+- Add/Remove student entries
+- Student name, company, position inputs
+- Student photo upload (images, max 5MB)
+- Real-time image preview
+- S3 upload with organized folder structure
+- Photo removal with S3 cleanup
+
+### PLACEMENT DATA PERSISTENCE
+**Feature Name:** "Placement Section Database"
+**Functionality:**
+- Real-time data saving to DynamoDB
+- File URL persistence
+- Old file cleanup on updates
+- Public API for institute page display
+
+================================================================================
+
+## 7. INDUSTRY COLLABORATION FEATURES
+================================================================================
+
+### COLLABORATION CARDS MANAGEMENT
+**Feature Name:** "Partnership Cards System"
+**Card Fields:**
+- Collaboration Title
+- Company Name
+- Collaboration Type (Training Partner, Placement Partner, etc.)
+- Description (detailed text)
+- Company Image Upload (max 5MB)
+
+**Image Management:**
+- Real-time upload to S3
+- Immediate preview updates
+- Image deletion with S3 cleanup
+- Organized folder structure (industry-collab-images/)
+
+### MOU MANAGEMENT SYSTEM
+**Feature Name:** "MOU Document Management"
+**MOU Fields:**
+- MOU Title
+- Description
+- PDF Document Upload (max 10MB)
+
+**PDF Management:**
+- Real-time upload to S3
+- PDF validation (application/pdf only)
+- Document deletion with S3 cleanup
+- Organized folder structure (industry-collab-pdfs/)
+- Public PDF serving endpoint
+
+### REAL-TIME FILE UPLOADS
+**Feature Name:** "Instant File Processing"
+**Functionality:**
+- Immediate S3 upload on file selection
+- Progress indicators during upload
+- Error handling and validation
+- File verification after upload
+- Automatic URL generation and storage
+
+================================================================================
+
+## 8. GOVERNMENT SCHEMES MANAGEMENT
+================================================================================
+
+### SCHEME CREATION FORM
+**Feature Name:** "Add Government Scheme Modal"
+**Required Fields:**
+- Scheme Name (required)
+- Description (max 30 words, optional)
+- Scheme Link (required, URL validation)
+
+### SCHEME LISTINGS DISPLAY
+**Feature Name:** "Government Schemes Grid"
+**Scheme Card Information:**
+- Scheme name
+- Status indicator
+- Description (truncated to 100 characters)
+- External link to scheme details
+- Action buttons (View Details, Edit, Delete)
+
+### SCHEME MANAGEMENT
+**Feature Name:** "Scheme CRUD Operations"
+**Functionality:**
+- Create new schemes with validation
+- Edit existing schemes
+- Delete schemes with confirmation
+- View detailed scheme information in modal
+- Real-time updates to public page
+
+================================================================================
+
+## 9. EVENTS & NEWS MANAGEMENT
+================================================================================
+
+### EVENT/NEWS CREATION FORM
+**Feature Name:** "Add Event/News Modal"
+**Common Fields:**
+- Title (required)
+- Date (required)
+- Company/Organizer (required)
+- Venue
+- Expected Participants (number)
+- Details (required)
+- Type selection (Event/News)
+- Verified status checkbox
+- Banner Image Upload (max 5MB)
+
+### EVENT/NEWS LISTINGS DISPLAY
+**Feature Name:** "Events & News Management Grid"
+**Separate Sections:**
+- Events section with count
+- News section with count
+
+**Card Information:**
+- Banner image display
+- Title and type badge
+- Company, date, venue information
+- Expected participants
+- Details preview (truncated)
+- Verification status badge
+- Action buttons (View, Edit, Delete)
+
+### EVENT/NEWS MANAGEMENT
+**Feature Name:** "Event/News CRUD Operations"
+**Functionality:**
+- Create events and news with banner images
+- Edit existing items with image updates
+- Delete items with S3 cleanup
+- View detailed information in modal
+- Real-time updates to public page
+- Image upload to S3 with organized folders
+
+### EVENT/NEWS VIEWING MODAL
+**Feature Name:** "Detailed Event/News Display"
+**Modal Content:**
+- Full banner image display
+- Complete event/news information
+- Formatted content with HTML support
+- Meta information (date, participants, venue)
+- Close functionality
+
+================================================================================
+
+## 10. ANALYTICS & REPORTING
+================================================================================
+
+### DASHBOARD STATISTICS
+**Feature Name:** "Real-time Institute Metrics"
+**Data Sources:**
+- Student count from institute-students table
+- Course count from courses table
+- Placement data from job-applications table
+- Industry partners from collaborations table
+
+**Metrics Calculation:**
+- Total Students (real-time count)
+- Active Courses (real-time count)
+- Placement Rate (calculated from applications)
+- Industry Partners (collaboration count)
+
+### ENROLLMENT TRENDS CHART
+**Feature Name:** "Student Enrollment Analytics"
+**Data Processing:**
+- Monthly enrollment data
+- Course completion tracking
+- Configurable time ranges
+- Year-over-year comparison
+
+### PLACEMENT TRENDS CHART
+**Feature Name:** "Placement Success Analytics"
+**Data Processing:**
+- Monthly placement rates
+- Hiring trend analysis
+- Success rate calculations
+- Historical data comparison
+
+### CHART FILTERING SYSTEM
+**Feature Name:** "Analytics Filter Controls"
+**Filter Options:**
+- Year selection (current + 4 previous years)
+- Time range selection (3, 6, 9, 12 months)
+- Real-time chart updates
+- Data refresh functionality
+
+================================================================================
+
+## 11. TECHNICAL IMPLEMENTATION DETAILS
+================================================================================
+
+### DATABASE STRUCTURE
+**Primary Tables:**
+- `users` - Institute registration and authentication
+- `institute-profiles` - Institute profile information
+- `institute-students` - Student management
+- `courses` - Course information and content
+- `institute-placement` - Placement section data
+- `institute-industry-collab` - Industry collaborations
+- `institute-government-schemes` - Government schemes
+- `institute-events-news` - Events and news
+- `job-applications` - Student application tracking
+
+### FILE STORAGE SYSTEM
+**S3 Bucket Organization:**
+- `institute-images/` - Institute profile photos
+- `institute-students/` - Student files (profiles, resumes, certificates)
+- `placement-company-logos/` - Company logos
+- `placement-student-photos/` - Student success photos
+- `industry-collab-images/` - Collaboration images
+- `industry-collab-pdfs/` - MOU documents
+- `institute-events-news/` - Event/news banner images
+- `course-content/` - Course videos and materials
+
+### API ENDPOINTS
+**Public Endpoints:**
+- `GET /api/institute/public/all` - All live institutes
+- `GET /api/institute/public/:id` - Institute details
+- `GET /api/institute/public/:id/placement-section` - Placement data
+- `GET /api/institute/public/:id/industry-collaborations` - Collaborations
+- `GET /api/institute/public/:id/government-schemes` - Government schemes
+- `GET /api/institute/public/:id/events-news` - Events and news
+- `GET /api/institute/public/:id/dashboard-stats` - Public statistics
+
+**Protected Endpoints:**
+- Profile management (`GET/PUT /api/institute/profile`)
+- Student management (`GET/POST/PUT/DELETE /api/institute/students`)
+- Course management (`GET/POST/PUT /api/institute/courses`)
+- Placement section (`GET/PUT /api/institute/placement-section`)
+- Industry collaborations (`GET/PUT /api/institute/industry-collaborations`)
+- Government schemes (`GET/POST/PUT/DELETE /api/institute/government-schemes`)
+- Events & news (`GET/POST/PUT/DELETE /api/institute/events-news`)
+
+### AUTHENTICATION & AUTHORIZATION
+**Security Features:**
+- JWT token-based authentication
+- Role-based access control (institute role required)
+- Protected route middleware
+- User session management
+- Institute ownership verification
+
+### REAL-TIME FEATURES
+**Live Updates:**
+- Dashboard statistics refresh
+- File upload progress indicators
+- Real-time image previews
+- Instant S3 uploads
+- Dynamic form updates
+- Chart data refresh
+
+### RESPONSIVE DESIGN
+**Mobile Features:**
+- Collapsible sidebar navigation
+- Mobile-optimized forms
+- Touch-friendly interfaces
+- Responsive grid layouts
+- Mobile hamburger menu
+
+### ERROR HANDLING
+**Validation Systems:**
+- Form field validation
+- File type and size validation
+- URL format validation
+- Required field checking
+- Error message display
+- Loading state management
+
+### PERFORMANCE OPTIMIZATIONS
+**Efficiency Features:**
+- Debounced search functionality
+- Lazy loading for large datasets
+- Image compression and optimization
+- Efficient S3 upload handling
+- Cached data where appropriate
+- Optimized database queries
+
+================================================================================
+
+## SUMMARY
+================================================================================
+
+The Institute page and dashboard system provides a comprehensive platform for educational institutions to:
+
+1. **Manage Public Presence** - Complete institute profile with courses, placements, collaborations, and news
+2. **Student Management** - Full CRUD operations for student data with placement tracking
+3. **Course Management** - Online and on-campus course creation with content management
+4. **Placement Showcase** - Statistics, company partnerships, and success stories
+5. **Industry Relations** - Collaboration management with document storage
+6. **Government Programs** - Scheme management and public display
+7. **Event Management** - Events and news with media support
+8. **Analytics Dashboard** - Real-time statistics and trend analysis
+9. **File Management** - Comprehensive S3-based file storage and management
+10. **Real-time Updates** - Live data synchronization across all components
+
+All features are fully functional, tested, and integrated with the existing codebase architecture.
+
+================================================================================

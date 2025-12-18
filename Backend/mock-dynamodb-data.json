@@ -1,6 +1,25 @@
 {
   "staffinn-users": {},
-  "staffinn-staff-profiles": {},
+  "staffinn-staff-profiles": {
+    "6679d98c-ddf1-4805-ba69-76280a925110": {
+      "staffId": "6679d98c-ddf1-4805-ba69-76280a925110",
+      "userId": "test-user-123",
+      "fullName": "Test User",
+      "email": "test@example.com",
+      "phone": "1234567890",
+      "isActiveStaff": true,
+      "profileVisibility": "public",
+      "createdAt": "2025-11-17T13:13:22.885Z",
+      "updatedAt": "2025-11-17T13:13:23.127Z",
+      "address": "123 Test Street",
+      "pincode": "123456",
+      "skills": "JavaScript, React, Node.js",
+      "sector": "Technology",
+      "role": "Software Developer",
+      "state": "Test State",
+      "city": "Test City"
+    }
+  },
   "staffinn-institute-profiles": {
     "institute-1": {
       "instituteId": "institute-1",

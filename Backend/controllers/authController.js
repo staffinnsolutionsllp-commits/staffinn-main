@@ -335,6 +335,38 @@ const requestHelp = async (req, res) => {
   }
 };
 
+/**
+ * Get all users for messaging (excluding current user)
+ * @route GET /api/auth/users
+ */
+const getUsers = async (req, res) => {
+  try {
+    const currentUserId = req.user.userId;
+    const users = await userModel.getAllUsers();
+    
+    // Filter out current user and only return necessary fields
+    const filteredUsers = users
+      .filter(user => user.userId !== currentUserId)
+      .map(user => ({
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+        userType: user.role || user.userType
+      }));
+    
+    res.status(200).json({
+      success: true,
+      data: filteredUsers
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch users'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -342,5 +374,6 @@ module.exports = {
   verifyEmail,
   verifyOTP,
   changePassword,
-  requestHelp
+  requestHelp,
+  getUsers
 };

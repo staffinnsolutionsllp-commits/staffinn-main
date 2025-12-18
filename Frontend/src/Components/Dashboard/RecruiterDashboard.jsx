@@ -13,6 +13,7 @@ import { AuthContext } from '../../context/AuthContext';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
 import HiddenUser from '../HiddenUser/HiddenUser';
 import GovernmentSchemes from './GovernmentSchemes';
+import ContactHistory from '../Messages/ContactHistory';
 import './HiddenNotification.css';
 
 const RecruiterDashboard = () => {
@@ -21,6 +22,15 @@ const RecruiterDashboard = () => {
     const [profilePhoto, setProfilePhoto] = useState(null);
     const { updateAllImages, notifyProfilePhotoUpdated } = useProfilePhotoSync(profilePhoto, 'recruiter');
     const [activeTab, setActiveTab] = useState('overview');
+    
+    // Handle URL tab parameter
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam) {
+            setActiveTab(tabParam);
+        }
+    }, []);
     const [showJobForm, setShowJobForm] = useState(false);
     const [editingJob, setEditingJob] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -42,6 +52,7 @@ const RecruiterDashboard = () => {
         description: '',
         skills: '',
         department: '',
+        graduationYear: '',
         status: 'Active',
         postedDate: new Date().toISOString().split('T')[0]
     });
@@ -1021,6 +1032,7 @@ const RecruiterDashboard = () => {
                 description: '',
                 skills: '',
                 department: '',
+                graduationYear: '',
                 status: 'Active',
                 postedDate: new Date().toISOString().split('T')[0]
             });
@@ -1047,6 +1059,7 @@ const RecruiterDashboard = () => {
             description: job.description,
             skills: Array.isArray(job.skills) ? job.skills.join(', ') : job.skills,
             department: job.department,
+            graduationYear: job.graduationYear || '',
             status: job.status,
             postedDate: job.postedDate ? job.postedDate.split('T')[0] : new Date().toISOString().split('T')[0]
         });
@@ -1505,6 +1518,9 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'news' ? 'active' : ''} onClick={() => handleTabChange('news')}>
                         News
                     </li>
+                    <li className={activeTab === 'contact-history' ? 'active' : ''} onClick={() => handleTabChange('contact-history')}>
+                        Contact History
+                    </li>
                     <li className={activeTab === 'government-schemes' ? 'active' : ''} onClick={() => handleTabChange('government-schemes')}>
                         Government Schemes
                     </li>
@@ -1521,6 +1537,7 @@ const RecruiterDashboard = () => {
                     {activeTab === 'hiring' && 'Hiring History'}
                     {activeTab === 'institutes' && 'Institutes'}
                     {activeTab === 'news' && 'News'}
+                    {activeTab === 'contact-history' && 'Contact History'}
                     {activeTab === 'government-schemes' && 'Government Schemes'}
                     {activeTab === 'profile' && 'My Profile'}
                 </h1>
@@ -1546,6 +1563,7 @@ const RecruiterDashboard = () => {
                                             description: '',
                                             skills: '',
                                             department: '',
+                                            graduationYear: '',
                                             status: 'Active',
                                             postedDate: new Date().toISOString().split('T')[0]
                                         });
@@ -1646,6 +1664,22 @@ const RecruiterDashboard = () => {
 
                                 <div className="recruiter-form-row">
                                     <div className="recruiter-form-group">
+                                        <label>Graduation Year</label>
+                                        <input
+                                            type="text"
+                                            name="graduationYear"
+                                            value={jobForm.graduationYear}
+                                            onChange={handleInputChange}
+                                            placeholder="e.g. 2024, 2025 or 2023-2025"
+                                        />
+                                    </div>
+                                    <div className="recruiter-form-group">
+                                        {/* Empty div for spacing */}
+                                    </div>
+                                </div>
+
+                                <div className="recruiter-form-row">
+                                    <div className="recruiter-form-group">
                                         <label>Date Posted *</label>
                                         <input
                                             type="date"
@@ -1710,6 +1744,7 @@ const RecruiterDashboard = () => {
                                                 description: '',
                                                 skills: '',
                                                 department: '',
+                                                graduationYear: '',
                                                 status: 'Active',
                                                 postedDate: new Date().toISOString().split('T')[0]
                                             });
@@ -1997,6 +2032,7 @@ const RecruiterDashboard = () => {
                                         <th>Job Title</th>
                                         <th>Department</th>
                                         <th>Location</th>
+                                        <th>Graduation Year</th>
                                         <th>Applications</th>
                                         <th>Status</th>
                                         <th>Posted</th>
@@ -2009,6 +2045,7 @@ const RecruiterDashboard = () => {
                                             <td>{job.title}</td>
                                             <td>{job.department}</td>
                                             <td>{job.location}</td>
+                                            <td>{job.graduationYear || 'Any'}</td>
                                             <td>{job.applications || 0}</td>
                                             <td>
                                                 <span className={`recruiter-status-badge ${job.status.toLowerCase()}`}>
@@ -2100,6 +2137,7 @@ const RecruiterDashboard = () => {
                                     <th>Job Title</th>
                                     <th>Department</th>
                                     <th>Location</th>
+                                    <th>Graduation Year</th>
                                     <th>Applications</th>
                                     <th>Status</th>
                                     <th>Posted</th>
@@ -2112,6 +2150,7 @@ const RecruiterDashboard = () => {
                                         <td>{job.title}</td>
                                         <td>{job.department}</td>
                                         <td>{job.location}</td>
+                                        <td>{job.graduationYear || 'Any'}</td>
                                         <td>{job.applications || 0}</td>
                                         <td>
                                             <span className={`recruiter-status-badge ${job.status.toLowerCase()}`}>
@@ -2591,6 +2630,12 @@ const RecruiterDashboard = () => {
                                 <p>No institutes have applied to your jobs yet.</p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'contact-history' && (
+                    <div className="recruiter-contact-history-tab">
+                        <ContactHistory />
                     </div>
                 )}
 
@@ -3259,9 +3304,9 @@ const RecruiterDashboard = () => {
                                                     <tr>
                                                         <th>Name</th>
                                                         <th>Email</th>
-                                                        <th>Degree</th>
-                                                        <th>Specialization</th>
-                                                        <th>Graduation Year</th>
+                                                        <th>Qualification</th>
+                                                        <th>Center</th>
+                                                        <th>Course</th>
                                                         <th>Hiring</th>
                                                         <th>Skills</th>
                                                         <th>Actions</th>
@@ -3270,11 +3315,29 @@ const RecruiterDashboard = () => {
                                                 <tbody>
                                                     {selectedInstituteStudents.map((student) => (
                                                         <tr key={student.instituteStudntsID}>
-                                                            <td>{student.fullName}</td>
+                                                            <td>
+                                                                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                                                                    {student.isMisStudent && (
+                                                                        <div className="staffinn-verified-badge" style={{
+                                                                            background: '#28a745',
+                                                                            color: 'white',
+                                                                            padding: '2px 6px',
+                                                                            borderRadius: '4px',
+                                                                            fontSize: '10px',
+                                                                            fontWeight: 'bold',
+                                                                            marginBottom: '4px',
+                                                                            display: 'inline-block'
+                                                                        }}>
+                                                                            ✓ Staffinn Verified
+                                                                        </div>
+                                                                    )}
+                                                                    <span style={{fontWeight: student.isMisStudent ? 'bold' : 'normal'}}>{student.fullName}</span>
+                                                                </div>
+                                                            </td>
                                                             <td>{student.email}</td>
-                                                            <td>{student.degreeName}</td>
-                                                            <td>{student.specialization}</td>
-                                                            <td>{student.expectedYearOfPassing}</td>
+                                                            <td>{student.isMisStudent ? (student.qualification || 'N/A') : (student.degreeName || 'N/A')}</td>
+                                                            <td>{student.isMisStudent ? (student.trainingCenter || 'MIS Center') : (student.specialization || 'N/A')}</td>
+                                                            <td>{student.isMisStudent ? (student.course || 'N/A') : (student.expectedYearOfPassing || 'N/A')}</td>
                                                             <td>
                                                                 <div className="hiring-buttons" style={{display: 'flex', gap: '5px'}}>
                                                                     <button 

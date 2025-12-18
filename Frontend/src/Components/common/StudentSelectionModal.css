@@ -265,6 +265,126 @@
   }
 }
 
+/* Student Type Options */
+.student-type-options {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.student-type-options h3 {
+  margin: 0 0 24px 0;
+  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.options-container {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.option-btn {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 250px;
+  text-align: left;
+}
+
+.option-btn:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+.institute-btn:hover {
+  border-color: #059669;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
+}
+
+.mis-btn:hover {
+  border-color: #7c3aed;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+}
+
+.option-content h4 {
+  margin: 0 0 8px 0;
+  color: #1f2937;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.option-content p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.mis-info {
+  background-color: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.mis-info p {
+  margin: 0;
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
+.selected-type-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.back-btn {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.back-btn:hover {
+  background-color: #e5e7eb;
+}
+
+.selected-type-header h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .options-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .option-btn {
+    min-width: 200px;
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
 @media (max-width: 480px) {
   .table-header,
   .table-row {
@@ -279,5 +399,16 @@
   .table-header .col-phone,
   .table-header .col-degree {
     display: none;
+  }
+  
+  .option-btn {
+    padding: 20px;
+    min-width: auto;
+  }
+  
+  .selected-type-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 }

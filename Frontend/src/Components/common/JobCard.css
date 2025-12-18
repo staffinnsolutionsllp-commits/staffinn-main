@@ -6,9 +6,10 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
   transition: all 0.3s ease;
-  height: fit-content;
+  height: 400px; /* Fixed height for all job cards */
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .job-card:hover {
@@ -86,10 +87,10 @@
   color: #6b7280;
 }
 
-.detail-icon {
-  font-size: 16px;
-  width: 20px;
-  text-align: center;
+.detail-label {
+  font-weight: 600;
+  color: #374151;
+  min-width: 80px;
 }
 
 .detail-text {
@@ -154,9 +155,30 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 16px;
+  margin-top: auto;
   padding-top: 16px;
   border-top: 1px solid #f3f4f6;
+}
+
+.job-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.view-details-btn {
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.view-details-btn:hover {
+  background-color: #4b5563;
 }
 
 .job-meta {
@@ -182,7 +204,7 @@
   border: none;
   padding: 8px 16px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -194,6 +216,195 @@
 
 .apply-btn:active {
   background-color: #1d4ed8;
+}
+
+/* Job Modal Styles */
+.job-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.job-modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.job-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.job-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.job-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.job-modal-close:hover {
+  color: #374151;
+}
+
+.job-modal-body {
+  padding: 24px;
+}
+
+.job-modal-section {
+  margin-bottom: 24px;
+}
+
+.job-modal-section:last-child {
+  margin-bottom: 0;
+}
+
+.job-modal-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.job-modal-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.modal-detail-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.job-modal-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #374151;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.job-modal-description strong {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.job-modal-description u {
+  text-decoration: underline;
+}
+
+.job-modal-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.modal-skill-tag {
+  background-color: #f3f4f6;
+  color: #374151;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.job-modal-company p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #374151;
+}
+
+.job-modal-company a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.job-modal-company a:hover {
+  text-decoration: underline;
+}
+
+.job-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.modal-apply-btn {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.modal-apply-btn:hover {
+  background-color: #2563eb;
+}
+
+.modal-close-btn {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background-color: #e5e7eb;
 }
 
 /* Responsive Design */
@@ -226,8 +437,27 @@
     gap: 12px;
   }
   
-  .apply-btn {
+  .job-card-actions {
     width: 100%;
+    justify-content: space-between;
+  }
+  
+  .view-details-btn,
+  .apply-btn {
+    flex: 1;
     padding: 10px;
+  }
+  
+  .job-modal-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .job-modal-footer {
+    flex-direction: column;
+  }
+  
+  .modal-apply-btn,
+  .modal-close-btn {
+    width: 100%;
   }
 }

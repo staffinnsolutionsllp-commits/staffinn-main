@@ -380,6 +380,7 @@
 
 .clean-view-btn {
   flex: 1;
+  width: 100%;
   padding: 10px 16px;
   background: linear-gradient(135deg, #4863f7, #3a4fd8);
   color: white;
@@ -1815,6 +1816,18 @@
     padding: 12px 15px;
   }
 
+  .clean-contact-buttons {
+    gap: 6px;
+    flex-direction: column;
+  }
+
+  .contact-option-btn {
+    padding: 10px 12px;
+    font-size: 13px;
+    width: 100%;
+    min-width: auto;
+  }
+
   .staff-profile-photo {
     width: 60px;
     height: 60px;
@@ -1919,11 +1932,12 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .contact-option-btn {
   flex: 1;
-  min-width: 120px;
+  min-width: 0;
   padding: 12px 16px;
   border: none;
   border-radius: 8px;
@@ -1935,6 +1949,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .call-btn {

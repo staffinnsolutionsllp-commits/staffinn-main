@@ -91,14 +91,14 @@ const registerStaff = async (req, res) => {
     const user = await userModel.createUser(userData);
     console.log('Created user:', user);
     
-    // Create initial staff profile
+    // Create initial staff profile - Default to seeker mode
     const staffProfileData = {
       userId: user.userId,
       fullName: value.fullName,
       email: value.email,
       phone: value.phoneNumber,
       isActiveStaff: false, // Default to seeker mode
-      profileVisibility: 'public', // Keep profile visible by default
+      profileVisibility: 'private', // Start as private until they complete profile
       profilePhoto: null,
       resumeUrl: null,
       skills: '',
@@ -138,7 +138,7 @@ const registerStaff = async (req, res) => {
     // Send response
     res.status(201).json({
       success: true,
-      message: 'Staff registered successfully',
+      message: 'Staff registered successfully. Complete your profile to become an Active Staff.',
       data: {
         user: {
           userId: user.userId,
@@ -209,11 +209,12 @@ const getStaffProfile = async (req, res) => {
  */
 const updateStaffProfile = async (req, res) => {
   try {
-    // Add debugging and validation
-    console.log('Update profile request user:', req.user);
-    console.log('Update profile request body:', req.body);
+    console.log('🔄 Update profile request received');
+    console.log('User:', req.user ? { userId: req.user.userId, role: req.user.role } : 'No user');
+    console.log('Body keys:', Object.keys(req.body));
     
     if (!req.user || !req.user.userId) {
+      console.error('❌ Authentication failed - no user or userId');
       return res.status(401).json({
         success: false,
         message: 'User not authenticated or userId missing'
@@ -221,24 +222,49 @@ const updateStaffProfile = async (req, res) => {
     }
     
     const userId = req.user.userId;
-    const updateData = req.body;
+    const updateData = { ...req.body };
     
-    // Remove sensitive fields that shouldn't be updated directly
+    // Remove sensitive fields
     delete updateData.userId;
     delete updateData.createdAt;
-    
-    // Add timestamp
     updateData.updatedAt = new Date().toISOString();
     
-    console.log('Updating profile for userId:', userId, 'with data:', updateData);
+    console.log('📝 Processing update for userId:', userId);
+    console.log('📝 Update data:', updateData);
     
-    // Update staff profile
+    // Validate mandatory fields if going live
+    if (updateData.isActiveStaff === true) {
+      const missingFields = [];
+      
+      if (!updateData.address?.trim()) missingFields.push('Address');
+      if (!updateData.state?.trim()) missingFields.push('State');
+      if (!updateData.city?.trim()) missingFields.push('City');
+      if (!updateData.pincode?.trim()) missingFields.push('Pincode');
+      if (!updateData.sector?.trim()) missingFields.push('Sector');
+      if (!updateData.role?.trim()) missingFields.push('Role');
+      if (!updateData.skills?.trim()) missingFields.push('Skills');
+      
+      if (missingFields.length > 0) {
+        console.log('❌ Missing mandatory fields:', missingFields);
+        return res.status(400).json({
+          success: false,
+          message: 'Please complete all mandatory fields',
+          missingFields
+        });
+      }
+      
+      updateData.profileVisibility = 'public';
+    }
+    
+    console.log('🔄 Calling staffModel.updateStaffProfile...');
     const updatedProfile = await staffModel.updateStaffProfile(userId, updateData);
+    console.log('✅ Profile updated successfully:', updatedProfile ? 'Yes' : 'No');
     
     if (!updatedProfile) {
+      console.error('❌ No profile returned from update');
       return res.status(404).json({
         success: false,
-        message: 'Staff profile not found'
+        message: 'Staff profile not found or update failed'
       });
     }
     
@@ -249,7 +275,8 @@ const updateStaffProfile = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Update staff profile error:', error);
+    console.error('❌ Update staff profile error:', error.message);
+    console.error('❌ Stack trace:', error.stack);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update staff profile'
@@ -297,7 +324,7 @@ const toggleProfileMode = async (req, res) => {
         email: userData.email,
         phone: userData.phoneNumber,
         isActiveStaff: Boolean(isActiveStaff),
-        profileVisibility: 'public', // Default to public for new profiles
+        profileVisibility: isActiveStaff ? 'public' : 'private',
         profilePhoto: null,
         resumeUrl: null,
         skills: '',
@@ -320,15 +347,51 @@ const toggleProfileMode = async (req, res) => {
       
       staffProfile = await staffModel.createStaffProfile(staffProfileData);
     } else {
+      // If trying to become active staff, validate mandatory fields
+      if (isActiveStaff) {
+        const missingFields = [];
+        
+        if (!staffProfile.address || staffProfile.address.trim() === '') {
+          missingFields.push('Address (House No. / Street / Area)');
+        }
+        if (!staffProfile.state || staffProfile.state.trim() === '') {
+          missingFields.push('State');
+        }
+        if (!staffProfile.city || staffProfile.city.trim() === '') {
+          missingFields.push('City');
+        }
+        if (!staffProfile.pincode || staffProfile.pincode.trim() === '') {
+          missingFields.push('Pincode');
+        }
+        if (!staffProfile.sector || staffProfile.sector.trim() === '') {
+          missingFields.push('Choose Your Sector');
+        }
+        if (!staffProfile.role || staffProfile.role.trim() === '') {
+          missingFields.push('Choose Your Role');
+        }
+        if (!staffProfile.skills || staffProfile.skills.trim() === '') {
+          missingFields.push('Skills (separate with commas)');
+        }
+        
+        if (missingFields.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Please complete your profile first. Missing fields: ' + missingFields.join(', '),
+            missingFields: missingFields
+          });
+        }
+      }
+      
       const updateData = {
         isActiveStaff: Boolean(isActiveStaff),
         updatedAt: new Date().toISOString()
       };
       
-      // Only set visibility to public if becoming active staff
-      // Keep existing visibility when becoming seeker (don't force to private)
+      // Set visibility based on active staff status
       if (isActiveStaff) {
         updateData.profileVisibility = 'public';
+      } else {
+        updateData.profileVisibility = 'private';
       }
       
       console.log('Updating profile with isActiveStaff:', updateData.isActiveStaff);
@@ -345,6 +408,7 @@ const toggleProfileMode = async (req, res) => {
     }
     
     console.log('Profile mode toggled successfully:', updatedProfile);
+    
     
     res.status(200).json({
       success: true,
@@ -769,6 +833,73 @@ const searchStaff = async (req, res) => {
   }
 };
 
+/**
+ * Check if profile is complete for going live
+ * @route GET /api/staff/profile-completion-status
+ */
+const getProfileCompletionStatus = async (req, res) => {
+  try {
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated or userId missing'
+      });
+    }
+    
+    const userId = req.user.userId;
+    const staffProfile = await staffModel.getStaffProfile(userId);
+    
+    if (!staffProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Staff profile not found'
+      });
+    }
+    
+    const missingFields = [];
+    
+    if (!staffProfile.address || staffProfile.address.trim() === '') {
+      missingFields.push('Address (House No. / Street / Area)');
+    }
+    if (!staffProfile.state || staffProfile.state.trim() === '') {
+      missingFields.push('State');
+    }
+    if (!staffProfile.city || staffProfile.city.trim() === '') {
+      missingFields.push('City');
+    }
+    if (!staffProfile.pincode || staffProfile.pincode.trim() === '') {
+      missingFields.push('Pincode');
+    }
+    if (!staffProfile.sector || staffProfile.sector.trim() === '') {
+      missingFields.push('Choose Your Sector');
+    }
+    if (!staffProfile.role || staffProfile.role.trim() === '') {
+      missingFields.push('Choose Your Role');
+    }
+    if (!staffProfile.skills || staffProfile.skills.trim() === '') {
+      missingFields.push('Skills (separate with commas)');
+    }
+    
+    const isComplete = missingFields.length === 0;
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        isComplete,
+        missingFields,
+        canGoLive: isComplete
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get profile completion status error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get profile completion status'
+    });
+  }
+};
+
 module.exports = {
   registerStaff,
   getStaffProfile,
@@ -782,5 +913,6 @@ module.exports = {
   deleteCertificate,
   getAllStaff,
   deleteStaff,
-  searchStaff
+  searchStaff,
+  getProfileCompletionStatus
 };

@@ -92,7 +92,7 @@ const authenticateAdmin = async (req, res, next) => {
     // Verify admin token
     const decoded = jwtUtils.verifyToken(token);
     
-    if (!decoded || decoded.role !== 'admin') {
+    if (!decoded || !['admin', 'master', 'staff', 'recruiter', 'institute'].includes(decoded.role)) {
       return res.status(401).json({
         success: false,
         message: 'Access denied. Admin privileges required.'

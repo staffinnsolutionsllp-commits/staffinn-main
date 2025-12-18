@@ -26,7 +26,7 @@ import {
   FaBuilding
 } from 'react-icons/fa';
 
-const NewsPage = () => {
+const NewsPage = ({ isLoggedIn, onShowLogin }) => {
   const location = useLocation();
   const [selectedNewsItem, setSelectedNewsItem] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -783,6 +783,11 @@ const NewsPage = () => {
                 <button 
                   className="read-more-btn"
                   onClick={() => {
+                    // Check authentication first
+                    if (!isLoggedIn) {
+                      onShowLogin();
+                      return;
+                    }
                     setModalContent(featuredNews);
                     setShowModal(true);
                   }}
@@ -813,6 +818,11 @@ const NewsPage = () => {
                       <div 
                         className="topic-card"
                         onClick={() => {
+                          // Check authentication first
+                          if (!isLoggedIn) {
+                            onShowLogin();
+                            return;
+                          }
                           setModalContent({
                             title: topic.title,
                             description: topic.description,
@@ -990,6 +1000,11 @@ const NewsPage = () => {
                         <button 
                           className="read-more-btn"
                           onClick={() => {
+                            // Check authentication first
+                            if (!isLoggedIn) {
+                              onShowLogin();
+                              return;
+                            }
                             setModalContent({
                               title: article.title,
                               description: article.description || article.details,

@@ -358,6 +358,7 @@
     }
 }
 
+
 /* Modal Error State */
 .institute-modal-error {
     padding: 30px;
@@ -501,6 +502,279 @@
     border-radius: 8px;
     padding: 20px;
     background: #f8f9fa;
+}
+
+/* Modern Placement Cards Styles */
+.placement-cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.placement-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.placement-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.placement-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.placement-card-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #64748b;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.placement-card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 8px 0 4px 0;
+    line-height: 1;
+}
+
+.placement-card-subtitle {
+    font-size: 0.875rem;
+    color: #10b981;
+    margin: 0;
+    font-weight: 500;
+}
+
+.placement-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+/* Card Color Variants */
+.placement-card.placement-rate {
+    border-left: 4px solid #ef4444;
+}
+
+.placement-card.placement-rate .placement-card-icon {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.placement-card.students-placed {
+    border-left: 4px solid #3b82f6;
+}
+
+.placement-card.students-placed .placement-card-icon {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+.placement-card.avg-salary {
+    border-left: 4px solid #10b981;
+}
+
+.placement-card.avg-salary .placement-card-icon {
+    background: #f0fdf4;
+    color: #10b981;
+}
+
+/* Student Status Modal Styles */
+.student-status-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.student-status-modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.student-status-modal-header {
+    padding: 24px 24px 0 24px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+}
+
+.student-status-modal-header h2 {
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.student-status-modal-header p {
+    margin: 0 0 16px 0;
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.student-status-modal-body {
+    padding: 0 24px 24px 24px;
+}
+
+.status-section {
+    margin-bottom: 32px;
+}
+
+.status-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.status-section-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-section-icon.hired {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-section-icon.rejected {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.status-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.status-section-count {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.company-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.company-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.company-item:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.company-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+}
+
+.company-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.company-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.company-detail-label {
+    font-weight: 500;
+    color: #475569;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 32px 16px;
+    color: #64748b;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state-text {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.modal-close-button {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.modal-close-button:hover {
+    background: #f1f5f9;
+    color: #374151;
 }
 
 .course-module-item {
@@ -920,7 +1194,6 @@
     color: #64748b;
 }
 
-/* Placement History Modal Styles */
 .institute-placement-history-content {
     padding: 0;
     min-height: 200px;
@@ -2589,4 +2862,435 @@ body.modal-open *,
 
 .upload-status.error {
   color: #f44336;
+}
+
+/* On Campus File Upload Styles */
+.uploaded-files-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    min-height: 40px;
+}
+
+.uploaded-files-preview:empty::after {
+    content: 'No files uploaded yet';
+    color: #64748b;
+    font-style: italic;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 40px;
+}
+
+.file-preview {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #374151;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.file-preview:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.file-preview span {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.remove-file-btn {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.remove-file-btn:hover {
+    background-color: #fee2e2;
+    color: #dc2626;
+    transform: scale(1.1);
+}
+
+/* Course category styles */
+.institute-course-category-section {
+    margin-bottom: 40px;
+}
+
+.institute-course-category-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #007bff;
+    display: inline-block;
+}
+/* Staffinn Partner Styles */
+.institute-partner-tab {
+    padding: 20px;
+}
+
+.institute-partner-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.institute-partner-welcome {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.institute-partner-welcome h2 {
+    margin-bottom: 15px;
+    font-size: 2rem;
+}
+
+.institute-partner-welcome p {
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+    opacity: 0.9;
+}
+
+.institute-partner-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.institute-feature-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.institute-feature-card:hover {
+    transform: translateY(-5px);
+}
+
+.institute-feature-card h3 {
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+}
+
+.institute-feature-card p {
+    margin-bottom: 15px;
+    opacity: 0.8;
+    font-size: 0.9rem;
+}
+
+.institute-partner-stats {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.institute-partner-stats h3 {
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 1.5rem;
+}
+
+.institute-metric-trend.neutral {
+    color: #6c757d;
+}
+
+/* Mobile responsiveness for partner section */
+@media (max-width: 768px) {
+    .institute-partner-features {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .institute-partner-welcome {
+        padding: 20px;
+    }
+    
+    .institute-partner-welcome h2 {
+        font-size: 1.5rem;
+    }
+    
+    .institute-feature-card {
+        padding: 15px;
+    }
+}
+
+/* Staffinn Partner Pre-Approval Styles */
+.institute-partner-pre-approval {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.institute-partner-instructions {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid #4863f7;
+}
+
+.institute-partner-instructions h2 {
+    color: #1e293b;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.instructions-content {
+    color: #64748b;
+    line-height: 1.6;
+}
+
+.instructions-content ol {
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.instructions-content li {
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.institute-partner-agreement {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.institute-partner-agreement h2 {
+    color: #1e293b;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.agreement-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.agreement-preview {
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.agreement-preview iframe {
+    border: none;
+    width: 100%;
+    height: 400px;
+}
+
+.agreement-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.institute-partner-upload {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid #10b981;
+}
+
+.institute-partner-upload h2 {
+    color: #1e293b;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.upload-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.file-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.file-input {
+    display: none;
+}
+
+.file-input-label {
+    display: inline-block;
+    padding: 12px 20px;
+    background-color: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.3s ease;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.file-input-label:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+    color: #475569;
+}
+
+.file-info {
+    padding: 10px 15px;
+    background-color: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 6px;
+    color: #0c4a6e;
+    font-size: 0.9rem;
+}
+
+.status-message {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    font-weight: 500;
+}
+
+.status-message.pending {
+    background-color: #fef3c7;
+    border: 1px solid #fbbf24;
+    color: #92400e;
+}
+
+.status-message.rejected {
+    background-color: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+}
+
+/* Staffinn Partner Post-Approval Styles */
+.institute-partner-sidebar {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+}
+
+.partner-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.partner-menu li {
+    padding: 12px 16px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-weight: 500;
+    color: #64748b;
+}
+
+.partner-menu li:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+    transform: translateY(-2px);
+}
+
+.partner-menu li.active {
+    background-color: #4863f7;
+    border-color: #4863f7;
+    color: white;
+    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.3);
+}
+
+.institute-partner-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    min-height: 400px;
+}
+
+.institute-partner-content h2 {
+    color: #1e293b;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+    font-weight: 600;
+    border-bottom: 2px solid #4863f7;
+    padding-bottom: 10px;
+}
+
+.institute-partner-content p {
+    color: #64748b;
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+/* Mobile responsiveness for new partner styles */
+@media (max-width: 768px) {
+    .institute-partner-pre-approval {
+        gap: 20px;
+    }
+    
+    .institute-partner-instructions,
+    .institute-partner-agreement,
+    .institute-partner-upload {
+        padding: 20px;
+    }
+    
+    .agreement-preview iframe {
+        height: 300px;
+    }
+    
+    .partner-menu {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .institute-partner-content {
+        padding: 20px;
+    }
 }

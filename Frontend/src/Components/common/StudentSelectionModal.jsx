@@ -96,7 +96,7 @@ const StudentSelectionModal = ({
                         </div>
                         {appliedStudents.map(student => (
                           <div key={student.instituteStudntsID} className="table-row applied">
-                            <div className="col-name">{student.fullName}</div>
+                            <div className="col-name">{student.studentName || student.fullName}</div>
                             <div className="col-email">{student.email}</div>
                             <div className="col-phone">{student.phoneNumber}</div>
                             <div className="col-degree">{student.degreeName}</div>
@@ -122,7 +122,7 @@ const StudentSelectionModal = ({
                         </div>
                         {availableStudents.map(student => (
                           <div key={student.instituteStudntsID} className="table-row">
-                            <div className="col-name">{student.fullName}</div>
+                            <div className="col-name">{student.studentName || student.fullName}</div>
                             <div className="col-email">{student.email}</div>
                             <div className="col-phone">{student.phoneNumber}</div>
                             <div className="col-degree">{student.degreeName}</div>

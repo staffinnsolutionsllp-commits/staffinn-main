@@ -310,6 +310,68 @@
     transform: translateY(-3px);
 }
 
+.request-btn {
+    margin-top: 20px;
+    padding: 16px 32px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: center;
+    display: inline-block;
+    min-width: 160px;
+    background: transparent;
+    border: 2px solid #28a745;
+    color: #28a745;
+}
+
+.request-btn:hover {
+    background: #28a745;
+    color: white;
+    transform: translateY(-3px);
+}
+
+.request-message {
+    background: #e8f5e8;
+    border: 1px solid #28a745;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    color: #155724;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.form-fields select {
+    padding: 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 16px;
+    transition: var(--transition);
+    background-color: var(--background-light);
+    width: 100%;
+    cursor: pointer;
+}
+
+.form-fields select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(72, 99, 247, 0.1);
+    background-color: white;
+}
+
+.input-group {
+    position: relative;
+}
+
+.error-text {
+    color: var(--error-color);
+    font-size: 12px;
+    margin-top: 4px;
+    text-align: left;
+}
+
 /* Error States */
 .form-fields .error {
     border-color: var(--error-color);

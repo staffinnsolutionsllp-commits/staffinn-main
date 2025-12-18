@@ -45,6 +45,13 @@ router.put('/change-password', authenticate, authController.changePassword);
 router.post('/request-help', authController.requestHelp);
 
 /**
+ * @route GET /api/auth/users
+ * @desc Get all users for messaging
+ * @access Private
+ */
+router.get('/users', authenticate, authController.getUsers);
+
+/**
  * @route GET /api/auth/health
  * @desc Health check endpoint
  * @access Public

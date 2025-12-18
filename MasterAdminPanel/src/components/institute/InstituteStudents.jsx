@@ -77,6 +77,7 @@ const InstituteStudents = () => {
   // Filter students based on search and status
   const filteredStudents = students.filter(student => {
     const matchesSearch = !searchTerm || 
+      (student.studentName && student.studentName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (student.fullName && student.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (student.name && student.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (student.email && student.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -243,13 +244,13 @@ const InstituteStudents = () => {
                             <img src={student.profilePhoto || student.photo} alt="Student" />
                           ) : (
                             <div className="avatar-placeholder">
-                              {(student.fullName || student.name || 'S').charAt(0).toUpperCase()}
+                              {(student.studentName || student.fullName || student.name || 'S').charAt(0).toUpperCase()}
                             </div>
                           )}
                         </div>
                         <div className="student-details">
                           <div className="student-name">
-                            {student.fullName || student.name || 'Unknown Student'}
+                            {student.studentName || student.fullName || student.name || 'Unknown Student'}
                           </div>
                           <div className="student-id">
                             ID: {student.studentId || student.instituteStudntsID || 'N/A'}

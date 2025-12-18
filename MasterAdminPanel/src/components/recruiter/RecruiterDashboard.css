@@ -143,13 +143,13 @@
   font-size: 16px;
   font-weight: 700;
   margin: 0 0 2px 0;
-  color: white;
+  color: black;
   line-height: 1.2;
 }
 
 .stat-info p {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
+  color: black;
   margin: 0;
   line-height: 1.2;
 }

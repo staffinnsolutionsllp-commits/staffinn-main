@@ -44,6 +44,43 @@ const createCourse = async (req, res) => {
       }
     }
 
+    // Handle On Campus files (images and videos)
+    let onCampusFiles = [];
+    if (courseData.mode === 'On Campus') {
+      const onCampusFilesCount = parseInt(courseData.onCampusFilesCount) || 0;
+      
+      for (let i = 0; i < onCampusFilesCount; i++) {
+        const onCampusFile = files.find(file => file.fieldname === `onCampusFile_${i}`);
+        if (onCampusFile) {
+          const ext = onCampusFile.originalname.split('.').pop();
+          let s3Key;
+          
+          if (onCampusFile.mimetype.startsWith('image/')) {
+            s3Key = `staffinn-files/staffinn-courses-content/courses/on-campus-images/${courseId}_${i}.${ext}`;
+          } else if (onCampusFile.mimetype.startsWith('video/')) {
+            s3Key = `staffinn-files/staffinn-courses-content/courses/on-campus-videos/${courseId}_${i}.${ext}`;
+          } else {
+            continue; // Skip unsupported file types
+          }
+          
+          try {
+            const uploadResult = await s3Service.uploadFile(onCampusFile, s3Key);
+            const fileUrl = uploadResult.Location || uploadResult.url;
+            onCampusFiles.push({
+              fileId: uuidv4(),
+              fileName: onCampusFile.originalname,
+              fileType: onCampusFile.mimetype.startsWith('image/') ? 'image' : 'video',
+              fileUrl: fileUrl,
+              uploadedAt: timestamp
+            });
+            console.log('On Campus file uploaded:', { fileName: onCampusFile.originalname, fileUrl });
+          } catch (error) {
+            console.error('On Campus file upload failed:', error);
+          }
+        }
+      }
+    }
+
     // Process modules and content
     const processedModules = [];
     if (courseData.modules) {
@@ -161,6 +198,7 @@ const createCourse = async (req, res) => {
       syllabusOverview: courseData.syllabus || '',
       certification: courseData.certification || 'Basic',
       modules: processedModules,
+      onCampusFiles: onCampusFiles, // Add on-campus files for On Campus mode
       isActive: true,
       createdAt: timestamp,
       updatedAt: timestamp
@@ -221,6 +259,7 @@ const getCourses = async (req, res) => {
       syllabusOverview: course.syllabusOverview,
       certification: course.certification,
       modules: course.modules || [],
+      onCampusFiles: course.onCampusFiles || [],
       isActive: course.isActive,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt
@@ -303,6 +342,7 @@ const getPublicCourseById = async (req, res) => {
       syllabusOverview: course.syllabusOverview,
       certification: course.certification,
       modules: course.modules || [],
+      onCampusFiles: course.onCampusFiles || [],
       isActive: course.isActive,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt
@@ -556,6 +596,7 @@ const getCourseContent = async (req, res) => {
       syllabusOverview: course.syllabusOverview,
       certification: course.certification,
       modules: course.modules || [],
+      onCampusFiles: course.onCampusFiles || [],
       isActive: course.isActive,
       createdAt: course.createdAt,
       updatedAt: course.updatedAt,
@@ -638,6 +679,289 @@ const updateProgress = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update progress'
+    });
+  }
+};
+
+// Update existing course
+const updateCourse = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    const { courseId } = req.params;
+    const courseData = req.body;
+    const files = req.files || [];
+
+    console.log('Updating course:', {
+      courseId,
+      name: courseData.name,
+      filesCount: files.length,
+      instituteId
+    });
+
+    // Get existing course
+    const existingCourse = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+
+    if (!existingCourse || existingCourse.instituteId !== instituteId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found or access denied'
+      });
+    }
+
+    const timestamp = new Date().toISOString();
+
+    // Handle thumbnail update
+    let thumbnailUrl = existingCourse.thumbnailUrl;
+    const thumbnailFile = files.find(file => file.fieldname === 'thumbnail');
+    if (thumbnailFile && thumbnailFile.mimetype.startsWith('image/')) {
+      const ext = thumbnailFile.originalname.split('.').pop();
+      const thumbnailKey = `staffinn-files/staffinn-courses-content/courses/thumbnails/${courseId}.${ext}`;
+      try {
+        const uploadResult = await s3Service.uploadFile(thumbnailFile, thumbnailKey);
+        thumbnailUrl = uploadResult.Location || uploadResult.url;
+        console.log('Thumbnail updated:', thumbnailUrl);
+      } catch (error) {
+        console.error('Thumbnail update failed:', error);
+      }
+    }
+
+    // Handle On Campus files update
+    let onCampusFiles = existingCourse.onCampusFiles || [];
+    if (courseData.mode === 'On Campus') {
+      const onCampusFilesCount = parseInt(courseData.onCampusFilesCount) || 0;
+      
+      // Add new files to existing ones
+      for (let i = 0; i < onCampusFilesCount; i++) {
+        const onCampusFile = files.find(file => file.fieldname === `onCampusFile_${i}`);
+        if (onCampusFile) {
+          const ext = onCampusFile.originalname.split('.').pop();
+          let s3Key;
+          
+          if (onCampusFile.mimetype.startsWith('image/')) {
+            s3Key = `staffinn-files/staffinn-courses-content/courses/on-campus-images/${courseId}_${Date.now()}_${i}.${ext}`;
+          } else if (onCampusFile.mimetype.startsWith('video/')) {
+            s3Key = `staffinn-files/staffinn-courses-content/courses/on-campus-videos/${courseId}_${Date.now()}_${i}.${ext}`;
+          } else {
+            continue;
+          }
+          
+          try {
+            const uploadResult = await s3Service.uploadFile(onCampusFile, s3Key);
+            const fileUrl = uploadResult.Location || uploadResult.url;
+            onCampusFiles.push({
+              fileId: uuidv4(),
+              fileName: onCampusFile.originalname,
+              fileType: onCampusFile.mimetype.startsWith('image/') ? 'image' : 'video',
+              fileUrl: fileUrl,
+              uploadedAt: timestamp
+            });
+            console.log('On Campus file updated:', { fileName: onCampusFile.originalname, fileUrl });
+          } catch (error) {
+            console.error('On Campus file update failed:', error);
+          }
+        }
+      }
+    } else {
+      // If mode changed from On Campus to Online, clear on-campus files
+      onCampusFiles = [];
+    }
+
+    // Process modules update (only for Online mode)
+    let processedModules = existingCourse.modules || [];
+    if (courseData.mode === 'Online' && courseData.modules) {
+      const modules = typeof courseData.modules === 'string' 
+        ? JSON.parse(courseData.modules) 
+        : courseData.modules;
+      
+      processedModules = [];
+      for (let i = 0; i < modules.length; i++) {
+        const moduleData = modules[i];
+        const moduleId = uuidv4();
+        
+        const processedModule = {
+          moduleId,
+          moduleTitle: moduleData.title || `Module ${i + 1}`,
+          moduleDescription: moduleData.description || '',
+          order: i + 1,
+          content: []
+        };
+
+        // Process module content
+        if (moduleData.content && Array.isArray(moduleData.content)) {
+          for (let j = 0; j < moduleData.content.length; j++) {
+            const contentData = moduleData.content[j];
+            const contentId = uuidv4();
+            
+            let contentUrl = null;
+            
+            const possibleFieldNames = [
+              `content_${i}_${j}`,
+              `module_${i}_content_${j}`,
+              `contentFileKey_${i}_${j}`,
+              `moduleContent_${i}_${j}`
+            ];
+            
+            let uploadedFile = null;
+            for (const fieldName of possibleFieldNames) {
+              uploadedFile = files.find(file => file.fieldname === fieldName);
+              if (uploadedFile) break;
+            }
+            
+            if (uploadedFile) {
+              const ext = uploadedFile.originalname.split('.').pop();
+              let s3Key;
+              
+              if (contentData.type === 'video' && uploadedFile.mimetype.startsWith('video/')) {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/videos/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else if (contentData.type === 'assignment' && uploadedFile.mimetype === 'application/pdf') {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/assignments/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/content/${courseId}_${moduleId}_${contentId}.${ext}`;
+              }
+              
+              try {
+                const uploadResult = await s3Service.uploadFile(uploadedFile, s3Key);
+                contentUrl = uploadResult.Location || uploadResult.url;
+                console.log('Content file updated:', { contentId, contentUrl, type: contentData.type });
+              } catch (uploadError) {
+                console.error('Content file update failed:', uploadError);
+              }
+            }
+
+            const processedContent = {
+              contentId,
+              contentTitle: contentData.title || `Content ${j + 1}`,
+              contentType: contentData.type || 'video',
+              contentUrl: contentUrl,
+              order: j + 1,
+              durationMinutes: parseInt(contentData.duration) || 0,
+              mandatory: contentData.mandatory !== false
+            };
+
+            processedModule.content.push(processedContent);
+          }
+        }
+
+        // Process quiz if exists
+        if (moduleData.quiz && moduleData.quiz.questions && moduleData.quiz.questions.length > 0) {
+          processedModule.quiz = {
+            quizId: uuidv4(),
+            title: moduleData.quiz.title || `${moduleData.title} Quiz`,
+            description: moduleData.quiz.description || '',
+            passingScore: moduleData.quiz.passingScore || 70,
+            timeLimit: moduleData.quiz.timeLimit || 30,
+            maxAttempts: moduleData.quiz.maxAttempts || 3,
+            questions: moduleData.quiz.questions.map(q => ({
+              questionId: uuidv4(),
+              question: q.question,
+              type: q.type || 'multiple_choice',
+              options: q.options || [],
+              correctAnswer: q.correctAnswer,
+              points: q.points || 1
+            }))
+          };
+        }
+
+        processedModules.push(processedModule);
+      }
+    } else if (courseData.mode === 'On Campus') {
+      // Clear modules for On Campus mode
+      processedModules = [];
+    }
+
+    // Update course record
+    const updatedCourse = {
+      ...existingCourse,
+      courseName: courseData.name || existingCourse.courseName,
+      duration: courseData.duration || existingCourse.duration,
+      fees: parseFloat(courseData.fees) || existingCourse.fees,
+      instructor: courseData.instructor || existingCourse.instructor,
+      category: courseData.category || existingCourse.category,
+      mode: courseData.mode || existingCourse.mode,
+      thumbnailUrl: thumbnailUrl,
+      description: courseData.description || existingCourse.description,
+      prerequisites: courseData.prerequisites || existingCourse.prerequisites,
+      syllabusOverview: courseData.syllabus || existingCourse.syllabusOverview,
+      certification: courseData.certification || existingCourse.certification,
+      modules: processedModules,
+      onCampusFiles: onCampusFiles,
+      updatedAt: timestamp
+    };
+
+    console.log('Updating course in DynamoDB:', {
+      courseId,
+      courseName: updatedCourse.courseName,
+      mode: updatedCourse.mode,
+      modulesCount: processedModules.length,
+      onCampusFilesCount: onCampusFiles.length
+    });
+
+    await dynamoService.putItem(COURSES_TABLE, updatedCourse);
+
+    res.status(200).json({
+      success: true,
+      message: 'Course updated successfully',
+      data: updatedCourse
+    });
+  } catch (error) {
+    console.error('Error updating course:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update course'
+    });
+  }
+};
+
+// Get course by ID for editing
+const getCourseById = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    const { courseId } = req.params;
+    
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course || course.instituteId !== instituteId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found or access denied'
+      });
+    }
+    
+    // Transform course data to match frontend expectations
+    const transformedCourse = {
+      coursesId: course.coursesId,
+      name: course.courseName,
+      courseName: course.courseName,
+      duration: course.duration,
+      fees: course.fees,
+      instructor: course.instructor,
+      category: course.category,
+      mode: course.mode,
+      thumbnailUrl: course.thumbnailUrl,
+      description: course.description,
+      prerequisites: course.prerequisites,
+      syllabusOverview: course.syllabusOverview,
+      certification: course.certification,
+      modules: course.modules || [],
+      onCampusFiles: course.onCampusFiles || [],
+      isActive: course.isActive,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: transformedCourse
+    });
+  } catch (error) {
+    console.error('Error getting course by ID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get course'
     });
   }
 };
@@ -846,6 +1170,8 @@ const getTrendingCourses = async (req, res) => {
 
 module.exports = {
   createCourse,
+  updateCourse,
+  getCourseById,
   getCourses,
   getPublicCourses,
   getPublicCourseById,

@@ -1,0 +1,250 @@
+.chats-management {
+  padding: 20px;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+.chats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chats-header h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 24px;
+}
+
+.chats-header p {
+  margin: 5px 0 0 0;
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+.refresh-btn {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2980b9, #1f5f8b);
+  transform: translateY(-1px);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border-left: 4px solid #e74c3c;
+}
+
+.loading-state, .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-state i {
+  font-size: 48px;
+  color: #bdc3c7;
+  margin-bottom: 15px;
+}
+
+.empty-state h3 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+}
+
+.empty-state p {
+  margin: 0;
+  color: #7f8c8d;
+}
+
+.chats-table {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chats-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.chats-table th {
+  background: #34495e;
+  color: white;
+  padding: 15px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.chats-table td {
+  padding: 15px 12px;
+  border-bottom: 1px solid #ecf0f1;
+  vertical-align: top;
+}
+
+.chats-table tr:hover {
+  background: #f8f9fa;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-info strong {
+  color: #2c3e50;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.user-email {
+  color: #7f8c8d;
+  font-size: 12px;
+}
+
+.user-type-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.type-staff {
+  background: #e8f5e8;
+  color: #27ae60;
+}
+
+.type-seeker {
+  background: #e3f2fd;
+  color: #2196f3;
+}
+
+.type-recruiter {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.type-institute {
+  background: #f3e5f5;
+  color: #9c27b0;
+}
+
+.type-default {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.message-count {
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.last-activity {
+  color: #7f8c8d;
+  font-size: 13px;
+}
+
+.action-btn {
+  background: linear-gradient(135deg, #27ae60, #229954);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: linear-gradient(135deg, #229954, #1e8449);
+  transform: translateY(-1px);
+}
+
+.view-btn {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.view-btn:hover {
+  background: linear-gradient(135deg, #2980b9, #1f5f8b);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .chats-table {
+    overflow-x: auto;
+  }
+  
+  .chats-table table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .chats-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .chats-management {
+    padding: 15px;
+  }
+  
+  .chats-table th,
+  .chats-table td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+}

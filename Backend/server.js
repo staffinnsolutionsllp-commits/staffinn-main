@@ -42,6 +42,21 @@ const issueRoutes = require('./routes/issueRoutes');
 const assignmentRoutes = require('./routes/assignmentRoutes');
 const progressRoutes = require('./routes/progressRoutes');
 const governmentSchemesRoutes = require('./routes/governmentSchemesRoutes');
+const registrationRequestRoutes = require('./routes/registrationRequestRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const adminChatRoutes = require('./routes/adminChatRoutes');
+const trainingCenterRoutes = require('./routes/trainingCenterRoutes');
+const trainingInfrastructureRoutes = require('./routes/trainingInfrastructureRoutes');
+const courseDetailRoutes = require('./routes/courseDetailRoutes');
+const facultyListRoutes = require('./routes/facultyListRoutes');
+const misStudentRoutes = require('./routes/misStudentRoutes');
+const batchRoutes = require('./routes/batchRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
+const placementRoutes = require('./routes/placementRoutes');
+const misPlacementRoutes = require('./routes/misPlacementRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const uploadReportRoutes = require('./routes/uploadReportRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -116,6 +131,22 @@ app.use(`${API_PREFIX}/admin`, adminRoutes);
 app.use(`${API_PREFIX}/issues`, issueRoutes);
 app.use(`${API_PREFIX}/assignments`, assignmentRoutes);
 app.use(`${API_PREFIX}/government-schemes`, governmentSchemesRoutes);
+app.use(`${API_PREFIX}/registration-requests`, registrationRequestRoutes);
+app.use(`${API_PREFIX}/messages`, messageRoutes);
+app.use(`${API_PREFIX}/admin/chats`, adminChatRoutes);
+app.use(`${API_PREFIX}/training-centers`, trainingCenterRoutes);
+app.use(`${API_PREFIX}/training-infrastructure`, trainingInfrastructureRoutes);
+app.use(`${API_PREFIX}/course-details`, courseDetailRoutes);
+app.use(`${API_PREFIX}/faculty-list`, facultyListRoutes);
+app.use(`${API_PREFIX}/mis-students`, misStudentRoutes);
+app.use(`${API_PREFIX}/batches`, batchRoutes);
+app.use(`${API_PREFIX}/attendance`, attendanceRoutes);
+app.use(`${API_PREFIX}/placements`, placementRoutes); // MIS placement analytics
+app.use(`${API_PREFIX}/placement`, placementRoutes); // Singular route for frontend compatibility - table added
+app.use(`${API_PREFIX}/mis-placement`, misPlacementRoutes);
+app.use(`${API_PREFIX}/reports`, reportRoutes);
+app.use(`${API_PREFIX}/upload`, uploadRoutes);
+app.use(`${API_PREFIX}/upload`, uploadReportRoutes);
 app.use('/debug', debugRoutes);
 
 // Basic routes
@@ -245,9 +276,9 @@ const { createTablesIfNotExist } = require('./config/dynamodb-wrapper');
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.io
-const { initializeSocketServer } = require('./config/socket');
-const io = initializeSocketServer(server);
+// Initialize WebSocket server for real-time updates
+const { initializeWebSocket } = require('./websocket/websocketServer');
+const io = initializeWebSocket(server);
 
 // Make io available globally
 app.set('io', io);

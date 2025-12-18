@@ -281,6 +281,8 @@ const getInstituteProfileDetails = async (req, res) => {
       instituteName: profile.instituteName || user.instituteName || user.name,
       phone: profile.phone || user.phoneNumber || user.phone,
       email: profile.email || user.email,
+      instituteType: user.instituteType || 'normal', // Include institute type for Staffinn Partner functionality
+      misApprovalStatus: user.misApprovalStatus || 'pending', // Include MIS approval status for Staffinn Partner functionality
       applications: user?.applications || [],
       recentActivity: user?.recentActivity || []
     };
@@ -1217,6 +1219,108 @@ const getPublicDashboardStats = async (req, res) => {
 };
 
 /**
+ * Get dashboard stats for Staffinn Partner Dashboard
+ * @route GET /api/institute/dashboard/stats
+ */
+const getDashboardStats = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    console.log('🔍 Getting dashboard stats for institute:', userId);
+    
+    // Import required models
+    const trainingCenterModel = require('../models/trainingCenterModel');
+    const jobApplicationModel = require('../models/jobApplicationModel');
+    const courseDetailModel = require('../models/courseDetailModel');
+    const misStudentModel = require('../models/misStudentModel');
+    
+    // Initialize stats with default values
+    let totalCenters = 0;
+    let totalCourses = 0;
+    let totalStudents = 0;
+    let totalTrainedStudents = 0;
+    
+    // Get total centers with error handling
+    try {
+      console.log('📊 Fetching training centers...');
+      const centers = await trainingCenterModel.getCentersByInstitute(userId);
+      totalCenters = Array.isArray(centers) ? centers.length : 0;
+      console.log('✅ Training centers found:', totalCenters);
+    } catch (centerError) {
+      console.error('❌ Error fetching training centers:', centerError.message);
+      totalCenters = 0;
+    }
+    
+    // Get total courses from mis-course-details table with error handling
+    try {
+      console.log('📚 Fetching courses from mis-course-details...');
+      const allCourses = await courseDetailModel.getAll();
+      const instituteCourses = allCourses.filter(course => course.instituteId === userId);
+      totalCourses = instituteCourses.length;
+      console.log('✅ MIS Courses found for institute:', totalCourses);
+      console.log('🔍 Institute ID being used for filtering:', userId);
+    } catch (courseError) {
+      console.error('❌ Error fetching MIS courses:', courseError.message);
+      totalCourses = 0;
+    }
+    
+    // Get total students with error handling
+    try {
+      console.log('👨‍🎓 Fetching students...');
+      const misStudents = await misStudentModel.getStudentsByInstitute(userId);
+      totalStudents = Array.isArray(misStudents) ? misStudents.length : 0;
+      console.log('✅ MIS Students found:', totalStudents);
+    } catch (studentError) {
+      console.error('❌ Error fetching MIS students:', studentError.message);
+      totalStudents = 0;
+    }
+    
+    // Get trained students (students who have been hired at least once) with error handling
+    try {
+      console.log('🎯 Fetching trained students...');
+      const hiredStudents = await jobApplicationModel.getUniqueHiredStudentsByInstitute(userId);
+      totalTrainedStudents = Array.isArray(hiredStudents) ? hiredStudents.length : 0;
+      console.log('✅ Trained students found:', totalTrainedStudents);
+    } catch (trainedError) {
+      console.error('❌ Error fetching trained students:', trainedError.message);
+      totalTrainedStudents = 0;
+    }
+    
+    const dashboardStats = {
+      totalCenters,
+      totalCourses,
+      totalStudents,
+      totalTrainedStudents
+    };
+    
+    console.log('🏆 Final dashboard stats:', dashboardStats);
+    
+    res.status(200).json({
+      success: true,
+      data: dashboardStats,
+      message: 'Dashboard stats retrieved successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ Get dashboard stats error:', error);
+    
+    // Return default stats in case of complete failure
+    const fallbackStats = {
+      totalCenters: 0,
+      totalCourses: 0,
+      totalStudents: 0,
+      totalTrainedStudents: 0
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: fallbackStats,
+      message: 'Dashboard stats retrieved with fallback values due to errors'
+    });
+  }
+};
+
+/**
  * Get enrollment trends data for dashboard charts
  * @route GET /api/institute/dashboard/enrollment-trends
  */
@@ -1252,15 +1356,9 @@ const getEnrollmentTrends = async (req, res) => {
         return studentDate.getFullYear() === currentYear && studentDate.getMonth() === monthIndex;
       }).length;
       
-      // Count students who completed courses (100% progress) in this month
-      // For now, we'll use a simple logic based on hired students as a proxy for completion
-      const hiredStudents = await jobApplicationModel.getUniqueHiredStudentsByInstitute(userId);
-      const completedInMonth = Math.floor(enrolledInMonth * 0.3); // Approximate 30% completion rate
-      
       enrollmentData.unshift({
         name: monthName,
-        students: enrolledInMonth,
-        completed: completedInMonth
+        students: enrolledInMonth
       });
     }
     
@@ -1373,18 +1471,18 @@ const industryCollabUpload = multer({
         console.log('Collaboration image file rejected:', file.fieldname, 'mimetype:', file.mimetype);
         return cb(new Error('Collaboration images must be image files (JPEG, PNG, GIF, WebP)'));
       }
-    } else if (file.fieldname === 'mouPdf') {
-      // PDFs for MOU items
+    } else if (file.fieldname === 'mouPdf' || file.fieldname === 'misAgreement') {
+      // PDFs for MOU items and MIS Agreement
       const allowedTypes = /pdf/;
       const extname = allowedTypes.test(file.originalname.toLowerCase());
       const mimetype = /application\/pdf/.test(file.mimetype);
       
       if (mimetype && extname) {
-        console.log('MOU PDF file accepted:', file.fieldname);
+        console.log('PDF file accepted:', file.fieldname);
         return cb(null, true);
       } else {
-        console.log('MOU PDF file rejected:', file.fieldname, 'mimetype:', file.mimetype);
-        return cb(new Error('MOU files must be PDF files'));
+        console.log('PDF file rejected:', file.fieldname, 'mimetype:', file.mimetype);
+        return cb(new Error('PDF files must be valid PDF format'));
       }
     } else {
       console.log('Invalid file field name:', file.fieldname);
@@ -1978,6 +2076,222 @@ const serveMouPdf = async (req, res) => {
   }
 };
 
+/**
+ * Upload signed MIS agreement PDF to S3
+ * @route POST /api/institute/upload-mis-agreement
+ */
+const uploadMisAgreement = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No PDF file provided'
+      });
+    }
+    
+    console.log('📄 Uploading MIS agreement PDF:', req.file.originalname);
+    
+    // Validate file type
+    if (req.file.mimetype !== 'application/pdf') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a valid PDF file'
+      });
+    }
+    
+    // Validate file size (max 10MB)
+    if (req.file.size > 10 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        message: 'PDF size should be less than 10MB'
+      });
+    }
+    
+    // Get institute details
+    const user = await userModel.getUserById(userId);
+    if (!user || user.role !== 'institute') {
+      return res.status(404).json({
+        success: false,
+        message: 'Institute not found'
+      });
+    }
+    
+    // Generate unique filename
+    const fileExtension = req.file.originalname.split('.').pop();
+    const fileName = `mis-agreement-${userId}-${Date.now()}.${fileExtension}`;
+    const key = `mis-agreements/${fileName}`;
+    
+    // Upload to S3
+    const uploadCommand = new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      CacheControl: 'max-age=31536000'
+    });
+    
+    await s3Client.send(uploadCommand);
+    
+    // Create S3 URL
+    const pdfUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    console.log('Generated S3 URL:', pdfUrl);
+    
+    // Create MIS request record for admin panel
+    const misRequestModel = require('../models/misRequestModel');
+    const misRequestData = {
+      instituteId: userId,
+      instituteName: user.name || user.instituteName || 'Unknown Institute',
+      email: user.email,
+      instituteNumber: user.phone || user.phoneNumber || 'Not provided',
+      pdfUrl: pdfUrl
+    };
+    
+    const misRequest = await misRequestModel.createMisRequest(misRequestData);
+    
+    // Update user with MIS agreement file metadata and set status to pending
+    const updateData = {
+      misAgreementUrl: pdfUrl,
+      misAgreementFileName: req.file.originalname,
+      misAgreementFileSize: req.file.size,
+      misAgreementUploadedAt: new Date().toISOString(),
+      misApprovalStatus: 'pending'
+    };
+    
+    console.log('📝 Updating user with MIS agreement data:', updateData);
+    const updateResult = await userModel.updateUser(userId, updateData);
+    console.log('✅ User update result:', updateResult);
+    
+    res.status(200).json({
+      success: true,
+      message: 'MIS agreement uploaded successfully. Your request has been sent for admin approval.',
+      data: {
+        agreementUrl: pdfUrl,
+        status: 'pending',
+        requestId: misRequest.requestId
+      }
+    });
+    
+  } catch (error) {
+    console.error('Upload MIS agreement error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to upload MIS agreement'
+    });
+  }
+};
+
+/**
+ * Get MIS request status
+ * @route GET /api/institute/mis-status
+ */
+const getMisStatus = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    console.log('🔍 Getting MIS status for user:', userId);
+    
+    const user = await userModel.getUserById(userId);
+    
+    if (!user || user.role !== 'institute') {
+      return res.status(404).json({
+        success: false,
+        message: 'Institute not found'
+      });
+    }
+    
+    console.log('📄 User MIS data:', {
+      misApprovalStatus: user.misApprovalStatus,
+      misAgreementUrl: user.misAgreementUrl,
+      misAgreementFileName: user.misAgreementFileName,
+      misAgreementFileSize: user.misAgreementFileSize,
+      misAgreementUploadedAt: user.misAgreementUploadedAt
+    });
+    
+    const misStatus = {
+      status: user.misApprovalStatus || 'pending',
+      agreementFile: user.misAgreementUrl ? {
+        fileName: user.misAgreementFileName || 'MIS Agreement.pdf',
+        fileUrl: user.misAgreementUrl,
+        fileSize: user.misAgreementFileSize || 0
+      } : null
+    };
+    
+    console.log('🏆 Final MIS status for user', userId, ':', misStatus);
+    
+    res.status(200).json({
+      success: true,
+      data: misStatus
+    });
+    
+  } catch (error) {
+    console.error('Get MIS status error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get MIS status'
+    });
+  }
+};
+
+/**
+ * Get MIS agreement file data
+ * @route GET /api/institute/mis-agreement
+ */
+const getMisAgreement = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    console.log('🔍 Getting MIS agreement for user:', userId);
+    
+    const user = await userModel.getUserById(userId);
+    
+    if (!user || user.role !== 'institute') {
+      return res.status(404).json({
+        success: false,
+        message: 'Institute not found'
+      });
+    }
+    
+    console.log('📄 User agreement data from DB:', {
+      misAgreementUrl: user.misAgreementUrl,
+      misAgreementFileName: user.misAgreementFileName,
+      misAgreementFileSize: user.misAgreementFileSize,
+      misAgreementUploadedAt: user.misAgreementUploadedAt
+    });
+    
+    if (!user.misAgreementUrl) {
+      console.log('⚠️ No MIS agreement URL found in database');
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: 'No MIS agreement found'
+      });
+    }
+    
+    const agreementData = {
+      fileName: user.misAgreementFileName || 'MIS Agreement.pdf',
+      fileUrl: user.misAgreementUrl,
+      fileSize: user.misAgreementFileSize || 0,
+      uploadedAt: user.misAgreementUploadedAt || new Date().toISOString()
+    };
+    
+    console.log('🏆 Final MIS agreement data for user', userId, ':', agreementData);
+    
+    res.status(200).json({
+      success: true,
+      data: agreementData
+    });
+    
+  } catch (error) {
+    console.error('Get MIS agreement error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get MIS agreement'
+    });
+  }
+};
+
 module.exports = {
   registerInstitute,
   getInstituteProfile,
@@ -1995,6 +2309,7 @@ module.exports = {
   getPlacementSection,
   getPublicPlacementSection,
   getPublicDashboardStats,
+  getDashboardStats,
   getEnrollmentTrends,
   getPlacementTrends,
   updateIndustryCollaborations,
@@ -2005,6 +2320,9 @@ module.exports = {
   deleteCollaborationImage,
   deleteMouPdf,
   serveMouPdf,
+  uploadMisAgreement,
+  getMisStatus,
+  getMisAgreement,
   upload,
   studentUpload,
   placementUpload,

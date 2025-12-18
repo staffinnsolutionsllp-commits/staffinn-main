@@ -926,6 +926,582 @@ class AdminAPI {
     }
   }
 
+  /**
+   * Registration Request APIs
+   */
+  
+  // Get registration requests by type
+  async getRegistrationRequests(type) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/registration-requests/${type}`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get registration requests');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get registration requests error:', error);
+      throw error;
+    }
+  }
+
+  // Approve registration request with institute type
+  async approveRegistrationRequest(requestId, instituteType = null) {
+    try {
+      const body = instituteType ? { instituteType } : {};
+      
+      const response = await fetch(`${API_BASE_URL}/registration-requests/${requestId}/approve`, {
+        method: 'PUT',
+        headers: this.getHeaders(),
+        body: JSON.stringify(body)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to approve registration request');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Approve registration request error:', error);
+      throw error;
+    }
+  }
+
+  // Reject registration request
+  async rejectRegistrationRequest(requestId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/registration-requests/${requestId}/reject`, {
+        method: 'PUT',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to reject registration request');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Reject registration request error:', error);
+      throw error;
+    }
+  }
+
+  // Delete registration request
+  async deleteRegistrationRequest(requestId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/registration-requests/${requestId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete registration request');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Delete registration request error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Chat Management APIs
+   */
+  
+  // Get all conversations
+  async getAllConversations() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/chats/conversations`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get conversations');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get conversations error:', error);
+      throw error;
+    }
+  }
+
+  // Get chat history between two users
+  async getChatHistory(user1Id, user2Id) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/chats/history/${user1Id}/${user2Id}`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get chat history');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get chat history error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Manual Registration APIs
+   */
+  
+  // Manually register a recruiter
+  async manualRegisterRecruiter(recruiterData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/manual-registration/recruiter`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(recruiterData)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to register recruiter');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Manual register recruiter error:', error);
+      throw error;
+    }
+  }
+
+  // Manually register an institute with type selection
+  async manualRegisterInstitute(instituteData) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/manual-registration/institute`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(instituteData)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to register institute');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Manual register institute error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * MIS Request APIs
+   */
+  
+  // Get all MIS requests
+  async getAllMisRequests() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/mis-requests`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get MIS requests');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get MIS requests error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Staffinn Partner APIs
+   */
+  
+  // Get all Staffinn Partners
+  async getStaffinnPartners() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get Staffinn Partners');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get Staffinn Partners error:', error);
+      throw error;
+    }
+  }
+
+  // Get Staffinn Partner institutes (alias for getStaffinnPartners)
+  async getStaffinnPartnerInstitutes() {
+    return this.getStaffinnPartners();
+  }
+
+  // Get institute training centers
+  async getInstituteTrainingCenters(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/${instituteId}/training-centers`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get training centers');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get training centers error:', error);
+      throw error;
+    }
+  }
+
+  // Get institute training infrastructure
+  async getInstituteTrainingInfrastructure(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/${instituteId}/training-infrastructure`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get training infrastructure');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get training infrastructure error:', error);
+      throw error;
+    }
+  }
+
+  // Get Staffinn Partner dashboard data
+  async getStaffinnPartnerDashboard(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/${instituteId}/dashboard`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get Staffinn Partner dashboard');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get Staffinn Partner dashboard error:', error);
+      throw error;
+    }
+  }
+
+  // Get Staffinn Partner training centers
+  async getStaffinnPartnerTrainingCenters(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/${instituteId}/training-centers`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get training centers');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get training centers error:', error);
+      throw error;
+    }
+  }
+
+  // Get Staffinn Partner training infrastructure
+  async getStaffinnPartnerTrainingInfrastructure(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/${instituteId}/training-infrastructure`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get training infrastructure');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get training infrastructure error:', error);
+      throw error;
+    }
+  }
+
+  // Get Staffinn Partner courses
+  async getStaffinnPartnerCourses(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/${instituteId}/courses`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get courses');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get courses error:', error);
+      throw error;
+    }
+  }
+
+  // Get Staffinn Partner faculty
+  async getStaffinnPartnerFaculty(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/faculty-list/institute/${instituteId}`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get faculty');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get faculty error:', error);
+      throw error;
+    }
+  }
+
+  // Get Staffinn Partner students
+  async getStaffinnPartnerStudents(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/${instituteId}/students`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get students');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get students error:', error);
+      throw error;
+    }
+  }
+
+  // Approve MIS request
+  async approveMisRequest(requestId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/mis-requests/${requestId}/approve`, {
+        method: 'PUT',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to approve MIS request');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Approve MIS request error:', error);
+      throw error;
+    }
+  }
+
+  // Reject MIS request
+  async rejectMisRequest(requestId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/mis-requests/${requestId}/reject`, {
+        method: 'PUT',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to reject MIS request');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Reject MIS request error:', error);
+      throw error;
+    }
+  }
+
+  // Delete MIS request
+  async deleteMisRequest(requestId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/mis-requests/${requestId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete MIS request');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Delete MIS request error:', error);
+      throw error;
+    }
+  }
+
+  // Delete training center
+  async deleteTrainingCenter(centerId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/training-centers/${centerId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete training center');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Delete training center error:', error);
+      throw error;
+    }
+  }
+
+  // Delete training infrastructure
+  async deleteTrainingInfrastructure(infrastructureId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/training-infrastructure/${infrastructureId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete training infrastructure');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Delete training infrastructure error:', error);
+      throw error;
+    }
+  }
+
+  // Get institute course details
+  async getInstituteCourseDetails(instituteId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/${instituteId}/course-details`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to get course details');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Get course details error:', error);
+      throw error;
+    }
+  }
+
+  // Delete course detail
+  async deleteCourseDetail(courseId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/staffinn-partners/course-details/${courseId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete course detail');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Delete course detail error:', error);
+      throw error;
+    }
+  }
+
+  // Delete faculty
+  async deleteFaculty(facultyId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/faculty-list/${facultyId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete faculty');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Delete faculty error:', error);
+      throw error;
+    }
+  }
+
   // Logout
   logout() {
     this.removeToken();

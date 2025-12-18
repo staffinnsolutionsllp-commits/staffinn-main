@@ -1,0 +1,218 @@
+.course-detail-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.course-detail-form {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 30px;
+}
+
+.form-row {
+  margin-bottom: 15px;
+}
+
+.form-row label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-row input,
+.form-row select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.classroom-section {
+  margin-top: 20px;
+}
+
+.classroom-section h3 {
+  margin-bottom: 10px;
+}
+
+.add-btn {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 15px;
+}
+
+.classroom-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  overflow-x: auto;
+  display: block;
+}
+
+.classroom-table thead {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.classroom-table tbody {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.classroom-table th,
+.classroom-table td {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #ddd;
+  font-size: 13px;
+}
+
+.classroom-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+.classroom-table input,
+.classroom-table select {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.remove-btn {
+  padding: 4px 8px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.form-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.form-actions button[type="submit"] {
+  background: #007bff;
+  color: white;
+}
+
+.form-actions button[type="button"] {
+  background: #6c757d;
+  color: white;
+}
+
+.course-details-list {
+  margin-top: 30px;
+}
+
+.detail-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 15px;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.detail-actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.edit-btn {
+  background: #28a745;
+  color: white;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.detail-fields {
+  margin-bottom: 20px;
+}
+
+.field-row {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.field-row label {
+  font-weight: 600;
+  color: #333;
+  min-width: 350px;
+  font-size: 14px;
+}
+
+.field-row span {
+  color: #555;
+  font-size: 14px;
+}
+
+.classroom-details {
+  margin-top: 20px;
+}
+
+.classroom-display-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.classroom-display-table th,
+.classroom-display-table td {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #ddd;
+  font-size: 13px;
+}
+
+.classroom-display-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+}
+
+.classroom-display-table tbody tr:hover {
+  background: #f8f9fa;
+}

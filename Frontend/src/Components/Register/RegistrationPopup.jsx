@@ -12,6 +12,7 @@ import {
   getPasswordStrength 
 } from '../../services/validation';
 import PasswordStrength from '../common/PasswordStrength';
+import apiService from '../../services/api';
 
 // StaffRegistrationForm Component
 const StaffRegistrationForm = ({ onRegister }) => {
@@ -528,11 +529,123 @@ const RecruiterRegistrationForm = ({ onRegister }) => {
    );
 };
 
+// Registration Request Form Component
+const RegistrationRequestForm = ({ onSubmit, isSubmitting, error }) => {
+   const [formData, setFormData] = useState({
+       type: '',
+       name: '',
+       email: '',
+       phoneNumber: ''
+   });
+   const [errors, setErrors] = useState({});
+
+   const handleInputChange = (field, value) => {
+       setFormData(prev => ({ ...prev, [field]: value }));
+       // Clear error when user starts typing
+       if (errors[field]) {
+           setErrors(prev => ({ ...prev, [field]: '' }));
+       }
+   };
+
+   const validateForm = () => {
+       const newErrors = {};
+       
+       if (!formData.type) newErrors.type = 'Please select a type';
+       if (!formData.name.trim()) newErrors.name = 'Name is required';
+       if (!formData.email.trim()) newErrors.email = 'Email is required';
+       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+           newErrors.email = 'Invalid email format';
+       }
+       if (!formData.phoneNumber.trim()) newErrors.phoneNumber = 'Phone number is required';
+       else if (!/^[0-9]{10}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
+           newErrors.phoneNumber = 'Invalid phone number format';
+       }
+       
+       setErrors(newErrors);
+       return Object.keys(newErrors).length === 0;
+   };
+
+   const handleSubmit = (e) => {
+       e.preventDefault();
+       if (validateForm()) {
+           onSubmit(formData);
+       }
+   };
+
+   return (
+       <div className="registration-form">
+           <div className="request-message">
+               <p>You can send a request to Staffinn. Staffinn will review your request, and once it is approved, you will receive your Institute/Recruiter ID and password on your email.</p>
+           </div>
+           
+           {error && <div className="error-message">{error}</div>}
+           
+           <form className="form-fields" onSubmit={handleSubmit}>
+               <div className="input-group">
+                   <select 
+                       value={formData.type}
+                       onChange={(e) => handleInputChange('type', e.target.value)}
+                       className={errors.type ? 'error' : ''}
+                       required
+                   >
+                       <option value="">Select Type *</option>
+                       <option value="institute">Institute</option>
+                       <option value="recruiter">Recruiter</option>
+                   </select>
+                   {errors.type && <span className="error-text">{errors.type}</span>}
+               </div>
+
+               <div className="input-group">
+                   <input 
+                       type="text"
+                       placeholder="Name *"
+                       value={formData.name}
+                       onChange={(e) => handleInputChange('name', e.target.value)}
+                       className={errors.name ? 'error' : ''}
+                       required
+                   />
+                   {errors.name && <span className="error-text">{errors.name}</span>}
+               </div>
+
+               <div className="input-group">
+                   <input 
+                       type="email"
+                       placeholder="Email *"
+                       value={formData.email}
+                       onChange={(e) => handleInputChange('email', e.target.value)}
+                       className={errors.email ? 'error' : ''}
+                       required
+                   />
+                   {errors.email && <span className="error-text">{errors.email}</span>}
+               </div>
+
+               <div className="input-group">
+                   <input 
+                       type="tel"
+                       placeholder="Phone Number *"
+                       value={formData.phoneNumber}
+                       onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                       className={errors.phoneNumber ? 'error' : ''}
+                       required
+                   />
+                   {errors.phoneNumber && <span className="error-text">{errors.phoneNumber}</span>}
+               </div>
+
+               <button type="submit" className="submit-btn" disabled={isSubmitting}>
+                   {isSubmitting ? 'Submitting...' : 'Submit Request'}
+               </button>
+           </form>
+       </div>
+   );
+};
+
 // Main RegistrationPopup Component
-const RegistrationPopup = ({ onClose, onRegister, onLoginRedirect }) => {
-   const [selectedRole, setSelectedRole] = useState(null);
+const RegistrationPopup = ({ onClose, onRegister, onLoginRedirect, showRequestForm = false }) => {
+   const [selectedRole, setSelectedRole] = useState('Staff'); // Default to Staff
    const [isRegistering, setIsRegistering] = useState(false);
+   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
    const [registrationError, setRegistrationError] = useState('');
+   const [requestError, setRequestError] = useState('');
 
    // Prevent body scroll when modal is open
    React.useEffect(() => {
@@ -545,8 +658,31 @@ const RegistrationPopup = ({ onClose, onRegister, onLoginRedirect }) => {
    }, []);
 
    const handleRegisterClick = (role) => {
-       setSelectedRole(role);
-       setRegistrationError('');
+       if (role === 'Staff') {
+           setSelectedRole(role);
+           setRegistrationError('');
+       }
+   };
+
+   const handleRequestFormSubmit = async (requestData) => {
+       setIsSubmittingRequest(true);
+       setRequestError('');
+       
+       try {
+           const result = await apiService.submitRegistrationRequest(requestData);
+           
+           if (result.success) {
+               alert('Registration request submitted successfully! You will receive an email once your request is approved.');
+               onClose();
+           } else {
+               setRequestError(result.message || 'Failed to submit request');
+           }
+       } catch (error) {
+           console.error('Request submission error:', error);
+           setRequestError('An error occurred while submitting your request');
+       } finally {
+           setIsSubmittingRequest(false);
+       }
    };
 
    const handleRegister = async (userData, role) => {
@@ -576,46 +712,27 @@ const RegistrationPopup = ({ onClose, onRegister, onLoginRedirect }) => {
    };
 
    const renderForm = () => {
-       switch(selectedRole) {
-           case 'Staff':
-               return (
-                   <>
-                       {registrationError && <div className="error-message">{registrationError}</div>}
-                       <StaffRegistrationForm onRegister={handleRegister} isRegistering={isRegistering} />
-                   </>
-               );
-           case 'Institute':
-               return (
-                   <>
-                       {registrationError && <div className="error-message">{registrationError}</div>}
-                       <InstituteRegistrationForm onRegister={handleRegister} isRegistering={isRegistering} />
-                   </>
-               );
-           case 'Recruiter':
-               return (
-                   <>
-                       {registrationError && <div className="error-message">{registrationError}</div>}
-                       <RecruiterRegistrationForm onRegister={handleRegister} isRegistering={isRegistering} />
-                   </>
-               );
-           default:
-               return (
-                   <div className="registration-cards">
-                       <div className="registration-card" onClick={() => handleRegisterClick('Staff')}>
-                           <img src='/job.jpg' alt="Job Seeker" />
-                           <h3>Register as Staff</h3>
-                       </div>
-                       <div className="registration-card" onClick={() => handleRegisterClick('Recruiter')}>
-                           <img src='/recruiter.jpg' alt="Recruiter" />
-                           <h3>Register as Recruiter</h3>
-                       </div>
-                       <div className="registration-card" onClick={() => handleRegisterClick('Institute')}>
-                           <img src='/institute.jpg' alt="Institute" />
-                           <h3>Register as Institute</h3>
-                       </div>
-                   </div>
-               );
+       if (showRequestForm) {
+           return (
+               <RegistrationRequestForm 
+                   onSubmit={handleRequestFormSubmit}
+                   isSubmitting={isSubmittingRequest}
+                   error={requestError}
+               />
+           );
        }
+       
+       if (selectedRole === 'Staff') {
+           return (
+               <>
+                   {registrationError && <div className="error-message">{registrationError}</div>}
+                   <StaffRegistrationForm onRegister={handleRegister} isRegistering={isRegistering} />
+               </>
+           );
+       }
+       
+       // This should never be reached since we default to Staff
+       return null;
    };
 
    return (
@@ -623,12 +740,13 @@ const RegistrationPopup = ({ onClose, onRegister, onLoginRedirect }) => {
            <div className="registration-popup">
                <button className="close-btn" onClick={onClose}>✖</button>
                <h2 className="registration-title">
-                   {selectedRole ? `Register as ${selectedRole}` : 'Registration'}
+                   {showRequestForm ? 'Registration Request' : `Register as ${selectedRole}`}
                </h2>
                {renderForm()}
-               {selectedRole && (
-                   <button className="back-btn" onClick={() => setSelectedRole(null)}>
-                       Back to Selection
+
+               {showRequestForm && (
+                   <button className="back-btn" onClick={onClose}>
+                       Back to Login
                    </button>
                )}
            </div>

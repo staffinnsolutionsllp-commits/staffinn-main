@@ -1028,6 +1028,26 @@ input:checked + .staff-slider:before {
   color: #374151;
 }
 
+.staff-form-group.required label:after {
+  content: " *";
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.staff-form-group input.required:invalid,
+.staff-form-group textarea.required:invalid,
+.staff-form-group select.required:invalid {
+  border-color: #fca5a5;
+  background-color: #fef2f2;
+}
+
+.staff-form-group input.required:valid,
+.staff-form-group textarea.required:valid,
+.staff-form-group select.required:valid {
+  border-color: #86efac;
+  background-color: #f0fdf4;
+}
+
 .staff-form-group input,
 .staff-form-group textarea {
   width: 100%;
@@ -1604,8 +1624,58 @@ input:checked + .staff-slider:before {
   color: #2d3748;
 }
 
+.staff-modal-content p {
+  font-size: 1rem;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0 0 1rem;
+}
+
 .staff-modal-form {
   padding: 1.5rem;
+}
+
+.staff-modal-content {
+  padding: 1.5rem;
+}
+
+.staff-mandatory-fields {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: #f0f9ff;
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+}
+
+.staff-mandatory-fields h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  color: #0c4a6e;
+}
+
+.staff-mandatory-fields ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.staff-mandatory-fields li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #0c4a6e;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.staff-mandatory-fields li:before {
+  content: "•";
+  color: #0284c7;
+  font-weight: bold;
+  width: 8px;
+  text-align: center;
 }
 
 .staff-modal-actions {

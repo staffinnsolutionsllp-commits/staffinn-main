@@ -523,6 +523,28 @@ const apiService = {
     }
   },
 
+  // MIS Student API
+  getMisStudentCount: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/mis-students/count`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get MIS student count error:', error);
+      return { success: false, message: 'Failed to get MIS student count' };
+    }
+  },
+
   // Institute Student Management API - FIXED ENDPOINTS
   addStudent: async (studentData) => {
     try {
@@ -1096,6 +1118,33 @@ const apiService = {
       return data;
     } catch (error) {
       console.error('Update contact notes error:', error);
+      return { success: false, message: error.message };
+    }
+  },
+
+  getProfileCompletionStatus: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/staff/profile-completion-status`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `${response.status} - ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Get profile completion status error:', error);
       return { success: false, message: error.message };
     }
   },
@@ -2433,12 +2482,18 @@ const apiService = {
   },
 
   // Apply students to a job (Institute functionality)
-  applyStudentsToJob: async (jobId, recruiterId, studentIds) => {
+  applyStudentsToJob: async (jobId, recruiterId, selectedStudentIds) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
+
+      const applicationData = {
+        jobId,
+        recruiterId,
+        studentIds: selectedStudentIds
+      };
 
       const response = await fetch(`${API_URL}/applications/apply-students`, {
         method: 'POST',
@@ -2446,11 +2501,7 @@ const apiService = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          jobId,
-          recruiterId,
-          studentIds
-        })
+        body: JSON.stringify(applicationData)
       });
       return await response.json();
     } catch (error) {
@@ -2459,15 +2510,45 @@ const apiService = {
     }
   },
 
-  // Get students with application status for a job
-  getStudentsApplicationStatus: async (jobId) => {
+  // Apply MIS students to a job (Institute functionality)
+  applyMisStudentsToJob: async (jobId, recruiterId, selectedStudentIds) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      const response = await fetch(`${API_URL}/applications/job/${jobId}/students-status`, {
+      const applicationData = {
+        jobId,
+        recruiterId,
+        studentIds: selectedStudentIds
+      };
+
+      const response = await fetch(`${API_URL}/applications/apply-mis-students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(applicationData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Apply MIS students to job error:', error);
+      return { success: false, message: 'Failed to apply MIS students to job' };
+    }
+  },
+
+  // Get students with application status for a job
+  getStudentsApplicationStatus: async (jobId, type = 'institute') => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const queryParam = type ? `?type=${type}` : '';
+      const response = await fetch(`${API_URL}/applications/job/${jobId}/students-status${queryParam}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -2478,6 +2559,311 @@ const apiService = {
     } catch (error) {
       console.error('Get students application status error:', error);
       return { success: false, message: 'Failed to get students application status' };
+    }
+  },
+
+  // Placement Analytics API
+  getPlacementStats: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placements/stats`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get placement stats error:', error);
+      return { success: false, message: 'Failed to get placement stats' };
+    }
+  },
+
+  getAllPlacements: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placements`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get all placements error:', error);
+      return { success: false, message: 'Failed to get placements' };
+    }
+  },
+
+  getPlacementsByType: async (type) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placements/type/${type}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get placements by type error:', error);
+      return { success: false, message: 'Failed to get placements by type' };
+    }
+  },
+
+  getPlacementDashboardSummary: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/dashboard-summary`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get placement dashboard summary error:', error);
+      return { success: false, message: 'Failed to get placement dashboard summary' };
+    }
+  },
+
+  getPlacementAnalyticsCenterWise: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/analytics/center-wise`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get center wise analytics error:', error);
+      return { success: false, message: 'Failed to get center wise analytics' };
+    }
+  },
+
+  getPlacementAnalyticsSectorWise: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/analytics/sector-wise`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get sector wise analytics error:', error);
+      return { success: false, message: 'Failed to get sector wise analytics' };
+    }
+  },
+
+  getPlacementAnalyticsStudentWise: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/ultra-safe-student-wise`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const result = await response.json();
+      return Array.isArray(result.data) ? result.data : [];
+    } catch (error) {
+      console.error('Get student wise analytics error:', error);
+      return [];
+    }
+  },
+
+  getStudentWiseAnalytics: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/student-wise-unique`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const result = await response.json();
+      if (result.success && Array.isArray(result.data)) {
+        return result.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Get student wise analytics error:', error);
+      return [];
+    }
+  },
+
+  getStudentPlacementStatus: async (studentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      // Use the ultra-safe endpoint that never fails
+      const response = await fetch(`${API_URL}/placement/ultra-safe-student-status/${studentId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const result = await response.json();
+      
+      // Transform the response to match frontend expectations
+      if (result.success && result.data) {
+        const transformedData = {
+          hired: result.data.hiredCompanies?.companies || [],
+          rejected: result.data.rejectedCompanies?.companies || [],
+          pending: result.data.pendingCompanies?.companies || []
+        };
+        return { success: true, data: transformedData };
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Get student placement status error:', error);
+      // Return safe fallback data
+      return { 
+        success: true, 
+        data: {
+          hired: [],
+          rejected: [],
+          pending: []
+        }
+      };
+    }
+  },
+
+  // Get all sectors from course details
+  getPlacementSectors: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/sectors`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get placement sectors error:', error);
+      return { success: false, message: 'Failed to get sectors' };
+    }
+  },
+
+  // Get students by sector
+  getSectorWiseStudents: async (sector) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/sector-wise-students/${encodeURIComponent(sector)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get sector wise students error:', error);
+      return { success: false, message: 'Failed to get sector wise students' };
+    }
+  },
+
+  // Get training centers for placement dropdown
+  getPlacementTrainingCenters: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/training-centers`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get placement training centers error:', error);
+      return { success: false, message: 'Failed to get training centers' };
+    }
+  },
+
+  // Get students by center
+  getCenterWiseStudents: async (centerId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/placement/center-wise-students/${centerId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get center wise students error:', error);
+      return { success: false, message: 'Failed to get center wise students' };
     }
   },
 
@@ -3628,8 +4014,867 @@ const apiService = {
     }
   },
 
+  // Registration Request API
+  submitRegistrationRequest: async (requestData) => {
+    try {
+      console.log('🚀 API: Submitting registration request:', requestData);
+      const response = await fetch(`${API_URL}/registration-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+      
+      console.log('📡 API: Response status:', response.status);
+      const result = await response.json();
+      console.log('📡 API: Response data:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ API: Submit registration request error:', error);
+      return { success: false, message: 'Failed to submit registration request' };
+    }
+  },
 
+  // Admin Registration Request API
+  getRegistrationRequests: async (type) => {
+    try {
+      console.log('🚀 API: Getting registration requests for type:', type);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const url = type ? `${API_URL}/registration-requests/${type}` : `${API_URL}/registration-requests`;
+      console.log('📡 API: Making request to:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('📡 API: Response status:', response.status);
+      const result = await response.json();
+      console.log('📡 API: Response data:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ API: Get registration requests error:', error);
+      return { success: false, message: 'Failed to get registration requests' };
+    }
+  },
+
+  approveRegistrationRequest: async (requestId) => {
+    try {
+      console.log('🚀 API: Approving request ID:', requestId);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('📡 API: Making approve request to:', `${API_URL}/registration-requests/${requestId}/approve`);
+      const response = await fetch(`${API_URL}/registration-requests/${requestId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('📡 API: Response status:', response.status);
+      const result = await response.json();
+      console.log('📡 API: Response data:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ API: Approve registration request error:', error);
+      return { success: false, message: 'Failed to approve registration request' };
+    }
+  },
+
+  rejectRegistrationRequest: async (requestId) => {
+    try {
+      console.log('🚀 API: Rejecting request ID:', requestId);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('📡 API: Making reject request to:', `${API_URL}/registration-requests/${requestId}/reject`);
+      const response = await fetch(`${API_URL}/registration-requests/${requestId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('📡 API: Response status:', response.status);
+      const result = await response.json();
+      console.log('📡 API: Response data:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ API: Reject registration request error:', error);
+      return { success: false, message: 'Failed to reject registration request' };
+    }
+  },
+
+  // Partner Profile API
+  getPartnerProfile: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/profile`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get partner profile error:', error);
+      return { success: false, message: 'Failed to get partner profile' };
+    }
+  },
+
+  updatePartnerProfile: async (profileData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(profileData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update partner profile error:', error);
+      return { success: false, message: 'Failed to update partner profile' };
+    }
+  },
+
+  // Partner Dashboard Stats
+  getPartnerDashboardStats: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/dashboard/stats`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get partner dashboard stats error:', error);
+      return { success: false, message: 'Failed to get dashboard stats' };
+    }
+  },
+
+  // Partnership Management API
+  getPartnerships: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/partnerships`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get partnerships error:', error);
+      return { success: false, message: 'Failed to get partnerships' };
+    }
+  },
+
+  createPartnership: async (partnershipData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/partnerships`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(partnershipData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Create partnership error:', error);
+      return { success: false, message: 'Failed to create partnership' };
+    }
+  },
+
+  updatePartnership: async (partnershipId, partnershipData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/partnerships/${partnershipId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(partnershipData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update partnership error:', error);
+      return { success: false, message: 'Failed to update partnership' };
+    }
+  },
+
+  deletePartnership: async (partnershipId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/partnerships/${partnershipId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete partnership error:', error);
+      return { success: false, message: 'Failed to delete partnership' };
+    }
+  },
+
+  getAvailableInstitutes: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/available-institutes`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get available institutes error:', error);
+      return { success: false, message: 'Failed to get available institutes' };
+    }
+  },
+
+  // Talent Acquisition API
+  getTalentRequests: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/talent-requests`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get talent requests error:', error);
+      return { success: false, message: 'Failed to get talent requests' };
+    }
+  },
+
+  createTalentRequest: async (talentData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/talent-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(talentData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Create talent request error:', error);
+      return { success: false, message: 'Failed to create talent request' };
+    }
+  },
+
+  updateTalentRequest: async (requestId, talentData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/talent-requests/${requestId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(talentData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update talent request error:', error);
+      return { success: false, message: 'Failed to update talent request' };
+    }
+  },
+
+  deleteTalentRequest: async (requestId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/talent-requests/${requestId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete talent request error:', error);
+      return { success: false, message: 'Failed to delete talent request' };
+    }
+  },
+
+  getTalentApplications: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/talent-applications`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get talent applications error:', error);
+      return { success: false, message: 'Failed to get talent applications' };
+    }
+  },
+
+  // Training Programs API
+  getTrainingPrograms: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/training-programs`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get training programs error:', error);
+      return { success: false, message: 'Failed to get training programs' };
+    }
+  },
+
+  createTrainingProgram: async (programData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/training-programs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(programData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Create training program error:', error);
+      return { success: false, message: 'Failed to create training program' };
+    }
+  },
+
+  updateTrainingProgram: async (programId, programData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/training-programs/${programId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(programData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update training program error:', error);
+      return { success: false, message: 'Failed to update training program' };
+    }
+  },
+
+  deleteTrainingProgram: async (programId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/training-programs/${programId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete training program error:', error);
+      return { success: false, message: 'Failed to delete training program' };
+    }
+  },
+
+  // Collaboration Projects API
+  getCollaborationProjects: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/collaboration-projects`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get collaboration projects error:', error);
+      return { success: false, message: 'Failed to get collaboration projects' };
+    }
+  },
+
+  createCollaborationProject: async (projectData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/collaboration-projects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(projectData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Create collaboration project error:', error);
+      return { success: false, message: 'Failed to create collaboration project' };
+    }
+  },
+
+  updateCollaborationProject: async (projectId, projectData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/collaboration-projects/${projectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(projectData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update collaboration project error:', error);
+      return { success: false, message: 'Failed to update collaboration project' };
+    }
+  },
+
+  deleteCollaborationProject: async (projectId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/partners/collaboration-projects/${projectId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete collaboration project error:', error);
+      return { success: false, message: 'Failed to delete collaboration project' };
+    }
+  },
+
+  // MIS Agreement API for Staffinn Partners
+  uploadMisAgreement: async (file) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      if (!file) {
+        throw new Error('No PDF file provided');
+      }
+
+      if (file.type !== 'application/pdf') {
+        throw new Error('Please select a valid PDF file');
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('PDF size should be less than 10MB');
+      }
+
+      console.log('📄 Uploading MIS agreement PDF:', file.name);
+      const formData = new FormData();
+      formData.append('signedPdf', file);
+      formData.append('fileName', file.name);
+      formData.append('fileSize', file.size.toString());
+
+      const response = await fetch(`${API_URL}/institutes/mis-request/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      const result = await response.json();
+      console.log('📊 MIS agreement upload response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Upload MIS agreement error:', error);
+      return { success: false, message: error.message || 'Failed to upload MIS agreement' };
+    }
+  },
+
+  getMisStatus: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('⚠️ No token found for MIS status check');
+        return { success: false, message: 'No authentication token found' };
+      }
+
+      console.log('🔍 Fetching current MIS status and agreement...');
+      
+      // First try to get MIS status
+      const statusResponse = await fetch(`${API_URL}/institutes/mis-status`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      let status = 'pending';
+      let agreementFile = null;
+      
+      if (statusResponse.ok) {
+        const statusResult = await statusResponse.json();
+        console.log('📋 MIS status response:', statusResult);
+        if (statusResult.success) {
+          status = statusResult.data?.status || 'pending';
+        }
+      }
+      
+      // Try to get agreement file separately
+      const agreementResponse = await fetch(`${API_URL}/institutes/mis-agreement`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (agreementResponse.ok) {
+        const agreementResult = await agreementResponse.json();
+        console.log('📄 MIS agreement response:', agreementResult);
+        if (agreementResult.success && agreementResult.data) {
+          agreementFile = agreementResult.data;
+        }
+      }
+      
+      console.log('🏆 Final MIS Status:', status, 'Agreement File:', agreementFile);
+      return {
+        success: true,
+        data: { status, agreementFile }
+      };
+    } catch (error) {
+      console.error('❌ Get MIS status error:', error);
+      return { success: false, message: 'Failed to get MIS status' };
+    }
+  },
+
+  getMisAgreement: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('📄 Fetching existing MIS agreement...');
+      const response = await fetch(`${API_URL}/institutes/mis-agreement`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const result = await response.json();
+      console.log('📋 MIS agreement response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Get MIS agreement error:', error);
+      return { success: false, message: 'Failed to get MIS agreement' };
+    }
+  },
+
+  // Admin MIS Request Management API
+  getAllMisRequests: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/admin/mis-requests`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get all MIS requests error:', error);
+      return { success: false, message: 'Failed to get MIS requests' };
+    }
+  },
+
+  approveMisRequest: async (requestId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/admin/mis-requests/${requestId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Approve MIS request error:', error);
+      return { success: false, message: 'Failed to approve MIS request' };
+    }
+  },
+
+  rejectMisRequest: async (requestId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/admin/mis-requests/${requestId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Reject MIS request error:', error);
+      return { success: false, message: 'Failed to reject MIS request' };
+    }
+  },
+
+  deleteMisRequest: async (requestId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/admin/mis-requests/${requestId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete MIS request error:', error);
+      return { success: false, message: 'Failed to delete MIS request' };
+    }
+  }
 
 };
 
 export default apiService;
+
+// Training Center API
+export const getTrainingCenters = () => apiService.getTrainingCenters();
+export const getTrainingCenterById = (id) => apiService.getTrainingCenterById(id);
+export const createTrainingCenter = (data) => apiService.createTrainingCenter(data);
+export const updateTrainingCenter = (id, data) => apiService.updateTrainingCenter(id, data);
+export const deleteTrainingCenter = (id) => apiService.deleteTrainingCenter(id);
+
+apiService.getTrainingCenters = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+    const response = await fetch(`${API_URL}/training-centers`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Get training centers error:', error);
+    return { success: false, message: 'Failed to get training centers' };
+  }
+};
+
+apiService.getTrainingCenterById = async (id) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+    const response = await fetch(`${API_URL}/training-centers/${id}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Get training center error:', error);
+    return { success: false, message: 'Failed to get training center' };
+  }
+};
+
+apiService.createTrainingCenter = async (data) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+    const response = await fetch(`${API_URL}/training-centers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(data)
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Create training center error:', error);
+    return { success: false, message: 'Failed to create training center' };
+  }
+};
+
+apiService.updateTrainingCenter = async (id, data) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+    const response = await fetch(`${API_URL}/training-centers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(data)
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Update training center error:', error);
+    return { success: false, message: 'Failed to update training center' };
+  }
+};
+
+apiService.deleteTrainingCenter = async (id) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+    const response = await fetch(`${API_URL}/training-centers/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Delete training center error:', error);
+    return { success: false, message: 'Failed to delete training center' };
+  }
+};

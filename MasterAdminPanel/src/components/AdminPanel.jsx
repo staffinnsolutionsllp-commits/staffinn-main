@@ -11,16 +11,56 @@ import InstituteDashboard from './institute/InstituteDashboard';
 import InstituteUsers from './institute/InstituteUsers';
 import InstituteStudents from './institute/InstituteStudents';
 import InstituteCourses from './institute/InstituteCourses';
+import StaffinnPartnerUsers from './staffinnPartner/StaffinnPartnerUsers';
+import StaffinnPartnerDashboard from './staffinnPartner/StaffinnPartnerDashboard';
+import StaffinnPartnerTrainingCenters from './staffinnPartner/StaffinnPartnerTrainingCenters';
+import StaffinnPartnerInfrastructure from './staffinnPartner/StaffinnPartnerInfrastructure';
+import StaffinnPartnerFacultyList from './staffinnPartner/StaffinnPartnerFacultyList';
+import StaffinnPartnerStudents from './staffinnPartner/StaffinnPartnerStudents';
 import Issues from './Issues';
 import Notifications from './Notifications';
 import GovernmentSchemes from './GovernmentSchemes';
+import RegistrationRequests from './RegistrationRequests';
+import ManualRegistration from './ManualRegistration';
+import MisRequests from './MisRequests';
+import Chats from './Chats';
 import adminAPI from '../services/adminApi';
 import './AdminPanel.css';
 
 const AdminPanel = ({ adminData, onLogout }) => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [activeSubSection, setActiveSubSection] = useState('');
+  const [activeStaffinnPartnerSection, setActiveStaffinnPartnerSection] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // Define allowed sections based on role
+  const getAllowedSections = (role) => {
+    console.log('Admin role:', role); // Debug log
+    if (role === 'staff') {
+      return ['dashboard', 'staff', 'notifications', 'issues', 'government-schemes', 'chats'];
+    }
+    if (role === 'recruiter') {
+      return ['dashboard', 'recruiter', 'notifications', 'issues', 'government-schemes', 'registration-requests', 'manual-registration'];
+    }
+    if (role === 'institute') {
+      return ['dashboard', 'institute', 'notifications', 'issues', 'government-schemes', 'registration-requests', 'manual-registration', 'mis-requests'];
+    }
+    // Admin/Master admin has access to all sections (including admin, master-admin, or any other admin role)
+    return ['dashboard', 'staff', 'institute', 'recruiter', 'staffinn-partner-mis', 'notifications', 'issues', 'government-schemes', 'registration-requests', 'manual-registration', 'mis-requests', 'chats'];
+  };
+  
+  const allowedSections = getAllowedSections(adminData?.role);
+  console.log('Allowed sections:', allowedSections); // Debug log
+  
+  const isSectionAllowed = (section) => {
+    // Always allow staffinn-partner-mis for admin roles
+    if (section === 'staffinn-partner-mis' && (adminData?.role === 'admin' || adminData?.role === 'master-admin' || !adminData?.role || adminData?.role === 'Admin')) {
+      return true;
+    }
+    const allowed = allowedSections.includes(section);
+    console.log(`Section ${section} allowed:`, allowed, 'Role:', adminData?.role); // Debug log
+    return allowed;
+  };
 
   const handleLogout = () => {
     adminAPI.logout();
@@ -76,6 +116,27 @@ const AdminPanel = ({ adminData, onLogout }) => {
       }
     }
     
+    if (activeSection === 'staffinn-partner-mis') {
+      switch (activeSubSection) {
+        case 'users':
+          return <StaffinnPartnerUsers />;
+        case 'dashboard':
+          return <StaffinnPartnerDashboard />;
+        case 'training-centers':
+          return <StaffinnPartnerTrainingCenters />;
+        case 'training-infrastructure':
+          return <StaffinnPartnerInfrastructure section="infrastructure" />;
+        case 'courses':
+          return <StaffinnPartnerInfrastructure section="courses" />;
+        case 'faculty':
+          return <StaffinnPartnerFacultyList />;
+        case 'students':
+          return <StaffinnPartnerStudents />;
+        default:
+          return <StaffinnPartnerUsers />;
+      }
+    }
+    
     if (activeSection === 'notifications') {
       return <Notifications />;
     }
@@ -86,6 +147,22 @@ const AdminPanel = ({ adminData, onLogout }) => {
     
     if (activeSection === 'government-schemes') {
       return <GovernmentSchemes />;
+    }
+    
+    if (activeSection === 'registration-requests') {
+      return <RegistrationRequests />;
+    }
+    
+    if (activeSection === 'manual-registration') {
+      return <ManualRegistration />;
+    }
+    
+    if (activeSection === 'mis-requests') {
+      return <MisRequests />;
+    }
+    
+    if (activeSection === 'chats') {
+      return <Chats />;
     }
     
     return (
@@ -108,7 +185,7 @@ const AdminPanel = ({ adminData, onLogout }) => {
             {!sidebarCollapsed && (
               <div className="admin-details">
                 <h3>{adminData.adminId}</h3>
-                <p>Master Admin</p>
+                <p>{adminData.role === 'staff' ? 'Staff Admin' : adminData.role === 'recruiter' ? 'Recruiter Admin' : adminData.role === 'institute' ? 'Institute Admin' : 'Admin'}</p>
               </div>
             )}
           </div>
@@ -136,6 +213,7 @@ const AdminPanel = ({ adminData, onLogout }) => {
           </div>
 
           {/* Staff Section */}
+          {isSectionAllowed('staff') && (
           <div className="nav-section">
             <button
               className={`nav-section-btn ${activeSection === 'staff' ? 'active' : ''}`}
@@ -167,19 +245,21 @@ const AdminPanel = ({ adminData, onLogout }) => {
               </div>
             )}
           </div>
+          )}
 
           {/* Institute Section */}
-          <div className="nav-section">
-            <button
-              className={`nav-section-btn ${activeSection === 'institute' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveSection('institute');
-                setActiveSubSection('dashboard');
-              }}
-            >
-              <i className="fas fa-university"></i>
-              {!sidebarCollapsed && <span>Institute</span>}
-            </button>
+          {isSectionAllowed('institute') && (
+            <div className="nav-section">
+              <button
+                className={`nav-section-btn ${activeSection === 'institute' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSection('institute');
+                  setActiveSubSection('dashboard');
+                }}
+              >
+                <i className="fas fa-university"></i>
+                {!sidebarCollapsed && <span>Institute</span>}
+              </button>
             
             {activeSection === 'institute' && !sidebarCollapsed && (
               <div className="nav-subsection">
@@ -213,9 +293,11 @@ const AdminPanel = ({ adminData, onLogout }) => {
                 </button>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           {/* Recruiter Section */}
+          {isSectionAllowed('recruiter') && (
           <div className="nav-section">
             <button
               className={`nav-section-btn ${activeSection === 'recruiter' ? 'active' : ''}`}
@@ -268,6 +350,77 @@ const AdminPanel = ({ adminData, onLogout }) => {
               </div>
             )}
           </div>
+          )}
+
+          {/* Staffinn Partner MIS Section */}
+          {isSectionAllowed('staffinn-partner-mis') && (
+            <div className="nav-section">
+              <button
+                className={`nav-section-btn ${activeSection === 'staffinn-partner-mis' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveSection('staffinn-partner-mis');
+                  setActiveSubSection('users');
+                }}
+              >
+                <i className="fas fa-handshake"></i>
+                {!sidebarCollapsed && <span>Staffinn Partner MIS</span>}
+              </button>
+            
+            {activeSection === 'staffinn-partner-mis' && !sidebarCollapsed && (
+              <div className="nav-subsection">
+                <button
+                  className={`nav-item ${activeSubSection === 'users' ? 'active' : ''}`}
+                  onClick={() => setActiveSubSection('users')}
+                >
+                  <i className="fas fa-users"></i>
+                  Users
+                </button>
+                <button
+                  className={`nav-item ${activeSubSection === 'dashboard' ? 'active' : ''}`}
+                  onClick={() => setActiveSubSection('dashboard')}
+                >
+                  <i className="fas fa-chart-bar"></i>
+                  Dashboard
+                </button>
+                <button
+                  className={`nav-item ${activeSubSection === 'training-centers' ? 'active' : ''}`}
+                  onClick={() => setActiveSubSection('training-centers')}
+                >
+                  <i className="fas fa-building"></i>
+                  Training Centers
+                </button>
+                <button
+                  className={`nav-item ${activeSubSection === 'training-infrastructure' ? 'active' : ''}`}
+                  onClick={() => setActiveSubSection('training-infrastructure')}
+                >
+                  <i className="fas fa-tools"></i>
+                  Training Infrastructure
+                </button>
+                <button
+                  className={`nav-item ${activeSubSection === 'courses' ? 'active' : ''}`}
+                  onClick={() => setActiveSubSection('courses')}
+                >
+                  <i className="fas fa-book"></i>
+                  Courses
+                </button>
+                <button
+                  className={`nav-item ${activeSubSection === 'faculty' ? 'active' : ''}`}
+                  onClick={() => setActiveSubSection('faculty')}
+                >
+                  <i className="fas fa-chalkboard-teacher"></i>
+                  Faculty
+                </button>
+                <button
+                  className={`nav-item ${activeSubSection === 'students' ? 'active' : ''}`}
+                  onClick={() => setActiveSubSection('students')}
+                >
+                  <i className="fas fa-user-graduate"></i>
+                  Students
+                </button>
+              </div>
+            )}
+            </div>
+          )}
 
           {/* Notifications Section */}
           <div className="nav-section">
@@ -310,6 +463,70 @@ const AdminPanel = ({ adminData, onLogout }) => {
               {!sidebarCollapsed && <span>Government Schemes</span>}
             </button>
           </div>
+
+          {/* Registration Requests Section */}
+          {isSectionAllowed('registration-requests') && (
+          <div className="nav-section">
+            <button
+              className={`nav-section-btn ${activeSection === 'registration-requests' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection('registration-requests');
+                setActiveSubSection('');
+              }}
+            >
+              <i className="fas fa-user-plus"></i>
+              {!sidebarCollapsed && <span>Registration Requests</span>}
+            </button>
+          </div>
+          )}
+
+          {/* Manual Registration Section */}
+          {isSectionAllowed('manual-registration') && (
+          <div className="nav-section">
+            <button
+              className={`nav-section-btn ${activeSection === 'manual-registration' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection('manual-registration');
+                setActiveSubSection('');
+              }}
+            >
+              <i className="fas fa-user-cog"></i>
+              {!sidebarCollapsed && <span>Manual Registration</span>}
+            </button>
+          </div>
+          )}
+
+          {/* MIS Requests Section */}
+          {isSectionAllowed('mis-requests') && (
+          <div className="nav-section">
+            <button
+              className={`nav-section-btn ${activeSection === 'mis-requests' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection('mis-requests');
+                setActiveSubSection('');
+              }}
+            >
+              <i className="fas fa-file-contract"></i>
+              {!sidebarCollapsed && <span>MIS Requests</span>}
+            </button>
+          </div>
+          )}
+
+          {/* Chats Section */}
+          {isSectionAllowed('chats') && (
+          <div className="nav-section">
+            <button
+              className={`nav-section-btn ${activeSection === 'chats' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection('chats');
+                setActiveSubSection('');
+              }}
+            >
+              <i className="fas fa-comments"></i>
+              {!sidebarCollapsed && <span>Chats</span>}
+            </button>
+          </div>
+          )}
         </nav>
 
         <div className="sidebar-footer">
@@ -324,7 +541,7 @@ const AdminPanel = ({ adminData, onLogout }) => {
       <div className="admin-main">
         <div className="main-header">
           <div className="breadcrumb">
-            <span className="breadcrumb-item">{activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</span>
+            <span className="breadcrumb-item">{activeSection === 'staffinn-partner-mis' ? 'Staffinn Partner MIS' : activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</span>
             {activeSubSection && (
               <>
                 <span className="breadcrumb-separator">›</span>

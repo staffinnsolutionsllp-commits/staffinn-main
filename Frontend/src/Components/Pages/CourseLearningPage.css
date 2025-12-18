@@ -1939,10 +1939,307 @@
     justify-content: center;
   }
 }
+/* On Campus Files Styles */
+.on-campus-files-section {
+  background-color: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.on-campus-files-section h3 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.on-campus-files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.on-campus-file-item {
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  border: 1px solid #e2e8f0;
+}
+
+.on-campus-file-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.image-file .course-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.video-file .course-video {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.file-info {
+  padding: 1rem;
+}
+
+.file-name {
+  margin: 0 0 0.5rem 0;
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.file-type {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.unknown-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.file-placeholder {
+  width: 60px;
+  height: 60px;
+  background-color: #f1f5f9;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  border: 2px solid #e2e8f0;
+}
+
+.file-placeholder span {
+  font-size: 1.5rem;
+  color: #64748b;
+}
+
+/* Campus View Styles */
+.campus-view-section {
+  background-color: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.campus-view-section h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1e293b;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.campus-view-section p {
+  margin: 0 0 1.5rem 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.campus-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.campus-view-item {
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  border: 1px solid #e2e8f0;
+}
+
+.campus-view-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.campus-image .campus-photo {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.campus-video .campus-video-player {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.campus-file-info {
+  padding: 1rem;
+}
+
+.campus-file-name {
+  margin: 0 0 0.5rem 0;
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.campus-file-type {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.campus-unknown-file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.campus-file-placeholder {
+  width: 60px;
+  height: 60px;
+  background-color: #f1f5f9;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  border: 2px solid #e2e8f0;
+}
+
+.campus-file-placeholder span {
+  font-size: 1.5rem;
+  color: #64748b;
+}
+
+/* Enrollment Success Message Styles */
+.enrollment-success-message {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border-radius: 12px;
+  border: 1px solid #10b981;
+  margin: 1rem 0;
+}
+
+.success-icon {
+  font-size: 2rem;
+  color: #059669;
+}
+
+.success-text h4 {
+  margin: 0 0 0.5rem 0;
+  color: #065f46;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.success-text p {
+  margin: 0;
+  color: #047857;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+/* Enrollment Info Styles */
+.enrollment-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  border-radius: 12px;
+  border: 1px solid #3b82f6;
+  margin: 1rem 0;
+}
+
+.info-icon {
+  font-size: 2rem;
+  color: #1d4ed8;
+}
+
+.info-text h4 {
+  margin: 0 0 0.5rem 0;
+  color: #1e40af;
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.info-text p {
+  margin: 0;
+  color: #1e3a8a;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
 /* Mobile responsive styles for course learning page */
 @media (max-width: 768px) {
     .course-learning-page {
         padding: 0;
+    }
+    
+    .campus-view-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .campus-view-item {
+        margin-bottom: 1rem;
+    }
+    
+    .campus-image .campus-photo,
+    .campus-video .campus-video-player {
+        height: 180px;
+    }
+    
+    .enrollment-success-message,
+    .enrollment-info {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    
+    .on-campus-files-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .on-campus-file-item {
+        margin-bottom: 1rem;
+    }
+    
+    .image-file .course-image,
+    .video-file .course-video {
+        height: 180px;
     }
     
     .course-header {

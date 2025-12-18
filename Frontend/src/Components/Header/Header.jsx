@@ -9,11 +9,12 @@ import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
 import NotificationBell from './NotificationBell';
 import './Header.css';
 
-function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUser }) {
+function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUser, showLoginModal, setShowLoginModal }) {
     const { currentUser: contextUser, refreshUserProfile } = useContext(AuthContext);
     // Use the profile photo sync hook to listen for updates
     useProfilePhotoSync();
-    const [showLoginModal, setShowLoginModal] = useState(false);
+    // Login modal state is now passed from parent
+    const [showRequestForm, setShowRequestForm] = useState(false);
     
     // Use context user if available, fallback to prop user
     const activeUser = contextUser || currentUser;
@@ -161,9 +162,19 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
     
     // Modified onRegisterClick to pass the loginRedirect function
     const handleRegisterClick = () => {
+        setShowLoginModal(false);
+        setShowRequestForm(false);
         if (onRegisterClick) {
             // Pass the loginRedirect function to the parent component
             onRegisterClick(handleLoginRedirect);
+        }
+    };
+
+    const handleRequestFormClick = () => {
+        setShowLoginModal(false);
+        setShowRequestForm(true);
+        if (onRegisterClick) {
+            onRegisterClick(handleLoginRedirect, true); // Pass true for request form
         }
     };
 
@@ -227,9 +238,13 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                             <p>Don't have an account?</p>
                             <button className="register-btn" onClick={(e) => {
                                 e.preventDefault();
-                                setShowLoginModal(false);
-                                onRegisterClick();
+                                handleRegisterClick();
                             }}>Register</button>
+                            <div className="or-divider">or</div>
+                            <button className="request-btn" onClick={(e) => {
+                                e.preventDefault();
+                                handleRequestFormClick();
+                            }}>Register as an Institute / Recruiter</button>
                         </div>
                         <div className="login-right-panel">
                             <button className="modal-close-btn" onClick={closeLoginModal}>×</button>

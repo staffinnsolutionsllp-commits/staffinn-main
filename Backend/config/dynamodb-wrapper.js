@@ -49,6 +49,11 @@ const RECRUITER_NEWS_TABLE = process.env.RECRUITER_NEWS_TABLE || 'recruiter-news
 const ISSUES_TABLE = process.env.DYNAMODB_ISSUES_TABLE || 'staffinn-issue-section';
 const ADMIN_TABLE = process.env.ADMIN_TABLE || 'staffinn-admin';
 const QUIZ_PROGRESS_TABLE = process.env.QUIZ_PROGRESS_TABLE || 'user-quiz-progress';
+const REGISTRATION_REQUESTS_TABLE = process.env.REGISTRATION_REQUESTS_TABLE || 'staffinn-registration-requests';
+const MIS_REQUESTS_TABLE = process.env.MIS_REQUESTS_TABLE || 'staffinn-mis-requests';
+const MESSAGES_TABLE = process.env.MESSAGES_TABLE || 'Messages';
+const FACULTY_LIST_TABLE = process.env.FACULTY_LIST_TABLE || 'mis-faculty-list';
+const MIS_PLACEMENT_ANALYTICS_TABLE = process.env.MIS_PLACEMENT_ANALYTICS_TABLE || 'staffinn-mis-placement-analytics';
 
 const createTablesIfNotExist = async () => {
   try {
@@ -70,6 +75,11 @@ const createTablesIfNotExist = async () => {
       mockDB.createTable(ISSUES_TABLE);
       mockDB.createTable(ADMIN_TABLE);
       mockDB.createTable(QUIZ_PROGRESS_TABLE);
+      mockDB.createTable(REGISTRATION_REQUESTS_TABLE);
+      mockDB.createTable(MIS_REQUESTS_TABLE);
+      mockDB.createTable(MESSAGES_TABLE);
+      mockDB.createTable(FACULTY_LIST_TABLE);
+      mockDB.createTable(MIS_PLACEMENT_ANALYTICS_TABLE);
       console.log('Mock database tables initialized');
       return;
     }
@@ -103,5 +113,10 @@ module.exports = {
   ISSUES_TABLE,
   ADMIN_TABLE,
   QUIZ_PROGRESS_TABLE,
+  REGISTRATION_REQUESTS_TABLE,
+  MIS_REQUESTS_TABLE,
+  MESSAGES_TABLE,
+  FACULTY_LIST_TABLE,
+  MIS_PLACEMENT_ANALYTICS_TABLE,
   createTablesIfNotExist
 };

@@ -1,0 +1,158 @@
+/* Staffinn Partner Hierarchical Menu Styles */
+.staffinn-partner-menu {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.staffinn-partner-menu > li {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s ease;
+}
+
+.staffinn-partner-menu > li:hover {
+    color: #f8f9fa;
+}
+
+.staffinn-partner-menu > li:last-child {
+    border-bottom: none;
+}
+
+/* Menu group styles */
+.menu-group {
+    cursor: default !important;
+}
+
+.menu-group:hover {
+    background-color: transparent !important;
+}
+
+.menu-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px 0;
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.menu-group-header:hover {
+ color: #f8f9fa;
+}
+
+.menu-group-title {
+    font-weight: 600;
+    color: #ffffff;
+    flex: 1;
+}
+
+.menu-group-header .dropdown-arrow {
+    font-size: 0.7rem;
+    color: #ffffff;
+    transition: transform 0.2s ease;
+    margin-left: 8px;
+}
+
+.menu-group-header .dropdown-arrow.open {
+    transform: rotate(180deg);
+}
+
+/* Submenu styles */
+.submenu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    margin-left: 16px;
+    animation: slideDown 0.2s ease-out;
+}
+
+.submenu li {
+    padding: 6px 12px !important;
+    margin: 2px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: none !important;
+    position: relative;
+}
+
+.submenu li:before {
+    content: "├──";
+    position: absolute;
+    left: -12px;
+    color: #6c757d;
+    font-size: 12px;
+}
+
+.submenu li:last-child:before {
+    content: "└──";
+}
+
+.submenu li:hover {
+    background-color: #e3f2fd !important;
+    color: #1976d2;
+    transform: translateX(4px);
+}
+
+/* Active state for submenu items */
+.submenu li.active {
+    background-color: #2196f3 !important;
+    color: white;
+}
+
+/* Scrollbar styling for the menu */
+.staffinn-partner-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.staffinn-partner-menu::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.staffinn-partner-menu::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.staffinn-partner-menu::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Animation for menu appearance */
+.staffinn-partner-menu {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .staffinn-partner-menu {
+        max-height: 300px;
+    }
+    
+    .submenu {
+        margin-left: 12px;
+    }
+    
+    .submenu li {
+        padding: 8px 10px !important;
+        font-size: 14px;
+    }
+}

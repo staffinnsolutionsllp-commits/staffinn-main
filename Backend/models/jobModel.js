@@ -32,6 +32,7 @@ const createJob = async (jobData) => {
       location: jobData.location,
       description: jobData.description,
       skills: Array.isArray(jobData.skills) ? jobData.skills : jobData.skills.split(',').map(s => s.trim()),
+      graduationYear: jobData.graduationYear || '',
       status: jobData.status || 'Active',
       postedDate: jobData.postedDate || new Date().toISOString(),
       applications: 0,

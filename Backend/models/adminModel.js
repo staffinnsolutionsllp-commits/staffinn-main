@@ -76,9 +76,10 @@ const updateAdminPassword = async (adminId, newPassword) => {
  * Initialize default admin (run once)
  * @param {string} adminId - Admin ID
  * @param {string} defaultPassword - Default password
+ * @param {string} role - Admin role
  * @returns {Promise<object>} - Created admin
  */
-const initializeDefaultAdmin = async (adminId = 'admin', defaultPassword = 'admin123') => {
+const initializeDefaultAdmin = async (adminId = 'admin', defaultPassword = 'admin123', role = 'admin') => {
   try {
     // Check if admin already exists
     const existingAdmin = await getAdminById(adminId);
@@ -93,6 +94,7 @@ const initializeDefaultAdmin = async (adminId = 'admin', defaultPassword = 'admi
     const adminData = {
       adminId,
       password: hashedPassword,
+      role,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -105,9 +107,117 @@ const initializeDefaultAdmin = async (adminId = 'admin', defaultPassword = 'admi
   }
 };
 
+/**
+ * Create staff admin
+ * @returns {Promise<object>} - Created staff admin
+ */
+const createStaffAdmin = async () => {
+  try {
+    const staffAdminId = 'staff_admin';
+    const staffPassword = 'staff123';
+    
+    // Check if staff admin already exists
+    const existingStaffAdmin = await getAdminById(staffAdminId);
+    if (existingStaffAdmin) {
+      return existingStaffAdmin;
+    }
+    
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(staffPassword, saltRounds);
+    
+    const staffAdminData = {
+      adminId: staffAdminId,
+      password: hashedPassword,
+      role: 'staff',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    await dynamoService.putItem(ADMIN_TABLE, staffAdminData);
+    return staffAdminData;
+  } catch (error) {
+    console.error('Create staff admin error:', error);
+    throw new Error('Failed to create staff admin');
+  }
+};
+
+/**
+ * Create recruiter admin
+ * @returns {Promise<object>} - Created recruiter admin
+ */
+const createRecruiterAdmin = async () => {
+  try {
+    const recruiterAdminId = 'recruiter_admin';
+    const recruiterPassword = 'recruiter123';
+    
+    // Check if recruiter admin already exists
+    const existingRecruiterAdmin = await getAdminById(recruiterAdminId);
+    if (existingRecruiterAdmin) {
+      return existingRecruiterAdmin;
+    }
+    
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(recruiterPassword, saltRounds);
+    
+    const recruiterAdminData = {
+      adminId: recruiterAdminId,
+      password: hashedPassword,
+      role: 'recruiter',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    await dynamoService.putItem(ADMIN_TABLE, recruiterAdminData);
+    return recruiterAdminData;
+  } catch (error) {
+    console.error('Create recruiter admin error:', error);
+    throw new Error('Failed to create recruiter admin');
+  }
+};
+
+/**
+ * Create institute admin
+ * @returns {Promise<object>} - Created institute admin
+ */
+const createInstituteAdmin = async () => {
+  try {
+    const instituteAdminId = 'institute_admin';
+    const institutePassword = 'institute123';
+    
+    // Check if institute admin already exists
+    const existingInstituteAdmin = await getAdminById(instituteAdminId);
+    if (existingInstituteAdmin) {
+      return existingInstituteAdmin;
+    }
+    
+    // Hash the password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(institutePassword, saltRounds);
+    
+    const instituteAdminData = {
+      adminId: instituteAdminId,
+      password: hashedPassword,
+      role: 'institute',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    await dynamoService.putItem(ADMIN_TABLE, instituteAdminData);
+    return instituteAdminData;
+  } catch (error) {
+    console.error('Create institute admin error:', error);
+    throw new Error('Failed to create institute admin');
+  }
+};
+
 module.exports = {
   getAdminById,
   verifyAdminPassword,
   updateAdminPassword,
-  initializeDefaultAdmin
+  initializeDefaultAdmin,
+  createStaffAdmin,
+  createRecruiterAdmin,
+  createInstituteAdmin
 };

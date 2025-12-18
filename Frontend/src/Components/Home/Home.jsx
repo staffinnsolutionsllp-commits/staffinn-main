@@ -1,6 +1,6 @@
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import './Home.css';
 import Footer from '../Footer/Footer';
@@ -9,8 +9,11 @@ import JobCard from '../common/JobCard';
 import CourseCard from '../common/CourseCard';
 import apiWithLoading from '../../services/apiWithLoading';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
+import { AuthContext } from '../../context/AuthContext';
+import ChatButton from '../Messages/ChatButton';
 
-function Home() {
+function Home({ isLoggedIn, onShowLogin }) {
+   const { user } = useContext(AuthContext);
    const [states, setStates] = useState([]);
    const [cities, setCities] = useState([]);
    const [areas, setAreas] = useState([]);
@@ -117,11 +120,12 @@ function Home() {
                    certificates: staff.certificates || [],
                    workExperience: staff.experiences?.map(exp => `${exp.jobTitle} at ${exp.company}`).join(', ') || 'Experience not specified',
                    education: staff.education?.degree || 'Education not specified',
-                   expectedSalary: 'Contact for rates',
+                   expectedSalary: 'Contact by Chat',
                    phone: staff.phone || '+91-XXXXXXXXXX',
                    email: staff.email || 'Email not available',
                    resume: staff.resumeUrl || 'https://via.placeholder.com/400x600/ffffff/333333?text=Resume+Document',
                    location: staff.address || 'Location not specified',
+                   area: staff.area,
                    pincode: staff.pincode,
                    experience: staff.experiences?.length ? `${staff.experiences.length} Years` : 'Fresher',
                    availability: staff.availability || 'Available',
@@ -203,6 +207,12 @@ function Home() {
    }, [selectedState]);
 
    const handleViewProfile = async (staff) => {
+       // Check authentication first
+       if (!isLoggedIn) {
+           onShowLogin();
+           return;
+       }
+       
        try {
            // Use the same API call as StaffPage to get detailed profile
            const response = await apiWithLoading.getStaffProfileById(staff.userId);
@@ -221,7 +231,8 @@ function Home() {
                    resume: detailedProfile.resumeUrl,
                    certificates: detailedProfile.certificates || [],
                    workExperience: detailedProfile.experiences || [],
-                   education: detailedProfile.education || {}
+                   education: detailedProfile.education || {},
+                   area: detailedProfile.area
                });
                setViewMode('profile');
                setShowModal(true);
@@ -350,6 +361,12 @@ function Home() {
    };
 
    const handleViewJob = (job) => {
+       // Check authentication first
+       if (!isLoggedIn) {
+           onShowLogin();
+           return;
+       }
+       
        if (job.recruiterId) {
            // Redirect to recruiter page
            window.location.href = `/recruiter/${job.recruiterId}`;
@@ -357,6 +374,12 @@ function Home() {
    };
 
    const handleViewCourse = (course) => {
+       // Check authentication first
+       if (!isLoggedIn) {
+           onShowLogin();
+           return;
+       }
+       
        if (course.instituteId) {
            // Redirect to institute page
            window.location.href = `/institute/${course.instituteId}`;
@@ -399,11 +422,12 @@ function Home() {
                    certificates: staff.certificates || [],
                    workExperience: staff.experiences?.map(exp => `${exp.jobTitle} at ${exp.company}`).join(', ') || 'Experience not specified',
                    education: staff.education?.degree || 'Education not specified',
-                   expectedSalary: 'Contact for rates',
+                   expectedSalary: 'Contact by Chat',
                    phone: staff.phone || '+91-XXXXXXXXXX',
                    email: staff.email || 'Email not available',
                    resume: staff.resumeUrl || 'https://via.placeholder.com/400x600/ffffff/333333?text=Resume+Document',
                    location: staff.address || 'Location not specified',
+                   area: staff.area,
                    pincode: staff.pincode,
                    experience: staff.experiences?.length ? `${staff.experiences.length} Years` : 'Fresher',
                    availability: staff.availability || 'Available',
@@ -518,8 +542,8 @@ function Home() {
                                            {staff.sector && staff.role && (
                                                <p className="clean-sector-role">{staff.sector} - {staff.role}</p>
                                            )}
-                                           {staff.state && staff.city && (
-                                               <p className="clean-location-info">{staff.city}, {staff.state}</p>
+                                           {(staff.area || staff.city || staff.state || staff.pincode) && (
+                                               <p className="clean-location-info">{[staff.area, staff.city, staff.state, staff.pincode].filter(Boolean).join(', ')}</p>
                                            )}
                                            <div className="clean-rating">
                                                <span className="rating-text">
@@ -535,13 +559,7 @@ function Home() {
                                    <div className="clean-location">
                                        <span className="location-icon">📍</span>
                                        <span>
-                                           {staff.fullData?.address && staff.city && staff.state 
-                                               ? `${staff.fullData.address}, ${staff.city}, ${staff.state}${staff.pincode ? `, ${staff.pincode}` : ''}` 
-                                               : (staff.state && staff.city 
-                                                   ? `${staff.city}, ${staff.state}${staff.pincode ? `, ${staff.pincode}` : ''}` 
-                                                   : staff.location
-                                               )
-                                           }
+                                           {[staff.fullData?.area, staff.city, staff.state, staff.pincode].filter(Boolean).join(', ') || staff.location || 'Location not specified'}
                                        </span>
                                    </div>
                                    
@@ -550,7 +568,7 @@ function Home() {
                                    </div>
                                    
                                    <div className="clean-rate">
-                                       <span>Contact for rates</span>
+                                       <span>Contact by Chat</span>
                                    </div>
                                    
                                    <div className="clean-skills">
@@ -568,12 +586,6 @@ function Home() {
                                            onClick={() => handleViewProfile(staff)}
                                        >
                                            View Profile
-                                       </button>
-                                       <button 
-                                           className="clean-contact-btn"
-                                           onClick={() => handleCall(staff.phone, staff)}
-                                       >
-                                           📞
                                        </button>
                                    </div>
                                </div>
@@ -686,7 +698,7 @@ function Home() {
                            >
                                Profile Details
                            </button>
-                           {selectedStaff.resume && (
+                           {selectedStaff.resume && user && user.role?.toLowerCase() === 'recruiter' && (
                                <button 
                                    className={`clean-nav-tab ${viewMode === 'resume' ? 'active' : ''}`} 
                                    onClick={() => setViewMode('resume')}
@@ -718,14 +730,8 @@ function Home() {
                                        <div className="clean-detail-item">
                                            <span className="detail-icon">📍</span>
                                            <span>
-                                               {selectedStaff.state && selectedStaff.city 
-                                                   ? `${selectedStaff.city}, ${selectedStaff.state}` 
-                                                   : (selectedStaff.address || 'Location not specified')
-                                               }
+                                               {[selectedStaff.area, selectedStaff.city, selectedStaff.state, selectedStaff.pincode].filter(Boolean).join(', ') || 'Location not specified'}
                                            </span>
-                                           {selectedStaff.pincode && (
-                                               <span className="pincode-display"> - {selectedStaff.pincode}</span>
-                                           )}
                                        </div>
                                        {selectedStaff.sector && (
                                            <div className="clean-detail-item">
@@ -739,10 +745,7 @@ function Home() {
                                                <span>{selectedStaff.role}</span>
                                            </div>
                                        )}
-                                       <div className="clean-detail-item">
-                                           <span className="detail-label">Phone:</span>
-                                           <span>{selectedStaff.phone}</span>
-                                       </div>
+
                                        <div className="clean-detail-item">
                                            <span className="detail-label">Email:</span>
                                            <span>{selectedStaff.email}</span>
@@ -812,20 +815,12 @@ function Home() {
                                    <div className="clean-contact-section">
                                        <h4>Contact Options</h4>
                                        <div className="clean-contact-buttons">
-                                           <button 
-                                               className="contact-option-btn call-btn"
-                                               onClick={() => handleCall(selectedStaff.phone, selectedStaff)}
-                                           >
-                                               <span className="contact-icon">📞</span>
-                                               Call
-                                           </button>
-                                           <button 
-                                               className="contact-option-btn whatsapp-btn"
-                                               onClick={() => handleWhatsApp(selectedStaff.phone, selectedStaff.name)}
-                                           >
-                                               <span className="contact-icon">💬</span>
-                                               WhatsApp
-                                           </button>
+                                           <ChatButton 
+                                               recipientId={selectedStaff.userId}
+                                               recipientName={selectedStaff.name}
+                                               size="medium"
+                                               className="contact-option-btn chat-btn"
+                                           />
                                            <button 
                                                className="contact-option-btn email-btn"
                                                onClick={() => handleEmail(selectedStaff.email, selectedStaff.name)}
@@ -833,12 +828,21 @@ function Home() {
                                                <span className="contact-icon">📧</span>
                                                Email
                                            </button>
+                                           {user && user.role?.toLowerCase() === 'recruiter' && (
+                                               <button 
+                                                   className="contact-option-btn whatsapp-btn"
+                                                   onClick={() => handleWhatsApp(selectedStaff.phone, selectedStaff.name)}
+                                               >
+                                                   <span className="contact-icon">💬</span>
+                                                   WhatsApp
+                                               </button>
+                                           )}
                                        </div>
                                    </div>
                                </div>
                            )}
 
-                           {viewMode === 'resume' && selectedStaff.resume && (
+                           {viewMode === 'resume' && selectedStaff.resume && user && user.role?.toLowerCase() === 'recruiter' && (
                                <div className="modern-resume-view">
                                    <div className="resume-container">
                                        <div className="resume-header">

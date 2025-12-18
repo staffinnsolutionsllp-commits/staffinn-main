@@ -282,6 +282,34 @@
  color: #333;
 }
 
+.or-divider {
+  margin: 1rem 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.request-btn {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.7) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  margin-top: 0.5rem;
+}
+
+.request-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: white !important;
+  color: white !important;
+}
+
 .login-right-panel {
  width: 50%;
  padding: 3rem 2.5rem;

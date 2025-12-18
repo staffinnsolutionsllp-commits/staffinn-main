@@ -14,7 +14,8 @@ const {
   getMyApplications,
   getJobApplicationStudents,
   applyStudentsToJob,
-  getStudentsApplicationStatus
+  getStudentsApplicationStatus,
+  applyMisStudentsToJob
 } = require('../controllers/applicationController');
 
 // All application routes require authentication
@@ -46,5 +47,8 @@ router.post('/apply-students', applyStudentsToJob);
 
 // GET /api/applications/job/:jobId/students-status - Get students with application status
 router.get('/job/:jobId/students-status', getStudentsApplicationStatus);
+
+// POST /api/applications/apply-mis-students - Apply MIS students to a job (Institute)
+router.post('/apply-mis-students', applyMisStudentsToJob);
 
 module.exports = router;

@@ -34,6 +34,10 @@ const StudentProfileModal = ({ student, onClose }) => {
             </div>
             <div className="profile-grid">
               <div className="profile-item">
+                <label>Student Name:</label>
+                <span>{student.studentName || 'Not provided'}</span>
+              </div>
+              <div className="profile-item">
                 <label>Full Name:</label>
                 <span>{student.fullName || student.name || 'Not provided'}</span>
               </div>

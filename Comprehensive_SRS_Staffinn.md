@@ -658,6 +658,903 @@ Staffinn operates as a comprehensive employment ecosystem where:
 - **Office Images:** `/offices/{recruiterId}/{imageId}.{ext}`
 - **Institute Documents:** `/institutes/{instituteId}/{documentType}/{documentId}.{ext}`
 
+## 5. Detailed Feature Descriptions & Component Interactions
+
+### 5.1 User Authentication System
+
+#### 5.1.1 Registration Process Flow
+**Components Involved:**
+- Frontend Registration Form
+- Backend Authentication Service
+- Email Verification Service
+- Database User Management
+- JWT Token Service
+
+**Detailed Flow:**
+1. **User Input Collection:**
+   - User selects role (Staff/Recruiter/Institute)
+   - Role-specific form fields displayed dynamically
+   - Real-time validation on frontend
+   - Password strength indicator
+
+2. **Backend Processing:**
+   - Input sanitization and validation
+   - Email uniqueness check
+   - Password hashing using bcrypt
+   - User record creation in DynamoDB
+   - Email verification token generation
+
+3. **Email Verification:**
+   - Automated email sent with verification link
+   - Token validation on click
+   - Account activation in database
+   - Welcome email with next steps
+
+4. **Profile Creation:**
+   - Role-specific profile table creation
+   - Default settings initialization
+   - Dashboard access granted
+   - Onboarding flow initiated
+
+#### 5.1.2 Login & Session Management
+**Components Involved:**
+- Login Form Component
+- JWT Authentication Middleware
+- Session Storage Service
+- Role-based Routing
+
+**Authentication Flow:**
+1. **Credential Validation:**
+   - Email/password verification
+   - Account status check (active/suspended)
+   - Failed attempt tracking
+   - Rate limiting implementation
+
+2. **Token Generation:**
+   - JWT token creation with user data
+   - Role and permissions encoding
+   - Expiration time setting (24 hours)
+   - Refresh token generation
+
+3. **Session Establishment:**
+   - Token storage in secure HTTP-only cookie
+   - User data caching in Redis
+   - Dashboard redirection based on role
+   - Activity logging
+
+### 5.2 Staff Management System
+
+#### 5.2.1 Profile Management Components
+**Frontend Components:**
+- ProfileForm (Personal Information)
+- SkillsManager (Skills & Experience)
+- EducationForm (Academic Background)
+- FileUploader (Documents & Photos)
+- AvailabilityToggle (Status Management)
+
+**Backend Services:**
+- ProfileService (CRUD operations)
+- FileUploadService (S3 integration)
+- ValidationService (Data validation)
+- NotificationService (Updates)
+
+**Detailed Functionality:**
+
+**Personal Information Management:**
+- Full name, email, phone number editing
+- Address and location information
+- Profile photo upload with image optimization
+- Contact preferences setting
+
+**Skills & Experience Tracking:**
+- Dynamic skill addition/removal
+- Experience level indicators
+- Work history with multiple entries
+- Achievement and project documentation
+
+**Educational Background:**
+- 10th grade details (board, percentage, year)
+- 12th grade information
+- Graduation details with specialization
+- Additional certifications and courses
+
+**Document Management:**
+- Resume upload (PDF format, max 5MB)
+- Certificate uploads with categorization
+- Document version control
+- Automatic file compression
+
+#### 5.2.2 Job Application System
+**Components Involved:**
+- JobBrowser (Search & Filter)
+- JobCard (Job Display)
+- ApplicationForm (Application Submission)
+- ApplicationTracker (Status Monitoring)
+
+**Application Process Flow:**
+1. **Job Discovery:**
+   - Browse available jobs with filters
+   - Location-based search
+   - Skill matching indicators
+   - Saved jobs functionality
+
+2. **Application Submission:**
+   - One-click apply with profile data
+   - Custom cover letter option
+   - Application confirmation
+   - Automatic notification to recruiter
+
+3. **Status Tracking:**
+   - Real-time application status updates
+   - Interview scheduling notifications
+   - Hiring decision communication
+   - Application history maintenance
+
+### 5.3 Recruiter Management System
+
+#### 5.3.1 Company Profile Management
+**Components:**
+- CompanyInfoForm (Basic Information)
+- CultureSection (Company Culture)
+- PerksManager (Benefits & Perks)
+- HiringProcessBuilder (Process Documentation)
+- OfficeGallery (Image Management)
+
+**Profile Features:**
+- Company description and mission
+- Industry and location details
+- Office images and virtual tours
+- Employee testimonials
+- Hiring process documentation
+- Interview questions database
+
+#### 5.3.2 Job Management System
+**Components:**
+- JobCreator (Job Posting Form)
+- JobManager (Job Listing Management)
+- ApplicationReviewer (Candidate Review)
+- HiringDecisionTracker (Decision Management)
+
+**Job Posting Workflow:**
+1. **Job Creation:**
+   - Detailed job description editor
+   - Skills requirement specification
+   - Salary range and benefits
+   - Application deadline setting
+
+2. **Application Management:**
+   - Candidate application review
+   - Resume and profile viewing
+   - Communication tools
+   - Interview scheduling
+
+3. **Hiring Decisions:**
+   - Candidate status updates
+   - Bulk hiring operations
+   - Rejection with feedback
+   - Offer letter generation
+
+#### 5.3.3 Institute Collaboration Features
+**Components:**
+- InstituteExplorer (Institute Discovery)
+- StudentBrowser (Student Profile Viewing)
+- BulkHiringTool (Mass Recruitment)
+- CollaborationTracker (Partnership Management)
+
+**Collaboration Process:**
+1. **Institute Discovery:**
+   - Browse institute profiles
+   - View student demographics
+   - Placement history analysis
+   - Partnership opportunities
+
+2. **Student Access:**
+   - View institute student profiles
+   - Filter by skills and qualifications
+   - Bulk application processing
+   - Direct communication with institutes
+
+3. **Hiring Management:**
+   - Mass hiring from institutes
+   - Student data export
+   - Placement tracking
+   - Success rate analytics
+
+### 5.4 Institute Management System
+
+#### 5.4.1 Student Management Components
+**Frontend Components:**
+- StudentRegistrationForm
+- BulkUploadTool (Excel Integration)
+- StudentProfileManager
+- PlacementTracker
+- CommunicationCenter
+
+**Backend Services:**
+- StudentService (CRUD operations)
+- ExcelProcessingService (Bulk operations)
+- PlacementService (Tracking)
+- ReportingService (Analytics)
+
+**Student Management Features:**
+
+**Individual Student Management:**
+- Personal information collection
+- Academic record maintenance
+- Skill assessment and tracking
+- Document management (resume, certificates)
+- Progress monitoring
+
+**Bulk Operations:**
+- Excel file upload for mass registration
+- Data validation and error reporting
+- Batch profile creation
+- Automated email notifications
+
+**Placement Tracking:**
+- Job application submissions
+- Interview scheduling coordination
+- Placement success recording
+- Alumni network management
+
+#### 5.4.2 Course & Event Management
+**Components:**
+- CourseManager (Course Administration)
+- EventCreator (Event Management)
+- NewsPublisher (News & Announcements)
+- AnalyticsDashboard (Performance Metrics)
+
+**Course Management:**
+- Course catalog creation
+- Enrollment tracking
+- Fee management
+- Certification handling
+
+**Event Management:**
+- Event creation and promotion
+- Registration management
+- Attendance tracking
+- Feedback collection
+
+### 5.5 Communication & Notification System
+
+#### 5.5.1 Real-time Communication
+**Components:**
+- WebSocket Server (Socket.io)
+- NotificationCenter (Frontend)
+- EmailService (AWS SES)
+- SMSService (Optional)
+
+**Communication Channels:**
+
+**In-App Notifications:**
+- Real-time job application alerts
+- Profile view notifications
+- System announcements
+- Status update notifications
+
+**Email Communications:**
+- Welcome and verification emails
+- Job application confirmations
+- Interview invitations
+- Weekly digest emails
+
+**Contact Tracking:**
+- All contact interactions logged
+- Contact method recording
+- Communication history
+- Analytics and reporting
+
+#### 5.5.2 Notification Management
+**Components:**
+- NotificationService (Backend)
+- NotificationPreferences (User Settings)
+- NotificationQueue (Message Processing)
+- DeliveryTracker (Status Monitoring)
+
+**Notification Types:**
+- Job application received
+- Profile viewed by recruiter
+- Interview scheduled
+- Hiring decision made
+- System maintenance alerts
+
+### 5.6 Search & Discovery System
+
+#### 5.6.1 Search Implementation
+**Components:**
+- SearchInterface (Frontend)
+- SearchEngine (Backend)
+- FilterManager (Advanced Filtering)
+- ResultRenderer (Display)
+
+**Search Features:**
+
+**Global Search:**
+- Cross-platform content search
+- Intelligent query processing
+- Relevance-based ranking
+- Auto-complete suggestions
+
+**Advanced Filtering:**
+- Location-based filtering
+- Skill-based matching
+- Experience level filtering
+- Availability status filtering
+
+**Search Analytics:**
+- Popular search terms
+- Search result effectiveness
+- User behavior tracking
+- Performance optimization
+
+#### 5.6.2 Recommendation Engine
+**Components:**
+- RecommendationService (Algorithm)
+- UserBehaviorTracker (Data Collection)
+- MatchingEngine (Compatibility)
+- RecommendationDisplay (Frontend)
+
+**Recommendation Types:**
+- Job recommendations for staff
+- Candidate suggestions for recruiters
+- Course recommendations for students
+- Institute suggestions for recruiters
+
+### 5.7 File Management System
+
+#### 5.7.1 File Upload & Processing
+**Components:**
+- FileUploader (Frontend)
+- UploadService (Backend)
+- S3StorageService (AWS Integration)
+- FileValidator (Security)
+
+**Upload Process:**
+1. **Client-side Validation:**
+   - File type checking
+   - Size limit enforcement
+   - Preview generation
+   - Progress tracking
+
+2. **Server-side Processing:**
+   - Security scanning
+   - File optimization
+   - Metadata extraction
+   - S3 storage
+
+3. **Database Updates:**
+   - File URL storage
+   - Metadata recording
+   - Access control setting
+   - Version management
+
+#### 5.7.2 File Security & Access Control
+**Security Measures:**
+- Virus scanning on upload
+- File type validation
+- Size limit enforcement
+- Access permission checking
+- Secure URL generation
+
+## 6. Complete System Flow Diagrams
+
+### 6.1 User Registration & Onboarding Flow
+
+```
+[User Visits Site] → [Selects Role] → [Fills Registration Form]
+        ↓
+[Frontend Validation] → [Backend Processing] → [Database Storage]
+        ↓
+[Email Verification] → [Account Activation] → [Profile Creation]
+        ↓
+[Dashboard Access] → [Onboarding Tour] → [Feature Introduction]
+```
+
+### 6.2 Job Application Complete Flow
+
+```
+[Staff Browses Jobs] → [Applies Filters] → [Views Job Details]
+        ↓
+[Clicks Apply] → [Submits Application] → [Confirmation Display]
+        ↓
+[Recruiter Notification] → [Application Review] → [Status Update]
+        ↓
+[Staff Notification] → [Interview Process] → [Hiring Decision]
+        ↓
+[Final Notification] → [Placement Recording] → [Success Tracking]
+```
+
+### 6.3 Institute-Recruiter Collaboration Flow
+
+```
+[Institute Registers] → [Adds Student Data] → [Publishes Profiles]
+        ↓
+[Recruiter Discovers] → [Reviews Students] → [Initiates Contact]
+        ↓
+[Institute Coordination] → [Student Interviews] → [Hiring Decisions]
+        ↓
+[Placement Recording] → [Success Tracking] → [Analytics Update]
+```
+
+### 6.4 Real-time Communication Flow
+
+```
+[User Action Trigger] → [Event Generation] → [WebSocket Broadcast]
+        ↓
+[Client Reception] → [Notification Display] → [User Interaction]
+        ↓
+[Database Logging] → [Analytics Update] → [Performance Tracking]
+```
+
+## 7. Component Architecture & Interactions
+
+### 7.1 Frontend Component Hierarchy
+
+```
+App
+├── Router
+│   ├── PublicRoutes
+│   │   ├── Homepage
+│   │   ├── StaffPage
+│   │   ├── RecruiterPage
+│   │   ├── InstitutePage
+│   │   └── NewsPage
+│   ├── AuthRoutes
+│   │   ├── Login
+│   │   ├── Register
+│   │   └── ForgotPassword
+│   └── ProtectedRoutes
+│       ├── StaffDashboard
+│       ├── RecruiterDashboard
+│       └── InstituteDashboard
+├── SharedComponents
+│   ├── Header
+│   ├── Footer
+│   ├── SearchBar
+│   ├── NotificationCenter
+│   └── FileUploader
+└── Services
+    ├── AuthService
+    ├── APIService
+    ├── NotificationService
+    └── UtilityService
+```
+
+### 7.2 Backend Service Architecture
+
+```
+API Gateway
+├── Authentication Middleware
+├── Rate Limiting
+├── Request Validation
+└── Response Formatting
+
+Core Services
+├── UserService
+│   ├── Registration
+│   ├── Authentication
+│   └── Profile Management
+├── JobService
+│   ├── Job CRUD
+│   ├── Application Processing
+│   └── Search & Filter
+├── FileService
+│   ├── Upload Processing
+│   ├── S3 Integration
+│   └── Security Scanning
+├── NotificationService
+│   ├── Email Service
+│   ├── WebSocket Management
+│   └── SMS Service
+└── AnalyticsService
+    ├── Data Collection
+    ├── Report Generation
+    └── Performance Metrics
+```
+
+### 7.3 Database Interaction Patterns
+
+#### 7.3.1 Data Access Layer
+- **Repository Pattern:** Abstracted database operations
+- **Connection Pooling:** Efficient database connections
+- **Query Optimization:** Indexed queries for performance
+- **Caching Strategy:** Redis for frequently accessed data
+
+#### 7.3.2 Data Consistency
+- **Transaction Management:** ACID compliance where needed
+- **Eventual Consistency:** For distributed operations
+- **Data Validation:** Multi-layer validation
+- **Backup Strategy:** Regular automated backups
+
+## 8. Chat Implementation Feature
+
+### 8.1 Real-time Messaging System
+
+#### 8.1.1 Chat Architecture
+**Components:**
+- ChatInterface (Frontend UI)
+- MessageService (Backend)
+- WebSocket Server (Real-time)
+- MessageStorage (Database)
+
+**Chat Features:**
+- One-on-one messaging between users
+- Group chat for institute-recruiter discussions
+- File sharing capabilities
+- Message history and search
+- Online/offline status indicators
+- Read receipts and typing indicators
+
+#### 8.1.2 Message Flow
+```
+[User Types Message] → [Frontend Validation] → [WebSocket Send]
+        ↓
+[Server Processing] → [Database Storage] → [Recipient Notification]
+        ↓
+[Real-time Delivery] → [UI Update] → [Read Receipt]
+```
+
+#### 8.1.3 Chat Database Schema
+
+**Messages Table (`staffinn-messages`):**
+| Field | Type | Description |
+|-------|------|-------------|
+| messageId | String | Unique message ID |
+| senderId | String | Message sender |
+| receiverId | String | Message recipient |
+| content | String | Message content |
+| messageType | String | text/file/image |
+| timestamp | String | Send timestamp |
+| readStatus | Boolean | Read indicator |
+| fileUrl | String | Attached file URL |
+
+**Chat Rooms Table (`staffinn-chat-rooms`):**
+| Field | Type | Description |
+|-------|------|-------------|
+| roomId | String | Unique room ID |
+| participants | Array | Room participants |
+| roomType | String | individual/group |
+| lastMessage | Object | Latest message |
+| createdAt | String | Room creation |
+| updatedAt | String | Last activity |
+
+### 8.2 Video Call Integration
+
+#### 8.2.1 Video Interview System
+**Components:**
+- VideoCallInterface (WebRTC)
+- CallScheduler (Appointment Management)
+- RecordingService (Optional)
+- CallAnalytics (Performance Tracking)
+
+**Video Call Features:**
+- Scheduled interview calls
+- Screen sharing capabilities
+- Call recording (with consent)
+- Chat during calls
+- Call quality monitoring
+
+#### 8.2.2 Integration with Job Process
+- Interview scheduling from job applications
+- Automated calendar invitations
+- Pre-call technical checks
+- Post-call feedback collection
+- Integration with hiring decisions
+
+## 9. Advanced Analytics & Reporting
+
+### 9.1 Analytics Dashboard
+
+#### 9.1.1 Staff Analytics
+- Profile view statistics
+- Application success rates
+- Skill demand trends
+- Geographic job distribution
+- Salary range analysis
+
+#### 9.1.2 Recruiter Analytics
+- Job posting performance
+- Candidate quality metrics
+- Time-to-hire statistics
+- Source effectiveness
+- Cost-per-hire analysis
+
+#### 9.1.3 Institute Analytics
+- Student placement rates
+- Industry collaboration success
+- Course popularity metrics
+- Alumni career tracking
+- Recruiter engagement levels
+
+### 9.2 Reporting System
+
+#### 9.2.1 Automated Reports
+- Weekly activity summaries
+- Monthly performance reports
+- Quarterly trend analysis
+- Annual success metrics
+- Custom report generation
+
+#### 9.2.2 Export Capabilities
+- PDF report generation
+- Excel data export
+- CSV format downloads
+- API data access
+- Scheduled report delivery
+
+## 10. Mobile Responsiveness & PWA Features
+
+### 10.1 Responsive Design Implementation
+
+#### 10.1.1 Breakpoint Strategy
+- Mobile: 320px - 768px
+- Tablet: 768px - 1024px
+- Desktop: 1024px+
+- Large Desktop: 1440px+
+
+#### 10.1.2 Mobile-First Approach
+- Touch-friendly interface design
+- Optimized navigation for mobile
+- Compressed images for faster loading
+- Simplified forms for mobile input
+
+### 10.2 Progressive Web App Features
+
+#### 10.2.1 PWA Capabilities
+- Offline functionality
+- Push notifications
+- App-like experience
+- Home screen installation
+- Background sync
+
+#### 10.2.2 Service Worker Implementation
+- Cache management
+- Offline page serving
+- Background data sync
+- Push notification handling
+- Update management
+
+## 11. Security Implementation Details
+
+### 11.1 Authentication Security
+
+#### 11.1.1 Password Security
+- Minimum 8 characters requirement
+- Special character enforcement
+- Password history tracking
+- Breach detection integration
+- Regular security audits
+
+#### 11.1.2 Session Security
+- JWT token encryption
+- Secure cookie implementation
+- Session timeout management
+- Concurrent session limits
+- Device tracking
+
+### 11.2 Data Protection Measures
+
+#### 11.2.1 Input Sanitization
+- XSS prevention
+- SQL injection protection
+- File upload validation
+- Content filtering
+- Rate limiting
+
+#### 11.2.2 Privacy Controls
+- Data anonymization
+- Consent management
+- Right to deletion
+- Data portability
+- Privacy policy compliance
+
+## 12. Performance Optimization Strategies
+
+### 12.1 Frontend Optimization
+
+#### 12.1.1 Code Splitting
+- Route-based splitting
+- Component lazy loading
+- Dynamic imports
+- Bundle size optimization
+- Tree shaking implementation
+
+#### 12.1.2 Asset Optimization
+- Image compression
+- WebP format usage
+- CDN implementation
+- Caching strategies
+- Minification processes
+
+### 12.2 Backend Optimization
+
+#### 12.2.1 Database Performance
+- Query optimization
+- Index management
+- Connection pooling
+- Caching layers
+- Data partitioning
+
+#### 12.2.2 API Performance
+- Response compression
+- Pagination implementation
+- Async processing
+- Load balancing
+- Monitoring systems
+
+This comprehensive SRS document now includes detailed feature descriptions, component interactions, complete system flows, and all the advanced features including chat implementation, analytics, mobile responsiveness, security measures, and performance optimization strategies. Each section provides thorough technical specifications and implementation details for the Staffinn platform.an | Currently enrolled flag | Default: true |
+| tenthGradeDetails | String | 10th grade board/school | Optional |
+| tenthPercentage | String | 10th grade percentage | Optional |
+| tenthYearOfPassing | String | 10th grade completion year | Optional |
+| twelfthGradeDetails | String | 12th grade board/school | Optional |
+| twelfthPercentage | String | 12th grade percentage | Optional |
+| twelfthYearOfPassing | String | 12th grade completion year | Optional |
+| skills | Array | Student skills | Optional |
+| profilePhoto | String | Profile photo URL | Optional |
+| resume | String | Resume document URL | Optional |
+| certificates | Array | Certificate URLs | Optional |
+| createdAt | String | Record creation timestamp | Required |
+| updatedAt | String | Last update timestamp | Required |
+
+#### 4.1.7 Institute Job Applications Table (`staffinn-institute-job-applications`)
+**Purpose:** Track institute applications to recruiter jobs
+**Primary Key:** applicationId (UUID)
+
+| Field | Type | Description | Constraints |
+|-------|------|-------------|-------------|
+| applicationId | String | Unique application identifier | Primary Key, UUID |
+| instituteId | String | Reference to institute | Foreign Key, Required |
+| recruiterId | String | Reference to recruiter | Foreign Key, Required |
+| jobId | String | Reference to job | Foreign Key, Required |
+| jobTitle | String | Job title snapshot | Required |
+| appliedAt | String | Application timestamp | Required |
+| status | String | Application status | Default: 'Applied' |
+| createdAt | String | Record creation timestamp | Required |
+| updatedAt | String | Last update timestamp | Required |
+
+#### 4.1.8 Institute Courses Table (`staffinn-institute-courses`)
+**Purpose:** Course offerings by institutes
+**Primary Key:** courseId (UUID)
+
+| Field | Type | Description | Constraints |
+|-------|------|-------------|-------------|
+| courseId | String | Unique course identifier | Primary Key, UUID |
+| instituteId | String | Reference to institute | Foreign Key, Required |
+| courseName | String | Course name | Required |
+| duration | String | Course duration | Optional |
+| fees | String | Course fees | Optional |
+| mode | String | Delivery mode (Online/Offline) | Optional |
+| category | String | Course category | Optional |
+| certification | String | Certification type | Optional |
+| description | String | Course description | Optional |
+| status | String | Course status | Default: 'Active' |
+| createdAt | String | Course creation timestamp | Required |
+| updatedAt | String | Last update timestamp | Required |
+
+#### 4.1.9 Institute Events & News Table (`staffinn-institute-events-news`)
+**Purpose:** Institute events and news management
+**Primary Key:** eventNewsId (UUID)
+
+| Field | Type | Description | Constraints |
+|-------|------|-------------|-------------|
+| eventNewsId | String | Unique identifier | Primary Key, UUID |
+| instituteId | String | Reference to institute | Foreign Key, Required |
+| type | String | Type (event/news) | Required |
+| title | String | Event/news title | Required |
+| description | String | Detailed description | Optional |
+| date | String | Event date or news date | Optional |
+| location | String | Event location | Optional |
+| bannerImage | String | Banner image URL | Optional |
+| status | String | Status (active/inactive) | Default: 'active' |
+| createdAt | String | Creation timestamp | Required |
+| updatedAt | String | Last update timestamp | Required |
+
+#### 4.1.10 Institute Placements Table (`staffinn-institute-placements`)
+**Purpose:** Student placement records and success stories
+**Primary Key:** placementId (UUID)
+
+| Field | Type | Description | Constraints |
+|-------|------|-------------|-------------|
+| placementId | String | Unique placement identifier | Primary Key, UUID |
+| instituteId | String | Reference to institute | Foreign Key, Required |
+| studentName | String | Placed student name | Required |
+| companyName | String | Hiring company name | Required |
+| jobRole | String | Job position | Required |
+| packageOffered | String | Salary package | Optional |
+| placementDate | String | Placement date | Optional |
+| studentPhoto | String | Student photo URL | Optional |
+| companyLogo | String | Company logo URL | Optional |
+| testimonial | String | Student testimonial | Optional |
+| createdAt | String | Record creation timestamp | Required |
+| updatedAt | String | Last update timestamp | Required |
+
+#### 4.1.11 Institute Industry Collaborations Table (`staffinn-institute-industry-collaborations`)
+**Purpose:** Industry partnerships and MOU management
+**Primary Key:** collaborationId (UUID)
+
+| Field | Type | Description | Constraints |
+|-------|------|-------------|-------------|
+| collaborationId | String | Unique collaboration identifier | Primary Key, UUID |
+| instituteId | String | Reference to institute | Foreign Key, Required |
+| companyName | String | Partner company name | Required |
+| partnershipType | String | Type of partnership | Optional |
+| description | String | Partnership description | Optional |
+| startDate | String | Partnership start date | Optional |
+| endDate | String | Partnership end date | Optional |
+| mouDocument | String | MOU document URL | Optional |
+| companyLogo | String | Company logo URL | Optional |
+| status | String | Partnership status | Default: 'active' |
+| createdAt | String | Record creation timestamp | Required |
+| updatedAt | String | Last update timestamp | Required |
+
+#### 4.1.12 Contact History Table (`staffinn-contact-history`)
+**Purpose:** Track all user contact interactions
+**Primary Key:** contactId (UUID)
+
+| Field | Type | Description | Constraints |
+|-------|------|-------------|-------------|
+| contactId | String | Unique contact identifier | Primary Key, UUID |
+| contactorId | String | User who initiated contact | Foreign Key, Required |
+| staffId | String | Staff member contacted | Foreign Key, Required |
+| staffName | String | Staff member name | Required |
+| staffEmail | String | Staff member email | Required |
+| staffPhone | String | Staff member phone | Required |
+| contactMethod | String | Contact method (call/whatsapp/email) | Required |
+| createdAt | String | Contact timestamp | Required |
+
+#### 4.1.13 Hiring History Table (`staffinn-hiring-history`)
+**Purpose:** Track hiring decisions and outcomes
+**Primary Key:** hiringRecordID (UUID)
+
+| Field | Type | Description | Constraints |
+|-------|------|-------------|-------------|
+| hiringRecordID | String | Unique hiring record identifier | Primary Key, UUID |
+| recruiterId | String | Reference to recruiter | Foreign Key, Required |
+| instituteId | String | Reference to institute | Foreign Key, Optional |
+| jobId | String | Reference to job | Foreign Key, Required |
+| jobTitle | String | Job title snapshot | Required |
+| studentId | String | Student identifier | Optional |
+| studentSnapshot | Object | Student data snapshot | Optional |
+| status | String | Hiring status (Hired/Rejected) | Required |
+| timestamp | String | Hiring decision timestamp | Required |
+| createdAt | String | Record creation timestamp | Required |
+
+### 4.2 Data Relationships
+
+#### 4.2.1 Primary Relationships
+- **Users → Staff Profiles:** One-to-One (userId)
+- **Users → Recruiter Profiles:** One-to-One (userId)
+- **Users → Institute Profiles:** One-to-One (userId)
+- **Recruiters → Jobs:** One-to-Many (recruiterId)
+- **Institutes → Students:** One-to-Many (instituteId)
+- **Institutes → Courses:** One-to-Many (instituteId)
+
+#### 4.2.2 Application Relationships
+- **Staff → Job Applications:** One-to-Many (embedded in staff profile)
+- **Institutes → Job Applications:** One-to-Many (applicationId)
+- **Jobs → Applications:** One-to-Many (jobId)
+
+#### 4.2.3 Contact & Communication
+- **Users → Contact History:** One-to-Many (contactorId)
+- **Staff → Contact History:** One-to-Many (staffId)
+- **Recruiters → Hiring History:** One-to-Many (recruiterId)
+
+### 4.3 Data Storage Strategy
+
+#### 4.3.1 DynamoDB Configuration
+- **Partition Key Strategy:** Optimized for query patterns
+- **Global Secondary Indexes:** For efficient searching and filtering
+- **Local Secondary Indexes:** For sorting and range queries
+- **Item Size Optimization:** Efficient storage of nested objects
+
+#### 4.3.2 File Storage (AWS S3)
+- **Profile Photos:** `/profiles/{userId}/photo.{ext}`
+- **Resumes:** `/resumes/{userId}/resume.pdf`
+- **Certificates:** `/certificates/{userId}/{certificateId}.pdf`
+- **Office Images:** `/offices/{recruiterId}/{imageId}.{ext}`
+- **Institute Documents:** `/institutes/{instituteId}/{documentType}/{documentId}.{ext}`
+
 ## 5. Non-Functional Requirements (NFRs)
 
 ### 5.1 Performance Requirements

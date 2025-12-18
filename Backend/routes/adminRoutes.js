@@ -34,8 +34,8 @@ const authenticateAdmin = async (req, res, next) => {
       });
     }
     
-    // Check if it's admin role
-    if (decoded.role !== 'admin') {
+    // Check if it's admin role (admin, master, staff, recruiter, or institute)
+    if (!['admin', 'master', 'staff', 'recruiter', 'institute'].includes(decoded.role)) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin only.'
@@ -340,5 +340,121 @@ router.put('/government-schemes/:schemeId', authenticateAdmin, adminController.u
  * @access Private (Admin)
  */
 router.delete('/government-schemes/:schemeId', authenticateAdmin, adminController.deleteGovernmentScheme);
+
+// Manual Registration routes
+
+/**
+ * @route POST /api/admin/manual-registration/recruiter
+ * @desc Manually register a recruiter
+ * @access Private (Admin)
+ */
+router.post('/manual-registration/recruiter', authenticateAdmin, adminController.manualRegisterRecruiter);
+
+/**
+ * @route POST /api/admin/manual-registration/institute
+ * @desc Manually register an institute with type selection
+ * @access Private (Admin)
+ */
+router.post('/manual-registration/institute', authenticateAdmin, adminController.manualRegisterInstitute);
+
+// MIS Request management routes
+
+/**
+ * @route GET /api/admin/mis-requests
+ * @desc Get all MIS requests from Staffinn Partner institutes
+ * @access Private (Admin)
+ */
+router.get('/mis-requests', authenticateAdmin, adminController.getAllMisRequests);
+
+/**
+ * @route PUT /api/admin/mis-requests/:requestId/approve
+ * @desc Approve MIS request
+ * @access Private (Admin)
+ */
+router.put('/mis-requests/:requestId/approve', authenticateAdmin, adminController.approveMisRequest);
+
+/**
+ * @route PUT /api/admin/mis-requests/:requestId/reject
+ * @desc Reject MIS request
+ * @access Private (Admin)
+ */
+router.put('/mis-requests/:requestId/reject', authenticateAdmin, adminController.rejectMisRequest);
+
+/**
+ * @route DELETE /api/admin/mis-requests/:requestId
+ * @desc Delete MIS request
+ * @access Private (Admin)
+ */
+router.delete('/mis-requests/:requestId', authenticateAdmin, adminController.deleteMisRequest);
+
+/**
+ * @route GET /api/admin/staffinn-partners
+ * @desc Get all Staffinn Partner institutes
+ * @access Private (Admin)
+ */
+router.get('/staffinn-partners', authenticateAdmin, adminController.getAllStaffinnPartnerInstitutes);
+
+/**
+ * @route GET /api/admin/staffinn-partners/:instituteId/dashboard
+ * @desc Get Staffinn Partner dashboard data for specific institute
+ * @access Private (Admin)
+ */
+router.get('/staffinn-partners/:instituteId/dashboard', authenticateAdmin, adminController.getStaffinnPartnerDashboard);
+
+/**
+ * @route GET /api/admin/staffinn-partners/:instituteId/training-centers
+ * @desc Get training centers for specific Staffinn Partner institute
+ * @access Private (Admin)
+ */
+router.get('/staffinn-partners/:instituteId/training-centers', authenticateAdmin, adminController.getInstituteTrainingCenters);
+
+/**
+ * @route GET /api/admin/staffinn-partners/:instituteId/training-infrastructure
+ * @desc Get training infrastructure for specific Staffinn Partner institute
+ * @access Private (Admin)
+ */
+router.get('/staffinn-partners/:instituteId/training-infrastructure', authenticateAdmin, adminController.getInstituteTrainingInfrastructure);
+
+/**
+ * @route DELETE /api/admin/staffinn-partners/training-centers/:centerId
+ * @desc Delete training center
+ * @access Private (Admin)
+ */
+router.delete('/staffinn-partners/training-centers/:centerId', authenticateAdmin, adminController.deleteTrainingCenter);
+
+/**
+ * @route DELETE /api/admin/staffinn-partners/training-infrastructure/:infrastructureId
+ * @desc Delete training infrastructure
+ * @access Private (Admin)
+ */
+router.delete('/staffinn-partners/training-infrastructure/:infrastructureId', authenticateAdmin, adminController.deleteTrainingInfrastructure);
+
+/**
+ * @route GET /api/admin/staffinn-partners/:instituteId/course-details
+ * @desc Get course details for specific Staffinn Partner institute
+ * @access Private (Admin)
+ */
+router.get('/staffinn-partners/:instituteId/course-details', authenticateAdmin, adminController.getInstituteCourseDetails);
+
+/**
+ * @route DELETE /api/admin/staffinn-partners/course-details/:courseId
+ * @desc Delete course detail
+ * @access Private (Admin)
+ */
+router.delete('/staffinn-partners/course-details/:courseId', authenticateAdmin, adminController.deleteCourseDetail);
+
+/**
+ * @route GET /api/admin/staffinn-partners/:instituteId/faculty
+ * @desc Get faculty for specific Staffinn Partner institute
+ * @access Private (Admin)
+ */
+router.get('/staffinn-partners/:instituteId/faculty', authenticateAdmin, adminController.getInstituteFaculty);
+
+/**
+ * @route GET /api/admin/staffinn-partners/:instituteId/students
+ * @desc Get students for specific Staffinn Partner institute from mis-students table
+ * @access Private (Admin)
+ */
+router.get('/staffinn-partners/:instituteId/students', authenticateAdmin, adminController.getMisStudentsByInstitute);
 
 module.exports = router;

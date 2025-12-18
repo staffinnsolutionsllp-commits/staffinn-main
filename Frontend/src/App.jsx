@@ -16,10 +16,14 @@ import NewsPage from './Components/Pages/NewsPage.jsx';
 import RecruiterPage from './Components/Pages/RecruiterPage.jsx';
 import CourseLearningPage from './Components/Pages/CourseLearningPage.jsx';
 import LoadingExample from './Components/common/LoadingExample.jsx';
+import MessageCenter from './Components/Messages/MessageCenter.jsx';
+import ChatWindow from './Components/Messages/ChatWindow.jsx';
+import AdminDashboard from './Components/MasterAdminPanel/AdminDashboard.jsx';
 import { AuthProvider, AuthContext, LoadingProvider } from './context';
 import HourglassLoader from './Components/common/HourglassLoader';
 import apiService from './services/api';
 import { useLenis } from './hooks/useLenis';
+import { showLoginWithMessage } from './utils/authGuard';
 import './App.css';
 
 function AppContent() {
@@ -47,6 +51,10 @@ function AppContent() {
     const { isLoggedIn, currentUser, login, register, logout } = authContext;
 
     const openLoginPopup = () => setShowLoginPopup(true);
+    const openLoginPopupWithMessage = () => {
+        setShowLoginPopup(true);
+        showLoginWithMessage(setShowLoginPopup);
+    };
     const closeLoginPopup = () => setShowLoginPopup(false);
     
     const handleLoginClick = async (email, password) => {
@@ -61,10 +69,11 @@ function AppContent() {
         }
     };
 
-    const openRegistrationPopup = (loginRedirectCallback) => {
+    const openRegistrationPopup = (loginRedirectCallback, isRequestForm = false) => {
         setShowRegistrationPopup(true);
-        // Store the callback for later use
+        // Store the callback and form type for later use
         window.loginRedirectCallback = loginRedirectCallback;
+        window.isRequestForm = isRequestForm;
     };
     
     const closeRegistrationPopup = () => setShowRegistrationPopup(false);
@@ -107,18 +116,20 @@ function AppContent() {
                 isLoggedIn={isLoggedIn}
                 onLogout={handleLogout}
                 currentUser={currentUser}
+                showLoginModal={showLoginPopup}
+                setShowLoginModal={setShowLoginPopup}
             />
 
             {/* Main Content Section */}
             <main>
                 <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/staff" element={<StaffPage />} /> 
-                    <Route path="/institute" element={<InstitutePageList />} />
-                    <Route path="/institute/:id" element={<InstitutePage />} />
-                    <Route path="/news" element={<NewsPage />} />
-                    <Route path="/recruiter" element={<RecruiterPage />} />
-                    <Route path="/recruiter/:recruiterId" element={<RecruiterPage />} />
+                    <Route path="/" element={<Home isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    <Route path="/staff" element={<StaffPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} /> 
+                    <Route path="/institute" element={<InstitutePageList isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    <Route path="/institute/:id" element={<InstitutePage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    <Route path="/news" element={<NewsPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    <Route path="/recruiter" element={<RecruiterPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    <Route path="/recruiter/:recruiterId" element={<RecruiterPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/course/:courseId" element={<CourseLearningPage />} />
                     <Route path="/loading-demo" element={<LoadingExample />} />
                     <Route 
@@ -139,6 +150,24 @@ function AppContent() {
                             <InstituteDashboard currentUser={currentUser} /> : <Navigate to="/" />
                         } 
                     />
+                    <Route 
+                        path="/messages" 
+                        element={isLoggedIn ? 
+                            <MessageCenter /> : <Navigate to="/" />
+                        } 
+                    />
+                    <Route 
+                        path="/chat/:userId" 
+                        element={isLoggedIn ? 
+                            <ChatWindow /> : <Navigate to="/" />
+                        } 
+                    />
+                    <Route 
+                        path="/admin" 
+                        element={isLoggedIn && currentUser?.role?.toLowerCase() === 'admin' ? 
+                            <AdminDashboard /> : <Navigate to="/" />
+                        } 
+                    />
                 </Routes>
             </main>
 
@@ -148,14 +177,11 @@ function AppContent() {
                     onClose={closeRegistrationPopup} 
                     onRegister={handleRegistration}
                     onLoginRedirect={window.loginRedirectCallback}
+                    showRequestForm={window.isRequestForm || false}
                 />
             }
             
-            {showLoginPopup && 
-                <LoginPopup 
-                    onClose={closeLoginPopup} 
-                />
-            }
+
         </div>
     );
 }

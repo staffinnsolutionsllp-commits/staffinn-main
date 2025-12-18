@@ -39,7 +39,7 @@ const createStaffProfile = async (staffData) => {
  */
 const getStaffProfile = async (userId) => {
   try {
-    console.log('Searching for staff profile with userId:', userId);
+    console.log('🔍 Searching for staff profile with userId:', userId);
     
     const scanParams = {
       FilterExpression: 'userId = :userId',
@@ -49,12 +49,13 @@ const getStaffProfile = async (userId) => {
     };
     
     const profiles = await dynamoService.scanItems(STAFF_TABLE, scanParams);
-    console.log('Found profiles:', profiles.length);
+    console.log('📊 Found profiles:', profiles.length);
     
     if (profiles.length > 0) {
       const profile = profiles[0];
-      console.log('Retrieved profile isActiveStaff status:', profile.isActiveStaff);
+      console.log('✅ Retrieved profile isActiveStaff status:', profile.isActiveStaff);
       
+      // Ensure isActiveStaff is properly set
       if (profile.isActiveStaff === undefined || profile.isActiveStaff === null) {
         profile.isActiveStaff = false;
       }
@@ -73,11 +74,56 @@ const getStaffProfile = async (userId) => {
       return profile;
     }
     
-    console.log('No staff profile found for userId:', userId);
-    return null;
+    console.log('❌ No staff profile found for userId:', userId);
+    console.log('🔧 Creating default staff profile...');
+    
+    // Get user data to create profile
+    const userModel = require('./userModel');
+    const userData = await userModel.findUserById(userId);
+    
+    if (!userData) {
+      console.error('❌ User not found for userId:', userId);
+      return null;
+    }
+    
+    // Create default staff profile
+    const defaultProfile = {
+      userId: userId,
+      fullName: userData.fullName || '',
+      email: userData.email || '',
+      phone: userData.phoneNumber || '',
+      isActiveStaff: false,
+      profileVisibility: 'private',
+      profilePhoto: null,
+      resumeUrl: null,
+      skills: '',
+      address: '',
+      pincode: '',
+      sector: '',
+      role: '',
+      state: '',
+      city: '',
+      availability: 'available',
+      visibility: 'public',
+      experiences: [],
+      certificates: [],
+      education: {
+        tenth: { percentage: '', year: '', school: '' },
+        twelfth: { percentage: '', year: '', school: '' },
+        graduation: { degree: '', college: '', percentage: '', startDate: '', endDate: '', pursuing: false }
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    console.log('🔧 Creating staff profile with data:', defaultProfile);
+    const createdProfile = await createStaffProfile(defaultProfile);
+    console.log('✅ Created default staff profile:', createdProfile ? 'Success' : 'Failed');
+    
+    return createdProfile;
   } catch (error) {
-    console.error('Get staff profile error:', error);
-    throw new Error('Failed to get staff profile');
+    console.error('❌ Get staff profile error:', error);
+    throw new Error('Failed to get staff profile: ' + error.message);
   }
 };
 
@@ -89,12 +135,19 @@ const getStaffProfile = async (userId) => {
  */
 const updateStaffProfile = async (userId, updateData) => {
   try {
-    // First get the current profile to find the staffId
+    console.log('🔄 Staff Model: updateStaffProfile called for userId:', userId);
+    console.log('📝 Staff Model: Update data:', updateData);
+    
+    // Get current profile
     const currentProfile = await getStaffProfile(userId);
+    console.log('📝 Staff Model: Current profile found:', currentProfile ? 'Yes' : 'No');
     
     if (!currentProfile) {
+      console.error('❌ Staff Model: No profile found for userId:', userId);
       throw new Error('Staff profile not found');
     }
+    
+    console.log('📝 Staff Model: Using staffId:', currentProfile.staffId);
     
     // Build update expression
     const updateExpressions = [];
@@ -116,17 +169,25 @@ const updateStaffProfile = async (userId, updateData) => {
       ExpressionAttributeValues: expressionAttributeValues
     };
     
-    await dynamoService.updateItem(
+    console.log('🔄 Staff Model: Calling dynamoService.updateItem with params:', updateParams);
+    
+    const updateResult = await dynamoService.updateItem(
       STAFF_TABLE,
       { staffId: currentProfile.staffId },
       updateParams
     );
     
-    // Return the updated profile by fetching it again
-    return await getStaffProfile(userId);
+    console.log('✅ Staff Model: DynamoDB update result:', updateResult ? 'Success' : 'Failed');
+    
+    // Return updated profile
+    const updatedProfile = await getStaffProfile(userId);
+    console.log('✅ Staff Model: Retrieved updated profile:', updatedProfile ? 'Yes' : 'No');
+    
+    return updatedProfile;
   } catch (error) {
-    console.error('Update staff profile error:', error);
-    throw new Error('Failed to update staff profile');
+    console.error('❌ Staff Model: Update error:', error.message);
+    console.error('❌ Staff Model: Stack trace:', error.stack);
+    throw new Error('Failed to update staff profile: ' + error.message);
   }
 };
 
@@ -155,7 +216,18 @@ const getActiveStaffProfiles = async () => {
         const user = await userModel.findUserById(profile.userId);
         // Only include if user exists and is not blocked
         if (user && !user.isBlocked) {
-          filteredProfiles.push(profile);
+          // Ensure profile has all mandatory fields filled
+          const hasRequiredFields = profile.address && profile.address.trim() !== '' &&
+                                   profile.state && profile.state.trim() !== '' &&
+                                   profile.city && profile.city.trim() !== '' &&
+                                   profile.pincode && profile.pincode.trim() !== '' &&
+                                   profile.sector && profile.sector.trim() !== '' &&
+                                   profile.role && profile.role.trim() !== '' &&
+                                   profile.skills && profile.skills.trim() !== '';
+          
+          if (hasRequiredFields) {
+            filteredProfiles.push(profile);
+          }
         }
       } catch (error) {
         console.error('Error checking user block status:', error);
@@ -197,7 +269,18 @@ const getTrendingStaffProfiles = async (limit = 6) => {
         const user = await userModel.findUserById(profile.userId);
         // Only include if user exists and is not blocked
         if (user && !user.isBlocked) {
-          filteredProfiles.push(profile);
+          // Ensure profile has all mandatory fields filled
+          const hasRequiredFields = profile.address && profile.address.trim() !== '' &&
+                                   profile.state && profile.state.trim() !== '' &&
+                                   profile.city && profile.city.trim() !== '' &&
+                                   profile.pincode && profile.pincode.trim() !== '' &&
+                                   profile.sector && profile.sector.trim() !== '' &&
+                                   profile.role && profile.role.trim() !== '' &&
+                                   profile.skills && profile.skills.trim() !== '';
+          
+          if (hasRequiredFields) {
+            filteredProfiles.push(profile);
+          }
         }
       } catch (error) {
         console.error('Error checking user block status:', error);

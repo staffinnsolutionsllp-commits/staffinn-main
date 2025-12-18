@@ -22,6 +22,8 @@ const JOBS_TABLE = process.env.JOBS_TABLE || 'staffinn-jobs';
 const JOB_APPLICATIONS_TABLE = process.env.JOB_APPLICATIONS_TABLE || 'staffinn-job-applications';
 const ISSUES_TABLE = process.env.DYNAMODB_ISSUES_TABLE || 'staffinn-issue-section';
 const ADMIN_TABLE = process.env.ADMIN_TABLE || 'staffinn-admin';
+const MESSAGES_TABLE = process.env.MESSAGES_TABLE || 'Messages';
+const MIS_PLACEMENT_ANALYTICS_TABLE = process.env.MIS_PLACEMENT_ANALYTICS_TABLE || 'staffinn-mis-placement-analytics';
 
 // Define table schemas
 const usersTableSchema = {
@@ -163,6 +165,52 @@ const adminTableSchema = {
   ],
   AttributeDefinitions: [
     { AttributeName: 'adminId', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const messagesTableSchema = {
+  TableName: MESSAGES_TABLE,
+  KeySchema: [
+    { AttributeName: 'messageId', KeyType: 'HASH' },
+    { AttributeName: 'createdAt', KeyType: 'RANGE' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'messageId', AttributeType: 'S' },
+    { AttributeName: 'createdAt', AttributeType: 'S' },
+    { AttributeName: 'senderId', AttributeType: 'S' },
+    { AttributeName: 'receiverId', AttributeType: 'S' }
+  ],
+  GlobalSecondaryIndexes: [
+    {
+      IndexName: 'SenderIndex',
+      KeySchema: [
+        { AttributeName: 'senderId', KeyType: 'HASH' },
+        { AttributeName: 'createdAt', KeyType: 'RANGE' }
+      ],
+      Projection: { ProjectionType: 'ALL' },
+      BillingMode: 'PAY_PER_REQUEST'
+    },
+    {
+      IndexName: 'ReceiverIndex',
+      KeySchema: [
+        { AttributeName: 'receiverId', KeyType: 'HASH' },
+        { AttributeName: 'createdAt', KeyType: 'RANGE' }
+      ],
+      Projection: { ProjectionType: 'ALL' },
+      BillingMode: 'PAY_PER_REQUEST'
+    }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+const misPlacementAnalyticsTableSchema = {
+  TableName: MIS_PLACEMENT_ANALYTICS_TABLE,
+  KeySchema: [
+    { AttributeName: 'placementId', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'placementId', AttributeType: 'S' }
   ],
   BillingMode: 'PAY_PER_REQUEST'
 };
@@ -330,6 +378,28 @@ const createTablesIfNotExist = async () => {
     } else {
       console.log(`Table already exists: ${ADMIN_TABLE}`);
     }
+    
+    // Check if messages table exists
+    const messagesExists = await tableExists(MESSAGES_TABLE);
+    
+    if (!messagesExists) {
+      // Create messages table
+      await dynamoClient.send(new CreateTableCommand(messagesTableSchema));
+      console.log(`Created table: ${MESSAGES_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${MESSAGES_TABLE}`);
+    }
+    
+    // Check if MIS placement analytics table exists
+    const misPlacementAnalyticsExists = await tableExists(MIS_PLACEMENT_ANALYTICS_TABLE);
+    
+    if (!misPlacementAnalyticsExists) {
+      // Create MIS placement analytics table
+      await dynamoClient.send(new CreateTableCommand(misPlacementAnalyticsTableSchema));
+      console.log(`Created table: ${MIS_PLACEMENT_ANALYTICS_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${MIS_PLACEMENT_ANALYTICS_TABLE}`);
+    }
   } catch (error) {
     // ResourceInUseException means table already exists
     if (error.name === 'ResourceInUseException') {
@@ -356,5 +426,7 @@ module.exports = {
   JOB_APPLICATIONS_TABLE,
   ISSUES_TABLE,
   ADMIN_TABLE,
+  MESSAGES_TABLE,
+  MIS_PLACEMENT_ANALYTICS_TABLE,
   createTablesIfNotExist
 };

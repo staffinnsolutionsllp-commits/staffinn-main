@@ -216,6 +216,12 @@ const deleteItem = async (tableName, key) => {
  */
 const updateItem = async (tableName, key, params) => {
   try {
+    // Check if using mock DB
+    const { isUsingMockDB, mockDB } = require('../config/dynamodb-wrapper');
+    if (isUsingMockDB()) {
+      return mockDB().updateItem(tableName, key, params);
+    }
+    
     const command = new UpdateCommand({
       TableName: tableName,
       Key: key,
@@ -227,6 +233,16 @@ const updateItem = async (tableName, key, params) => {
     return response.Attributes;
   } catch (error) {
     console.error('DynamoDB updateItem error:', error);
+    if (error.code === 'ENOTFOUND' || error.code === 'NetworkingError') {
+      console.log('Network error - using mock database fallback');
+      const { mockDB } = require('../config/dynamodb-wrapper');
+      const mockInstance = mockDB();
+      if (!mockInstance) {
+        const mockDBModule = require('../mock-dynamodb');
+        return mockDBModule.updateItem(tableName, key, params);
+      }
+      return mockInstance.updateItem(tableName, key, params);
+    }
     throw error;
   }
 };

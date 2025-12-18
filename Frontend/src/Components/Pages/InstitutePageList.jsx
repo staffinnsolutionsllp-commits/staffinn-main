@@ -7,7 +7,7 @@ import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCheckCircle, FaSearch }
 import InstitutepageImage from '../../assets/Institutepage.jpg';
 import { useGlobalLoading } from '../../hooks/useGlobalLoading';
 
-const InstitutePageList = () => {
+const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
   const [nameLocationSearch, setNameLocationSearch] = useState('');
   const [courseSearch, setCourseSearch] = useState('');
   const [filter, setFilter] = useState('');
@@ -247,8 +247,30 @@ const InstitutePageList = () => {
                 </div>
               </div>
               <div className="institute-actions">
-                <Link to={`/institute/${institute.id}`} className="view-institute-btn">View Details</Link>
-                <button className="contact-institute-btn">Contact</button>
+                <button 
+                  className="view-institute-btn"
+                  onClick={() => {
+                    if (!isLoggedIn) {
+                      onShowLogin();
+                      return;
+                    }
+                    window.location.href = `/institute/${institute.id}`;
+                  }}
+                >
+                  View Details
+                </button>
+                <button 
+                  className="contact-institute-btn"
+                  onClick={() => {
+                    if (!isLoggedIn) {
+                      onShowLogin();
+                      return;
+                    }
+                    // Handle contact functionality here
+                  }}
+                >
+                  Contact
+                </button>
               </div>
             </div>
           ))
