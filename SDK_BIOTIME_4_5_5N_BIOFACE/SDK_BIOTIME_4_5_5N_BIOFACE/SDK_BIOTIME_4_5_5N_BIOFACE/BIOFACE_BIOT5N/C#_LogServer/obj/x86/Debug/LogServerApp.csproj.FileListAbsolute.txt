@@ -1,0 +1,27 @@
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\bin\Debug\LogServer.exe.config
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\obj\x86\Debug\Interop.MSFlexGridLib.dll
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\obj\x86\Debug\LogServerApp.csproj.ResolveComReference.cache
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\bin\Debug\LogServer.exe
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\bin\Debug\LogServer.pdb
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\bin\Debug\Interop.MSFlexGridLib.dll
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\obj\x86\Debug\LogServerApp.MainForm.resources
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\obj\x86\Debug\LogServer.Properties.Resources.resources
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\obj\x86\Debug\LogServerApp.csproj.GenerateResource.Cache
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\obj\x86\Debug\LogServer.exe
+E:\RAJESH\SDK\BIOFACE_SDK_ALL\Face SDK\Face and A30\SBXPC(151013)\LogServer\DotNet\obj\x86\Debug\LogServer.pdb
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\bin\Debug\LogServer.exe.config
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\obj\x86\Debug\Interop.MSFlexGridLib.dll
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\obj\x86\Debug\LogServerApp.csproj.ResolveComReference.cache
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\obj\x86\Debug\LogServer.exe
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\obj\x86\Debug\LogServer.pdb
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\bin\Debug\LogServer.exe
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\bin\Debug\LogServer.pdb
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\bin\Debug\Interop.MSFlexGridLib.dll
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\obj\x86\Debug\LogServerApp.MainForm.resources
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\obj\x86\Debug\LogServer.Properties.Resources.resources
+E:\RAJESH\SDK\BIOFACE_SDK\C#_LogServer\obj\x86\Debug\LogServerApp.csproj.GenerateResource.Cache
+E:\RAJESH\SDK\ALL SDKS\SDK_BIOTIME_4_5_5N_BIOFACE\SDK_BIOTIME_4_5_5N_BIOFACE\BIOFACE_BIOT5N\C#_LogServer\bin\Debug\LogServer.exe.config
+E:\RAJESH\SDK\ALL SDKS\SDK_BIOTIME_4_5_5N_BIOFACE\SDK_BIOTIME_4_5_5N_BIOFACE\BIOFACE_BIOT5N\C#_LogServer\obj\x86\Debug\Interop.MSFlexGridLib.dll
+E:\RAJESH\SDK\ALL SDKS\SDK_BIOTIME_4_5_5N_BIOFACE\SDK_BIOTIME_4_5_5N_BIOFACE\BIOFACE_BIOT5N\C#_LogServer\obj\x86\Debug\LogServerApp.csproj.ResolveComReference.cache
+E:\RAJESH\SDK\ALL SDKS\SDK_BIOTIME_4_5_5N_BIOFACE\SDK_BIOTIME_4_5_5N_BIOFACE\BIOFACE_BIOT5N\C#_LogServer\obj\x86\Debug\LogServer.exe
+E:\RAJESH\SDK\ALL SDKS\SDK_BIOTIME_4_5_5N_BIOFACE\SDK_BIOTIME_4_5_5N_BIOFACE\BIOFACE_BIOT5N\C#_LogServer\obj\x86\Debug\LogServer.pdb

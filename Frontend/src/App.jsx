@@ -19,9 +19,11 @@ import LoadingExample from './Components/common/LoadingExample.jsx';
 import MessageCenter from './Components/Messages/MessageCenter.jsx';
 import ChatWindow from './Components/Messages/ChatWindow.jsx';
 import AdminDashboard from './Components/MasterAdminPanel/AdminDashboard.jsx';
+import HRMS from './Components/HRMS/HRMS.jsx';
 import { AuthProvider, AuthContext, LoadingProvider } from './context';
 import HourglassLoader from './Components/common/HourglassLoader';
 import apiService from './services/api';
+import AttendanceManagement from './Components/AttendanceManagement.jsx';
 import { useLenis } from './hooks/useLenis';
 import { showLoginWithMessage } from './utils/authGuard';
 import './App.css';
@@ -166,6 +168,18 @@ function AppContent() {
                         path="/admin" 
                         element={isLoggedIn && currentUser?.role?.toLowerCase() === 'admin' ? 
                             <AdminDashboard /> : <Navigate to="/" />
+                        } 
+                    />
+                    <Route 
+                        path="/hrms" 
+                        element={isLoggedIn && currentUser?.role?.toLowerCase() === 'recruiter' ? 
+                            <HRMS /> : <Navigate to="/" />
+                        } 
+                    />
+                    <Route 
+                        path="/attendance" 
+                        element={isLoggedIn && (currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'recruiter') ? 
+                            <AttendanceManagement /> : <Navigate to="/" />
                         } 
                     />
                 </Routes>

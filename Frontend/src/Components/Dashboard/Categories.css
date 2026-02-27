@@ -1,0 +1,139 @@
+/* Categories Selection Styles */
+.categories-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.category-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.category-checkbox:hover {
+  background-color: #f8f9fa;
+  border-color: #007bff;
+}
+
+.category-checkbox input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.category-checkbox span {
+  font-size: 14px;
+  color: #495057;
+  user-select: none;
+}
+
+.category-checkbox input[type="checkbox"]:checked + span {
+  color: #007bff;
+  font-weight: 500;
+}
+
+/* Category Badge Styles */
+.category-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 2px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Different colors for different categories */
+.category-badge:nth-child(odd) {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.category-badge:nth-child(even) {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+/* Experience Input Styles */
+.experience-input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.experience-input-container input[type="number"] {
+  width: 80px;
+  padding: 8px 12px;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.experience-input-container input[type="number"]:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.experience-label {
+  font-size: 14px;
+  color: #495057;
+  font-weight: 500;
+}
+
+/* Website Link Styles */
+.website-link {
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.website-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .categories-selection {
+    gap: 8px;
+  }
+  
+  .category-checkbox {
+    padding: 6px 10px;
+  }
+  
+  .category-checkbox span {
+    font-size: 13px;
+  }
+  
+  .category-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+  
+  .experience-input-container {
+    gap: 8px;
+  }
+  
+  .experience-input-container input[type="number"] {
+    width: 70px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  
+  .experience-label {
+    font-size: 13px;
+  }
+}

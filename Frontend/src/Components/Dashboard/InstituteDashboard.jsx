@@ -17,6 +17,7 @@ import './EventNewsStyles.css';
 import './CourseCardStyles.css';
 import './AchievementStyles.css';
 import './StaffinnPartnerMenu.css';
+import './Categories.css';
 import CourseQuizManager from './CourseQuizManager';
 import GovtSchemeModal from './GovtSchemeModal';
 import StaffinnPartner from './StaffinnPartner';
@@ -45,8 +46,10 @@ const InstituteDashboard = () => {
         pincode: '',
         phone: '',
         email: '',
+        website: '',
         experience: '',
         badges: [],
+        categories: [],
         description: '',
         establishedYear: '',
         profileImage: null,
@@ -524,8 +527,10 @@ const InstituteDashboard = () => {
                     pincode: response.data.pincode || '',
                     phone: response.data.phone || '',
                     email: response.data.email || '',
+                    website: response.data.website || '',
                     experience: response.data.experience || '',
                     badges: response.data.badges || [],
+                    categories: response.data.categories || [],
                     description: response.data.description || '',
                     establishedYear: response.data.establishedYear || '',
                     profileImage: profileImageUrl,
@@ -1993,7 +1998,7 @@ const InstituteDashboard = () => {
                                 />
                                 <div className="institute-profile-info">
                                     <h2>{profileData.instituteName}</h2>
-                                    <p className="institute-experience-text">{profileData.experience}</p>
+                                    <p className="institute-experience-text">{profileData.experience ? `${profileData.experience}+ Years of Experience` : 'Experience Not Available'}</p>
                                     <div className="institute-profile-badges">
                                         {profileData.badges.map((badge, index) => (
                                             <span key={index} className="institute-profile-badge">{badge}</span>
@@ -4661,13 +4666,29 @@ const InstituteDashboard = () => {
                                 </div>
                                 <div className="institute-form-group">
                                     <label>Experience</label>
+                                    <div className="experience-input-container">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={profileData.experience}
+                                            onChange={(e) => setProfileData(prev => ({...prev, experience: e.target.value}))}
+                                            placeholder="e.g., 5"
+                                        />
+                                        <span className="experience-label">+ Years of Experience</span>
+                                    </div>
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Website</label>
                                     <input
-                                        type="text"
-                                        value={profileData.experience}
-                                        onChange={(e) => setProfileData(prev => ({...prev, experience: e.target.value}))}
-                                        placeholder="e.g., 25+ Years of Excellence in Education"
+                                        type="url"
+                                        value={profileData.website || ''}
+                                        onChange={(e) => setProfileData(prev => ({...prev, website: e.target.value}))}
+                                        placeholder="https://www.exampleinstitute.com"
                                     />
                                 </div>
+
                                 <div className="institute-form-group">
                                     <label>Description</label>
                                     <textarea
@@ -4737,6 +4758,34 @@ const InstituteDashboard = () => {
                                                 </span>
                                             ))}
                                         </div>
+                                    </div>
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Categories</label>
+                                    <div className="categories-selection">
+                                        {['Colleges', 'Skill and Vocational', 'Upskilling'].map(category => (
+                                            <label key={category} className="category-checkbox">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={profileData.categories.includes(category)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setProfileData(prev => ({
+                                                                ...prev,
+                                                                categories: [...prev.categories, category]
+                                                            }));
+                                                        } else {
+                                                            setProfileData(prev => ({
+                                                                ...prev,
+                                                                categories: prev.categories.filter(c => c !== category)
+                                                            }));
+                                                        }
+                                                    }}
+                                                />
+                                                <span>{category}</span>
+                                            </label>
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="institute-form-buttons">

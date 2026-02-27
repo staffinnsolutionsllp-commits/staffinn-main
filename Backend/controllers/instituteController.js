@@ -269,6 +269,7 @@ const getInstituteProfileDetails = async (req, res) => {
         courses: [],
         placementRate: null,
         totalStudents: null,
+        categories: [],
         isLive: false
       };
       

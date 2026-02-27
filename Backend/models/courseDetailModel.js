@@ -20,7 +20,11 @@ class CourseDetailModel {
             sector: data.sector,
             course: data.course,
             minBatchProposed: data.minBatchProposed,
-            classrooms: data.classrooms,
+            classrooms: (data.classrooms || []).map(classroom => ({
+                ...classroom,
+                classroomType: classroom.classroomType || 'Classroom',
+                photos: classroom.photos || []
+            })),
             createdAt: timestamp,
             updatedAt: timestamp
         };
@@ -100,7 +104,11 @@ class CourseDetailModel {
             sector: data.sector,
             course: data.course,
             minBatchProposed: data.minBatchProposed,
-            classrooms: data.classrooms,
+            classrooms: (data.classrooms || []).map(classroom => ({
+                ...classroom,
+                classroomType: classroom.classroomType || 'Classroom',
+                photos: classroom.photos || []
+            })),
             createdAt: existing?.createdAt || timestamp,
             updatedAt: timestamp
         };

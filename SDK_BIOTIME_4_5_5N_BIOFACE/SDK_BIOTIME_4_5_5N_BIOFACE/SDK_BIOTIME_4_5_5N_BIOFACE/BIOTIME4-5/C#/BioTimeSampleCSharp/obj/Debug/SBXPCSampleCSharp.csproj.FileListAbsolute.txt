@@ -1,0 +1,58 @@
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\SBXPCSampleCSharp.exe
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\SBXPCSampleCSharp.pdb
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\Interop.MSFlexGridLib.dll
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\Interop.SBXPCLib.dll
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\AxInterop.MSFlexGridLib.dll
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\AxInterop.SBXPCLib.dll
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\ResolveAssemblyReference.cache
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\Interop.MSFlexGridLib.dll
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\Interop.SBXPCLib.dll
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\AxInterop.MSFlexGridLib.dll
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\AxInterop.SBXPCLib.dll
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.csproj.ResolveComReference.cache
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmAccessTz.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmBellInfo.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmDaigong.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmDepartment.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmEnroll.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmEvent.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmLockCtrl.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmLog.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmMain.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmPrtCode.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmScreenSaver.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmSystemInfo.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmTrMode.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.Properties.Resources.resources
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.csproj.GenerateResource.Cache
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.exe
+H:\Union Firmware for Customer\NU3200X\NU3200X sdk 20110815 (firm) (exam) (vb6,vb.net,c#.net)\OCX\Sample_2960_3600\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.pdb
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\Interop.MSFlexGridLib.dll
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\Interop.SBXPCLib.dll
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\AxInterop.MSFlexGridLib.dll
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\AxInterop.SBXPCLib.dll
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.csproj.ResolveComReference.cache
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.exe
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.pdb
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\SBXPCSampleCSharp.exe
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\SBXPCSampleCSharp.pdb
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\Interop.MSFlexGridLib.dll
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\Interop.SBXPCLib.dll
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\AxInterop.MSFlexGridLib.dll
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\bin\Debug\AxInterop.SBXPCLib.dll
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\ResolveAssemblyReference.cache
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmAccessTz.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmBellInfo.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmDaigong.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmDepartment.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmEnroll.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmEvent.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmLockCtrl.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmLog.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmMain.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmPrtCode.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmScreenSaver.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmSystemInfo.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.frmTrMode.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.Properties.Resources.resources
+C:\Documents and Settings\hiren.mantra\Desktop\BioTime5\C#_SBXPCSample\SBXPCSampleCSharp\obj\Debug\SBXPCSampleCSharp.csproj.GenerateResource.Cache

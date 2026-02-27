@@ -83,7 +83,17 @@
       "createdAt": "2024-02-10T10:00:00.000Z"
     }
   },
-  "staffinn-job-applications": {},
+  "staffinn-job-applications": {
+    "1769067236980": {
+      "staffinnjob": "e491c5a2-a0b1-46f1-b614-18ff473ff8a3_708ce383-d2cf-4724-ae3b-8d988435e1b9",
+      "studentID": "708ce383-d2cf-4724-ae3b-8d988435e1b9",
+      "jobID": "e491c5a2-a0b1-46f1-b614-18ff473ff8a3",
+      "recruiterID": "afe9a0b5-63dc-46c3-9c70-4725b2d0fbb6",
+      "instituteID": "d98f25d6-f18b-4e30-b383-7b164ba7cb18",
+      "status": "pending",
+      "timestamp": "2026-01-22T07:33:17.186Z"
+    }
+  },
   "recruiter-news": {
     "7cb85fa4-7e2a-4e89-8363-56404a244e0a": {
       "recruiterNewsID": "7cb85fa4-7e2a-4e89-8363-56404a244e0a",

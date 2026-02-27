@@ -1524,6 +1524,9 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'government-schemes' ? 'active' : ''} onClick={() => handleTabChange('government-schemes')}>
                         Government Schemes
                     </li>
+                    <li className={activeTab === 'hrms' ? 'active' : ''} onClick={() => window.open('/hrms', '_blank')}>
+                        HRMS
+                    </li>
                 </ul>
             </div>
 

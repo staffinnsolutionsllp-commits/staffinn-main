@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import apiWithLoading from '../../services/apiWithLoading';
 import './InstitutePageList.css';
+import '../Dashboard/Categories.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCheckCircle, FaSearch } from 'react-icons/fa';
 import InstitutepageImage from '../../assets/Institutepage.jpg';
 import { useGlobalLoading } from '../../hooks/useGlobalLoading';
@@ -54,6 +55,7 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
             badges: institute.badges || [],
             profileImage: institute.profileImage,
             courses: courses,
+            categories: institute.categories || [], // Add categories from API
             isBrainaryVerified: institute.isLive || false,
             isTrendingAchiever: institute.isLive || false
           };
@@ -114,10 +116,12 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
     }
     
     // Apply category filter
-    if (filter === 'brainary') {
-      results = results.filter(institute => institute.isBrainaryVerified);
-    } else if (filter === 'trending') {
-      results = results.filter(institute => institute.isTrendingAchiever);
+    if (filter === 'colleges') {
+      results = results.filter(institute => institute.categories && institute.categories.includes('Colleges'));
+    } else if (filter === 'skill-vocational') {
+      results = results.filter(institute => institute.categories && institute.categories.includes('Skill and Vocational'));
+    } else if (filter === 'upskilling') {
+      results = results.filter(institute => institute.categories && institute.categories.includes('Upskilling'));
     }
     
     setFilteredInstitutes(results);
@@ -170,24 +174,35 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
           <div className="filter-option">
             <input 
               type="radio" 
-              id="filter-brainary" 
+              id="filter-colleges" 
               name="institute-filter" 
-              value="brainary"
-              checked={filter === 'brainary'}
-              onChange={() => setFilter('brainary')}
+              value="colleges"
+              checked={filter === 'colleges'}
+              onChange={() => setFilter('colleges')}
             />
-            <label htmlFor="filter-brainary">Brainary Verified Institutes</label>
+            <label htmlFor="filter-colleges">Colleges</label>
           </div>
           <div className="filter-option">
             <input 
               type="radio" 
-              id="filter-trending" 
+              id="filter-skill-vocational" 
               name="institute-filter" 
-              value="trending"
-              checked={filter === 'trending'}
-              onChange={() => setFilter('trending')}
+              value="skill-vocational"
+              checked={filter === 'skill-vocational'}
+              onChange={() => setFilter('skill-vocational')}
             />
-            <label htmlFor="filter-trending">Trending Achievers</label>
+            <label htmlFor="filter-skill-vocational">Skill and Vocational</label>
+          </div>
+          <div className="filter-option">
+            <input 
+              type="radio" 
+              id="filter-upskilling" 
+              name="institute-filter" 
+              value="upskilling"
+              checked={filter === 'upskilling'}
+              onChange={() => setFilter('upskilling')}
+            />
+            <label htmlFor="filter-upskilling">Upskilling</label>
           </div>
         </div>
       </div>
@@ -221,6 +236,9 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
                 {institute.badges && institute.badges.map((badge, index) => (
                   <span key={index} className="badge">{badge}</span>
                 ))}
+                {institute.categories && institute.categories.map((category, index) => (
+                  <span key={`cat-${index}`} className="category-badge">{category}</span>
+                ))}
               </div>
               <div className="institute-details">
                 <div className="info-item">
@@ -240,10 +258,16 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
                 </div>
                 <div className="info-item">
                   <FaGlobe />
-                  <span>{institute.website}</span>
+                  {institute.website ? (
+                    <a href={institute.website} target="_blank" rel="noopener noreferrer" className="website-link">
+                      Website
+                    </a>
+                  ) : (
+                    <span>Website Not Available</span>
+                  )}
                 </div>
                 <div className="info-item experience">
-                  <span>{institute.experience}</span>
+                  <span>{institute.experience ? `${institute.experience}+ Years of Experience` : 'Experience Not Available'}</span>
                 </div>
               </div>
               <div className="institute-actions">

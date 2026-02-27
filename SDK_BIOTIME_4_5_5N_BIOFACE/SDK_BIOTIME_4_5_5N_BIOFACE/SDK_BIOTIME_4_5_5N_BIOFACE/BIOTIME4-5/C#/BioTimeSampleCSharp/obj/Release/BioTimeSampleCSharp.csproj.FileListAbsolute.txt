@@ -1,0 +1,102 @@
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.exe
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.pdb
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\bin\Debug\Interop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\bin\Debug\AxInterop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\ResolveAssemblyReference.cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\Interop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\AxInterop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.csproj.ResolveComReference.cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmAccessTz.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmBellInfo.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmDaigong.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmDepartment.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmEnroll.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmEvent.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmLockCtrl.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmLog.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmMain.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmPrtCode.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmScreenSaver.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmSystemInfo.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmTrMode.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.Properties.Resources.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.csproj.GenerateResource.Cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.exe
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.pdb
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.exe
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.pdb
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\Interop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\AxInterop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\ResolveAssemblyReference.cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\Interop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\AxInterop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.csproj.ResolveComReference.cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmAccessTz.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmBellInfo.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmDaigong.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmDepartment.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmEnroll.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmEvent.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmLockCtrl.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmLog.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmMain.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmPrtCode.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmScreenSaver.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmSystemInfo.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmTrMode.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.Properties.Resources.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.csproj.GenerateResource.Cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.exe
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.pdb
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\Interop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\AxInterop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.csproj.ResolveComReference.cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.exe
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.pdb
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.exe.config
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\ResolveAssemblyReference.cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmAccessTz.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmBellInfo.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmDaigong.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmDepartment.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmEnroll.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmEvent.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmLockCtrl.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmLog.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmMain.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmPrtCode.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmScreenSaver.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmSystemInfo.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmTrMode.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.Properties.Resources.resources
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.csproj.GenerateResource.Cache
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.exe
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.pdb
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\Interop.SBXPCLib.dll
+D:\RAJESH\SDK\BIOTIME_4_5_8_DOT C# AND VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\AxInterop.SBXPCLib.dll
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.exe.config
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\Interop.SBXPCLib.dll
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\AxInterop.SBXPCLib.dll
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.csproj.ResolveComReference.cache
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.exe
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.pdb
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.exe
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\BioTimeSampleCSharp.pdb
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\Interop.SBXPCLib.dll
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\bin\Debug\AxInterop.SBXPCLib.dll
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\ResolveAssemblyReference.cache
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmAccessTz.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmBellInfo.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmDaigong.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmDepartment.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmEnroll.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmEvent.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmLockCtrl.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmLog.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmMain.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmPrtCode.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmScreenSaver.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmSystemInfo.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\SBXPCSampleCSharp.frmTrMode.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.Properties.Resources.resources
+E:\RAJESH\SDK\BIOTIME_4_5_8_C# DOTNET & VB\BioTime_SDK\NEW SDK\C#_BioTimeSample_06Fab2014\BioTimeSampleCSharp\obj\Release\BioTimeSampleCSharp.csproj.GenerateResource.Cache

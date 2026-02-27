@@ -3,7 +3,7 @@ import { Plus, Eye, Edit, EyeOff, Trash, Upload, Star, Clock, X } from 'lucide-r
 import NewsAdminAPI from './services/newsAdminApi'
 import io from 'socket.io-client'
 
-function AdminPanel() {
+function AdminPanel({ onLogout }) {
   const [activeSection, setActiveSection] = useState('staffinn')
   const [activeSubSection, setActiveSubSection] = useState('hero')
   const [heroSections, setHeroSections] = useState([])
@@ -539,6 +539,13 @@ function AdminPanel() {
       <div className="admin-sidebar">
         <div className="admin-sidebar-header">
           <h1 className="admin-sidebar-title">News Admin</h1>
+          <button 
+            onClick={onLogout}
+            className="admin-logout-btn"
+            title="Logout"
+          >
+            Logout
+          </button>
         </div>
         <nav className="admin-nav">
           <div className="admin-nav-items">

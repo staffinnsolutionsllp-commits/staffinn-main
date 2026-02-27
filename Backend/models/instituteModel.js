@@ -34,6 +34,7 @@ const createOrUpdateProfile = async (instituteId, profileData) => {
       courses: profileData.courses || [],
       placementRate: profileData.placementRate || null,
       totalStudents: profileData.totalStudents || null,
+      categories: profileData.categories || [], // Categories: Colleges, Skill and Vocational, Upskilling
       isLive: profileData.isLive || false,
       updatedAt: new Date().toISOString(),
       createdAt: profileData.createdAt || new Date().toISOString()

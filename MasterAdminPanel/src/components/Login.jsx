@@ -115,7 +115,8 @@ const Login = ({ onLogin }) => {
     <div className="admin-login-container">
       <div className="admin-login-card">
         <div className="admin-login-header">
-          <h1>Master Admin Panel</h1>
+          <img src="/Logo.jpg" alt="STAFFINN Logo" className="admin-logo" />
+          <h1>STAFFINN Master Admin Panel</h1>
           <p>Staffinn Administration</p>
         </div>
 

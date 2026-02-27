@@ -55,6 +55,15 @@ const MESSAGES_TABLE = process.env.MESSAGES_TABLE || 'Messages';
 const FACULTY_LIST_TABLE = process.env.FACULTY_LIST_TABLE || 'mis-faculty-list';
 const MIS_PLACEMENT_ANALYTICS_TABLE = process.env.MIS_PLACEMENT_ANALYTICS_TABLE || 'staffinn-mis-placement-analytics';
 
+// HRMS Tables
+const HRMS_USERS_TABLE = process.env.HRMS_USERS_TABLE || 'staffinn-hrms-users';
+const HRMS_EMPLOYEES_TABLE = process.env.HRMS_EMPLOYEES_TABLE || 'staffinn-hrms-employees';
+const HRMS_LEAVES_TABLE = process.env.HRMS_LEAVES_TABLE || 'HRMS-Leaves-Table';
+const HRMS_ATTENDANCE_TABLE = process.env.HRMS_ATTENDANCE_TABLE || 'staffinn-hrms-attendance';
+const HRMS_GRIEVANCES_TABLE = process.env.HRMS_GRIEVANCES_TABLE || 'staffinn-hrms-grievances';
+const HRMS_GRIEVANCE_COMMENTS_TABLE = process.env.HRMS_GRIEVANCE_COMMENTS_TABLE || 'staffinn-hrms-grievance-comments';
+const HRMS_ORGANIZATION_CHART_TABLE = process.env.HRMS_ORGANIZATION_CHART_TABLE || 'staffinn-hrms-organization-chart';
+
 const createTablesIfNotExist = async () => {
   try {
     await testConnection();
@@ -80,7 +89,17 @@ const createTablesIfNotExist = async () => {
       mockDB.createTable(MESSAGES_TABLE);
       mockDB.createTable(FACULTY_LIST_TABLE);
       mockDB.createTable(MIS_PLACEMENT_ANALYTICS_TABLE);
-      console.log('Mock database tables initialized');
+      
+      // HRMS Tables
+      mockDB.createTable(HRMS_USERS_TABLE);
+      mockDB.createTable(HRMS_EMPLOYEES_TABLE);
+      mockDB.createTable(HRMS_LEAVES_TABLE);
+      mockDB.createTable(HRMS_ATTENDANCE_TABLE);
+      mockDB.createTable(HRMS_GRIEVANCES_TABLE);
+      mockDB.createTable(HRMS_GRIEVANCE_COMMENTS_TABLE);
+      mockDB.createTable(HRMS_ORGANIZATION_CHART_TABLE);
+      
+      console.log('Mock database tables initialized (including HRMS tables)');
       return;
     }
 
@@ -118,5 +137,13 @@ module.exports = {
   MESSAGES_TABLE,
   FACULTY_LIST_TABLE,
   MIS_PLACEMENT_ANALYTICS_TABLE,
+  // HRMS Tables
+  HRMS_USERS_TABLE,
+  HRMS_EMPLOYEES_TABLE,
+  HRMS_LEAVES_TABLE,
+  HRMS_ATTENDANCE_TABLE,
+  HRMS_GRIEVANCES_TABLE,
+  HRMS_GRIEVANCE_COMMENTS_TABLE,
+  HRMS_ORGANIZATION_CHART_TABLE,
   createTablesIfNotExist
 };

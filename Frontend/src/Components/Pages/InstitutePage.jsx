@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiService from '../../services/api';
 import './InstitutePage.css';
+import '../Dashboard/Categories.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaSearch, FaGraduationCap, FaBriefcase, FaHandshake, FaChalkboardTeacher, FaCalendarAlt, FaUsers, FaCheckCircle } from 'react-icons/fa';
 import InstitutepageImage from '../../assets/Institutepage.jpg';
 
@@ -141,6 +142,7 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
           website: response.data.website,
           experience: response.data.experience,
           badges: response.data.badges || [],
+          categories: response.data.categories || [], // Add categories from API
           profileImage: response.data.profileImage,
           isBrainaryVerified: response.data.isLive || false
         };
@@ -542,6 +544,9 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                 {instituteData?.badges && instituteData.badges.map((badge, index) => (
                   <div key={index} className="badge">{badge}</div>
                 ))}
+                {instituteData?.categories && instituteData.categories.map((category, index) => (
+                  <div key={`cat-${index}`} className="category-badge">{category}</div>
+                ))}
               </div>
             </div>
           </div>
@@ -563,10 +568,16 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
             </div>
             <div className="info-item">
               <FaGlobe />
-              <span>{instituteData?.website}</span>
+              {instituteData?.website ? (
+                <a href={instituteData.website} target="_blank" rel="noopener noreferrer" className="website-link">
+                  Website
+                </a>
+              ) : (
+                <span>Website Not Available</span>
+              )}
             </div>
             <div className="info-item experience">
-              <span>{instituteData?.experience}</span>
+              <span>{instituteData?.experience ? `${instituteData.experience}+ Years of Experience` : 'Experience Not Available'}</span>
             </div>
           </div>
         </div>

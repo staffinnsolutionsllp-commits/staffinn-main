@@ -57,6 +57,23 @@ const misPlacementRoutes = require('./routes/misPlacementRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const uploadReportRoutes = require('./routes/uploadReportRoutes');
+const uploadRoute = require('./routes/upload');
+
+// HRMS Routes
+const hrmsAuthRoutes = require('./routes/hrms/hrmsAuthRoutes');
+const hrmsEmployeeRoutes = require('./routes/hrms/hrmsEmployeeRoutes');
+const hrmsAttendanceRoutes = require('./routes/hrms/hrmsAttendanceRoutes');
+const hrmsCandidateRoutes = require('./routes/hrms/hrmsCandidateRoutes');
+const hrmsGrievanceRoutes = require('./routes/hrms/hrmsGrievanceRoutes');
+const hrmsOrganizationRoutes = require('./routes/hrms/hrmsOrganizationRoutes');
+const hrmsLeaveRoutes = require('./routes/hrms/hrmsLeaveRoutes');
+const hrmsCompanyRoutes = require('./routes/hrms/hrmsCompanyRoutes');
+const hrmsClaimRoutes = require('./routes/hrms/hrmsClaimRoutes');
+const hrmsTaskRoutes = require('./routes/hrms/hrmsTaskRoutes');
+const hrmsGrievanceManagementRoutes = require('./routes/hrms/hrmsGrievanceManagementRoutes');
+const hrmsSeparationRoutes = require('./routes/hrms/hrmsSeparationRoutes');
+const biometricAuthRoutes = require('./routes/hrms/biometricAuthRoutes');
+const biometricWebhookRoutes = require('./routes/hrms/biometricWebhookRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -80,7 +97,8 @@ const allowedOrigins = process.env.CORS_ORIGINS
       'https://staffinn.com',
       'http://localhost:5173',
       'http://localhost:5174', 
-      'http://localhost:5175'
+      'http://localhost:5175',
+      'http://localhost:5176'
     ];
 
 app.use(cors({
@@ -147,6 +165,40 @@ app.use(`${API_PREFIX}/mis-placement`, misPlacementRoutes);
 app.use(`${API_PREFIX}/reports`, reportRoutes);
 app.use(`${API_PREFIX}/upload`, uploadRoutes);
 app.use(`${API_PREFIX}/upload`, uploadReportRoutes);
+app.use('/api', uploadRoute);
+
+// HRMS API routes
+app.use(`${API_PREFIX}/hrms/auth`, hrmsAuthRoutes);
+app.use(`${API_PREFIX}/hrms/employees`, hrmsEmployeeRoutes);
+app.use(`${API_PREFIX}/hrms/attendance`, hrmsAttendanceRoutes);
+app.use(`${API_PREFIX}/hrms/candidates`, hrmsCandidateRoutes);
+app.use(`${API_PREFIX}/hrms/grievances`, hrmsGrievanceRoutes);
+app.use(`${API_PREFIX}/hrms/organization`, hrmsOrganizationRoutes);
+app.use(`${API_PREFIX}/hrms/leaves`, hrmsLeaveRoutes);
+app.use(`${API_PREFIX}/hrms/company`, hrmsCompanyRoutes);
+app.use(`${API_PREFIX}/hrms/claims`, hrmsClaimRoutes);
+app.use(`${API_PREFIX}/hrms/tasks`, hrmsTaskRoutes);
+app.use(`${API_PREFIX}/hrms/grievance-management`, hrmsGrievanceManagementRoutes);
+app.use(`${API_PREFIX}/hrms/separation`, hrmsSeparationRoutes);
+app.use(`${API_PREFIX}/biometric/auth`, biometricAuthRoutes);
+app.use(`${API_PREFIX}/biometric`, biometricWebhookRoutes);
+
+console.log('✅ HRMS routes registered successfully:');
+console.log('   - /api/v1/hrms/auth/*');
+console.log('   - /api/v1/hrms/employees/*');
+console.log('   - /api/v1/hrms/attendance/*');
+console.log('   - /api/v1/hrms/candidates/*');
+console.log('   - /api/v1/hrms/grievances/*');
+console.log('   - /api/v1/hrms/organization/*');
+console.log('   - /api/v1/hrms/leaves/*');
+console.log('   - /api/v1/hrms/company/* (Company Management)');
+console.log('   - /api/v1/hrms/claims/* (Claim Management)');
+console.log('   - /api/v1/hrms/tasks/* (Task & Performance)');
+console.log('   - /api/v1/hrms/grievance-management/* (Grievance Management)');
+console.log('   - /api/v1/hrms/separation/* (Separation Management)');
+console.log('   - /api/v1/biometric/auth/* (Bridge Authentication)');
+console.log('   - /api/v1/biometric/* (Device Webhook)');
+
 app.use('/debug', debugRoutes);
 
 // Basic routes
@@ -293,6 +345,14 @@ server.listen(PORT, async () => {
     try {
         await createTablesIfNotExist();
         console.log('✅ DynamoDB tables initialized');
+        
+        // Start attendance sync scheduler
+        try {
+            const syncScheduler = require('./services/attendanceSyncScheduler');
+            console.log('🔄 Attendance sync scheduler started');
+        } catch (syncError) {
+            console.log('⚠️  Attendance sync scheduler failed to start:', syncError.message);
+        }
         
         // Run job migration from users table to jobs table
         try {
