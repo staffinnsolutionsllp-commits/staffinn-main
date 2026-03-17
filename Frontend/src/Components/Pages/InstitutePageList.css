@@ -17,6 +17,51 @@
   text-align: center;
   position: relative;
   color: white;
+  /* Add smooth transition for background image changes */
+  transition: background-image 0.8s ease-in-out;
+  animation: fadeIn 0.8s ease-in-out;
+  }
+  
+  /* Add fade animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0.7;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  /* Slideshow Indicators */
+  .slideshow-indicators {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+  }
+  
+  .slideshow-indicators .indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+  }
+  
+  .slideshow-indicators .indicator.active {
+    background-color: rgba(72, 99, 247, 1);
+    border-color: white;
+    transform: scale(1.3);
+  }
+  
+  .slideshow-indicators .indicator:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+    transform: scale(1.2);
   }
   
   .page-title {
@@ -217,6 +262,15 @@
   
   .badge {
     background-color: #1e40af;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 50px;
+  }
+  
+  .category-badge {
+    background-color: #059669;
     color: white;
     font-size: 0.75rem;
     font-weight: 600;

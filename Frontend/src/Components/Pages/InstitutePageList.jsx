@@ -1,6 +1,6 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import apiWithLoading from '../../services/apiWithLoading';
 import './InstitutePageList.css';
 import '../Dashboard/Categories.css';
@@ -15,6 +15,8 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
   const [institutes, setInstitutes] = useState([]);
   const [filteredInstitutes, setFilteredInstitutes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [heroImages, setHeroImages] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   // Use global loading hook
   const { withLoading } = useGlobalLoading();
@@ -22,6 +24,14 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
   // Load institutes from API
   useEffect(() => {
     loadInstitutes();
+    loadHeroImages();
+    
+    // Refresh hero images every 10 seconds to catch updates
+    const heroImageInterval = setInterval(() => {
+      loadHeroImages();
+    }, 10000);
+    
+    return () => clearInterval(heroImageInterval);
   }, []);
 
   const loadInstitutes = async () => {
@@ -90,6 +100,105 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
     }
   };
 
+  // Load hero images from API
+  const loadHeroImages = async () => {
+    try {
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1'}/hero-images/institute/public?t=${timestamp}`,
+        {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
+      
+      if (response.data.success && response.data.data.images && response.data.data.images.length > 0) {
+        console.log('Institute hero images loaded:', response.data.data.images.length);
+        setHeroImages(response.data.data.images);
+        setCurrentImageIndex(0); // Reset to first image
+      } else {
+        console.log('No institute hero images found, using default');
+        setHeroImages([]);
+        setCurrentImageIndex(0);
+      }
+    } catch (error) {
+      console.error('Error loading institute hero images:', error);
+      setHeroImages([]);
+      setCurrentImageIndex(0);
+    }
+  };
+
+  // Slideshow effect for multiple images
+  useEffect(() => {
+    let slideInterval;
+    
+    if (heroImages.length > 1) {
+      console.log('🎬 Starting institute slideshow with', heroImages.length, 'images');
+      console.log('🖼️ Available images:', heroImages.map((img, idx) => `${idx}: ${img.imageId}`));
+      
+      // Reset to 0 when starting slideshow
+      setCurrentImageIndex(0);
+      
+      slideInterval = setInterval(() => {
+        setCurrentImageIndex((prevIndex) => {
+          console.log('📊 Before calculation - prevIndex:', prevIndex, 'heroImages.length:', heroImages.length);
+          
+          // Simple increment with reset logic
+          let nextIndex;
+          if (prevIndex >= heroImages.length - 1) {
+            nextIndex = 0; // Reset to first image
+          } else {
+            nextIndex = prevIndex + 1; // Go to next image
+          }
+          
+          console.log('🔄 Institute slideshow:', prevIndex, '→', nextIndex, '(total:', heroImages.length, ')');
+          console.log('🎯 Sequence check: 0→1→2→0 - Current transition:', prevIndex, '→', nextIndex);
+          
+          return nextIndex;
+        });
+      }, 5000);
+    } else {
+      console.log('🖼️ Single or no institute image, no slideshow needed');
+      setCurrentImageIndex(0);
+    }
+    
+    return () => {
+      if (slideInterval) {
+        console.log('⏹️ Stopping institute slideshow');
+        clearInterval(slideInterval);
+      }
+    };
+  }, [heroImages]);
+
+  // Debug currentImageIndex changes
+  useEffect(() => {
+    console.log('🔄 currentImageIndex changed to:', currentImageIndex, 'heroImages.length:', heroImages.length);
+    if (heroImages.length > 0 && currentImageIndex < heroImages.length) {
+      console.log('🎯 Now showing image:', heroImages[currentImageIndex]?.url);
+    }
+  }, [currentImageIndex, heroImages]);
+
+  // Get current hero image
+  const getCurrentHeroImage = () => {
+    if (heroImages.length > 0) {
+      // Ensure index is within bounds
+      const validIndex = Math.max(0, Math.min(currentImageIndex, heroImages.length - 1));
+      const currentImage = heroImages[validIndex];
+      
+      console.log('🎯 Current institute hero image:', validIndex, 'of', heroImages.length, ':', currentImage?.url);
+      
+      if (currentImage?.url) {
+        return currentImage.url;
+      }
+    }
+    
+    console.log('⚠️ Using default institute image');
+    return InstitutepageImage;
+  };
+
   // Filter institutes based on search terms and selected filter
   useEffect(() => {
     let results = institutes;
@@ -129,9 +238,34 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
 
   return (
     <div className="institute-list-page">
-      {/* Hero Section with Background Image */}
-      <div className="institute-search-section" style={{backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${InstitutepageImage})`}}>
-        <h1 className="page-title">Find Your Institute</h1>
+      {/* Hero Section with Dynamic Images */}
+      <div 
+        className="institute-search-section" 
+        style={{ 
+          backgroundImage: `url("${getCurrentHeroImage()}")`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        {heroImages.length > 1 && (
+          <div className="slideshow-indicators" key={`indicators-${heroImages.length}`}>
+            {heroImages.map((_, index) => (
+              <span 
+                key={`indicator-${index}-${heroImages[index]?.imageId || index}`}
+                className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
+                onClick={() => {
+                  console.log('👆 Indicator clicked:', index, 'Current:', currentImageIndex);
+                  setCurrentImageIndex(index);
+                }}
+                title={`Image ${index + 1} of ${heroImages.length}`}
+              />
+            ))}
+          </div>
+        )}
+        <div className="hero-content">
+          <h1 className="page-title">Find Your Institute</h1>
+        </div>
         <div className="institute-search-container">
           <div className="dual-search-inputs">
             <input 

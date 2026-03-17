@@ -10,7 +10,14 @@ let io;
 const initializeWebSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: ["http://localhost:3000", "http://localhost:5173"],
+      origin: [
+        "http://localhost:3000", 
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177"
+      ],
       methods: ["GET", "POST"],
       credentials: true
     }
@@ -23,6 +30,12 @@ const initializeWebSocket = (server) => {
     socket.on('join-institute-room', (instituteId) => {
       socket.join(`institute-${instituteId}`);
       console.log(`🏢 Institute ${instituteId} joined room for real-time updates`);
+    });
+
+    // Handle employee joining their room for grievance updates
+    socket.on('join-employee-room', (employeeId) => {
+      socket.join(`employee-${employeeId}`);
+      console.log(`👤 Employee ${employeeId} joined room for real-time updates`);
     });
 
     // Handle disconnection
@@ -63,8 +76,23 @@ const emitNotification = (message, type = 'info') => {
   }
 };
 
+// Emit grievance status update to specific employee
+const emitGrievanceUpdate = (employeeId, grievanceData) => {
+  if (io) {
+    console.log(`📡 Emitting grievance update to employee ${employeeId}`);
+    io.to(`employee-${employeeId}`).emit('grievance-status-update', {
+      grievance: grievanceData,
+      timestamp: new Date().toISOString()
+    });
+    console.log(`📡 Grievance update emitted successfully`);
+  } else {
+    console.error('❌ WebSocket server (io) is not initialized!');
+  }
+};
+
 module.exports = {
   initializeWebSocket,
   emitMisStatusUpdate,
-  emitNotification
+  emitNotification,
+  emitGrievanceUpdate
 };

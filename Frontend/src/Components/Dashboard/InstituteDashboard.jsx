@@ -21,6 +21,7 @@ import './Categories.css';
 import CourseQuizManager from './CourseQuizManager';
 import GovtSchemeModal from './GovtSchemeModal';
 import StaffinnPartner from './StaffinnPartner';
+import CourseEnrollmentHistory from './CourseEnrollmentHistory';
 
 
 const InstituteDashboard = () => {
@@ -33,6 +34,7 @@ const InstituteDashboard = () => {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [achievementsDropdownOpen, setAchievementsDropdownOpen] = useState(false);
     const [staffinnPartnerDropdownOpen, setStaffinnPartnerDropdownOpen] = useState(false);
+    const [coursesDropdownOpen, setCoursesDropdownOpen] = useState(false);
     const [infrastructureDropdownOpen, setInfrastructureDropdownOpen] = useState(false);
     const [batchesDropdownOpen, setBatchesDropdownOpen] = useState(false);
     const [reportDropdownOpen, setReportDropdownOpen] = useState(false);
@@ -89,6 +91,7 @@ const InstituteDashboard = () => {
     const [placementData, setPlacementData] = useState([]);
     const [students, setStudents] = useState([]);
     const [courses, setCourses] = useState([]);
+    const [courseEnrollments, setCourseEnrollments] = useState({});
     
     // Use profile photo sync hook
     const { updateAllImages } = useProfilePhotoSync(profileData.profileImage, 'institute');
@@ -131,6 +134,20 @@ const InstituteDashboard = () => {
         loadInstituteGovtSchemes();
         // MIS status will be loaded in loadProfileData for Staffinn Partners
     }, []);
+    
+    // Real-time enrollment count updates
+    useEffect(() => {
+        if (courses.length > 0) {
+            loadCourseEnrollments();
+            
+            // Set up polling for real-time updates every 30 seconds
+            const enrollmentInterval = setInterval(() => {
+                loadCourseEnrollments();
+            }, 30000); // Update every 30 seconds
+            
+            return () => clearInterval(enrollmentInterval);
+        }
+    }, [courses]);
     
     // Set agreementLoaded to true for Staffinn Partners (let StaffinnPartner component handle loading)
     useEffect(() => {
@@ -270,6 +287,51 @@ const InstituteDashboard = () => {
         } catch (error) {
             console.error('Error loading courses:', error);
             setCourses([]);
+        }
+    };
+    
+    const loadCourseEnrollments = async () => {
+        try {
+            const enrollmentCounts = {};
+            
+            // Fetch enrollment count for each course (both online and on-campus)
+            await Promise.all(
+                courses.map(async (course) => {
+                    const courseId = course.coursesId || course.instituteCourseID;
+                    try {
+                        if (course.mode === 'Online') {
+                            // For online courses, get regular enrollment count
+                            const response = await apiService.getCourseEnrollmentCount(courseId);
+                            if (response.success) {
+                                enrollmentCounts[courseId] = {
+                                    online: response.data?.enrollmentCount || 0,
+                                    institute: 0
+                                };
+                            } else {
+                                enrollmentCounts[courseId] = { online: 0, institute: 0 };
+                            }
+                        } else {
+                            // For on-campus courses, get institute student enrollment count
+                            const response = await apiService.getInstituteStudentEnrollmentCount(courseId);
+                            if (response.success) {
+                                enrollmentCounts[courseId] = {
+                                    online: 0,
+                                    institute: response.data?.enrollmentCount || 0
+                                };
+                            } else {
+                                enrollmentCounts[courseId] = { online: 0, institute: 0 };
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error loading enrollment for course ${courseId}:`, error);
+                        enrollmentCounts[courseId] = { online: 0, institute: 0 };
+                    }
+                })
+            );
+            
+            setCourseEnrollments(enrollmentCounts);
+        } catch (error) {
+            console.error('Error loading course enrollments:', error);
         }
     };
 
@@ -1825,11 +1887,43 @@ const InstituteDashboard = () => {
                     <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => handleTabChange('profile')}>
                         My Profile
                     </li>
-                    <li className={activeTab === 'courses' ? 'active' : ''} onClick={() => handleTabChange('courses')}>
-                        My Courses
+                    <li className={`dropdown ${['courses', 'enrollment-tracking'].includes(activeTab) ? 'active' : ''}`}>
+                        <div className="dropdown-header" onClick={() => setCoursesDropdownOpen(!coursesDropdownOpen)}>
+                            My Courses
+                            <span className={`dropdown-arrow ${coursesDropdownOpen ? 'open' : ''}`}>▼</span>
+                        </div>
+                        {coursesDropdownOpen && (
+                            <ul className="dropdown-menu">
+                                <li className={activeTab === 'courses' ? 'active' : ''} onClick={() => handleTabChange('courses')}>
+                                    Course Management
+                                </li>
+                                <li className={activeTab === 'enrollment-tracking' ? 'active' : ''} onClick={() => handleTabChange('enrollment-tracking')}>
+                                    Course Enrollment Tracking
+                                </li>
+                            </ul>
+                        )}
                     </li>
                     <li className={activeTab === 'students' ? 'active' : ''} onClick={() => handleTabChange('students')}>
                         My Placement
+                    </li>
+                    <li className={`dropdown ${['placements', 'industry-collaboration', 'government-scheme'].includes(activeTab) ? 'active' : ''}`}>
+                        <div className="dropdown-header" onClick={() => setAchievementsDropdownOpen(!achievementsDropdownOpen)}>
+                            My Achievements
+                            <span className={`dropdown-arrow ${achievementsDropdownOpen ? 'open' : ''}`}>▼</span>
+                        </div>
+                        {achievementsDropdownOpen && (
+                            <ul className="dropdown-menu">
+                                <li className={activeTab === 'placements' ? 'active' : ''} onClick={() => handleTabChange('placements')}>
+                                    Placement
+                                </li>
+                                <li className={activeTab === 'industry-collaboration' ? 'active' : ''} onClick={() => handleTabChange('industry-collaboration')}>
+                                    Industry Collaboration
+                                </li>
+                                <li className={activeTab === 'government-scheme' ? 'active' : ''} onClick={() => handleTabChange('government-scheme')}>
+                                    Government Scheme
+                                </li>
+                            </ul>
+                        )}
                     </li>
                     {profileData.instituteType === 'staffinn_partner' && (
                         <li className={`dropdown ${staffinnPartnerDropdownOpen ? 'active' : ''}`}>
@@ -1953,25 +2047,6 @@ const InstituteDashboard = () => {
                             )}
                         </li>
                     )}
-                    <li className={`dropdown ${['placements', 'industry-collaboration', 'government-scheme'].includes(activeTab) ? 'active' : ''}`}>
-                        <div className="dropdown-header" onClick={() => setAchievementsDropdownOpen(!achievementsDropdownOpen)}>
-                            My Achievements
-                            <span className={`dropdown-arrow ${achievementsDropdownOpen ? 'open' : ''}`}>▼</span>
-                        </div>
-                        {achievementsDropdownOpen && (
-                            <ul className="dropdown-menu">
-                                <li className={activeTab === 'placements' ? 'active' : ''} onClick={() => handleTabChange('placements')}>
-                                    Placement
-                                </li>
-                                <li className={activeTab === 'industry-collaboration' ? 'active' : ''} onClick={() => handleTabChange('industry-collaboration')}>
-                                    Industry Collaboration
-                                </li>
-                                <li className={activeTab === 'government-scheme' ? 'active' : ''} onClick={() => handleTabChange('government-scheme')}>
-                                    Government Scheme
-                                </li>
-                            </ul>
-                        )}
-                    </li>
                 </ul>
             </div>
 
@@ -2422,64 +2497,75 @@ const InstituteDashboard = () => {
                             <h2 className="institute-course-category-title">Online Courses ({courses.filter(course => course.mode === 'Online').length})</h2>
                             <div className="institute-course-cards">
                                 {courses.filter(course => course.mode === 'Online').length > 0 ? 
-                                    courses.filter(course => course.mode === 'Online').map(course => (
-                                        <div className="institute-course-card" key={course.coursesId || course.instituteCourseID}>
-                                            {course.thumbnailUrl && (
-                                                <div className="institute-course-thumbnail">
-                                                    <img src={course.thumbnailUrl} alt={course.courseName || course.name} />
-                                                </div>
-                                            )}
-                                            <div className="institute-course-content">
-                                                <h3>{course.courseName || course.name}</h3>
-                                                <div className="institute-course-details">
-                                                    <div className="institute-detail-item">
-                                                        <span className="institute-label">Duration:</span>
-                                                        <span className="institute-value">{course.duration}</span>
+                                    courses.filter(course => course.mode === 'Online').map(course => {
+                                        const courseId = course.coursesId || course.instituteCourseID;
+                                        const enrollmentCount = courseEnrollments[courseId]?.online || 0;
+                                        
+                                        return (
+                                            <div className="institute-course-card" key={courseId}>
+                                                {course.thumbnailUrl && (
+                                                    <div className="institute-course-thumbnail">
+                                                        <img src={course.thumbnailUrl} alt={course.courseName || course.name} />
                                                     </div>
-                                                    <div className="institute-detail-item">
-                                                        <span className="institute-label">Fees:</span>
-                                                        <span className="institute-value">₹{course.fees}</span>
+                                                )}
+                                                <div className="institute-course-content">
+                                                    <h3>{course.courseName || course.name}</h3>
+                                                    <div className="institute-course-details">
+                                                        <div className="institute-detail-item">
+                                                            <span className="institute-label">Duration:</span>
+                                                            <span className="institute-value">{course.duration}</span>
+                                                        </div>
+                                                        <div className="institute-detail-item">
+                                                            <span className="institute-label">Fees:</span>
+                                                            <span className="institute-value">₹{course.fees}</span>
+                                                        </div>
+                                                        <div className="institute-detail-item">
+                                                            <span className="institute-label">Instructor:</span>
+                                                            <span className="institute-value">{course.instructor}</span>
+                                                        </div>
+                                                        <div className="institute-detail-item">
+                                                            <span className="institute-label">Category:</span>
+                                                            <span className="institute-value">{course.category}</span>
+                                                        </div>
+                                                        <div className="institute-detail-item">
+                                                            <span className="institute-label">Mode:</span>
+                                                            <span className="institute-value">{course.mode}</span>
+                                                        </div>
+                                                        <div className="institute-detail-item">
+                                                            <span className="institute-label">Modules:</span>
+                                                            <span className="institute-value">{course.modules?.length || 0}</span>
+                                                        </div>
+                                                        <div className="institute-detail-item institute-enrollment-item">
+                                                            <span className="institute-label">Enrolled Users:</span>
+                                                            <span className="institute-value institute-enrollment-count">
+                                                                {enrollmentCount}
+                                                            </span>
+                                                        </div>
+                                                        <div className="institute-detail-item">
+                                                            <span className="institute-label">Status:</span>
+                                                            <span className={`institute-value ${course.isActive ? 'active' : 'inactive'}`}>
+                                                                {course.isActive ? 'Active' : 'Inactive'}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <div className="institute-detail-item">
-                                                        <span className="institute-label">Instructor:</span>
-                                                        <span className="institute-value">{course.instructor}</span>
+                                                    <div className="institute-course-actions">
+                                                        <button 
+                                                            className="institute-action-button"
+                                                            onClick={() => handleViewCourseDetails(course)}
+                                                        >
+                                                            View Details
+                                                        </button>
+                                                        <button 
+                                                            className="institute-action-button"
+                                                            onClick={() => handleEditCourse(course)}
+                                                        >
+                                                            Edit Course
+                                                        </button>
                                                     </div>
-                                                    <div className="institute-detail-item">
-                                                        <span className="institute-label">Category:</span>
-                                                        <span className="institute-value">{course.category}</span>
-                                                    </div>
-                                                    <div className="institute-detail-item">
-                                                        <span className="institute-label">Mode:</span>
-                                                        <span className="institute-value">{course.mode}</span>
-                                                    </div>
-                                                    <div className="institute-detail-item">
-                                                        <span className="institute-label">Modules:</span>
-                                                        <span className="institute-value">{course.modules?.length || 0}</span>
-                                                    </div>
-                                                    <div className="institute-detail-item">
-                                                        <span className="institute-label">Status:</span>
-                                                        <span className={`institute-value ${course.isActive ? 'active' : 'inactive'}`}>
-                                                            {course.isActive ? 'Active' : 'Inactive'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="institute-course-actions">
-                                                    <button 
-                                                        className="institute-action-button"
-                                                        onClick={() => handleViewCourseDetails(course)}
-                                                    >
-                                                        View Details
-                                                    </button>
-                                                    <button 
-                                                        className="institute-action-button"
-                                                        onClick={() => handleEditCourse(course)}
-                                                    >
-                                                        Edit Course
-                                                    </button>
                                                 </div>
                                             </div>
-                                        </div>
-                                    )) : (
+                                        );
+                                    }) : (
                                         <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
                                             <p>No online courses added yet.</p>
                                         </div>
@@ -2493,8 +2579,11 @@ const InstituteDashboard = () => {
                             <h2 className="institute-course-category-title">On-Campus Courses ({courses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').length})</h2>
                             <div className="institute-course-cards">
                                 {courses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').length > 0 ? 
-                                    courses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').map(course => (
-                                        <div className="institute-course-card" key={course.coursesId || course.instituteCourseID}>
+                                    courses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').map(course => {
+                                        const courseId = course.coursesId || course.instituteCourseID;
+                                        const instituteEnrollmentCount = courseEnrollments[courseId]?.institute || 0;
+                                        return (
+                                        <div className="institute-course-card" key={courseId}>
                                             {course.thumbnailUrl && (
                                                 <div className="institute-course-thumbnail">
                                                     <img src={course.thumbnailUrl} alt={course.courseName || course.name} />
@@ -2527,6 +2616,12 @@ const InstituteDashboard = () => {
                                                         <span className="institute-label">Files:</span>
                                                         <span className="institute-value">{course.onCampusFiles?.length || 0}</span>
                                                     </div>
+                                                    <div className="institute-detail-item institute-enrollment-item">
+                                                        <span className="institute-label">Enrolled Institute Students:</span>
+                                                        <span className="institute-value institute-enrollment-count">
+                                                            {instituteEnrollmentCount}
+                                                        </span>
+                                                    </div>
                                                     <div className="institute-detail-item">
                                                         <span className="institute-label">Status:</span>
                                                         <span className={`institute-value ${course.isActive ? 'active' : 'inactive'}`}>
@@ -2550,7 +2645,8 @@ const InstituteDashboard = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    )) : (
+                                        );
+                                    }) : (
                                         <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
                                             <p>No on-campus courses added yet.</p>
                                         </div>
@@ -2565,6 +2661,14 @@ const InstituteDashboard = () => {
                             </div>
                         )}
                     </div>
+                )}
+
+
+
+
+
+                {activeTab === 'enrollment-tracking' && (
+                    <CourseEnrollmentHistory />
                 )}
 
 
@@ -4764,7 +4868,7 @@ const InstituteDashboard = () => {
                                 <div className="institute-form-group">
                                     <label>Categories</label>
                                     <div className="categories-selection">
-                                        {['Colleges', 'Skill and Vocational', 'Upskilling'].map(category => (
+                                        {['Colleges', 'Skill and Vocational', 'Upskilling', 'School', 'Coaching Center'].map(category => (
                                             <label key={category} className="category-checkbox">
                                                 <input
                                                     type="checkbox"

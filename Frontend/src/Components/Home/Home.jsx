@@ -34,6 +34,8 @@ function Home({ isLoggedIn, onShowLogin }) {
    const [trendingJobsLoading, setTrendingJobsLoading] = useState(true);
    const [trendingCoursesData, setTrendingCoursesData] = useState([]);
    const [trendingCoursesLoading, setTrendingCoursesLoading] = useState(true);
+   const [heroImages, setHeroImages] = useState([]);
+   const [currentImageIndex, setCurrentImageIndex] = useState(0);
    
    // Review states
    const [reviews, setReviews] = useState([]);
@@ -76,7 +78,100 @@ function Home({ isLoggedIn, onShowLogin }) {
        loadTrendingStaff();
        loadTrendingJobs();
        loadTrendingCourses();
+       loadHeroImages();
+       
+       // Refresh hero images every 10 seconds to catch updates
+       const heroImageInterval = setInterval(() => {
+           loadHeroImages();
+       }, 10000);
+       
+       return () => clearInterval(heroImageInterval);
    }, []);
+
+   // Load hero images from API
+   const loadHeroImages = async () => {
+       try {
+           // Add timestamp to prevent caching
+           const timestamp = new Date().getTime();
+           const response = await axios.get(
+               `${import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1'}/hero-images/home/public?t=${timestamp}`,
+               {
+                   headers: {
+                       'Cache-Control': 'no-cache',
+                       'Pragma': 'no-cache'
+                   }
+               }
+           );
+           
+           if (response.data.success && response.data.data.images && response.data.data.images.length > 0) {
+               console.log('✅ Hero images loaded:', response.data.data.images.length);
+               console.log('🖼️ Images data:', response.data.data.images);
+               
+               // Test if images are accessible
+               response.data.data.images.forEach((image, index) => {
+                   console.log(`🔍 Testing image ${index + 1}:`, image.url);
+                   
+                   // Create a test image to verify accessibility
+                   const testImg = new Image();
+                   testImg.onload = () => {
+                       console.log(`✅ Image ${index + 1} is accessible:`, image.url);
+                   };
+                   testImg.onerror = () => {
+                       console.error(`❌ Image ${index + 1} failed to load:`, image.url);
+                   };
+                   testImg.src = image.url;
+               });
+               
+               setHeroImages(response.data.data.images);
+               setCurrentImageIndex(0); // Reset to first image
+           } else {
+               console.log('⚠️ No hero images found, using default');
+               setHeroImages([]);
+               setCurrentImageIndex(0);
+           }
+       } catch (error) {
+           console.error('❌ Error loading hero images:', error);
+           setHeroImages([]);
+           setCurrentImageIndex(0);
+       }
+   };
+
+   // Slideshow effect for multiple images
+   useEffect(() => {
+       if (heroImages.length > 1) {
+           console.log('Starting slideshow with', heroImages.length, 'images');
+           const interval = setInterval(() => {
+               setCurrentImageIndex((prevIndex) => {
+                   const nextIndex = prevIndex === heroImages.length - 1 ? 0 : prevIndex + 1;
+                   console.log('Slideshow: changing from', prevIndex, 'to', nextIndex);
+                   return nextIndex;
+               });
+           }, 5000); // Change image every 5 seconds
+           
+           return () => {
+               console.log('Stopping slideshow');
+               clearInterval(interval);
+           };
+       } else {
+           console.log('Single or no image, no slideshow needed');
+           setCurrentImageIndex(0);
+       }
+   }, [heroImages]);
+
+   // Get current hero image
+   const getCurrentHeroImage = () => {
+       if (heroImages.length > 0) {
+           const currentImage = heroImages[currentImageIndex];
+           console.log('Current hero image:', currentImageIndex, 'of', heroImages.length, ':', currentImage?.url);
+           // Add debugging to check if URL is valid
+           if (currentImage?.url) {
+               console.log('✅ Using dynamic hero image:', currentImage.url);
+               return currentImage.url;
+           }
+       }
+       console.log('⚠️ Using default home image');
+       return HomeImage; // Fallback to default image
+   };
 
    // Update available roles when sector changes
    useEffect(() => {
@@ -469,7 +564,47 @@ function Home({ isLoggedIn, onShowLogin }) {
    return (
        <div className="home-page">
            <section className="hero-section">
-               <div className="hero-image" style={{ backgroundImage: `url(${HomeImage})` }}>
+               <div 
+                   className="hero-image" 
+                   style={{ 
+                       backgroundImage: `url("${getCurrentHeroImage()}")`,
+                       backgroundSize: 'cover',
+                       backgroundPosition: 'center',
+                       backgroundRepeat: 'no-repeat'
+                   }}
+               >
+                   {/* Fallback img element for better loading */}
+                   <img 
+                       src={getCurrentHeroImage()} 
+                       alt="Hero Background" 
+                       style={{
+                           position: 'absolute',
+                           top: 0,
+                           left: 0,
+                           width: '100%',
+                           height: '100%',
+                           objectFit: 'cover',
+                           zIndex: -1,
+                           opacity: 0
+                       }}
+                       onLoad={(e) => {
+                           console.log('✅ Hero image loaded successfully:', e.target.src);
+                       }}
+                       onError={(e) => {
+                           console.error('❌ Hero image failed to load:', e.target.src);
+                       }}
+                   />
+                   {heroImages.length > 1 && (
+                       <div className="slideshow-indicators">
+                           {heroImages.map((_, index) => (
+                               <span 
+                                   key={index} 
+                                   className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
+                                   onClick={() => setCurrentImageIndex(index)}
+                               />
+                           ))}
+                       </div>
+                   )}
                    <div className="home-search-container">
                        <select value={selectedState} onChange={(e) => setSelectedState(e.target.value)}>
                            <option value="">Select State</option>

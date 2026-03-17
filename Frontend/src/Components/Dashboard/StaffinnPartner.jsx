@@ -16,6 +16,8 @@ import PhysicalProgressReport from './PhysicalProgressReport';
 import AssessedBatchesReport from './AssessedBatchesReport';
 import PlacementSection from './Placement/PlacementSection';
 import StaffinnPartnerDashboard from './StaffinnPartnerDashboard';
+import CourseEnrollment from './CourseEnrollment';
+import CourseEnrollmentHistory from './CourseEnrollmentHistory';
 
 const StaffinnPartner = ({ 
     misStatus, 

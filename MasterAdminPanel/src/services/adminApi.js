@@ -1506,6 +1506,154 @@ class AdminAPI {
   logout() {
     this.removeToken();
   }
+
+  /**
+   * Hero Images Management APIs
+   */
+  
+  // Upload hero images for a section
+  async uploadHeroImagesBySection(section, formData) {
+    return this.post(`/hero-images/${section}/upload`, formData);
+  }
+
+  // Get hero images for a section
+  async getHeroImagesBySection(section) {
+    return this.get(`/hero-images/${section}`);
+  }
+
+  // Delete hero image from a section
+  async deleteHeroImageBySection(section, imageId) {
+    return this.delete(`/hero-images/${section}/${imageId}`);
+  }
+
+  // Reorder hero images in a section
+  async reorderHeroImagesBySection(section, imageIds) {
+    return this.put(`/hero-images/${section}/reorder`, { imageIds });
+  }
+
+  // Delete all hero images from a section
+  async deleteAllHeroImagesBySection(section) {
+    return this.delete(`/hero-images/${section}`);
+  }
+
+  // Get all hero images
+  async get(endpoint) {
+    try {
+      // Refresh token from localStorage in case it was updated
+      this.token = localStorage.getItem('adminToken');
+      
+      if (!this.token) {
+        throw new Error('Access denied. No token provided.');
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/admin${endpoint}`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Request failed');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('GET request error:', error);
+      throw error;
+    }
+  }
+
+  // POST request with FormData support
+  async post(endpoint, data, options = {}) {
+    try {
+      // Refresh token from localStorage in case it was updated
+      this.token = localStorage.getItem('adminToken');
+      
+      if (!this.token) {
+        throw new Error('Access denied. No token provided.');
+      }
+      
+      const headers = data instanceof FormData 
+        ? { 'Authorization': `Bearer ${this.token}` }
+        : this.getHeaders();
+      
+      const response = await fetch(`${API_BASE_URL}/admin${endpoint}`, {
+        method: 'POST',
+        headers,
+        body: data instanceof FormData ? data : JSON.stringify(data),
+        ...options
+      });
+      
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Request failed');
+      }
+      
+      return responseData;
+    } catch (error) {
+      console.error('POST request error:', error);
+      throw error;
+    }
+  }
+
+  // PUT request
+  async put(endpoint, data) {
+    try {
+      // Refresh token from localStorage in case it was updated
+      this.token = localStorage.getItem('adminToken');
+      
+      if (!this.token) {
+        throw new Error('Access denied. No token provided.');
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/admin${endpoint}`, {
+        method: 'PUT',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data)
+      });
+      
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Request failed');
+      }
+      
+      return responseData;
+    } catch (error) {
+      console.error('PUT request error:', error);
+      throw error;
+    }
+  }
+
+  // DELETE request
+  async delete(endpoint) {
+    try {
+      // Refresh token from localStorage in case it was updated
+      this.token = localStorage.getItem('adminToken');
+      
+      if (!this.token) {
+        throw new Error('Access denied. No token provided.');
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/admin${endpoint}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+      
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Request failed');
+      }
+      
+      return responseData;
+    } catch (error) {
+      console.error('DELETE request error:', error);
+      throw error;
+    }
+  }
 }
 
 // Create and export a singleton instance

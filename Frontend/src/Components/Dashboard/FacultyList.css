@@ -261,6 +261,7 @@
 .faculty-table th {
   background: #f8f9fa;
   font-weight: 600;
+  color: #dc3545;
 }
 
 .faculty-table td button {

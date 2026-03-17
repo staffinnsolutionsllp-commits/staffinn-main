@@ -64,12 +64,14 @@ export default function GrievanceManagement() {
         alert('Please select a status')
         return
       }
+      console.log('Updating status with data:', statusUpdate)
       await apiService.updateGrievanceStatus(selectedGrievance.grievanceId, statusUpdate)
       setStatusUpdate({ status: '', priority: '', remark: '' })
       loadData()
       const updated = await apiService.getGrievanceById(selectedGrievance.grievanceId)
       if (updated.success) setSelectedGrievance(updated.data)
     } catch (error) {
+      console.error('Error updating status:', error)
       alert('Failed to update status')
     }
   }

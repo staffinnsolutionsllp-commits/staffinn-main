@@ -23,6 +23,7 @@ import GovernmentSchemes from './GovernmentSchemes';
 import RegistrationRequests from './RegistrationRequests';
 import ManualRegistration from './ManualRegistration';
 import MisRequests from './MisRequests';
+import HeroImages from './HeroImages';
 import Chats from './Chats';
 import adminAPI from '../services/adminApi';
 import './AdminPanel.css';
@@ -46,7 +47,7 @@ const AdminPanel = ({ adminData, onLogout }) => {
       return ['dashboard', 'institute', 'notifications', 'issues', 'government-schemes', 'registration-requests', 'manual-registration', 'mis-requests'];
     }
     // Admin/Master admin has access to all sections (including admin, master-admin, or any other admin role)
-    return ['dashboard', 'staff', 'institute', 'recruiter', 'staffinn-partner-mis', 'notifications', 'issues', 'government-schemes', 'registration-requests', 'manual-registration', 'mis-requests', 'chats'];
+    return ['dashboard', 'staff', 'institute', 'recruiter', 'staffinn-partner-mis', 'notifications', 'issues', 'government-schemes', 'registration-requests', 'manual-registration', 'mis-requests', 'hero-images', 'chats'];
   };
   
   const allowedSections = getAllowedSections(adminData?.role);
@@ -159,6 +160,10 @@ const AdminPanel = ({ adminData, onLogout }) => {
     
     if (activeSection === 'mis-requests') {
       return <MisRequests />;
+    }
+    
+    if (activeSection === 'hero-images') {
+      return <HeroImages />;
     }
     
     if (activeSection === 'chats') {
@@ -508,6 +513,22 @@ const AdminPanel = ({ adminData, onLogout }) => {
             >
               <i className="fas fa-file-contract"></i>
               {!sidebarCollapsed && <span>MIS Requests</span>}
+            </button>
+          </div>
+          )}
+
+          {/* Hero Images Section */}
+          {isSectionAllowed('hero-images') && (
+          <div className="nav-section">
+            <button
+              className={`nav-section-btn ${activeSection === 'hero-images' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection('hero-images');
+                setActiveSubSection('');
+              }}
+            >
+              <i className="fas fa-images"></i>
+              {!sidebarCollapsed && <span>Hero Images</span>}
             </button>
           </div>
           )}

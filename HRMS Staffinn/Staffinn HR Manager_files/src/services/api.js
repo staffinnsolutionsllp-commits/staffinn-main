@@ -160,13 +160,6 @@ class ApiService {
     });
   }
 
-  async updateGrievanceStatus(id, status, assignedTo) {
-    return this.request(`/grievances/${id}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status, assignedTo }),
-    });
-  }
-
   async addGrievanceComment(id, comment, isInternal = false) {
     return this.request(`/grievances/${id}/comments`, {
       method: 'POST',
@@ -469,6 +462,13 @@ class ApiService {
   }
 
   async updateGrievanceStatus(grievanceId, statusData) {
+    console.log('=== UPDATE GRIEVANCE STATUS ===');
+    console.log('Input statusData:', statusData);
+    console.log('Type:', typeof statusData);
+    console.log('Is string?', typeof statusData === 'string');
+    if (typeof statusData === 'string') {
+      console.log('ERROR: statusData is already a string!');
+    }
     return this.request(`/grievance-management/${grievanceId}/status`, {
       method: 'PUT',
       body: JSON.stringify(statusData),
@@ -547,6 +547,35 @@ class ApiService {
 
   async getSeparationStats() {
     return this.request('/separation/stats');
+  }
+
+  // Payroll methods
+  async runPayroll(month) {
+    return this.request('/payroll/run', {
+      method: 'POST',
+      body: JSON.stringify({ month }),
+    });
+  }
+
+  async getPayrollByMonth(month) {
+    return this.request(`/payroll/month/${month}`);
+  }
+
+  async getPayrollSummary(month = null) {
+    const endpoint = month ? `/payroll/summary?month=${month}` : '/payroll/summary';
+    return this.request(endpoint);
+  }
+
+  async getEmployeePayrollHistory(employeeId) {
+    return this.request(`/payroll/employee/${employeeId}`);
+  }
+
+  async getPayrollRecord(payrollRecordId, month) {
+    return this.request(`/payroll/${payrollRecordId}/${month}`);
+  }
+
+  async getEmployeeCredentials(employeeId) {
+    return this.request(`/employees/${employeeId}/credentials`);
   }
 }
 

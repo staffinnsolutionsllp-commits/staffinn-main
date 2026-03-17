@@ -71,7 +71,7 @@ const createClaimCategory = async (req, res) => {
 
     const categoryId = generateId();
     const category = {
-      claimmanagement: 'CATEGORY',
+      claimmanagement: `CATEGORY#${categoryId}`,
       categoryId,
       entityType: 'CATEGORY',
       recruiterId,
@@ -207,20 +207,21 @@ const createClaim = async (req, res) => {
     const recruiterId = req.user?.recruiterId || req.user?.userId;
     if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
 
-    const { employeeId, employeeName, category, amount, description } = req.body;
+    const { employeeId, employeeEmail, employeeName, category, amount, description } = req.body;
 
-    if (!employeeId || !category || !amount) {
+    if ((!employeeId && !employeeEmail) || !category || !amount) {
       return res.status(400).json(errorResponse('Missing required fields'));
     }
 
     const claimId = generateId();
     const claim = {
-      claimmanagement: 'CLAIM',
+      claimmanagement: `CLAIM#${claimId}`,
       claimId,
       entityType: 'CLAIM',
       recruiterId,
-      employeeId,
-      employeeName,
+      employeeId: employeeId || '',
+      employeeEmail: employeeEmail || '',
+      employeeName: employeeName || '',
       category,
       amount: parseFloat(amount),
       description: description || '',

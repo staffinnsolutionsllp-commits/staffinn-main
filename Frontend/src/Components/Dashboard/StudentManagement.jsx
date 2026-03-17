@@ -72,9 +72,6 @@ const StudentManagement = () => {
       const data = await response.json();
       if (data.success) {
         console.log('Student data:', data.data);
-        data.data.forEach(student => {
-          console.log(`Student ${student.fatherName} - Aadhar URL:`, student.aadharCardUrl);
-        });
         setStudentList(data.data);
       }
     } catch (error) {

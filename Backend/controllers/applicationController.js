@@ -514,7 +514,7 @@ const getStudentsApplicationStatus = async (req, res) => {
       const misStudentModel = require('../models/misStudentModel');
       const misJobApplicationModel = require('../models/misJobApplicationModel');
       
-      const allMisStudents = await misStudentModel.getAll();
+      const allMisStudents = await misStudentModel.getStudentsByInstitute(instituteId);
       const misApplications = await misJobApplicationModel.getByJob(jobId);
       
       // Create application status map

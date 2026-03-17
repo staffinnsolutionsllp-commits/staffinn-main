@@ -4,20 +4,22 @@
  */
 
 const { DynamoDBClient, CreateTableCommand, ListTablesCommand } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 const awsConfig = require('./aws');
 
 let useMockDB = false;
 let mockDB = null;
 
 // Try to initialize real DynamoDB client
-const dynamoClient = new DynamoDBClient(awsConfig);
+const client = new DynamoDBClient(awsConfig);
+const dynamoClient = DynamoDBDocumentClient.from(client);
 
 // Test connection to DynamoDB
 const testConnection = async () => {
   try {
     console.log('🔍 Testing AWS DynamoDB connection...');
     const command = new ListTablesCommand({});
-    await dynamoClient.send(command);
+    await client.send(command);
     console.log('✅ Using real AWS DynamoDB');
     return true;
   } catch (error) {
@@ -63,6 +65,7 @@ const HRMS_ATTENDANCE_TABLE = process.env.HRMS_ATTENDANCE_TABLE || 'staffinn-hrm
 const HRMS_GRIEVANCES_TABLE = process.env.HRMS_GRIEVANCES_TABLE || 'staffinn-hrms-grievances';
 const HRMS_GRIEVANCE_COMMENTS_TABLE = process.env.HRMS_GRIEVANCE_COMMENTS_TABLE || 'staffinn-hrms-grievance-comments';
 const HRMS_ORGANIZATION_CHART_TABLE = process.env.HRMS_ORGANIZATION_CHART_TABLE || 'staffinn-hrms-organization-chart';
+const HRMS_PAYROLL_TABLE = process.env.HRMS_PAYROLL_TABLE || 'staffinn-hrms-payroll';
 
 const createTablesIfNotExist = async () => {
   try {
@@ -98,6 +101,7 @@ const createTablesIfNotExist = async () => {
       mockDB.createTable(HRMS_GRIEVANCES_TABLE);
       mockDB.createTable(HRMS_GRIEVANCE_COMMENTS_TABLE);
       mockDB.createTable(HRMS_ORGANIZATION_CHART_TABLE);
+      mockDB.createTable(HRMS_PAYROLL_TABLE);
       
       console.log('Mock database tables initialized (including HRMS tables)');
       return;
@@ -145,5 +149,6 @@ module.exports = {
   HRMS_GRIEVANCES_TABLE,
   HRMS_GRIEVANCE_COMMENTS_TABLE,
   HRMS_ORGANIZATION_CHART_TABLE,
+  HRMS_PAYROLL_TABLE,
   createTablesIfNotExist
 };

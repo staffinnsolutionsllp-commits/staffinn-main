@@ -77,13 +77,12 @@ export default function ClaimManagement() {
     try {
       if (editingCategory) {
         await apiService.updateClaimCategory(editingCategory.categoryId, categoryForm)
+        setEditingCategory(null)
       } else {
         await apiService.createClaimCategory(categoryForm)
       }
       loadCategories()
-      setShowCategoryModal(false)
       setCategoryForm({ name: '', description: '' })
-      setEditingCategory(null)
     } catch (error) {
       alert('Failed to save category')
     }
@@ -262,8 +261,9 @@ export default function ClaimManagement() {
                   onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
                   className="flex-1 px-3 py-2 border rounded-lg"
                 />
-                <button onClick={handleSaveCategory} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <button onClick={handleSaveCategory} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2">
                   <Plus size={18} />
+                  <span>{editingCategory ? 'Update' : 'Add'}</span>
                 </button>
               </div>
             </div>

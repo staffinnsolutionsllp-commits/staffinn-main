@@ -62,6 +62,20 @@ const fileFilter = (req, file, cb) => {
         }
         break;
 
+      case 'images':
+        // Allow only image files for hero images
+        if (file.mimetype.startsWith('image/')) {
+          const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+          if (allowedImageTypes.includes(file.mimetype)) {
+            cb(null, true);
+          } else {
+            cb(new Error('Hero images must be JPEG, PNG, GIF, or WebP format'), false);
+          }
+        } else {
+          cb(new Error('Hero images must be image files'), false);
+        }
+        break;
+
       default:
         cb(new Error('Invalid file field name'), false);
     }
@@ -77,7 +91,7 @@ const uploadConfig = multer({
   storage: storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
-    files: 5, // Maximum 5 files per request
+    files: 10, // Maximum 10 files per request (increased for hero images)
     fields: 50, // Maximum 50 form fields (increased)
     fieldSize: 2 * 1024 * 1024 // 2MB per field
   },

@@ -1,0 +1,390 @@
+.student-enrollment-modal {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.student-enrollment-modal .modal-header {
+  padding: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.student-enrollment-modal .modal-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.student-enrollment-modal .close-button {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.student-enrollment-modal .close-button:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.student-enrollment-modal .modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.student-enrollment-modal .course-info-section {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.student-enrollment-modal .course-info-section h3 {
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.student-enrollment-modal .course-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.student-enrollment-modal .detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.student-enrollment-modal .detail-item .label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.student-enrollment-modal .detail-item .value {
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.student-enrollment-modal .search-section {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.student-enrollment-modal .search-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.student-enrollment-modal .search-input:focus {
+  border-color: #4863f7;
+  box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+}
+
+.student-enrollment-modal .select-all-button {
+  padding: 12px 24px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.student-enrollment-modal .select-all-button:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.student-enrollment-modal .select-all-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.student-enrollment-modal .error-message {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.student-enrollment-modal .success-message {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.student-enrollment-modal .students-list-section {
+  margin-bottom: 24px;
+}
+
+.student-enrollment-modal .section-header h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.student-enrollment-modal .loading-state,
+.student-enrollment-modal .empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.student-enrollment-modal .empty-state small {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.student-enrollment-modal .students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.student-enrollment-modal .student-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.student-enrollment-modal .student-card:hover {
+  border-color: #4863f7;
+  box-shadow: 0 2px 8px rgba(72, 99, 247, 0.1);
+}
+
+.student-enrollment-modal .student-card.selected {
+  border-color: #4863f7;
+  background: #eff6ff;
+}
+
+.student-enrollment-modal .student-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.student-enrollment-modal .student-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.student-enrollment-modal .student-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.student-enrollment-modal .avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.student-enrollment-modal .student-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-enrollment-modal .student-info h5 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-enrollment-modal .student-email,
+.student-enrollment-modal .student-phone {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-enrollment-modal .enrollment-summary {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.student-enrollment-modal .summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.student-enrollment-modal .summary-row.total {
+  border-top: 2px solid #e5e7eb;
+  margin-top: 8px;
+  padding-top: 16px;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.student-enrollment-modal .summary-row strong {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.student-enrollment-modal .modal-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.student-enrollment-modal .cancel-button,
+.student-enrollment-modal .enroll-button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.student-enrollment-modal .cancel-button {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.student-enrollment-modal .cancel-button:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.student-enrollment-modal .enroll-button {
+  background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+  color: white;
+}
+
+.student-enrollment-modal .enroll-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 99, 247, 0.3);
+}
+
+.student-enrollment-modal .enroll-button:disabled,
+.student-enrollment-modal .cancel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollbar Styles */
+.student-enrollment-modal .students-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.student-enrollment-modal .students-grid::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.student-enrollment-modal .students-grid::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.student-enrollment-modal .students-grid::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .student-enrollment-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .student-enrollment-modal .modal-header {
+    padding: 16px;
+  }
+
+  .student-enrollment-modal .modal-content {
+    padding: 16px;
+  }
+
+  .student-enrollment-modal .course-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-enrollment-modal .students-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-enrollment-modal .search-section {
+    flex-direction: column;
+  }
+
+  .student-enrollment-modal .select-all-button {
+    width: 100%;
+  }
+}

@@ -41,6 +41,10 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
     // Real staff data from backend
     const [staffMembers, setStaffMembers] = useState([]);
     const [filteredStaff, setFilteredStaff] = useState([]);
+    
+    // Hero images state
+    const [heroImages, setHeroImages] = useState([]);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
    const API_KEY = 'Rzk1SnVRU3NDTWpzb2ZiMERwU1RKTXRpT0R4Nmh0ZmhsZHlNM0pacw==';
     const sectors = getSectors();
@@ -115,7 +119,78 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
             }
         };
         fetchStates();
+        loadHeroImages();
+        
+        // Refresh hero images every 10 seconds
+        const heroImageInterval = setInterval(() => {
+            loadHeroImages();
+        }, 10000);
+        
+        return () => clearInterval(heroImageInterval);
     }, []);
+
+    // Load hero images from API
+    const loadHeroImages = async () => {
+        try {
+            const timestamp = new Date().getTime();
+            const response = await axios.get(
+                `${import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1'}/hero-images/staff/public?t=${timestamp}`,
+                {
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                }
+            );
+            
+            if (response.data.success && response.data.data.images && response.data.data.images.length > 0) {
+                console.log('Staff hero images loaded:', response.data.data.images.length);
+                setHeroImages(response.data.data.images);
+                setCurrentImageIndex(0);
+            } else {
+                console.log('No staff hero images found, using default');
+                setHeroImages([]);
+                setCurrentImageIndex(0);
+            }
+        } catch (error) {
+            console.error('Error loading staff hero images:', error);
+            setHeroImages([]);
+            setCurrentImageIndex(0);
+        }
+    };
+
+    // Slideshow effect for multiple images
+    useEffect(() => {
+        if (heroImages.length > 1) {
+            console.log('Starting staff slideshow with', heroImages.length, 'images');
+            const interval = setInterval(() => {
+                setCurrentImageIndex((prevIndex) => {
+                    const nextIndex = prevIndex === heroImages.length - 1 ? 0 : prevIndex + 1;
+                    console.log('Staff slideshow: changing from', prevIndex, 'to', nextIndex);
+                    return nextIndex;
+                });
+            }, 5000);
+            
+            return () => {
+                console.log('Stopping staff slideshow');
+                clearInterval(interval);
+            };
+        } else {
+            console.log('Single or no staff image, no slideshow needed');
+            setCurrentImageIndex(0);
+        }
+    }, [heroImages]);
+
+    // Get current hero image
+    const getCurrentHeroImage = () => {
+        if (heroImages.length > 0) {
+            const currentImage = heroImages[currentImageIndex];
+            console.log('Current staff hero image:', currentImageIndex, 'of', heroImages.length, ':', currentImage?.url);
+            return currentImage?.url || StaffpageImage;
+        }
+        console.log('Using default staff image');
+        return StaffpageImage;
+    };
 
     // Fetch cities when state is selected
     useEffect(() => {
@@ -585,12 +660,61 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
     return (
         <div className="staff-page">
             {/* Hero Section with Search */}
-            <section className="staff-hero-section" style={{backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${StaffpageImage})`}}>
-                <div className="hero-content">
-                    <h1>Find Skilled Staff</h1>
-                    <p>Connect with qualified professionals for your needs</p>
-                </div>
-                <div className="search-container">
+            <section className="staff-hero-section" style={{ backgroundImage: `url(${getCurrentHeroImage()})` }}>
+                    {heroImages.length > 1 && (
+                        <div className="slideshow-indicators">
+                            {heroImages.map((_, index) => (
+                                <span 
+                                    key={index} 
+                                    className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
+                                    onClick={() => setCurrentImageIndex(index)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                    <div className="hero-content" style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        width: '100%',
+                        marginBottom: '40px'
+                    }}>
+                        <h1 style={{
+                            fontSize: '2.5rem',
+                            fontWeight: '700',
+                            marginBottom: '15px',
+                            color: 'white',
+                            textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+                            textAlign: 'center',
+                            width: '100%'
+                        }}>Find Skilled Staff</h1>
+                        <p style={{
+                            fontSize: '1.2rem',
+                            maxWidth: '600px',
+                            margin: '0 auto',
+                            opacity: '0.95',
+                            textAlign: 'center',
+                            lineHeight: '1.4',
+                            width: '100%'
+                        }}>Connect with qualified professionals for your needs</p>
+                    </div>
+                    <div className="search-container" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '24px 32px',
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '20px',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                        backdropFilter: 'blur(8px)',
+                        width: '100%',
+                        maxWidth: '1000px',
+                        margin: '0 auto',
+                        flexWrap: 'nowrap',
+                        justifyContent: 'center'
+                    }}>
                     <select value={selectedState} onChange={(e) => setSelectedState(e.target.value)}>
                         <option value="">Select State</option>
                         {states.map((state) => (
@@ -628,7 +752,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                     />
 
                     <button className="search-btn" onClick={handleSearch}>Search</button>
-                </div>
+                    </div>
             </section>
 
             {/* Advanced Filters Section */}

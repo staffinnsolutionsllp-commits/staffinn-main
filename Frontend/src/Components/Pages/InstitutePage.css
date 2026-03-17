@@ -271,15 +271,165 @@ button {
 
 /* Institute Search Section (Hero) */
 .institute-search-section {
-  background-size: cover;
-  background-position: center;
+  position: relative;
   padding: 120px 60px;
   border-radius: 10px;
   text-align: center;
-  position: relative;
   color: white;
   margin-bottom: 40px;
   min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hero Image Slideshow Styles */
+.institute-search-section .hero-image,
+.institute-hero-section .hero-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.institute-search-section .hero-image.active,
+.institute-hero-section .hero-image.active {
+  opacity: 1;
+}
+
+/* Hero Content Overlay */
+.institute-search-section .hero-content-overlay,
+.institute-hero-section .hero-content-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.institute-search-section .hero-content,
+.institute-hero-section .hero-content {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.institute-search-section .hero-content h1,
+.institute-hero-section .hero-content h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  margin-bottom: 0;
+}
+
+/* Search Container */
+.institute-search-section .search-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 32px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  z-index: 15;
+}
+
+.institute-search-section .search-input {
+  flex: 1;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(72, 99, 247, 0.2);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+  background: white;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.institute-search-section .search-input:focus {
+  border-color: #4863f7;
+  box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+}
+
+.institute-search-section .search-btn {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.institute-search-section .search-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(72, 99, 247, 0.4);
+}
+
+/* Slideshow Indicators */
+.institute-search-section .slideshow-indicators,
+.institute-hero-section .slideshow-indicators {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.institute-search-section .indicator,
+.institute-hero-section .indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.institute-search-section .indicator.active,
+.institute-hero-section .indicator.active {
+  background: white;
+  width: 24px;
+  border-radius: 5px;
+}
+
+/* Institute Hero Section (Individual Page) */
+.institute-hero-section {
+  position: relative;
+  padding: 120px 60px;
+  border-radius: 10px;
+  text-align: center;
+  color: white;
+  margin-bottom: 40px;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Header Section */
@@ -3615,4 +3765,28 @@ button {
     padding-bottom: 10px;
     border-bottom: 2px solid #007bff;
     display: inline-block;
+}
+
+
+.course-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
+
+.enroll-students-button {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.enroll-students-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }

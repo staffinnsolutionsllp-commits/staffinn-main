@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hero Images API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #333;
+            border-bottom: 2px solid #4863f7;
+            padding-bottom: 10px;
+        }
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .image-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .image-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .image-info {
+            padding: 10px;
+            font-size: 12px;
+            background: #f9f9f9;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        button {
+            background: #4863f7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #3651d4;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🖼️ Hero Images API Test</h1>
+    
+    <div class="section">
+        <h2>API Configuration</h2>
+        <p><strong>API URL:</strong> <span id="apiUrl">http://localhost:4001/api/v1</span></p>
+        <button onclick="testAllSections()">🔄 Test All Sections</button>
+        <button onclick="clearCache()">🗑️ Clear Cache & Reload</button>
+    </div>
+
+    <div id="homeSection" class="section">
+        <h2>Home Section</h2>
+        <div id="homeStatus" class="status loading">Loading...</div>
+        <div id="homeImages" class="image-grid"></div>
+        <details>
+            <summary>Raw API Response</summary>
+            <pre id="homeRaw"></pre>
+        </details>
+    </div>
+
+    <div id="staffSection" class="section">
+        <h2>Staff Section</h2>
+        <div id="staffStatus" class="status loading">Loading...</div>
+        <div id="staffImages" class="image-grid"></div>
+        <details>
+            <summary>Raw API Response</summary>
+            <pre id="staffRaw"></pre>
+        </details>
+    </div>
+
+    <div id="instituteSection" class="section">
+        <h2>Institute Section</h2>
+        <div id="instituteStatus" class="status loading">Loading...</div>
+        <div id="instituteImages" class="image-grid"></div>
+        <details>
+            <summary>Raw API Response</summary>
+            <pre id="instituteRaw"></pre>
+        </details>
+    </div>
+
+    <div id="recruiterSection" class="section">
+        <h2>Recruiter Section</h2>
+        <div id="recruiterStatus" class="status loading">Loading...</div>
+        <div id="recruiterImages" class="image-grid"></div>
+        <details>
+            <summary>Raw API Response</summary>
+            <pre id="recruiterRaw"></pre>
+        </details>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:4001/api/v1';
+        
+        async function testSection(section) {
+            const statusEl = document.getElementById(`${section}Status`);
+            const imagesEl = document.getElementById(`${section}Images`);
+            const rawEl = document.getElementById(`${section}Raw`);
+            
+            try {
+                statusEl.className = 'status loading';
+                statusEl.textContent = `Loading ${section} images...`;
+                
+                const timestamp = new Date().getTime();
+                const random = Math.random().toString(36).substring(7);
+                const url = `${API_BASE_URL}/hero-images/${section}?t=${timestamp}&r=${random}`;
+                
+                console.log(`Fetching: ${url}`);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    },
+                    cache: 'no-store'
+                });
+                
+                const data = await response.json();
+                rawEl.textContent = JSON.stringify(data, null, 2);
+                
+                if (data.success && data.data && data.data.images) {
+                    const images = data.data.images;
+                    
+                    if (images.length > 0) {
+                        statusEl.className = 'status success';
+                        statusEl.textContent = `✅ Found ${images.length} image(s) for ${section}`;
+                        
+                        imagesEl.innerHTML = images.map((img, index) => `
+                            <div class="image-card">
+                                <img src="${img.url}" alt="${section} image ${index + 1}" 
+                                     onerror="this.src='https://via.placeholder.com/200x150?text=Failed+to+Load'">
+                                <div class="image-info">
+                                    <strong>Image ${index + 1}</strong><br>
+                                    Size: ${(img.size / 1024).toFixed(2)} KB<br>
+                                    Type: ${img.mimeType || 'N/A'}
+                                </div>
+                            </div>
+                        `).join('');
+                    } else {
+                        statusEl.className = 'status error';
+                        statusEl.textContent = `❌ No images found for ${section}`;
+                        imagesEl.innerHTML = '<p>No images uploaded yet.</p>';
+                    }
+                } else {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = `❌ API Error: ${data.message || 'Unknown error'}`;
+                    imagesEl.innerHTML = '<p>Failed to load images.</p>';
+                }
+            } catch (error) {
+                console.error(`Error testing ${section}:`, error);
+                statusEl.className = 'status error';
+                statusEl.textContent = `❌ Error: ${error.message}`;
+                rawEl.textContent = error.stack;
+                imagesEl.innerHTML = '<p>Error loading images.</p>';
+            }
+        }
+        
+        async function testAllSections() {
+            const sections = ['home', 'staff', 'institute', 'recruiter'];
+            for (const section of sections) {
+                await testSection(section);
+            }
+        }
+        
+        function clearCache() {
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => {
+                        caches.delete(name);
+                    });
+                });
+            }
+            localStorage.clear();
+            sessionStorage.clear();
+            location.reload(true);
+        }
+        
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            testAllSections();
+        });
+    </script>
+</body>
+</html>

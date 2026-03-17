@@ -77,25 +77,39 @@ const misStudentModel = {
   },
 
   delete: async (studentsId) => {
-    await dynamoDB.delete({
+    // Soft delete - mark as deleted instead of removing
+    const updateData = {
+      isDeleted: true,
+      deletedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const params = {
       TableName: TABLE_NAME,
-      Key: { studentsId }
-    }).promise();
-    return { studentsId };
+      Key: { studentsId },
+      UpdateExpression: 'SET isDeleted = :isDeleted, deletedAt = :deletedAt, updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':isDeleted': true,
+        ':deletedAt': updateData.deletedAt,
+        ':updatedAt': updateData.updatedAt
+      },
+      ReturnValues: 'ALL_NEW'
+    };
+
+    const result = await dynamoDB.update(params).promise();
+    return result.Attributes;
   },
 
   getStudentsByInstitute: async (instituteId) => {
     try {
-      // Get all students and filter manually since instituteId field might be missing
+      // Get all students and filter manually
       const result = await dynamoDB.scan({
         TableName: TABLE_NAME
       }).promise();
       
-      // Filter students that belong to this institute
-      // Since instituteId field is missing, we'll return empty array for now
-      // This ensures proper institute-wise filtering
+      // Filter students that belong to this institute and are not deleted
       const filteredStudents = (result.Items || []).filter(student => {
-        return student.instituteId === instituteId;
+        return student.instituteId === instituteId && !student.isDeleted;
       });
       
       return filteredStudents;

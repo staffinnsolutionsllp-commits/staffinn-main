@@ -503,17 +503,18 @@ const getLeaveBalances = async (req, res) => {
     let allEmployees;
     if (isUsingMockDB()) {
       const employees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
-      allEmployees = employees.filter(e => e.recruiterId === recruiterId);
+      allEmployees = employees.filter(e => e.recruiterId === recruiterId && (!e.isDeleted || e.isDeleted === false));
     } else {
       const scanCommand = new ScanCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: 'recruiterId = :recruiterId',
-        ExpressionAttributeValues: { ':recruiterId': recruiterId }
+        FilterExpression: 'recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
+        ExpressionAttributeValues: { ':recruiterId': recruiterId, ':false': false }
       });
       const result = await dynamoClient.send(scanCommand);
       allEmployees = result.Items || [];
     }
 
+    const employeeMap = new Map(allEmployees.map(e => [e.employeeId, e]));
     const employeeIds = new Set(allEmployees.map(e => e.employeeId));
 
     let balances;
@@ -529,6 +530,15 @@ const getLeaveBalances = async (req, res) => {
       const result = await dynamoClient.send(scanCommand);
       balances = (result.Items || []).filter(b => activeLeaveTypes.includes(b.leaveType) && employeeIds.has(b.employeeId));
     }
+
+    balances = balances.map(b => {
+      const employee = employeeMap.get(b.employeeId);
+      return {
+        ...b,
+        employeeName: employee ? (employee.fullName || employee.name) : b.employeeName || b.employeeId,
+        department: employee ? employee.department : b.department
+      };
+    });
 
     if (department) {
       balances = balances.filter(b => b.department === department);
@@ -829,38 +839,44 @@ const getLeaveSettings = async (req, res) => {
 
 const syncLeaveBalances = async (req, res) => {
   try {
-    // Get all active employees (not deleted)
+    const recruiterId = req.user?.recruiterId;
+    if (!recruiterId) {
+      return res.status(400).json(errorResponse('Recruiter ID not found'));
+    }
+
+    // Get all active employees (not deleted) for this recruiter
     let employees;
     if (isUsingMockDB()) {
-      employees = mockDB().scan(HRMS_EMPLOYEES_TABLE).filter(e => e.status === 'active');
+      employees = mockDB().scan(HRMS_EMPLOYEES_TABLE).filter(e => 
+        e.recruiterId === recruiterId && (!e.isDeleted || e.isDeleted === false)
+      );
     } else {
       const scanCommand = new ScanCommand({ 
         TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: '#status = :status',
-        ExpressionAttributeNames: { '#status': 'status' },
-        ExpressionAttributeValues: { ':status': 'active' }
+        FilterExpression: 'recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
+        ExpressionAttributeValues: { ':recruiterId': recruiterId, ':false': false }
       });
       const result = await dynamoClient.send(scanCommand);
       employees = result.Items || [];
     }
 
-    // Get all active leave rules
+    // Get all active leave rules for this recruiter
     let rules;
     if (isUsingMockDB()) {
       const allRules = mockDB().scan(HRMS_LEAVES_TABLE);
-      rules = allRules.filter(r => r.entityType === 'RULE' && r.status === 'Active');
+      rules = allRules.filter(r => r.entityType === 'RULE' && r.status === 'Active' && r.recruiterId === recruiterId);
     } else {
       const scanCommand = new ScanCommand({
         TableName: HRMS_LEAVES_TABLE,
-        FilterExpression: 'entityType = :type AND #status = :status',
+        FilterExpression: 'entityType = :type AND #status = :status AND recruiterId = :recruiterId',
         ExpressionAttributeNames: { '#status': 'status' },
-        ExpressionAttributeValues: { ':type': 'RULE', ':status': 'Active' }
+        ExpressionAttributeValues: { ':type': 'RULE', ':status': 'Active', ':recruiterId': recruiterId }
       });
       const result = await dynamoClient.send(scanCommand);
       rules = result.Items || [];
     }
 
-    // Get existing balances
+    // Get existing balances for this recruiter
     let existingBalances;
     if (isUsingMockDB()) {
       const allBalances = mockDB().scan(HRMS_LEAVES_TABLE);
@@ -875,7 +891,7 @@ const syncLeaveBalances = async (req, res) => {
       existingBalances = result.Items || [];
     }
 
-    // Clean up orphaned balances (balances for employees that no longer exist)
+    // Clean up orphaned balances (balances for employees that no longer exist or are deleted)
     const activeEmployeeIds = employees.map(e => e.employeeId);
     const orphanedBalances = existingBalances.filter(b => !activeEmployeeIds.includes(b.employeeId));
     
@@ -908,14 +924,14 @@ const syncLeaveBalances = async (req, res) => {
 
         if (!balanceExists) {
           // Calculate pro-rata leaves
-          const allocatedLeaves = calculateProRataLeaves(employee.joinDate, rule);
+          const allocatedLeaves = calculateProRataLeaves(employee.dateOfJoining || employee.joinDate, rule);
 
           const leaveId = generateId();
           const balance = {
             leaveId,
             entityType: 'BALANCE',
             employeeId: employee.employeeId,
-            employeeName: employee.name,
+            employeeName: employee.fullName || employee.name,
             department: employee.department,
             leaveType: rule.leaveName,
             totalAllocated: allocatedLeaves,

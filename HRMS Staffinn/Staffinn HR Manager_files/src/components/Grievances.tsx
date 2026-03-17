@@ -95,7 +95,7 @@ export default function Grievances() {
 
   const handleStatusUpdate = async (grievanceId: string, status: string) => {
     try {
-      const response = await apiService.updateGrievanceStatus(grievanceId, status)
+      const response = await apiService.updateGrievanceStatus(grievanceId, { status, priority: '', remark: '' })
       if (response.success) {
         await loadGrievances()
         if (selectedGrievance?.grievanceId === grievanceId) {

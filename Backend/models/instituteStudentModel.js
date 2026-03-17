@@ -45,13 +45,24 @@ const createStudent = async (instituteId, studentData) => {
 
 const getStudentsByInstitute = async (instituteId) => {
   try {
+    console.log('🔍 [MODEL] Querying students for instituteId:', instituteId);
+    
+    // TEMPORARY: Get ALL students to debug
+    const allStudents = await dynamoService.scanItems(INSTITUTE_STUDENTS_TABLE, {});
+    console.log('🔍 [MODEL] ALL students in database:', allStudents.length);
+    allStudents.forEach(s => {
+      console.log(`  - Student: ${s.fullName}, instituteId: ${s.instituteId}`);
+    });
+    
     const params = {
       FilterExpression: 'instituteId = :instituteId',
       ExpressionAttributeValues: {
         ':instituteId': instituteId
       }
     };
-    return await dynamoService.scanItems(INSTITUTE_STUDENTS_TABLE, params);
+    const filteredStudents = await dynamoService.scanItems(INSTITUTE_STUDENTS_TABLE, params);
+    console.log('🔍 [MODEL] Filtered students for this institute:', filteredStudents.length);
+    return filteredStudents;
   } catch (error) {
     console.error('Error getting students:', error);
     return [];

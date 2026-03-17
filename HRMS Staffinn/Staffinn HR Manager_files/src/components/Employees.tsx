@@ -17,7 +17,14 @@ export default function Employees() {
     email: '',
     position: '',
     department: '',
-    salary: 0
+    salary: 0,
+    basicSalary: 0,
+    salaryType: 'Monthly',
+    paymentCycle: 'Monthly',
+    allowances: [],
+    bonus: 0,
+    deductions: [],
+    overtimeRate: 0
   })
   const fileInputRef = useRef<HTMLInputElement>(null)
 

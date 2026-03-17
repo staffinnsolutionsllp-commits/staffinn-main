@@ -1769,6 +1769,22 @@ const apiService = {
     }
   },
 
+  // Hero Images API
+  getHeroImages: async (section) => {
+    try {
+      const response = await fetch(`${API_URL}/hero-images/${section}/public`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get hero images error:', error);
+      return { success: false, message: 'Failed to get hero images' };
+    }
+  },
+
   // Review API endpoints
   addReview: async (staffId, rating, feedback) => {
     try {
@@ -4788,6 +4804,186 @@ const apiService = {
     } catch (error) {
       console.error('Delete MIS request error:', error);
       return { success: false, message: 'Failed to delete MIS request' };
+    }
+  },
+
+  // Institute Course Enrollment API
+  enrollInstituteStudents: async (courseId, studentIds) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('📚 Enrolling institute students:', { courseId, studentIds });
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}/enroll-students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ studentIds })
+      });
+      
+      const result = await response.json();
+      console.log('✅ Enrollment response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Enroll institute students error:', error);
+      return { success: false, message: 'Failed to enroll students' };
+    }
+  },
+
+  getInstituteStudentEnrollmentCount: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}/institute-enrollment-count`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get institute student enrollment count error:', error);
+      return { success: false, message: 'Failed to get enrollment count' };
+    }
+  },
+
+  getEnrolledInstituteStudents: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institutes/courses/${courseId}/enrolled-students`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get enrolled institute students error:', error);
+      return { success: false, message: 'Failed to get enrolled students' };
+    }
+  },
+
+  // Institute Course Enrollment API (Staffinn Partner)
+  enrollStudentsInCourse: async (courseId, studentIds, paymentDetails) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('📚 Enrolling students in course:', { courseId, studentCount: studentIds.length });
+      const response = await fetch(`${API_URL}/institute-course-enrollment/courses/${courseId}/enroll-students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ studentIds, paymentDetails })
+      });
+      
+      const result = await response.json();
+      console.log('✅ Enrollment response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Enroll students in course error:', error);
+      return { success: false, message: 'Failed to enroll students' };
+    }
+  },
+
+  getEnrollmentHistory: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institute-course-enrollment/enrollment-history`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get enrollment history error:', error);
+      return { success: false, message: 'Failed to get enrollment history' };
+    }
+  },
+
+  getCourseEnrollmentTracking: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institute-course-enrollment/course-enrollment-tracking`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get course enrollment tracking error:', error);
+      return { success: false, message: 'Failed to get enrollment tracking' };
+    }
+  },
+
+  getEnrollmentDetails: async (enrollmentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institute-course-enrollment/enrollments/${enrollmentId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get enrollment details error:', error);
+      return { success: false, message: 'Failed to get enrollment details' };
+    }
+  },
+
+  getAvailableStudentsForEnrollment: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institute-course-enrollment/available-students`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get available students error:', error);
+      return { success: false, message: 'Failed to get available students' };
     }
   }
 

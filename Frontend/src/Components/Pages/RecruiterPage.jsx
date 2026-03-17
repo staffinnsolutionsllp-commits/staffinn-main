@@ -4,6 +4,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import './RecruiterPage.css';
 import './AppliedButton.css';
 import apiWithLoading from '../../services/apiWithLoading';
+import apiService from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import StudentApplicationModal from '../common/StudentApplicationModal';
 import JobCard from '../common/JobCard';
@@ -32,14 +33,37 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
   // Student selection modal state
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  
+  // Hero images state
+  const [heroImages, setHeroImages] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [heroImagesLoading, setHeroImagesLoading] = useState(true);
 
   // Load recruiters from backend on component mount
   useEffect(() => {
     loadRecruiters();
+    loadHeroImages();
     if (user) {
       loadUserProfile();
     }
   }, []);
+  
+  // Handle slideshow interval
+  useEffect(() => {
+    if (heroImages.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentImageIndex(prevIndex => {
+          if (prevIndex >= heroImages.length - 1) {
+            return 0;
+          } else {
+            return prevIndex + 1;
+          }
+        });
+      }, 5000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [heroImages]);
   
   // Filter recruiters based on search terms
   useEffect(() => {
@@ -335,6 +359,32 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
       console.error('Error loading recruiters:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load hero images for recruiter page
+  const loadHeroImages = async () => {
+    try {
+      setHeroImagesLoading(true);
+      console.log('🖼️ Loading hero images for recruiter section...');
+      
+      const response = await apiService.getHeroImages('recruiter');
+      console.log('🖼️ Hero images response:', response);
+      
+      if (response.success && response.data && response.data.images) {
+        const images = response.data.images;
+        console.log('🖼️ Setting hero images:', images.length, 'images');
+        setHeroImages(images);
+        setCurrentImageIndex(0);
+      } else {
+        console.log('🖼️ No hero images found, using default');
+        setHeroImages([]);
+      }
+    } catch (error) {
+      console.error('❌ Error loading hero images:', error);
+      setHeroImages([]);
+    } finally {
+      setHeroImagesLoading(false);
     }
   };
 
@@ -1065,16 +1115,70 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
   return (
     <div className="recruiter-page">
       {/* Hero Section with Background Image */}
-      <div className="recruiter-search-section" style={{backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(/recruiterbanner.jpg)`}}>
-        <h1 className="page-title">Find Your Recruiter</h1>
-        <div className="recruiter-search-container">
-          <div className="dual-search-inputs">
+      <div className="recruiter-search-section" style={{ 
+        backgroundImage: heroImages.length > 0 
+          ? `url(${heroImages[currentImageIndex]?.url})` 
+          : 'url(/recruiterbanner.jpg)', 
+        height: '500px',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        position: 'relative',
+        transition: 'background-image 1s ease-in-out'
+      }}>
+        <div className="hero-content" style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          width: '100%',
+          marginBottom: '40px'
+        }}>
+          <h1 className="page-title" style={{
+            fontSize: '3rem',
+            fontWeight: '700',
+            color: 'white',
+            marginBottom: '50px',
+            textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+            textAlign: 'center'
+          }}>Find Your Recruiter</h1>
+        </div>
+        <div className="recruiter-search-container" style={{
+          position: 'relative',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          background: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '20px',
+          padding: '20px 24px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          backdropFilter: 'blur(8px)'
+        }}>
+          <div className="dual-search-inputs" style={{
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
+            width: '100%'
+          }}>
             <input 
               type="text" 
               placeholder="Search by Recruiter Name..." 
               value={recruiterNameSearch}
               onChange={(e) => setRecruiterNameSearch(e.target.value)}
               className="search-input recruiter-name-search"
+              style={{
+                flex: '1',
+                height: '56px',
+                padding: '0 20px',
+                border: '1px solid rgba(72, 99, 247, 0.2)',
+                borderRadius: '8px',
+                fontSize: '16px',
+                color: '#333',
+                background: 'white',
+                outline: 'none',
+                transition: 'all 0.3s ease',
+                minWidth: '250px'
+              }}
             />
             <input 
               type="text" 
@@ -1082,13 +1186,74 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
               value={jobSearch}
               onChange={(e) => setJobSearch(e.target.value)}
               className="search-input job-search"
+              style={{
+                flex: '1',
+                height: '56px',
+                padding: '0 20px',
+                border: '1px solid rgba(72, 99, 247, 0.2)',
+                borderRadius: '8px',
+                fontSize: '16px',
+                color: '#333',
+                background: 'white',
+                outline: 'none',
+                transition: 'all 0.3s ease',
+                minWidth: '250px'
+              }}
             />
-            <button className="search-btn" onClick={() => {}}>
+            <button className="search-btn" onClick={() => {}} style={{
+              height: '56px',
+              padding: '0 32px',
+              borderRadius: '8px',
+              fontWeight: '600',
+              fontSize: '16px',
+              background: 'linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%)',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              whiteSpace: 'nowrap',
+              minWidth: '140px',
+              flexShrink: '0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              justifyContent: 'center'
+            }}>
               <FaSearch />
               Search
             </button>
           </div>
         </div>
+        
+        {/* Slideshow indicators */}
+        {heroImages.length > 1 && (
+          <div className="hero-slideshow-indicators" style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            gap: '8px',
+            zIndex: 10
+          }}>
+            {heroImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImageIndex(index)}
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  border: '2px solid white',
+                  backgroundColor: index === currentImageIndex ? 'white' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <section className="recruiters-list-section">

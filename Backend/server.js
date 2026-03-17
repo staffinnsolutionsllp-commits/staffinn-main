@@ -28,6 +28,8 @@ const recruiterRoutes = require('./routes/recruiterRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const instituteRoutes = require('./routes/instituteRoutes');
 const instituteManagementRoutes = require('./routes/instituteManagementRoutes');
+const instituteCourseEnrollmentRoutes = require('./routes/instituteCourseEnrollmentRoutes');
+const instituteStudentRoutes = require('./routes/instituteStudentRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 const hiringRoutes = require('./routes/hiringRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
@@ -58,6 +60,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const uploadReportRoutes = require('./routes/uploadReportRoutes');
 const uploadRoute = require('./routes/upload');
+const heroImageController = require('./controllers/heroImageController');
 
 // HRMS Routes
 const hrmsAuthRoutes = require('./routes/hrms/hrmsAuthRoutes');
@@ -72,8 +75,10 @@ const hrmsClaimRoutes = require('./routes/hrms/hrmsClaimRoutes');
 const hrmsTaskRoutes = require('./routes/hrms/hrmsTaskRoutes');
 const hrmsGrievanceManagementRoutes = require('./routes/hrms/hrmsGrievanceManagementRoutes');
 const hrmsSeparationRoutes = require('./routes/hrms/hrmsSeparationRoutes');
+const hrmsPayrollRoutes = require('./routes/hrms/hrmsPayrollRoutes');
 const biometricAuthRoutes = require('./routes/hrms/biometricAuthRoutes');
 const biometricWebhookRoutes = require('./routes/hrms/biometricWebhookRoutes');
+const employeePortalRoutes = require('./routes/hrms/employeePortalRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -98,14 +103,16 @@ const allowedOrigins = process.env.CORS_ORIGINS
       'http://localhost:5173',
       'http://localhost:5174', 
       'http://localhost:5175',
-      'http://localhost:5176'
+      'http://localhost:5176',
+      'http://localhost:5177'
     ];
 
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires'],
+  exposedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -137,6 +144,8 @@ app.use(`${API_PREFIX}/institute`, instituteRoutes);
 app.use(`${API_PREFIX}/institutes`, instituteRoutes); // Add plural route for frontend compatibility
 app.use(`${API_PREFIX}/progress`, progressRoutes); // Progress routes
 app.use(`${API_PREFIX}/institute-management`, instituteManagementRoutes);
+app.use(`${API_PREFIX}/institute-course-enrollment`, instituteCourseEnrollmentRoutes);
+app.use(`${API_PREFIX}/institute-students`, instituteStudentRoutes);
 app.use(`${API_PREFIX}/contact`, contactRoutes);
 app.use(`${API_PREFIX}/hiring`, hiringRoutes);
 app.use(`${API_PREFIX}/reviews`, reviewRoutes);
@@ -167,6 +176,9 @@ app.use(`${API_PREFIX}/upload`, uploadRoutes);
 app.use(`${API_PREFIX}/upload`, uploadReportRoutes);
 app.use('/api', uploadRoute);
 
+// Public hero images endpoint (no authentication required)
+app.get(`${API_PREFIX}/hero-images/:section/public`, heroImageController.getPublicHeroImages);
+
 // HRMS API routes
 app.use(`${API_PREFIX}/hrms/auth`, hrmsAuthRoutes);
 app.use(`${API_PREFIX}/hrms/employees`, hrmsEmployeeRoutes);
@@ -180,8 +192,10 @@ app.use(`${API_PREFIX}/hrms/claims`, hrmsClaimRoutes);
 app.use(`${API_PREFIX}/hrms/tasks`, hrmsTaskRoutes);
 app.use(`${API_PREFIX}/hrms/grievance-management`, hrmsGrievanceManagementRoutes);
 app.use(`${API_PREFIX}/hrms/separation`, hrmsSeparationRoutes);
+app.use(`${API_PREFIX}/hrms/payroll`, hrmsPayrollRoutes);
 app.use(`${API_PREFIX}/biometric/auth`, biometricAuthRoutes);
 app.use(`${API_PREFIX}/biometric`, biometricWebhookRoutes);
+app.use(`${API_PREFIX}/employee`, employeePortalRoutes);
 
 console.log('✅ HRMS routes registered successfully:');
 console.log('   - /api/v1/hrms/auth/*');
@@ -196,8 +210,10 @@ console.log('   - /api/v1/hrms/claims/* (Claim Management)');
 console.log('   - /api/v1/hrms/tasks/* (Task & Performance)');
 console.log('   - /api/v1/hrms/grievance-management/* (Grievance Management)');
 console.log('   - /api/v1/hrms/separation/* (Separation Management)');
+console.log('   - /api/v1/hrms/payroll/* (Payroll Management)');
 console.log('   - /api/v1/biometric/auth/* (Bridge Authentication)');
 console.log('   - /api/v1/biometric/* (Device Webhook)');
+console.log('   - /api/v1/employee/* (Employee Portal)');
 
 app.use('/debug', debugRoutes);
 
@@ -352,6 +368,15 @@ server.listen(PORT, async () => {
             console.log('🔄 Attendance sync scheduler started');
         } catch (syncError) {
             console.log('⚠️  Attendance sync scheduler failed to start:', syncError.message);
+        }
+        
+        // Start grievance escalation service
+        try {
+            const { startEscalationService } = require('./services/grievanceEscalationService');
+            startEscalationService();
+            console.log('✅ Grievance escalation service started');
+        } catch (escalationError) {
+            console.log('⚠️  Grievance escalation service failed to start:', escalationError.message);
         }
         
         // Run job migration from users table to jobs table

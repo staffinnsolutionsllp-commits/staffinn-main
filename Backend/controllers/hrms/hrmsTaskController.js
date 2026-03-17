@@ -9,19 +9,34 @@ const assignTask = async (req, res) => {
     const recruiterId = req.user?.recruiterId || req.user?.userId;
     if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
 
-    const { employeeIds, title, description, priority, startDate, deadline, category, attachments } = req.body;
+    console.log('=== ASSIGN TASK DEBUG ===');
+    console.log('Recruiter ID:', recruiterId);
+    console.log('Request body:', req.body);
 
-    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0 || !title || !deadline) {
+    const { employeeIds, employeeEmails, title, description, priority, startDate, deadline, category, attachments } = req.body;
+
+    const targetEmployees = [];
+    if (employeeIds && Array.isArray(employeeIds)) {
+      employeeIds.forEach(id => targetEmployees.push({ employeeId: id }));
+    }
+    if (employeeEmails && Array.isArray(employeeEmails)) {
+      employeeEmails.forEach(email => targetEmployees.push({ employeeEmail: email }));
+    }
+
+    console.log('Target employees:', targetEmployees);
+
+    if (targetEmployees.length === 0 || !title || !deadline) {
       return res.status(400).json(errorResponse('Missing required fields'));
     }
 
     const tasks = [];
-    for (const employeeId of employeeIds) {
+    for (const target of targetEmployees) {
       const taskId = generateId();
       const task = {
         taskId,
         recruiterId,
-        employeeId,
+        employeeId: target.employeeId || '',
+        employeeEmail: target.employeeEmail || '',
         title,
         description: description || '',
         priority: priority || 'Medium',
@@ -37,6 +52,8 @@ const assignTask = async (req, res) => {
         updatedAt: getCurrentTimestamp()
       };
 
+      console.log('Creating task:', { taskId, employeeId: task.employeeId, employeeEmail: task.employeeEmail, title: task.title });
+
       if (isUsingMockDB()) {
         mockDB().put(HRMS_TASK_TABLE, task);
       } else {
@@ -46,8 +63,10 @@ const assignTask = async (req, res) => {
       tasks.push(task);
     }
 
+    console.log(`✅ Successfully assigned ${tasks.length} task(s)`);
     res.status(201).json(successResponse(tasks, 'Task(s) assigned successfully'));
   } catch (error) {
+    console.error('❌ Assign task error:', error);
     handleError(error, res);
   }
 };

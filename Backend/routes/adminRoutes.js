@@ -457,4 +457,47 @@ router.get('/staffinn-partners/:instituteId/faculty', authenticateAdmin, adminCo
  */
 router.get('/staffinn-partners/:instituteId/students', authenticateAdmin, adminController.getMisStudentsByInstitute);
 
+// Hero Images management routes
+const heroImageController = require('../controllers/heroImageController');
+const { uploadMultiple } = require('../middleware/upload');
+
+/**
+ * @route POST /api/admin/hero-images/:section/upload
+ * @desc Upload hero images for a specific section (home/staff)
+ * @access Private (Admin)
+ */
+router.post('/hero-images/:section/upload', 
+  authenticateAdmin, 
+  uploadMultiple('images', 10),
+  heroImageController.uploadHeroImages
+);
+
+/**
+ * @route GET /api/admin/hero-images/:section
+ * @desc Get all hero images for a specific section
+ * @access Private (Admin)
+ */
+router.get('/hero-images/:section', authenticateAdmin, heroImageController.getHeroImages);
+
+/**
+ * @route DELETE /api/admin/hero-images/:section/:imageId
+ * @desc Delete a specific hero image from a section
+ * @access Private (Admin)
+ */
+router.delete('/hero-images/:section/:imageId', authenticateAdmin, heroImageController.deleteHeroImage);
+
+/**
+ * @route PUT /api/admin/hero-images/:section/reorder
+ * @desc Reorder hero images in a section
+ * @access Private (Admin)
+ */
+router.put('/hero-images/:section/reorder', authenticateAdmin, heroImageController.reorderHeroImages);
+
+/**
+ * @route DELETE /api/admin/hero-images/:section
+ * @desc Delete all hero images from a section
+ * @access Private (Admin)
+ */
+router.delete('/hero-images/:section', authenticateAdmin, heroImageController.deleteAllHeroImages);
+
 module.exports = router;

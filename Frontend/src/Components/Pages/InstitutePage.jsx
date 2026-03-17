@@ -5,7 +5,8 @@ import apiService from '../../services/api';
 import './InstitutePage.css';
 import '../Dashboard/Categories.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaSearch, FaGraduationCap, FaBriefcase, FaHandshake, FaChalkboardTeacher, FaCalendarAlt, FaUsers, FaCheckCircle } from 'react-icons/fa';
-import InstitutepageImage from '../../assets/Institutepage.jpg';
+import axios from 'axios';
+import StudentEnrollmentModal from '../Modals/StudentEnrollmentModal';
 
 const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   const { id } = useParams(); // Get the institute ID from URL params
@@ -46,6 +47,9 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [showEnrollmentSuccess, setShowEnrollmentSuccess] = useState(false);
   const [governmentSchemes, setGovernmentSchemes] = useState([]);
+  const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
+  const [selectedCourseForEnrollment, setSelectedCourseForEnrollment] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
 
 
 
@@ -87,6 +91,23 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
     { id: 3, name: 'Kiran Bedi', role: 'Alumni', rating: 4.8, comment: 'The skills I learned here are still relevant in my career 5 years later' },
   ]);
 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const response = await apiService.getProfile();
+        if (response.success) {
+          setUserProfile(response.data);
+        }
+      }
+    };
+    fetchUserProfile();
+  }, []);
+  
+  const isStaffinnPartner = () => {
+    return userProfile?.role === 'institute' && userProfile?.instituteType === 'staffinn_partner';
+  };
+  
   // Fetch institute data based on ID
   useEffect(() => {
     if (id) {
@@ -488,44 +509,7 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
 
   return (
     <div className="institute-page">
-      {/* Only show Hero Section and Filters when no specific institute ID is present */}
-      {!id && (
-        <>
-          {/* Hero Section */}
-          <section className="institute-search-section" style={{backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${InstitutepageImage})`}}>
-            <div className="hero-content">
-              <h1>Find Your Institute</h1>
-            </div>
-            <div className="search-container">
-              <input 
-                type="text" 
-                placeholder="Search by name or location..." 
-                className="search-input"
-              />
-              <FaSearch className="search-icon" />
-            </div>
-          </section>
 
-          {/* Filters Section */}
-          <section className="filters-section">
-            <h3>Filters</h3>
-            <div className="filter-options">
-              <label className="filter-option">
-                <input type="radio" name="filter" value="all" defaultChecked />
-                <span>All Institutes</span>
-              </label>
-              <label className="filter-option">
-                <input type="radio" name="filter" value="brainary" />
-                <span>Brainary Verified Institutes</span>
-              </label>
-              <label className="filter-option">
-                <input type="radio" name="filter" value="trending" />
-                <span>Trending Achievers</span>
-              </label>
-            </div>
-          </section>
-        </>
-      )}
 
       {/* Header Section */}
       <header className="institute-header">
@@ -826,20 +810,36 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                               </div>
                             </div>
                           )}
-                          <button 
-                            className="view-details-button"
-                            onClick={() => {
-                              // Check authentication first
-                              if (!isLoggedIn) {
-                                onShowLogin();
-                                return;
-                              }
-                              // Navigate to course details page instead of opening modal
-                              navigate(`/course/${courseId}?preview=true&institute=${id}`);
-                            }}
-                          >
-                            View Details
-                          </button>
+                          <div className="course-action-buttons">
+                            <button 
+                              className="view-details-button"
+                              onClick={() => {
+                                if (!isLoggedIn) {
+                                  onShowLogin();
+                                  return;
+                                }
+                                navigate(`/course/${courseId}?preview=true&institute=${id}`);
+                              }}
+                            >
+                              View Details
+                            </button>
+                            {isStaffinnPartner() && course.mode === 'On Campus' && (
+                              <button 
+                                className="enroll-students-button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isLoggedIn) {
+                                    onShowLogin();
+                                    return;
+                                  }
+                                  setSelectedCourseForEnrollment(course);
+                                  setShowEnrollmentModal(true);
+                                }}
+                              >
+                                Enroll Students
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -1763,6 +1763,19 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Student Enrollment Modal */}
+      {showEnrollmentModal && selectedCourseForEnrollment && (
+        <StudentEnrollmentModal
+          isOpen={showEnrollmentModal}
+          onClose={() => {
+            setShowEnrollmentModal(false);
+            setSelectedCourseForEnrollment(null);
+          }}
+          course={selectedCourseForEnrollment}
+          instituteId={id}
+        />
       )}
 
       {/* Assignment Modal */}

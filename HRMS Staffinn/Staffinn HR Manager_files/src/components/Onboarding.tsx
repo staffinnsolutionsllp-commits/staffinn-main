@@ -24,6 +24,7 @@ export default function Onboarding() {
   const [showForm, setShowForm] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [viewingEmployee, setViewingEmployee] = useState<any | null>(null)
+  const [showCredentials, setShowCredentials] = useState<{email: string, password: string} | null>(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [error, setError] = useState('')
 
@@ -84,13 +85,33 @@ export default function Onboarding() {
     // Compensation
     annualCTC: '',
     basicPay: '',
+    basicSalary: '',
+    salaryType: 'Monthly',
+    paymentCycle: 'Monthly',
     hra: '',
     pfApplicable: 'Yes',
+    bonus: '',
+    overtimeRate: '',
     
     // System Access
     hrmsAccess: 'Yes',
-    roleBasedAccess: 'Employee'
+    roleBasedAccess: 'Employee',
+    
+    // Documents
+    aadhaarCardUrl: '',
+    panCardUrl: '',
+    educationCertificateUrl: '',
+    experienceLetterUrl: '',
+    relievingLetterUrl: '',
+    passportPhotoUrl: '',
+    bankStatementUrl: '',
+    otherDocumentUrl: ''
   })
+
+  const [allowances, setAllowances] = useState<Array<{name: string, amount: string, type: string, taxable: string, carryForward: string}>>([])
+  const [deductions, setDeductions] = useState<Array<{name: string, amount: string, type: string}>>([])
+  const [documentFiles, setDocumentFiles] = useState<{[key: string]: File | null}>({})
+  const [uploadingDocs, setUploadingDocs] = useState(false)
 
   useEffect(() => {
     loadEmployees()
@@ -182,18 +203,73 @@ export default function Onboarding() {
           isPeopleManager: fullData.isPeopleManager || 'No',
           teamName: fullData.teamName || '',
           annualCTC: fullData.annualCTC?.toString() || fullData.salary?.toString() || '',
-          basicPay: fullData.basicPay?.toString() || '',
+          basicPay: fullData.basicPay?.toString() || fullData.basicSalary?.toString() || '',
+          basicSalary: fullData.basicSalary?.toString() || fullData.basicPay?.toString() || '',
+          salaryType: fullData.salaryType || 'Monthly',
+          paymentCycle: fullData.paymentCycle || 'Monthly',
           hra: fullData.hra?.toString() || '',
           pfApplicable: fullData.pfApplicable || 'Yes',
+          bonus: fullData.bonus?.toString() || '',
+          overtimeRate: fullData.overtimeRate?.toString() || '',
           hrmsAccess: fullData.hrmsAccess || 'Yes',
           roleBasedAccess: fullData.roleBasedAccess || 'Employee'
         })
+        
+        // Load allowances
+        if (fullData.allowances && Array.isArray(fullData.allowances)) {
+          setAllowances(fullData.allowances.map((a: any) => ({
+            name: a.name || '',
+            amount: a.amount?.toString() || '',
+            type: a.type || 'Fixed',
+            taxable: a.taxable ? 'Yes' : 'No',
+            carryForward: a.carryForward ? 'Yes' : 'No'
+          })))
+        } else {
+          setAllowances([])
+        }
+        
+        // Load deductions
+        if (fullData.deductions && Array.isArray(fullData.deductions)) {
+          setDeductions(fullData.deductions.map((d: any) => ({
+            name: d.name || '',
+            amount: d.amount?.toString() || '',
+            type: d.type || 'Fixed'
+          })))
+        } else {
+          setDeductions([])
+        }
+        
+        // Load document URLs
+        setFormData(prev => ({
+          ...prev,
+          aadhaarCardUrl: fullData.aadhaarCardUrl || '',
+          panCardUrl: fullData.panCardUrl || '',
+          educationCertificateUrl: fullData.educationCertificateUrl || '',
+          experienceLetterUrl: fullData.experienceLetterUrl || '',
+          relievingLetterUrl: fullData.relievingLetterUrl || '',
+          passportPhotoUrl: fullData.passportPhotoUrl || '',
+          bankStatementUrl: fullData.bankStatementUrl || '',
+          otherDocumentUrl: fullData.otherDocumentUrl || ''
+        }))
+        
         setProfilePicturePreview(fullData.profilePictureUrl || '')
         setShowForm(true)
       }
     } catch (error) {
       console.error('Error loading employee data:', error)
       alert('Failed to load employee data')
+    }
+  }
+
+  const handleViewCredentials = async (employeeId: string) => {
+    try {
+      const response = await apiService.getEmployeeCredentials(employeeId)
+      if (response.success) {
+        setShowCredentials(response.data)
+      }
+    } catch (error) {
+      console.error('Error fetching credentials:', error)
+      alert('Failed to fetch credentials')
     }
   }
 
@@ -226,6 +302,10 @@ export default function Onboarding() {
     }
   }
 
+  const handleDocumentChange = (docType: string, file: File | null) => {
+    setDocumentFiles(prev => ({ ...prev, [docType]: file }))
+  }
+
   const handleSubmit = async () => {
     setError('')
     setUploading(true)
@@ -236,7 +316,7 @@ export default function Onboarding() {
       if (profilePicture) {
         const uploadFormData = new FormData()
         uploadFormData.append('file', profilePicture)
-        uploadFormData.append('folder', 'employee-profiles')
+        uploadFormData.append('folder', `hrms/${user?.userId}/employees/${formData.employeeId}/profile`)
         
         const uploadResponse = await fetch('http://localhost:4001/api/upload', {
           method: 'POST',
@@ -246,11 +326,33 @@ export default function Onboarding() {
         if (uploadResponse.ok) {
           const uploadData = await uploadResponse.json()
           profilePictureUrl = uploadData.url
-          console.log('Profile picture uploaded:', profilePictureUrl)
-        } else {
-          console.error('Upload failed:', await uploadResponse.text())
         }
       }
+
+      // Upload documents
+      setUploadingDocs(true)
+      const documentUrls: any = {}
+      const docTypes = ['aadhaarCard', 'panCard', 'educationCertificate', 'experienceLetter', 'relievingLetter', 'passportPhoto', 'bankStatement', 'otherDocument']
+      
+      for (const docType of docTypes) {
+        const file = documentFiles[docType]
+        if (file) {
+          const uploadFormData = new FormData()
+          uploadFormData.append('file', file)
+          uploadFormData.append('folder', `hrms/${user?.userId}/employees/${formData.employeeId}/documents`)
+          
+          const uploadResponse = await fetch('http://localhost:4001/api/upload', {
+            method: 'POST',
+            body: uploadFormData
+          })
+          
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json()
+            documentUrls[`${docType}Url`] = uploadData.url
+          }
+        }
+      }
+      setUploadingDocs(false)
 
       const employeeData = {
         employeeId: formData.employeeId,
@@ -264,6 +366,24 @@ export default function Onboarding() {
         department: formData.department,
         salary: parseFloat(formData.annualCTC) || 0,
         annualCTC: formData.annualCTC,
+        basicSalary: parseFloat(formData.basicSalary) || 0,
+        basicPay: formData.basicSalary,
+        salaryType: formData.salaryType,
+        paymentCycle: formData.paymentCycle,
+        bonus: parseFloat(formData.bonus) || 0,
+        overtimeRate: parseFloat(formData.overtimeRate) || 0,
+        allowances: allowances.map(a => ({
+          name: a.name,
+          amount: parseFloat(a.amount) || 0,
+          type: a.type,
+          taxable: a.taxable === 'Yes',
+          carryForward: a.carryForward === 'Yes'
+        })),
+        deductions: deductions.map(d => ({
+          name: d.name,
+          amount: parseFloat(d.amount) || 0,
+          type: d.type
+        })),
         managerId: formData.reportingManagerId || null,
         reportingManagerId: formData.reportingManagerId || null,
         roleLevel: formData.roleLevel,
@@ -296,11 +416,11 @@ export default function Onboarding() {
         shiftTiming: formData.shiftTiming,
         checkInTime: formData.checkInTime,
         checkOutTime: formData.checkOutTime,
-        basicPay: formData.basicPay,
         hra: formData.hra,
         pfApplicable: formData.pfApplicable,
         hrmsAccess: formData.hrmsAccess,
-        roleBasedAccess: formData.roleBasedAccess
+        roleBasedAccess: formData.roleBasedAccess,
+        ...documentUrls
       }
 
       const response = editingEmployee
@@ -349,9 +469,12 @@ export default function Onboarding() {
           dateOfJoining: '', probationPeriod: '3', workLocation: '', shiftTiming: 'Fixed',
           checkInTime: '09:00', checkOutTime: '18:00',
           reportingManagerId: '', roleLevel: 'Manager', isPeopleManager: 'No',
-          teamName: '', annualCTC: '', basicPay: '', hra: '', pfApplicable: 'Yes',
+          teamName: '', annualCTC: '', basicPay: '', basicSalary: '', salaryType: 'Monthly',
+          paymentCycle: 'Monthly', hra: '', pfApplicable: 'Yes', bonus: '', overtimeRate: '',
           hrmsAccess: 'Yes', roleBasedAccess: 'Employee', profilePictureUrl: ''
         })
+        setAllowances([])
+        setDeductions([])
         setProfilePicture(null)
         setProfilePicturePreview('')
       } else {
@@ -514,8 +637,9 @@ export default function Onboarding() {
                 className="p-3 border rounded-lg">
                 <option value="Full-Time">Full-Time</option>
                 <option value="Part-Time">Part-Time</option>
-                <option value="Consultant">Consultant</option>
                 <option value="Intern">Intern</option>
+                <option value="Consultant">Consultant</option>
+                <option value="Contract">Contract</option>
               </select>
               <input type="text" placeholder="Department *" value={formData.department}
                 onChange={(e) => handleInputChange('department', e.target.value)}
@@ -616,23 +740,154 @@ export default function Onboarding() {
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
               <DollarSign size={18} />
-              Compensation & System Access
+              Compensation & Payroll Structure
             </h3>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-700">
+                💡 Define complete salary structure for automated payroll processing
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <input type="number" placeholder="Annual CTC *" value={formData.annualCTC}
                 onChange={(e) => handleInputChange('annualCTC', e.target.value)}
                 className="p-3 border rounded-lg" required />
-              <input type="number" placeholder="Basic Pay" value={formData.basicPay}
-                onChange={(e) => handleInputChange('basicPay', e.target.value)}
-                className="p-3 border rounded-lg" />
-              <input type="number" placeholder="HRA" value={formData.hra}
-                onChange={(e) => handleInputChange('hra', e.target.value)}
-                className="p-3 border rounded-lg" />
-              <select value={formData.pfApplicable} onChange={(e) => handleInputChange('pfApplicable', e.target.value)}
+              <input type="number" placeholder="Basic Salary (Monthly) *" value={formData.basicSalary}
+                onChange={(e) => handleInputChange('basicSalary', e.target.value)}
+                className="p-3 border rounded-lg" required />
+              <select value={formData.salaryType} onChange={(e) => handleInputChange('salaryType', e.target.value)}
                 className="p-3 border rounded-lg">
-                <option value="Yes">PF Applicable - Yes</option>
-                <option value="No">PF Applicable - No</option>
+                <option value="Monthly">Salary Type - Monthly</option>
+                <option value="Daily">Salary Type - Daily</option>
+                <option value="Hourly">Salary Type - Hourly</option>
               </select>
+              <select value={formData.paymentCycle} onChange={(e) => handleInputChange('paymentCycle', e.target.value)}
+                className="p-3 border rounded-lg">
+                <option value="Monthly">Payment Cycle - Monthly</option>
+              </select>
+              <input type="number" placeholder="Bonus (Monthly)" value={formData.bonus}
+                onChange={(e) => handleInputChange('bonus', e.target.value)}
+                className="p-3 border rounded-lg" />
+              <input type="number" placeholder="Overtime Rate (Per Hour)" value={formData.overtimeRate}
+                onChange={(e) => handleInputChange('overtimeRate', e.target.value)}
+                className="p-3 border rounded-lg" />
+            </div>
+
+            <div className="mt-6">
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="font-semibold text-gray-900">Allowances</h4>
+                <button
+                  type="button"
+                  onClick={() => setAllowances([...allowances, {name: '', amount: '', type: 'Fixed', taxable: 'Yes', carryForward: 'No'}])}
+                  className="flex items-center gap-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  <Plus size={14} /> Add Allowance
+                </button>
+              </div>
+              {allowances.map((allowance, idx) => (
+                <div key={idx} className="grid grid-cols-6 gap-2 mb-2 p-3 bg-gray-50 rounded">
+                  <input type="text" placeholder="Name" value={allowance.name}
+                    onChange={(e) => {
+                      const updated = [...allowances]
+                      updated[idx].name = e.target.value
+                      setAllowances(updated)
+                    }}
+                    className="p-2 border rounded text-sm" />
+                  <input type="number" placeholder="Amount" value={allowance.amount}
+                    onChange={(e) => {
+                      const updated = [...allowances]
+                      updated[idx].amount = e.target.value
+                      setAllowances(updated)
+                    }}
+                    className="p-2 border rounded text-sm" />
+                  <select value={allowance.type}
+                    onChange={(e) => {
+                      const updated = [...allowances]
+                      updated[idx].type = e.target.value
+                      setAllowances(updated)
+                    }}
+                    className="p-2 border rounded text-sm">
+                    <option value="Fixed">Fixed</option>
+                    <option value="Variable">Variable</option>
+                  </select>
+                  <select value={allowance.taxable}
+                    onChange={(e) => {
+                      const updated = [...allowances]
+                      updated[idx].taxable = e.target.value
+                      setAllowances(updated)
+                    }}
+                    className="p-2 border rounded text-sm">
+                    <option value="Yes">Taxable</option>
+                    <option value="No">Non-Taxable</option>
+                  </select>
+                  <select value={allowance.carryForward}
+                    onChange={(e) => {
+                      const updated = [...allowances]
+                      updated[idx].carryForward = e.target.value
+                      setAllowances(updated)
+                    }}
+                    className="p-2 border rounded text-sm">
+                    <option value="No">No Carry</option>
+                    <option value="Yes">Carry Forward</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setAllowances(allowances.filter((_, i) => i !== idx))}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6">
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="font-semibold text-gray-900">Deductions</h4>
+                <button
+                  type="button"
+                  onClick={() => setDeductions([...deductions, {name: '', amount: '', type: 'Fixed'}])}
+                  className="flex items-center gap-1 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  <Plus size={14} /> Add Deduction
+                </button>
+              </div>
+              {deductions.map((deduction, idx) => (
+                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 p-3 bg-gray-50 rounded">
+                  <input type="text" placeholder="Name (PF, ESI, Tax, etc.)" value={deduction.name}
+                    onChange={(e) => {
+                      const updated = [...deductions]
+                      updated[idx].name = e.target.value
+                      setDeductions(updated)
+                    }}
+                    className="p-2 border rounded text-sm" />
+                  <input type="number" placeholder="Amount" value={deduction.amount}
+                    onChange={(e) => {
+                      const updated = [...deductions]
+                      updated[idx].amount = e.target.value
+                      setDeductions(updated)
+                    }}
+                    className="p-2 border rounded text-sm" />
+                  <select value={deduction.type}
+                    onChange={(e) => {
+                      const updated = [...deductions]
+                      updated[idx].type = e.target.value
+                      setDeductions(updated)
+                    }}
+                    className="p-2 border rounded text-sm">
+                    <option value="Fixed">Fixed</option>
+                    <option value="Variable">Variable</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setDeductions(deductions.filter((_, i) => i !== idx))}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
 
             <h3 className="font-semibold text-gray-900 mt-6">System Access</h3>
@@ -652,6 +907,166 @@ export default function Onboarding() {
                 The Employee ID you enter will be used across all systems including biometric attendance.
               </p>
             </div>
+          </div>
+        )
+
+      case 5:
+        return (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <FileText size={18} />
+              Document Upload
+            </h3>
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-700">
+                📄 Upload employee documents for record keeping. All documents will be securely stored.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="border rounded-lg p-4">
+                <label className="block text-sm font-medium mb-2">Aadhaar Card *</label>
+                {formData.aadhaarCardUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
+                    <a href={formData.aadhaarCardUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
+                    <button type="button" onClick={() => handleInputChange('aadhaarCardUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+                  </div>
+                ) : null}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleDocumentChange('aadhaarCard', e.target.files?.[0] || null)}
+                  className="w-full p-2 border rounded mt-2"
+                />
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <label className="block text-sm font-medium mb-2">PAN Card *</label>
+                {formData.panCardUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
+                    <a href={formData.panCardUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
+                    <button type="button" onClick={() => handleInputChange('panCardUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+                  </div>
+                ) : null}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleDocumentChange('panCard', e.target.files?.[0] || null)}
+                  className="w-full p-2 border rounded mt-2"
+                />
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <label className="block text-sm font-medium mb-2">Education Certificate</label>
+                {formData.educationCertificateUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
+                    <a href={formData.educationCertificateUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
+                    <button type="button" onClick={() => handleInputChange('educationCertificateUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+                  </div>
+                ) : null}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleDocumentChange('educationCertificate', e.target.files?.[0] || null)}
+                  className="w-full p-2 border rounded mt-2"
+                />
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <label className="block text-sm font-medium mb-2">Experience Letter</label>
+                {formData.experienceLetterUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
+                    <a href={formData.experienceLetterUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
+                    <button type="button" onClick={() => handleInputChange('experienceLetterUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+                  </div>
+                ) : null}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleDocumentChange('experienceLetter', e.target.files?.[0] || null)}
+                  className="w-full p-2 border rounded mt-2"
+                />
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <label className="block text-sm font-medium mb-2">Relieving Letter</label>
+                {formData.relievingLetterUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
+                    <a href={formData.relievingLetterUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
+                    <button type="button" onClick={() => handleInputChange('relievingLetterUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+                  </div>
+                ) : null}
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={(e) => handleDocumentChange('relievingLetter', e.target.files?.[0] || null)}
+                  className="w-full p-2 border rounded mt-2"
+                />
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <label className="block text-sm font-medium mb-2">Passport Size Photo</label>
+                {formData.passportPhotoUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
+                    <a href={formData.passportPhotoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
+                    <button type="button" onClick={() => handleInputChange('passportPhotoUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+                  </div>
+                ) : null}
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png"
+                  onChange={(e) => handleDocumentChange('passportPhoto', e.target.files?.[0] || null)}
+                  className="w-full p-2 border rounded mt-2"
+                />
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <label className="block text-sm font-medium mb-2">Bank Statement / Cancelled Cheque</label>
+                {formData.bankStatementUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
+                    <a href={formData.bankStatementUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
+                    <button type="button" onClick={() => handleInputChange('bankStatementUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+                  </div>
+                ) : null}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleDocumentChange('bankStatement', e.target.files?.[0] || null)}
+                  className="w-full p-2 border rounded mt-2"
+                />
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <label className="block text-sm font-medium mb-2">Other Document (Optional)</label>
+                {formData.otherDocumentUrl ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
+                    <a href={formData.otherDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
+                    <button type="button" onClick={() => handleInputChange('otherDocumentUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+                  </div>
+                ) : null}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => handleDocumentChange('otherDocument', e.target.files?.[0] || null)}
+                  className="w-full p-2 border rounded mt-2"
+                />
+              </div>
+            </div>
+
+            {uploadingDocs && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-700">📤 Uploading documents... Please wait.</p>
+              </div>
+            )}
           </div>
         )
 
@@ -714,6 +1129,13 @@ export default function Onboarding() {
                   <td className="px-6 py-4 text-sm text-gray-900">{emp.department}</td>
                   <td className="px-6 py-4 flex space-x-2">
                     <button
+                      onClick={() => handleViewCredentials(emp.employeeId)}
+                      className="text-green-600 hover:text-green-800"
+                      title="View Portal Credentials"
+                    >
+                      <User size={18} />
+                    </button>
+                    <button
                       onClick={() => handleViewEmployee(emp)}
                       className="text-gray-600 hover:text-gray-800"
                       title="View Details"
@@ -759,13 +1181,13 @@ export default function Onboarding() {
               </div>
               
               <div className="flex items-center justify-between mt-4">
-                {[1, 2, 3, 4].map((step) => (
+                {[1, 2, 3, 4, 5].map((step) => (
                   <div key={step} className="flex items-center flex-1">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold
                       ${currentStep >= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
                       {step}
                     </div>
-                    {step < 4 && <div className={`flex-1 h-1 mx-2 ${currentStep > step ? 'bg-blue-600' : 'bg-gray-200'}`} />}
+                    {step < 5 && <div className={`flex-1 h-1 mx-2 ${currentStep > step ? 'bg-blue-600' : 'bg-gray-200'}`} />}
                   </div>
                 ))}
               </div>
@@ -798,7 +1220,7 @@ export default function Onboarding() {
                   {currentStep === 1 ? 'Cancel' : 'Previous'}
                 </button>
                 
-                {currentStep < 4 ? (
+                {currentStep < 5 ? (
                   <button
                     type="button"
                     onClick={() => setCurrentStep(currentStep + 1)}
@@ -862,6 +1284,155 @@ export default function Onboarding() {
                 <div><strong>Team Name:</strong> {viewingEmployee.teamName}</div>
                 <div><strong>Annual CTC:</strong> {viewingEmployee.salary || viewingEmployee.annualCTC}</div>
                 <div className="col-span-2"><strong>Address:</strong> {viewingEmployee.currentAddress}</div>
+              </div>
+
+              <div className="border-t pt-6 mt-6">
+                <h4 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <FileText size={18} />
+                  Uploaded Documents
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {viewingEmployee.aadhaarCardUrl && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Aadhaar Card</div>
+                      <a href={viewingEmployee.aadhaarCardUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                        <FileText size={14} /> View Document
+                      </a>
+                    </div>
+                  )}
+                  {viewingEmployee.panCardUrl && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-700 mb-1">PAN Card</div>
+                      <a href={viewingEmployee.panCardUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                        <FileText size={14} /> View Document
+                      </a>
+                    </div>
+                  )}
+                  {viewingEmployee.educationCertificateUrl && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Education Certificate</div>
+                      <a href={viewingEmployee.educationCertificateUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                        <FileText size={14} /> View Document
+                      </a>
+                    </div>
+                  )}
+                  {viewingEmployee.experienceLetterUrl && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Experience Letter</div>
+                      <a href={viewingEmployee.experienceLetterUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                        <FileText size={14} /> View Document
+                      </a>
+                    </div>
+                  )}
+                  {viewingEmployee.relievingLetterUrl && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Relieving Letter</div>
+                      <a href={viewingEmployee.relievingLetterUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                        <FileText size={14} /> View Document
+                      </a>
+                    </div>
+                  )}
+                  {viewingEmployee.passportPhotoUrl && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Passport Photo</div>
+                      <a href={viewingEmployee.passportPhotoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                        <FileText size={14} /> View Document
+                      </a>
+                    </div>
+                  )}
+                  {viewingEmployee.bankStatementUrl && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Bank Statement</div>
+                      <a href={viewingEmployee.bankStatementUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                        <FileText size={14} /> View Document
+                      </a>
+                    </div>
+                  )}
+                  {viewingEmployee.otherDocumentUrl && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Other Document</div>
+                      <a href={viewingEmployee.otherDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                        <FileText size={14} /> View Document
+                      </a>
+                    </div>
+                  )}
+                </div>
+                {!viewingEmployee.aadhaarCardUrl && !viewingEmployee.panCardUrl && !viewingEmployee.educationCertificateUrl && 
+                 !viewingEmployee.experienceLetterUrl && !viewingEmployee.relievingLetterUrl && !viewingEmployee.passportPhotoUrl && 
+                 !viewingEmployee.bankStatementUrl && !viewingEmployee.otherDocumentUrl && (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    No documents uploaded yet
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCredentials && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="bg-green-600 text-white p-6 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-semibold flex items-center gap-2">
+                  <User size={24} />
+                  Employee Portal Credentials
+                </h3>
+                <button onClick={() => setShowCredentials(null)} className="text-white hover:text-gray-200">
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-700 mb-3">
+                  🔐 Share these credentials with the employee to access the Employee Portal
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="border rounded-lg p-4 bg-gray-50">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email / Username</label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-mono font-semibold text-gray-900">{showCredentials.email}</span>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(showCredentials.email)}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4 bg-gray-50">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-mono font-semibold text-gray-900">{showCredentials.password}</span>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(showCredentials.password)}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+                <p className="text-sm text-yellow-700">
+                  ⚠️ <strong>Important:</strong> Employee will be required to change password on first login
+                </p>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowCredentials(null)}
+                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

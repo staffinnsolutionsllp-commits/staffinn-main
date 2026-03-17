@@ -24,6 +24,7 @@ const ISSUES_TABLE = process.env.DYNAMODB_ISSUES_TABLE || 'staffinn-issue-sectio
 const ADMIN_TABLE = process.env.ADMIN_TABLE || 'staffinn-admin';
 const MESSAGES_TABLE = process.env.MESSAGES_TABLE || 'Messages';
 const MIS_PLACEMENT_ANALYTICS_TABLE = process.env.MIS_PLACEMENT_ANALYTICS_TABLE || 'staffinn-mis-placement-analytics';
+const HERO_IMAGES_TABLE = 'Hero-images';
 
 // Define table schemas
 const usersTableSchema = {
@@ -215,6 +216,17 @@ const misPlacementAnalyticsTableSchema = {
   BillingMode: 'PAY_PER_REQUEST'
 };
 
+const heroImagesTableSchema = {
+  TableName: HERO_IMAGES_TABLE,
+  KeySchema: [
+    { AttributeName: 'heroimage', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'heroimage', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
 /**
  * Check if a table exists
  * @param {string} tableName - Table name to check
@@ -400,6 +412,17 @@ const createTablesIfNotExist = async () => {
     } else {
       console.log(`Table already exists: ${MIS_PLACEMENT_ANALYTICS_TABLE}`);
     }
+    
+    // Check if hero images table exists
+    const heroImagesExists = await tableExists(HERO_IMAGES_TABLE);
+    
+    if (!heroImagesExists) {
+      // Create hero images table
+      await dynamoClient.send(new CreateTableCommand(heroImagesTableSchema));
+      console.log(`Created table: ${HERO_IMAGES_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${HERO_IMAGES_TABLE}`);
+    }
   } catch (error) {
     // ResourceInUseException means table already exists
     if (error.name === 'ResourceInUseException') {
@@ -428,5 +451,6 @@ module.exports = {
   ADMIN_TABLE,
   MESSAGES_TABLE,
   MIS_PLACEMENT_ANALYTICS_TABLE,
+  HERO_IMAGES_TABLE,
   createTablesIfNotExist
 };

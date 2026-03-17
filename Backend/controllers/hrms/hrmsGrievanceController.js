@@ -13,7 +13,10 @@ const createGrievance = async (req, res) => {
     const grievanceId = generateId();
     const grievance = {
       grievanceId,
-      employeeId: req.user.userId,
+      recruiterId: req.user.recruiterId || req.user.companyId,
+      employeeId: req.user.userId || req.user.employeeId,
+      employeeEmail: req.user.email,
+      employeeName: req.user.name || '',
       title,
       description,
       category,
@@ -45,10 +48,16 @@ const createGrievance = async (req, res) => {
 const getAllGrievances = async (req, res) => {
   try {
     const { status, priority, employeeId } = req.query;
+    const recruiterId = req.user?.recruiterId || req.user?.userId;
     
     let grievances;
     if (isUsingMockDB()) {
       grievances = mockDB().scan(HRMS_GRIEVANCES_TABLE);
+      
+      // Filter by recruiterId for data isolation
+      if (recruiterId) {
+        grievances = grievances.filter(g => g.recruiterId === recruiterId);
+      }
       
       // Apply filters
       if (status) grievances = grievances.filter(g => g.status === status);
@@ -58,6 +67,11 @@ const getAllGrievances = async (req, res) => {
       // Add filters if provided
       const filterExpressions = [];
       const expressionAttributeValues = {};
+
+      if (recruiterId) {
+        filterExpressions.push('recruiterId = :recruiterId');
+        expressionAttributeValues[':recruiterId'] = recruiterId;
+      }
 
       if (status) {
         filterExpressions.push('status = :status');

@@ -3,14 +3,14 @@
     display: flex;
     min-height: 100vh;
     background-color: #f9fafb;
-    padding-top: 80px; /* Space for fixed navbar */
+    padding-top: 130px; /* Space for fixed navbar (header height is 130px) */
 }
 
 /* Mobile Hamburger Menu */
 .mobile-hamburger {
     display: none;
     position: fixed;
-    top: 90px;
+    top: 140px; /* Below header (130px) + small gap */
     left: 15px;
     z-index: 1001;
     background-color: #1e3a8a;
@@ -37,8 +37,8 @@
     padding: 20px 0;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     position: fixed;
-    top: 80px; /* Start below navbar */
-    height: calc(100vh - 80px); /* Full height minus navbar */
+    top: 130px; /* Start below navbar (header height is 130px) */
+    height: calc(100vh - 130px); /* Full height minus navbar */
     overflow-y: auto;
     z-index: 100;
     transition: transform 0.3s ease;
@@ -52,6 +52,10 @@
     padding: 0 20px;
     margin-bottom: 30px;
     text-align: center;
+}
+
+.institute-info h3 {
+    color: white;
 }
 
 .institute-logo {
@@ -76,6 +80,16 @@
     transition: all 0.3s ease;
     border-left: 4px solid transparent;
     font-size: 0.95rem;
+}
+
+/* Highlight Staffinn Partner text */
+.institute-sidebar-menu li .dropdown-header span:first-child {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
 }
 
 .institute-sidebar-menu li:hover {
@@ -1729,7 +1743,7 @@
 
 @media (max-width: 992px) {
     .institute-dashboard {
-        padding-top: 60px; /* Smaller navbar on mobile */
+        padding-top: 130px; /* Match header height */
     }
 
     .mobile-hamburger {
@@ -1738,10 +1752,10 @@
 
     .institute-dashboard-sidebar {
         position: fixed;
-        top: 80px;
+        top: 130px; /* Start below header */
         left: 0;
         width: 280px;
-        height: calc(100vh - 80px);
+        height: calc(100vh - 130px);
         transform: translateX(-100%);
         z-index: 1000;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
@@ -2948,6 +2962,51 @@ body.modal-open *,
     padding-bottom: 10px;
     border-bottom: 2px solid #007bff;
     display: inline-block;
+}
+
+/* Enrollment Count Styles */
+.institute-enrollment-item {
+    background-color: #e3f2fd !important;
+    border-left: 4px solid #2196f3 !important;
+    padding: 12px 15px !important;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.institute-enrollment-item:hover {
+    background-color: #bbdefb !important;
+    transform: translateX(3px);
+}
+
+.institute-enrollment-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    color: #1976d2 !important;
+}
+
+/* Real-time update indicator */
+.institute-enrollment-item::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background-color: #4caf50;
+    border-radius: 50%;
+    animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
 }
 /* Staffinn Partner Styles */
 .institute-partner-tab {

@@ -1,0 +1,46 @@
+// Add this after line 1005 (after View Details button in On-Campus section)
+// Replace the single button with:
+
+<div className="course-action-buttons">
+  <button 
+    className="view-details-button"
+    onClick={() => {
+      if (!isLoggedIn) {
+        onShowLogin();
+        return;
+      }
+      navigate(`/course/${courseId}?preview=true&institute=${id}`);
+    }}
+  >
+    View Details
+  </button>
+  {isStaffinnPartner() && course.mode === 'On Campus' && (
+    <button 
+      className="enroll-students-button"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!isLoggedIn) {
+          onShowLogin();
+          return;
+        }
+        setSelectedCourseForEnrollment(course);
+        setShowEnrollmentModal(true);
+      }}
+    >
+      Enroll Students
+    </button>
+  )}
+</div>
+
+// Add modal before Assignment Modal (around line 1900):
+{showEnrollmentModal && selectedCourseForEnrollment && (
+  <StudentEnrollmentModal
+    isOpen={showEnrollmentModal}
+    onClose={() => {
+      setShowEnrollmentModal(false);
+      setSelectedCourseForEnrollment(null);
+    }}
+    course={selectedCourseForEnrollment}
+    instituteId={id}
+  />
+)}

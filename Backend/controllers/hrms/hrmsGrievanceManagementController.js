@@ -127,11 +127,19 @@ const updateGrievanceStatus = async (req, res) => {
     const { grievanceId } = req.params;
     const { status, priority, remark } = req.body;
 
+    console.log('=== UPDATE GRIEVANCE STATUS ===');
+    console.log('Grievance ID:', grievanceId);
+    console.log('Request body:', req.body);
+    console.log('Status:', status);
+    console.log('Priority:', priority);
+    console.log('Remark:', remark);
+
     if (!status) return res.status(400).json(errorResponse('Status is required'));
 
     let grievance;
     if (isUsingMockDB()) {
       grievance = mockDB().get(HRMS_GRIEVANCES_TABLE, grievanceId);
+      if (!grievance) return res.status(404).json(errorResponse('Grievance not found'));
     } else {
       const scanCommand = new ScanCommand({
         TableName: HRMS_GRIEVANCES_TABLE,
@@ -140,9 +148,8 @@ const updateGrievanceStatus = async (req, res) => {
       });
       const result = await dynamoClient.send(scanCommand);
       grievance = result.Items && result.Items.length > 0 ? result.Items[0] : null;
+      if (!grievance) return res.status(404).json(errorResponse('Grievance not found'));
     }
-
-    if (!grievance) return res.status(404).json(errorResponse('Grievance not found'));
 
     const statusHistory = grievance.statusHistory || [];
     statusHistory.push({
@@ -180,8 +187,10 @@ const updateGrievanceStatus = async (req, res) => {
       await dynamoClient.send(putCommand);
     }
 
+    console.log('✅ Grievance updated successfully');
     res.json(successResponse(updatedGrievance, 'Grievance updated successfully'));
   } catch (error) {
+    console.error('❌ Update grievance status error:', error);
     handleError(error, res);
   }
 };

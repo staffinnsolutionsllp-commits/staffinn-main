@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Hero Images</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .test-image {
+            width: 300px;
+            height: 200px;
+            object-fit: cover;
+            border: 2px solid #ccc;
+            margin: 10px;
+        }
+        .test-bg {
+            width: 300px;
+            height: 200px;
+            border: 2px solid #ccc;
+            margin: 10px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hero Images Test</h1>
+    
+    <h2>Test Image 1 (as img element):</h2>
+    <img 
+        id="img1" 
+        class="test-image" 
+        src="https://staffinn-files.s3.ap-south-1.amazonaws.com/hero-images/home/1773640371053-0-Screenshot 2025-10-18 103147.png"
+        alt="Test Image 1"
+        onload="console.log('✅ Image 1 loaded successfully'); document.getElementById('status1').innerHTML = '✅ Image 1 loaded successfully'; document.getElementById('status1').className = 'success';"
+        onerror="console.error('❌ Image 1 failed to load'); document.getElementById('status1').innerHTML = '❌ Image 1 failed to load'; document.getElementById('status1').className = 'error';"
+    />
+    <div id="status1">Loading...</div>
+    
+    <h2>Test Image 2 (as img element):</h2>
+    <img 
+        id="img2" 
+        class="test-image" 
+        src="https://staffinn-files.s3.ap-south-1.amazonaws.com/hero-images/home/1773640371057-1-Screenshot 2025-10-18 112333.png"
+        alt="Test Image 2"
+        onload="console.log('✅ Image 2 loaded successfully'); document.getElementById('status2').innerHTML = '✅ Image 2 loaded successfully'; document.getElementById('status2').className = 'success';"
+        onerror="console.error('❌ Image 2 failed to load'); document.getElementById('status2').innerHTML = '❌ Image 2 failed to load'; document.getElementById('status2').className = 'error';"
+    />
+    <div id="status2">Loading...</div>
+    
+    <h2>Test Image 1 (as background):</h2>
+    <div 
+        id="bg1" 
+        class="test-bg" 
+        style="background-image: url('https://staffinn-files.s3.ap-south-1.amazonaws.com/hero-images/home/1773640371053-0-Screenshot 2025-10-18 103147.png');"
+    ></div>
+    
+    <h2>Test Image 2 (as background):</h2>
+    <div 
+        id="bg2" 
+        class="test-bg" 
+        style="background-image: url('https://staffinn-files.s3.ap-south-1.amazonaws.com/hero-images/home/1773640371057-1-Screenshot 2025-10-18 112333.png');"
+    ></div>
+    
+    <h2>API Test:</h2>
+    <button onclick="testAPI()">Test Hero Images API</button>
+    <div id="api-result">Click button to test API</div>
+    
+    <script>
+        async function testAPI() {
+            try {
+                const response = await fetch('http://localhost:4001/api/v1/hero-images/home/public');
+                const data = await response.json();
+                console.log('API Response:', data);
+                document.getElementById('api-result').innerHTML = `
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('API Error:', error);
+                document.getElementById('api-result').innerHTML = `
+                    <div class="error">API Error: ${error.message}</div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

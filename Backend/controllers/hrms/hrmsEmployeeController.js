@@ -1,6 +1,12 @@
+const bcrypt = require('bcryptjs');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 const { dynamoClient, isUsingMockDB, mockDB, HRMS_EMPLOYEES_TABLE, HRMS_LEAVES_TABLE } = require('../../config/dynamodb-wrapper');
 const { PutCommand, ScanCommand, GetCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const { generateId, generateNumericEmployeeId, getCurrentTimestamp, validateEmail, handleError, successResponse, errorResponse } = require('../../utils/hrmsHelpers');
+
+const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-south-1' });
+const docClient = DynamoDBDocumentClient.from(client);
 
 const createEmployee = async (req, res) => {
   try {
@@ -19,7 +25,13 @@ const createEmployee = async (req, res) => {
       designation, position,
       department,
       annualCTC, salary,
-      basicPay, 
+      basicPay, basicSalary,
+      salaryType,
+      paymentCycle,
+      allowances,
+      bonus,
+      deductions,
+      overtimeRate,
       dateOfJoining, joinDate,
       dateOfBirth, 
       bloodGroup, 
@@ -109,7 +121,14 @@ const createEmployee = async (req, res) => {
       designation: employeeDesignation,
       department,
       annualCTC: parseFloat(employeeSalary) || 0,
-      basicPay: parseFloat(basicPay) || 0,
+      basicPay: parseFloat(basicPay || basicSalary) || 0,
+      basicSalary: parseFloat(basicPay || basicSalary) || 0,
+      salaryType: salaryType || 'Monthly',
+      paymentCycle: paymentCycle || 'Monthly',
+      allowances: allowances || [],
+      bonus: parseFloat(bonus) || 0,
+      deductions: deductions || [],
+      overtimeRate: parseFloat(overtimeRate) || 0,
       dateOfJoining: employeeJoinDate || getCurrentTimestamp().split('T')[0],
       dateOfBirth: dateOfBirth || '',
       bloodGroup: bloodGroup || '',
@@ -137,6 +156,35 @@ const createEmployee = async (req, res) => {
       await dynamoClient.send(command);
     }
 
+    // Auto-generate employee login credentials
+    try {
+      const tempPassword = `Emp@${employeeId}`;
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+      const userId = `USER_${employeeId}_${Date.now()}`;
+
+      const employeeUser = {
+        userId,
+        employeeId,
+        email,
+        password: hashedPassword,
+        roleId: 'ROLE_EMPLOYEE',
+        companyId: recruiterId,
+        isFirstLogin: true,
+        isActive: true,
+        createdAt: getCurrentTimestamp()
+      };
+
+      await docClient.send(new PutCommand({
+        TableName: 'staffinn-hrms-employee-users',
+        Item: employeeUser
+      }));
+
+      console.log('✅ Employee credentials created:', { email, tempPassword });
+      
+    } catch (credError) {
+      console.error('❌ Error creating employee credentials:', credError);
+    }
+
     console.log('Employee created successfully with ID:', employeeId);
     res.status(201).json(successResponse(employee, 'Employee created successfully'));
 
@@ -161,20 +209,21 @@ const getAllEmployees = async (req, res) => {
     if (isUsingMockDB()) {
       const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
       console.log('Total employees in DB:', allEmployees.length);
-      employees = allEmployees.filter(e => e.recruiterId === recruiterId);
+      employees = allEmployees.filter(e => e.recruiterId === recruiterId && (!e.isDeleted || e.isDeleted === false));
     } else {
       const command = new ScanCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: 'recruiterId = :recruiterId',
+        FilterExpression: 'recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
         ExpressionAttributeValues: {
-          ':recruiterId': recruiterId
+          ':recruiterId': recruiterId,
+          ':false': false
         }
       });
       const result = await dynamoClient.send(command);
       employees = result.Items || [];
     }
 
-    console.log(`Found ${employees.length} employees for recruiter ${recruiterId}`);
+    console.log(`Found ${employees.length} active employees for recruiter ${recruiterId}`);
     res.json(successResponse(employees, 'Employees retrieved successfully'));
 
   } catch (error) {
@@ -327,7 +376,13 @@ const deleteEmployee = async (req, res) => {
       if (!existingEmployee) {
         return res.status(404).json(errorResponse('Employee not found'));
       }
-      mockDB().delete(HRMS_EMPLOYEES_TABLE, id);
+      // Soft delete: mark as deleted instead of removing
+      const deletedEmployee = {
+        ...existingEmployee,
+        isDeleted: true,
+        deletedAt: getCurrentTimestamp()
+      };
+      mockDB().put(HRMS_EMPLOYEES_TABLE, deletedEmployee);
     } else {
       const getCommand = new GetCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
@@ -339,11 +394,17 @@ const deleteEmployee = async (req, res) => {
         return res.status(404).json(errorResponse('Employee not found'));
       }
 
-      const deleteCommand = new DeleteCommand({
+      // Soft delete: mark as deleted instead of removing
+      const updateCommand = new UpdateCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
-        Key: { employeeId: id }
+        Key: { employeeId: id },
+        UpdateExpression: 'SET isDeleted = :true, deletedAt = :deletedAt',
+        ExpressionAttributeValues: {
+          ':true': true,
+          ':deletedAt': getCurrentTimestamp()
+        }
       });
-      await dynamoClient.send(deleteCommand);
+      await dynamoClient.send(updateCommand);
     }
 
     res.json(successResponse(null, 'Employee deleted successfully'));
@@ -392,13 +453,14 @@ const getEmployeeStats = async (req, res) => {
     let employees;
     if (isUsingMockDB()) {
       const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
-      employees = allEmployees.filter(e => e.recruiterId === recruiterId);
+      employees = allEmployees.filter(e => e.recruiterId === recruiterId && (!e.isDeleted || e.isDeleted === false));
     } else {
       const command = new ScanCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: 'recruiterId = :recruiterId',
+        FilterExpression: 'recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
         ExpressionAttributeValues: {
-          ':recruiterId': recruiterId
+          ':recruiterId': recruiterId,
+          ':false': false
         }
       });
       const result = await dynamoClient.send(command);
@@ -411,6 +473,60 @@ const getEmployeeStats = async (req, res) => {
 
     res.json(successResponse(stats, 'Employee statistics retrieved successfully'));
 
+  } catch (error) {
+    handleError(error, res);
+  }
+};
+
+const getEmployeeCredentials = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const recruiterId = req.user?.recruiterId;
+
+    const getEmpCommand = new GetCommand({
+      TableName: HRMS_EMPLOYEES_TABLE,
+      Key: { employeeId: id }
+    });
+    const empResult = await dynamoClient.send(getEmpCommand);
+
+    if (!empResult.Item || empResult.Item.recruiterId !== recruiterId) {
+      return res.status(404).json(errorResponse('Employee not found'));
+    }
+
+    const scanCommand = new ScanCommand({
+      TableName: 'staffinn-hrms-employee-users',
+      FilterExpression: 'employeeId = :empId',
+      ExpressionAttributeValues: { ':empId': id }
+    });
+    const result = await docClient.send(scanCommand);
+
+    if (!result.Items || result.Items.length === 0) {
+      const tempPassword = `Emp@${id}`;
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+      const userId = `USER_${id}_${Date.now()}`;
+
+      const employeeUser = {
+        userId,
+        employeeId: id,
+        email: empResult.Item.email,
+        password: hashedPassword,
+        roleId: 'ROLE_EMPLOYEE',
+        companyId: recruiterId,
+        isFirstLogin: true,
+        isActive: true,
+        createdAt: getCurrentTimestamp()
+      };
+
+      await docClient.send(new PutCommand({
+        TableName: 'staffinn-hrms-employee-users',
+        Item: employeeUser
+      }));
+
+      return res.json(successResponse({ email: empResult.Item.email, password: tempPassword }, 'Credentials generated'));
+    }
+
+    const tempPassword = `Emp@${id}`;
+    res.json(successResponse({ email: result.Items[0].email, password: tempPassword }, 'Credentials retrieved'));
   } catch (error) {
     handleError(error, res);
   }
@@ -475,5 +591,6 @@ module.exports = {
   updateEmployee,
   deleteEmployee,
   getEmployeesByDepartment,
-  getEmployeeStats
+  getEmployeeStats,
+  getEmployeeCredentials
 };
