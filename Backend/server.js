@@ -79,6 +79,7 @@ const hrmsPayrollRoutes = require('./routes/hrms/hrmsPayrollRoutes');
 const biometricAuthRoutes = require('./routes/hrms/biometricAuthRoutes');
 const biometricWebhookRoutes = require('./routes/hrms/biometricWebhookRoutes');
 const employeePortalRoutes = require('./routes/hrms/employeePortalRoutes');
+const hrmsNotificationRoutes = require('./routes/hrms/hrmsNotificationRoutes');
 const hrmsAccessRoutes = require('./routes/hrmsAccessRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 
@@ -201,6 +202,7 @@ app.use(`${API_PREFIX}/hrms/payroll`, hrmsPayrollRoutes);
 app.use(`${API_PREFIX}/biometric/auth`, biometricAuthRoutes);
 app.use(`${API_PREFIX}/biometric`, biometricWebhookRoutes);
 app.use(`${API_PREFIX}/employee`, employeePortalRoutes);
+app.use(`${API_PREFIX}/hrms/notifications`, hrmsNotificationRoutes);
 app.use(`${API_PREFIX}/payments`, paymentRoutes);
 
 console.log('✅ HRMS routes registered successfully:');
@@ -220,6 +222,7 @@ console.log('   - /api/v1/hrms/payroll/* (Payroll Management)');
 console.log('   - /api/v1/biometric/auth/* (Bridge Authentication)');
 console.log('   - /api/v1/biometric/* (Device Webhook)');
 console.log('   - /api/v1/employee/* (Employee Portal)');
+console.log('   - /api/v1/hrms/notifications/* (HRMS Notifications)');
 
 app.use('/debug', debugRoutes);
 
