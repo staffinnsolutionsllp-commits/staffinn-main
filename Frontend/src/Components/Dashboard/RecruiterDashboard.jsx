@@ -1366,6 +1366,37 @@ const RecruiterDashboard = () => {
         setIsMobileSidebarOpen(false);
     };
     
+    // Handle HRMS access with secure token
+    const handleHRMSAccess = async () => {
+        try {
+            setLoading(true);
+            
+            // Generate secure access token from backend
+            const response = await apiService.generateHRMSAccessToken();
+            
+            if (response.success && response.data) {
+                const { hrmsUrl, hasAccount } = response.data;
+                
+                // Show message to user
+                const message = hasAccount 
+                    ? 'Opening HRMS login. You will be automatically authenticated.' 
+                    : 'Opening HRMS registration. Please complete your HRMS account setup.';
+                
+                alert(message);
+                
+                // Open HRMS in new tab with secure access token
+                window.open(hrmsUrl, '_blank');
+            } else {
+                alert('Failed to access HRMS: ' + (response.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error accessing HRMS:', error);
+            alert('Failed to access HRMS. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
     // Download all students details as Excel
     const downloadStudentsExcel = () => {
         if (!selectedInstituteStudents || selectedInstituteStudents.length === 0) {
@@ -1524,7 +1555,7 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'government-schemes' ? 'active' : ''} onClick={() => handleTabChange('government-schemes')}>
                         Government Schemes
                     </li>
-                    <li className={activeTab === 'hrms' ? 'active' : ''} onClick={() => window.open('/hrms', '_blank')}>
+                    <li className={activeTab === 'hrms' ? 'active' : ''} onClick={handleHRMSAccess}>
                         HRMS
                     </li>
                 </ul>

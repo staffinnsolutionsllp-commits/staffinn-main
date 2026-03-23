@@ -1,4 +1,4 @@
-const { dynamoClient, isUsingMockDB, mockDB, HRMS_ORGANIZATION_CHART_TABLE, HRMS_EMPLOYEES_TABLE } = require('../../config/dynamodb-wrapper');
+const { dynamoClient, isUsingMockDB, mockDB, HRMS_ORGANIZATION_CHART_TABLE, HRMS_EMPLOYEES_TABLE, HRMS_LEAVES_TABLE } = require('../../config/dynamodb-wrapper');
 const { QueryCommand, PutCommand, ScanCommand, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { generateId, getCurrentTimestamp } = require('../../utils/hrmsHelpers');
 
@@ -126,16 +126,41 @@ const getMyLeaves = async (req, res) => {
   try {
     const { employeeId, companyId } = req.user;
 
+    console.log('🔍 getMyLeaves - employeeId:', employeeId, 'companyId:', companyId);
+
+    if (!employeeId) {
+      return res.status(400).json({ success: false, message: 'Employee ID not found in token' });
+    }
+
+    // If companyId is missing, try to get it from employee record
+    let recruiterId = companyId;
+    if (!recruiterId) {
+      const empResult = await dynamoClient.send(new ScanCommand({
+        TableName: 'staffinn-hrms-employees',
+        FilterExpression: 'employeeId = :eid',
+        ExpressionAttributeValues: { ':eid': employeeId }
+      }));
+      if (empResult.Items && empResult.Items.length > 0) {
+        recruiterId = empResult.Items[0].recruiterId;
+        console.log('✅ Found recruiterId from employee record:', recruiterId);
+      }
+    }
+
+    if (!recruiterId) {
+      return res.status(400).json({ success: false, message: 'Company ID not found' });
+    }
+
     const result = await dynamoClient.send(new ScanCommand({
-      TableName: 'staffinn-hrms-leaves',
-      FilterExpression: 'employeeId = :eid AND recruiterId = :rid AND entityType = :type',
-      ExpressionAttributeValues: { ':eid': employeeId, ':rid': companyId, ':type': 'REQUEST' }
+      TableName: HRMS_LEAVES_TABLE || 'HRMS-Leaves-Table',
+      FilterExpression: 'employeeId = :eid AND entityType = :type',
+      ExpressionAttributeValues: { ':eid': employeeId, ':type': 'LEAVE' }
     }));
 
+    console.log('📋 Found leaves:', result.Items?.length || 0);
     res.json({ success: true, data: result.Items || [] });
   } catch (error) {
-    console.error('Get leaves error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('❌ Get leaves error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 
@@ -144,11 +169,37 @@ const getLeaveBalance = async (req, res) => {
   try {
     const { employeeId, companyId } = req.user;
 
+    console.log('🔍 getLeaveBalance - employeeId:', employeeId, 'companyId:', companyId);
+
+    if (!employeeId) {
+      return res.status(400).json({ success: false, message: 'Employee ID not found in token' });
+    }
+
+    // If companyId is missing, try to get it from employee record
+    let recruiterId = companyId;
+    if (!recruiterId) {
+      const empResult = await dynamoClient.send(new ScanCommand({
+        TableName: 'staffinn-hrms-employees',
+        FilterExpression: 'employeeId = :eid',
+        ExpressionAttributeValues: { ':eid': employeeId }
+      }));
+      if (empResult.Items && empResult.Items.length > 0) {
+        recruiterId = empResult.Items[0].recruiterId;
+        console.log('✅ Found recruiterId from employee record:', recruiterId);
+      }
+    }
+
+    if (!recruiterId) {
+      return res.status(400).json({ success: false, message: 'Company ID not found' });
+    }
+
     const result = await dynamoClient.send(new ScanCommand({
-      TableName: 'staffinn-hrms-leaves',
-      FilterExpression: 'employeeId = :eid AND recruiterId = :rid AND entityType = :type',
-      ExpressionAttributeValues: { ':eid': employeeId, ':rid': companyId, ':type': 'BALANCE' }
+      TableName: HRMS_LEAVES_TABLE || 'HRMS-Leaves-Table',
+      FilterExpression: 'employeeId = :eid AND entityType = :type',
+      ExpressionAttributeValues: { ':eid': employeeId, ':type': 'BALANCE' }
     }));
+
+    console.log('📊 Found balances:', result.Items?.length || 0);
 
     const balances = (result.Items || []).map(item => ({
       leaveType: item.leaveType,
@@ -159,8 +210,62 @@ const getLeaveBalance = async (req, res) => {
 
     res.json({ success: true, data: balances });
   } catch (error) {
-    console.error('Get leave balance error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('❌ Get leave balance error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
+// Get Available Leave Types
+const getLeaveTypes = async (req, res) => {
+  try {
+    const { employeeId, companyId } = req.user;
+
+    console.log('🔍 getLeaveTypes - employeeId:', employeeId, 'companyId:', companyId);
+
+    // If companyId is missing, try to get it from employee record
+    let recruiterId = companyId;
+    if (!recruiterId && employeeId) {
+      const empResult = await dynamoClient.send(new ScanCommand({
+        TableName: 'staffinn-hrms-employees',
+        FilterExpression: 'employeeId = :eid',
+        ExpressionAttributeValues: { ':eid': employeeId }
+      }));
+      if (empResult.Items && empResult.Items.length > 0) {
+        recruiterId = empResult.Items[0].recruiterId;
+        console.log('✅ Found recruiterId from employee record:', recruiterId);
+      }
+    }
+
+    if (!recruiterId) {
+      return res.status(400).json({ success: false, message: 'Company ID not found' });
+    }
+
+    // Get active leave rules (types) for this company
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_LEAVES_TABLE || 'HRMS-Leaves-Table',
+      FilterExpression: 'entityType = :type AND recruiterId = :rid AND #status = :active',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: { 
+        ':type': 'RULE', 
+        ':rid': recruiterId,
+        ':active': 'Active'
+      }
+    }));
+
+    console.log('📋 Found leave rules:', result.Items?.length || 0);
+    
+    // Extract leave names from rules
+    const leaveTypes = (result.Items || []).map(rule => {
+      // Try different possible field names
+      return rule.leaveName || rule.leaveType || rule.name || 'Unknown Leave';
+    }).filter(name => name !== 'Unknown Leave');
+
+    console.log('✅ Leave types:', leaveTypes);
+
+    res.json({ success: true, data: leaveTypes });
+  } catch (error) {
+    console.error('❌ Get leave types error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 
@@ -169,6 +274,17 @@ const applyLeave = async (req, res) => {
   try {
     const { employeeId, companyId, email, name } = req.user;
     const { leaveType, startDate, endDate, reason } = req.body;
+
+    console.log('📝 applyLeave - employeeId:', employeeId, 'companyId:', companyId);
+    console.log('📝 Leave details:', { leaveType, startDate, endDate, reason });
+
+    if (!employeeId || !companyId) {
+      return res.status(400).json({ success: false, message: 'Employee ID or Company ID missing' });
+    }
+
+    if (!leaveType || !startDate || !endDate || !reason) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
 
     const leaveId = `LEAVE_${Date.now()}`;
     const now = getCurrentTimestamp();
@@ -180,32 +296,46 @@ const applyLeave = async (req, res) => {
     }));
 
     const employee = empResult.Item || {};
+    console.log('👤 Employee found:', employee.fullName || employee.name || 'Unknown');
+
+    // Calculate number of days
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const numberOfDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+    const leaveRequest = {
+      leaveId,
+      entityType: 'LEAVE',
+      employeeId,
+      recruiterId: companyId,
+      employeeEmail: email || employee.email || '',
+      employeeName: employee.fullName || employee.name || name || '',
+      department: employee.department || '',
+      leaveType,
+      startDate,
+      endDate,
+      numberOfDays,
+      reason,
+      status: 'Pending',
+      appliedOn: now,
+      approvedBy: null,
+      approvedOn: null,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    console.log('📦 Saving leave request to table:', HRMS_LEAVES_TABLE || 'HRMS-Leaves-Table');
 
     await dynamoClient.send(new PutCommand({
-      TableName: 'staffinn-hrms-leaves',
-      Item: {
-        leaveId,
-        entityType: 'REQUEST',
-        employeeId,
-        recruiterId: companyId,
-        employeeEmail: email,
-        employeeName: employee.name || name || '',
-        department: employee.department || '',
-        leaveType,
-        startDate,
-        endDate,
-        reason,
-        status: 'Pending',
-        appliedDate: now,
-        createdAt: now,
-        updatedAt: now
-      }
+      TableName: HRMS_LEAVES_TABLE || 'HRMS-Leaves-Table',
+      Item: leaveRequest
     }));
 
-    res.json({ success: true, message: 'Leave applied successfully' });
+    console.log('✅ Leave applied successfully:', leaveId);
+    res.json({ success: true, message: 'Leave applied successfully', data: leaveRequest });
   } catch (error) {
-    console.error('Apply leave error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('❌ Apply leave error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 
@@ -524,24 +654,115 @@ const getMyGrievances = async (req, res) => {
 const submitGrievance = async (req, res) => {
   try {
     const { employeeId, companyId, email } = req.user;
-    const { title, description, category, priority = 'medium' } = req.body;
+    const { title, description, category, priority = 'medium', complaintAgainstEmployeeId } = req.body;
 
-    // Get employee's immediate manager from organogram
+    console.log('\n=== SUBMIT GRIEVANCE DEBUG ===');
+    console.log('Submitter Employee ID:', employeeId);
+    console.log('Complaint Against Employee ID:', complaintAgainstEmployeeId);
+    console.log('Company ID:', companyId);
+
+    const grievanceType = complaintAgainstEmployeeId ? 'complaint' : 'general';
+    console.log('Grievance Type:', grievanceType);
+
+    // Get all org nodes
     const orgResult = await dynamoClient.send(new ScanCommand({
       TableName: HRMS_ORGANIZATION_CHART_TABLE,
-      FilterExpression: 'recruiterId = :rid AND employeeId = :eid',
-      ExpressionAttributeValues: { ':rid': companyId, ':eid': employeeId }
+      FilterExpression: 'recruiterId = :rid',
+      ExpressionAttributeValues: { ':rid': companyId }
     }));
 
+    const allNodes = orgResult.Items || [];
+    console.log('Total org nodes found:', allNodes.length);
+    
     let assignedTo = null;
     let assignedToName = null;
     let currentLevel = 0;
+    let complaintAgainstEmployeeName = null;
+    let complaintAgainstEmployeeEmail = null;
 
-    if (orgResult.Items && orgResult.Items.length > 0) {
-      const currentNode = orgResult.Items[0];
+    if (grievanceType === 'complaint') {
+      console.log('\n--- Processing COMPLAINT Against Employee ---');
+      
+      // For complaint against employee, find that employee's manager
+      const targetEmployeeNode = allNodes.find(n => n.employeeId === complaintAgainstEmployeeId);
+      
+      console.log('Target Employee Node:', targetEmployeeNode ? 'Found' : 'NOT FOUND');
+      if (targetEmployeeNode) {
+        console.log('Target Employee ID:', targetEmployeeNode.employeeId);
+        console.log('Target Employee Parent ID:', targetEmployeeNode.parentId);
+        console.log('Target Employee Level:', targetEmployeeNode.level);
+      }
+      
+      if (!targetEmployeeNode) {
+        return res.status(400).json({ success: false, message: 'Target employee not found in organization chart' });
+      }
+
+      // Get target employee details
+      const targetEmpResult = await dynamoClient.send(new ScanCommand({
+        TableName: HRMS_EMPLOYEES_TABLE,
+        FilterExpression: 'employeeId = :eid',
+        ExpressionAttributeValues: { ':eid': complaintAgainstEmployeeId }
+      }));
+
+      if (targetEmpResult.Items && targetEmpResult.Items.length > 0) {
+        const targetEmp = targetEmpResult.Items[0];
+        complaintAgainstEmployeeName = targetEmp.fullName || targetEmp.name || 'Unknown';
+        complaintAgainstEmployeeEmail = targetEmp.email || '';
+        console.log('Target Employee Name:', complaintAgainstEmployeeName);
+      }
+
+      currentLevel = targetEmployeeNode.level || 0;
+
+      // Get target employee's manager
+      if (targetEmployeeNode.parentId) {
+        console.log('\nFinding target employee\'s manager...');
+        const parentResult = await dynamoClient.send(new ScanCommand({
+          TableName: HRMS_ORGANIZATION_CHART_TABLE,
+          FilterExpression: 'nodeId = :nid',
+          ExpressionAttributeValues: { ':nid': targetEmployeeNode.parentId }
+        }));
+
+        if (parentResult.Items && parentResult.Items.length > 0) {
+          const parentNode = parentResult.Items[0];
+          assignedTo = parentNode.employeeId;
+          console.log('Manager Node Found - Employee ID:', assignedTo);
+
+          if (assignedTo) {
+            const managerResult = await dynamoClient.send(new ScanCommand({
+              TableName: HRMS_EMPLOYEES_TABLE,
+              FilterExpression: 'employeeId = :eid',
+              ExpressionAttributeValues: { ':eid': assignedTo }
+            }));
+            if (managerResult.Items && managerResult.Items.length > 0) {
+              assignedToName = managerResult.Items[0].fullName || managerResult.Items[0].name || 'Manager';
+              console.log('Manager Name:', assignedToName);
+            }
+          }
+        } else {
+          console.log('⚠️ Parent node not found for parentId:', targetEmployeeNode.parentId);
+        }
+      } else {
+        console.log('⚠️ Target employee has no parent (no manager)');
+      }
+    } else {
+      console.log('\n--- Processing GENERAL Grievance ---');
+      
+      // For general grievance, find submitter's manager
+      const currentNode = allNodes.find(n => n.employeeId === employeeId);
+      
+      console.log('Submitter Node:', currentNode ? 'Found' : 'NOT FOUND');
+      if (currentNode) {
+        console.log('Submitter Employee ID:', currentNode.employeeId);
+        console.log('Submitter Parent ID:', currentNode.parentId);
+      }
+      
+      if (!currentNode) {
+        return res.status(400).json({ success: false, message: 'You are not in the organization chart. Please contact HR.' });
+      }
+
       currentLevel = currentNode.level || 0;
 
-      // Get parent node (immediate manager)
+      // Get immediate manager
       if (currentNode.parentId) {
         const parentResult = await dynamoClient.send(new ScanCommand({
           TableName: HRMS_ORGANIZATION_CHART_TABLE,
@@ -552,8 +773,8 @@ const submitGrievance = async (req, res) => {
         if (parentResult.Items && parentResult.Items.length > 0) {
           const parentNode = parentResult.Items[0];
           assignedTo = parentNode.employeeId;
+          console.log('Manager Employee ID:', assignedTo);
 
-          // Get manager's name
           if (assignedTo) {
             const managerResult = await dynamoClient.send(new ScanCommand({
               TableName: HRMS_EMPLOYEES_TABLE,
@@ -562,14 +783,32 @@ const submitGrievance = async (req, res) => {
             }));
             if (managerResult.Items && managerResult.Items.length > 0) {
               assignedToName = managerResult.Items[0].fullName || managerResult.Items[0].name || 'Manager';
+              console.log('Manager Name:', assignedToName);
             }
           }
         }
       }
     }
 
+    console.log('\n--- FINAL ASSIGNMENT ---');
+    console.log('Grievance will be assigned to Employee ID:', assignedTo);
+    console.log('Grievance will be assigned to Name:', assignedToName);
+    console.log('Notification will be sent to:', assignedTo);
+    console.log('===========================\n');
+
+    if (!assignedTo) {
+      return res.status(400).json({ 
+        success: false, 
+        message: grievanceType === 'complaint' 
+          ? 'Target employee has no manager assigned. Cannot file complaint.' 
+          : 'You have no manager assigned. Please contact HR to update your reporting structure.' 
+      });
+    }
+
     const grievanceId = generateId();
     const now = getCurrentTimestamp();
+    const escalationDeadline = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(); // 2 days from now
+
     const grievance = {
       grievanceId,
       recruiterId: companyId,
@@ -581,6 +820,7 @@ const submitGrievance = async (req, res) => {
       description,
       category,
       priority,
+      grievanceType,
       status: 'Open',
       submittedDate: now,
       assignedTo,
@@ -588,9 +828,12 @@ const submitGrievance = async (req, res) => {
       currentLevel,
       escalationLevel: 0,
       lastActionTime: now,
-      escalationDeadline: new Date(Date.now() + 2 * 60 * 1000).toISOString(), // 2 minutes from now
+      escalationDeadline,
       resolvedDate: null,
       remarks: [],
+      complaintAgainstEmployeeId: complaintAgainstEmployeeId || null,
+      complaintAgainstEmployeeName: complaintAgainstEmployeeName || null,
+      complaintAgainstEmployeeEmail: complaintAgainstEmployeeEmail || null,
       statusHistory: [{
         status: 'Open',
         changedBy: employeeId,
@@ -609,7 +852,15 @@ const submitGrievance = async (req, res) => {
       Item: grievance
     }));
 
-    console.log(`✅ Grievance ${grievanceId} submitted and assigned to ${assignedToName || 'No Manager'}`);
+    console.log(`✅ ${grievanceType === 'complaint' ? 'Complaint' : 'Grievance'} ${grievanceId} submitted and assigned to ${assignedToName || 'Manager'}`);
+
+    // Send notification to assigned manager
+    try {
+      const { notifyGrievanceAssigned } = require('../../services/hrmsNotificationService');
+      await notifyGrievanceAssigned(assignedTo, companyId, grievanceId, title);
+    } catch (notifError) {
+      console.error('⚠️ Failed to send notification:', notifError);
+    }
 
     res.status(201).json({ success: true, message: 'Grievance submitted successfully', data: grievance });
   } catch (error) {
@@ -871,6 +1122,84 @@ const getNodeDetails = async (req, res) => {
   }
 };
 
+// Get Subordinates Hierarchy
+const getSubordinatesHierarchy = async (req, res) => {
+  try {
+    const { employeeId, companyId } = req.user;
+
+    // Get all org nodes
+    const orgResult = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_ORGANIZATION_CHART_TABLE,
+      FilterExpression: 'recruiterId = :rid',
+      ExpressionAttributeValues: { ':rid': companyId }
+    }));
+
+    const orgNodes = orgResult.Items || [];
+
+    // Get all employees
+    const empResult = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_EMPLOYEES_TABLE,
+      FilterExpression: 'recruiterId = :rid',
+      ExpressionAttributeValues: { ':rid': companyId }
+    }));
+
+    const employees = empResult.Items || [];
+    const employeeMap = {};
+    employees.forEach(emp => {
+      employeeMap[emp.employeeId] = emp;
+    });
+
+    // Find current employee's node
+    const currentNode = orgNodes.find(n => n.employeeId === employeeId);
+    if (!currentNode) {
+      return res.json({ success: true, data: { hasSubordinates: false, currentEmployee: null, totalSubordinates: 0, subordinates: [] } });
+    }
+
+    // Build node map
+    const nodeMap = {};
+    orgNodes.forEach(node => {
+      nodeMap[node.nodeId] = { ...node, employee: employeeMap[node.employeeId] || null, children: [] };
+    });
+
+    // Build parent-child relationships
+    orgNodes.forEach(node => {
+      if (node.parentId && nodeMap[node.parentId]) {
+        nodeMap[node.parentId].children.push(nodeMap[node.nodeId]);
+      }
+    });
+
+    // Collect all subordinates recursively (flatten)
+    const collectSubordinates = (nodeId, list = []) => {
+      const node = nodeMap[nodeId];
+      if (!node || !node.children || node.children.length === 0) return list;
+      
+      node.children.forEach(child => {
+        list.push(child);
+        collectSubordinates(child.nodeId, list);
+      });
+      
+      return list;
+    };
+
+    const subordinatesList = collectSubordinates(currentNode.nodeId);
+    const totalSubordinates = subordinatesList.length;
+    const hasSubordinates = totalSubordinates > 0;
+
+    res.json({ 
+      success: true, 
+      data: {
+        hasSubordinates,
+        currentEmployee: nodeMap[currentNode.nodeId],
+        totalSubordinates,
+        subordinates: subordinatesList
+      }
+    });
+  } catch (error) {
+    console.error('Get subordinates hierarchy error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // Get Grievances Assigned to Manager
 const getAssignedGrievances = async (req, res) => {
   try {
@@ -949,7 +1278,7 @@ const updateGrievanceStatus = async (req, res) => {
       remarks,
       statusHistory,
       lastActionTime: now,
-      escalationDeadline: new Date(Date.now() + 2 * 60 * 1000).toISOString(), // Reset 2-minute timer
+      escalationDeadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Reset 2-day timer
       resolvedDate: (status === 'Resolved' || status === 'Closed') ? now : grievance.resolvedDate,
       updatedAt: now
     };
@@ -960,6 +1289,19 @@ const updateGrievanceStatus = async (req, res) => {
     }));
 
     console.log(`✅ Grievance ${grievanceId} status updated to ${status} by ${req.user.name}`);
+
+    // Send notification to employee who submitted the grievance
+    try {
+      const { notifyGrievanceUpdate, notifyGrievanceResolved } = require('../../services/hrmsNotificationService');
+      
+      if (status === 'Resolved' || status === 'Closed') {
+        await notifyGrievanceResolved(grievance.employeeId, companyId, grievanceId);
+      } else {
+        await notifyGrievanceUpdate(grievance.employeeId, companyId, grievanceId, status, req.user.name || 'Manager');
+      }
+    } catch (notifError) {
+      console.error('⚠️ Failed to send notification:', notifError);
+    }
 
     // Emit real-time update to the employee who submitted the grievance
     try {
@@ -1064,7 +1406,7 @@ const escalateGrievance = async (grievanceId, companyId) => {
       action: 'Escalated',
       assignedTo: newAssignee,
       assignedToName: newAssigneeName,
-      remark: `Escalated due to no action within 2 minutes`
+      remark: `Escalated due to no action within 2 days`
     });
 
     const updatedGrievance = {
@@ -1073,7 +1415,7 @@ const escalateGrievance = async (grievanceId, companyId) => {
       assignedToName: newAssigneeName,
       escalationLevel: (grievance.escalationLevel || 0) + 1,
       lastActionTime: now,
-      escalationDeadline: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
+      escalationDeadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days
       statusHistory,
       updatedAt: now
     };
@@ -1133,12 +1475,127 @@ const checkAndEscalateGrievances = async () => {
   }
 };
 
+// Assign Task to Subordinates
+const assignTask = async (req, res) => {
+  try {
+    const { employeeId, companyId } = req.user;
+    const { employeeIds, title, description, priority, startDate, deadline, category } = req.body;
+
+    if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0 || !title || !deadline) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+
+    // Get assigner's employee details
+    const assignerResult = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_EMPLOYEES_TABLE,
+      FilterExpression: 'employeeId = :eid',
+      ExpressionAttributeValues: { ':eid': employeeId }
+    }));
+
+    const assignerEmployee = assignerResult.Items && assignerResult.Items.length > 0 ? assignerResult.Items[0] : null;
+    const assignerName = assignerEmployee ? (assignerEmployee.fullName || assignerEmployee.name || req.user.name || 'Manager') : (req.user.name || 'Manager');
+
+    // Get all org nodes
+    const orgResult = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_ORGANIZATION_CHART_TABLE,
+      FilterExpression: 'recruiterId = :rid',
+      ExpressionAttributeValues: { ':rid': companyId }
+    }));
+
+    const allNodes = orgResult.Items || [];
+    const assignerNode = allNodes.find(n => n.employeeId === employeeId);
+
+    if (!assignerNode) {
+      return res.status(403).json({ success: false, message: 'You are not in the organization chart' });
+    }
+
+    // Check if assigner has subordinates
+    const hasSubordinates = allNodes.some(n => n.parentId === assignerNode.nodeId);
+    if (!hasSubordinates) {
+      return res.status(403).json({ success: false, message: 'You do not have permission to assign tasks' });
+    }
+
+    // Validate each target employee is a subordinate
+    const checkIfSubordinate = (managerNodeId, targetEmployeeId) => {
+      const employeeNode = allNodes.find(n => n.employeeId === targetEmployeeId);
+      if (!employeeNode) return false;
+      
+      let currentNode = employeeNode;
+      let depth = 0;
+      const maxDepth = 20;
+      
+      while (currentNode.parentId && depth < maxDepth) {
+        if (currentNode.parentId === managerNodeId) return true;
+        currentNode = allNodes.find(n => n.nodeId === currentNode.parentId);
+        if (!currentNode) break;
+        depth++;
+      }
+      return false;
+    };
+
+    for (const targetId of employeeIds) {
+      if (!checkIfSubordinate(assignerNode.nodeId, targetId)) {
+        return res.status(403).json({ success: false, message: `Employee ${targetId} is not your subordinate` });
+      }
+    }
+
+    // Create tasks
+    const tasks = [];
+    const now = getCurrentTimestamp();
+
+    // Import notification service
+    const { notifyTaskAssigned } = require('../../services/hrmsNotificationService');
+
+    for (const targetId of employeeIds) {
+      const taskId = generateId();
+      const task = {
+        taskId,
+        recruiterId: companyId,
+        employeeId: targetId,
+        title,
+        description: description || '',
+        priority: priority || 'Medium',
+        status: 'Pending',
+        startDate: startDate || now,
+        deadline,
+        category: category || 'General',
+        completionPercentage: 0,
+        assignedBy: employeeId,
+        assignedByName: assignerName,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      await dynamoClient.send(new PutCommand({
+        TableName: 'HRMS-Task-Management',
+        Item: task
+      }));
+
+      tasks.push(task);
+
+      // Send notification to employee
+      try {
+        await notifyTaskAssigned(targetId, companyId, taskId, title, assignerName);
+      } catch (notifError) {
+        console.error('⚠️ Failed to send notification:', notifError);
+      }
+    }
+
+    console.log(`✅ ${tasks.length} task(s) assigned by ${assignerName} (${employeeId})`);
+    res.status(201).json({ success: true, message: 'Task(s) assigned successfully', data: tasks });
+  } catch (error) {
+    console.error('Assign task error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getMyAttendance,
   markAttendance,
   getMyLeaves,
   getLeaveBalance,
+  getLeaveTypes,
   applyLeave,
   cancelLeave,
   getMyPayslips,
@@ -1156,5 +1613,7 @@ module.exports = {
   checkAndEscalateGrievances,
   getMyHierarchy,
   getFullOrganogram,
-  getNodeDetails
+  getNodeDetails,
+  getSubordinatesHierarchy,
+  assignTask
 };

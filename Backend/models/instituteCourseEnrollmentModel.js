@@ -2,17 +2,19 @@ const { v4: uuidv4 } = require('uuid');
 const dynamoService = require('../services/dynamoService');
 
 const INSTITUTE_COURSE_ENROLLMENTS_TABLE = 'staffinn-institute-course-enrollments';
+const COURSE_ENROLLED_USER_TABLE = 'course-enrolled-user';
 
 /**
  * Create a new institute course enrollment
  */
 const createEnrollment = async (enrollmentData) => {
   try {
-    const enrollmentsId = uuidv4(); // Changed to match table primary key
+    const enrollmentsId = uuidv4();
     const timestamp = new Date().toISOString();
 
+    // Create main enrollment record
     const enrollment = {
-      enrollmentsId, // Changed from enrollmentId
+      enrollmentsId,
       courseId: enrollmentData.courseId,
       courseInstituteId: enrollmentData.courseInstituteId,
       enrollingInstituteId: enrollmentData.enrollingInstituteId,
@@ -32,7 +34,37 @@ const createEnrollment = async (enrollmentData) => {
       updatedAt: timestamp
     };
 
+    // Save to institute enrollments table
     await dynamoService.putItem(INSTITUTE_COURSE_ENROLLMENTS_TABLE, enrollment);
+    console.log('✅ Saved to staffinn-institute-course-enrollments table');
+
+    // Also save each student enrollment to course-enrolled-user table for tracking
+    const studentEnrollmentPromises = enrollmentData.enrolledStudents.map(async (student) => {
+      const studentEnrollment = {
+        enrolledID: uuidv4(),
+        courseId: enrollmentData.courseId,
+        userId: student.studentId, // Using studentId as userId for MIS students
+        enrollmentDate: timestamp,
+        progressPercentage: 0,
+        completedModules: [],
+        enrollmentType: 'institute', // Mark as institute enrollment
+        enrollingInstituteId: enrollmentData.enrollingInstituteId,
+        parentEnrollmentId: enrollmentsId, // Link to parent enrollment
+        studentName: student.studentName,
+        studentEmail: student.studentEmail,
+        paymentStatus: enrollmentData.paymentStatus || 'completed',
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+      
+      await dynamoService.putItem(COURSE_ENROLLED_USER_TABLE, studentEnrollment);
+      console.log(`✅ Saved student ${student.studentName} to course-enrolled-user table`);
+      return studentEnrollment;
+    });
+
+    await Promise.all(studentEnrollmentPromises);
+    console.log('✅ All student enrollments saved to course-enrolled-user table');
+
     return enrollment;
   } catch (error) {
     console.error('Error creating institute course enrollment:', error);
@@ -170,6 +202,26 @@ const updateStudentStatus = async (enrollmentsId, studentId, status) => {
   }
 };
 
+/**
+ * Check if a student is already enrolled in a course
+ */
+const isStudentEnrolled = async (courseId, studentId) => {
+  try {
+    const params = {
+      FilterExpression: 'courseId = :courseId AND userId = :studentId',
+      ExpressionAttributeValues: {
+        ':courseId': courseId,
+        ':studentId': studentId
+      }
+    };
+    const enrollments = await dynamoService.scanItems(COURSE_ENROLLED_USER_TABLE, params);
+    return enrollments && enrollments.length > 0;
+  } catch (error) {
+    console.error('Error checking student enrollment:', error);
+    return false;
+  }
+};
+
 module.exports = {
   createEnrollment,
   getEnrollmentsByCourse,
@@ -177,5 +229,6 @@ module.exports = {
   getEnrollmentsByCourseInstitute,
   getEnrollmentById,
   updatePaymentStatus,
-  updateStudentStatus
+  updateStudentStatus,
+  isStudentEnrolled
 };

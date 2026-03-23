@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Home, Calendar, Plane, IndianRupee, CreditCard, ClipboardList, MessageSquare, Network, User, LogOut } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 export default function Layout({ children }) {
   const navigate = useNavigate();
@@ -68,8 +69,24 @@ export default function Layout({ children }) {
       </div>
 
       {/* Main Content - Scrollable */}
-      <div className="flex-1 overflow-y-auto">
-        {children}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Header with Notification Bell */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Welcome, {user?.employee?.fullName || user?.user?.email}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {user?.employee?.designation} • {user?.employee?.department}
+            </p>
+          </div>
+          <NotificationBell />
+        </div>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-y-auto">
+          {children}
+        </div>
       </div>
     </div>
   );

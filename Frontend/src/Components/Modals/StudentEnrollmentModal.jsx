@@ -5,6 +5,7 @@ import apiService from '../../services/api';
 const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
   const [students, setStudents] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const [enrolledStudents, setEnrolledStudents] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -12,10 +13,11 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && course) {
       fetchAvailableStudents();
+      fetchEnrolledStudents();
     }
-  }, [isOpen]);
+  }, [isOpen, course]);
 
   const fetchAvailableStudents = async () => {
     try {
@@ -48,7 +50,28 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
     }
   };
 
+  const fetchEnrolledStudents = async () => {
+    try {
+      console.log('🔍 [FRONTEND] Fetching enrolled students for course:', course.coursesId);
+      const response = await apiService.getEnrolledInstituteStudents(course.coursesId);
+      console.log('📊 [FRONTEND] Enrolled students response:', response);
+      
+      if (response.success && response.data) {
+        const enrolledIds = new Set(response.data.map(s => s.studentsId || s.studentId));
+        console.log('✅ [FRONTEND] Enrolled student IDs:', Array.from(enrolledIds));
+        setEnrolledStudents(enrolledIds);
+      }
+    } catch (error) {
+      console.error('❌ [FRONTEND] Error fetching enrolled students:', error);
+    }
+  };
+
   const handleStudentToggle = (studentId) => {
+    // Don't allow toggling already enrolled students
+    if (enrolledStudents.has(studentId)) {
+      return;
+    }
+    
     setSelectedStudents(prev => {
       if (prev.includes(studentId)) {
         return prev.filter(id => id !== studentId);
@@ -59,11 +82,15 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
   };
 
   const handleSelectAll = () => {
-    const filteredStudentIds = filteredStudents.map(s => s.studentsId);
-    if (selectedStudents.length === filteredStudentIds.length) {
+    // Only select students who are not already enrolled
+    const availableStudentIds = filteredStudents
+      .filter(s => !enrolledStudents.has(s.studentsId))
+      .map(s => s.studentsId);
+    
+    if (selectedStudents.length === availableStudentIds.length) {
       setSelectedStudents([]);
     } else {
-      setSelectedStudents(filteredStudentIds);
+      setSelectedStudents(availableStudentIds);
     }
   };
 
@@ -76,6 +103,10 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
     try {
       setEnrolling(true);
       setError('');
+      console.log('🎓 [FRONTEND] Starting enrollment process...');
+      console.log('🎓 [FRONTEND] Course ID:', course.coursesId);
+      console.log('🎓 [FRONTEND] Selected Students:', selectedStudents);
+      console.log('🎓 [FRONTEND] Number of students:', selectedStudents.length);
 
       const paymentDetails = {
         paymentStatus: 'completed',
@@ -84,27 +115,63 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
         paymentDate: new Date().toISOString()
       };
 
+      console.log('💳 [FRONTEND] Payment Details:', paymentDetails);
+      console.log('📤 [FRONTEND] Calling enrollStudentsInCourse API...');
+      
       const response = await apiService.enrollStudentsInCourse(
         course.coursesId,
         selectedStudents,
         paymentDetails
       );
 
+      console.log('📊 [FRONTEND] Enrollment API Response:', JSON.stringify(response, null, 2));
+      console.log('📊 [FRONTEND] Response success:', response.success);
+      console.log('📊 [FRONTEND] Response stats:', response.stats);
+
       if (response.success) {
+        let successMsg = `Successfully enrolled ${response.stats?.enrolled || selectedStudents.length} student(s)!`;
+        if (response.stats?.skipped > 0) {
+          successMsg += ` (${response.stats.skipped} already enrolled)`;
+        }
+        if (response.stats?.notFound > 0) {
+          successMsg += ` (${response.stats.notFound} not found)`;
+        }
+        
+        console.log('✅ [FRONTEND] Enrollment successful:', successMsg);
         setSuccess(true);
+        setError('');
+        
+        // Update enrolled students set
+        const newlyEnrolled = new Set([...enrolledStudents, ...selectedStudents]);
+        setEnrolledStudents(newlyEnrolled);
+        
+        // Clear selected students
+        setSelectedStudents([]);
+        
+        const successDiv = document.querySelector('.success-message span');
+        if (successDiv) {
+          successDiv.textContent = `✅ ${successMsg}`;
+        }
+        
+        console.log('🔄 [FRONTEND] Waiting 2 seconds before closing modal...');
         setTimeout(() => {
+          console.log('🔄 [FRONTEND] Closing modal and reloading page...');
           onClose();
           setSuccess(false);
-          setSelectedStudents([]);
+          window.location.reload();
         }, 2000);
       } else {
+        console.error('❌ [FRONTEND] Enrollment failed:', response.message);
         setError(response.message || 'Failed to enroll students');
       }
     } catch (error) {
-      console.error('Error enrolling students:', error);
-      setError('Failed to enroll students');
+      console.error('❌ [FRONTEND] Error enrolling students:', error);
+      console.error('❌ [FRONTEND] Error message:', error.message);
+      console.error('❌ [FRONTEND] Error stack:', error.stack);
+      setError(error.message || 'Failed to enroll students');
     } finally {
       setEnrolling(false);
+      console.log('🏁 [FRONTEND] Enrollment process completed');
     }
   };
 
@@ -187,7 +254,17 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
           {/* Students List */}
           <div className="students-list-section">
             <div className="section-header">
-              <h4>Select Students ({selectedStudents.length} selected)</h4>
+              <h4>
+                Select Students 
+                {selectedStudents.length > 0 && (
+                  <span style={{color: '#4863f7', fontWeight: 'bold'}}>
+                    ({selectedStudents.length} selected)
+                  </span>
+                )}
+                {selectedStudents.length === 0 && (
+                  <span style={{color: '#6b7280'}}>(0 selected)</span>
+                )}
+              </h4>
             </div>
 
             {loading ? (
@@ -201,20 +278,27 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
               </div>
             ) : (
               <div className="students-grid">
-                {filteredStudents.map(student => (
+                {filteredStudents.map(student => {
+                  const isEnrolled = enrolledStudents.has(student.studentsId);
+                  const isSelected = selectedStudents.includes(student.studentsId);
+                  
+                  return (
                   <div
                     key={student.studentsId}
-                    className={`student-card ${selectedStudents.includes(student.studentsId) ? 'selected' : ''}`}
-                    onClick={() => handleStudentToggle(student.studentsId)}
+                    className={`student-card ${isSelected ? 'selected' : ''} ${isEnrolled ? 'enrolled' : ''}`}
+                    onClick={() => !isEnrolled && handleStudentToggle(student.studentsId)}
+                    style={{ cursor: isEnrolled ? 'not-allowed' : 'pointer' }}
                   >
-                    <div className="student-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={selectedStudents.includes(student.studentsId)}
-                        onChange={() => {}}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
+                    {!isEnrolled && (
+                      <div className="student-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleStudentToggle(student.studentsId)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    )}
                     <div className="student-avatar">
                       {student.profilePhotoUrl ? (
                         <img src={student.profilePhotoUrl} alt={student.studentName} />
@@ -233,9 +317,15 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
                       {student.fatherName && (
                         <p className="student-father" style={{fontSize: '12px', color: '#666'}}>Father: {student.fatherName}</p>
                       )}
+                      {isEnrolled && (
+                        <div className="enrolled-badge-wrapper">
+                          <span className="enrolled-badge-inline">✓ Already Enrolled</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

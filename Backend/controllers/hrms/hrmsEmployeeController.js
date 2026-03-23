@@ -18,6 +18,30 @@ const createEmployee = async (req, res) => {
       return res.status(400).json(errorResponse('Recruiter ID not found in authentication token'));
     }
 
+    // Check if this is the first employee
+    let existingEmployees;
+    if (isUsingMockDB()) {
+      const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
+      existingEmployees = allEmployees.filter(e => 
+        e.recruiterId === recruiterId && 
+        (!e.isDeleted || e.isDeleted === false)
+      );
+    } else {
+      const scanCommand = new ScanCommand({
+        TableName: HRMS_EMPLOYEES_TABLE,
+        FilterExpression: 'recruiterId = :rid AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
+        ExpressionAttributeValues: {
+          ':recruiterId': recruiterId,
+          ':false': false
+        }
+      });
+      const result = await dynamoClient.send(scanCommand);
+      existingEmployees = result.Items || [];
+    }
+    
+    const isFirstEmployee = existingEmployees.length === 0;
+    console.log(`👑 Is first employee: ${isFirstEmployee}`);
+    
     const { 
       employeeId,
       fullName, name,
@@ -142,6 +166,8 @@ const createEmployee = async (req, res) => {
       emergencyContactName: emergencyContactName || '',
       emergencyContactNumber: emergencyContactNumber || phone || '',
       emergencyContactRelation: emergencyContactRelation || '',
+      isFirstEmployee,
+      isHRAdmin: isFirstEmployee,
       createdAt: getCurrentTimestamp(),
       createdBy: req.user?.userId || 'system'
     };
@@ -156,33 +182,37 @@ const createEmployee = async (req, res) => {
       await dynamoClient.send(command);
     }
 
-    // Auto-generate employee login credentials
-    try {
-      const tempPassword = `Emp@${employeeId}`;
-      const hashedPassword = await bcrypt.hash(tempPassword, 10);
-      const userId = `USER_${employeeId}_${Date.now()}`;
+    // Only create portal credentials if NOT first employee
+    if (!isFirstEmployee) {
+      try {
+        const tempPassword = `Emp@${employeeId}`;
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        const userId = `USER_${employeeId}_${Date.now()}`;
 
-      const employeeUser = {
-        userId,
-        employeeId,
-        email,
-        password: hashedPassword,
-        roleId: 'ROLE_EMPLOYEE',
-        companyId: recruiterId,
-        isFirstLogin: true,
-        isActive: true,
-        createdAt: getCurrentTimestamp()
-      };
+        const employeeUser = {
+          userId,
+          employeeId,
+          email,
+          password: hashedPassword,
+          roleId: 'ROLE_EMPLOYEE',
+          companyId: recruiterId,
+          isFirstLogin: true,
+          isActive: true,
+          createdAt: getCurrentTimestamp()
+        };
 
-      await docClient.send(new PutCommand({
-        TableName: 'staffinn-hrms-employee-users',
-        Item: employeeUser
-      }));
+        await docClient.send(new PutCommand({
+          TableName: 'staffinn-hrms-employee-users',
+          Item: employeeUser
+        }));
 
-      console.log('✅ Employee credentials created:', { email, tempPassword });
-      
-    } catch (credError) {
-      console.error('❌ Error creating employee credentials:', credError);
+        console.log('✅ Employee credentials created:', { email, tempPassword });
+        
+      } catch (credError) {
+        console.error('❌ Error creating employee credentials:', credError);
+      }
+    } else {
+      console.log('⚠️ First employee (HR Admin) - skipping portal credentials creation');
     }
 
     console.log('Employee created successfully with ID:', employeeId);

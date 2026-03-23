@@ -33,6 +33,7 @@ export const attendanceAPI = {
 export const leaveAPI = {
   getMyLeaves: () => api.get('/employee/leaves'),
   getLeaveBalance: () => api.get('/employee/leaves/balance'),
+  getLeaveTypes: () => api.get('/employee/leaves/types'),
   applyLeave: (data) => api.post('/employee/leaves/apply', data),
   cancelLeave: (id) => api.delete(`/employee/leaves/${id}`)
 };
@@ -61,13 +62,23 @@ export const grievanceAPI = {
   getMyGrievances: () => api.get('/employee/grievances'),
   submitGrievance: (data) => api.post('/employee/grievances', data),
   getAssignedGrievances: () => api.get('/employee/grievances/assigned'),
-  updateGrievanceStatus: (id, data) => api.put(`/employee/grievances/${id}/status`, data)
+  updateGrievanceStatus: (id, data) => api.put(`/employee/grievances/${id}/status`, data),
+  getOrganizationEmployees: () => api.get('/employee/grievances/organization-employees'),
+  getReportingManagers: () => api.get('/employee/grievances/reporting-managers')
 };
 
 export const organogramAPI = {
   getMyHierarchy: () => api.get('/employee/organogram'),
+  getSubordinatesHierarchy: () => api.get('/employee/organogram/subordinates'),
   getFullOrganogram: () => api.get('/employee/organogram/full'),
   getNodeDetails: (nodeId) => api.get(`/employee/organogram/node/${nodeId}`)
+};
+
+export const notificationAPI = {
+  getNotifications: (limit = 50) => api.get('/employee/notifications', { params: { limit } }),
+  getUnreadCount: () => api.get('/employee/notifications/unread-count'),
+  markAsRead: (notificationId) => api.put(`/employee/notifications/${notificationId}/read`),
+  markAllAsRead: () => api.put('/employee/notifications/mark-all-read')
 };
 
 export default api;

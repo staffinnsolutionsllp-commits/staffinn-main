@@ -18,6 +18,7 @@ import PlacementSection from './Placement/PlacementSection';
 import StaffinnPartnerDashboard from './StaffinnPartnerDashboard';
 import CourseEnrollment from './CourseEnrollment';
 import CourseEnrollmentHistory from './CourseEnrollmentHistory';
+import StudentTracking from './StudentTracking';
 
 const StaffinnPartner = ({ 
     misStatus, 
@@ -358,6 +359,8 @@ const StaffinnPartner = ({
                 {activePartnerTab === 'placement' && (
                     <PlacementSection />
                 )}
+                
+                {activePartnerTab === 'student-tracking' && <StudentTracking />}
             </div>
         </div>
     );

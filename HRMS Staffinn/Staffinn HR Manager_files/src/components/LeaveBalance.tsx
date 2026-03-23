@@ -5,6 +5,7 @@ import { apiService } from '../services/api'
 export default function LeaveBalance() {
   const [balances, setBalances] = useState<any[]>([])
   const [filteredBalances, setFilteredBalances] = useState<any[]>([])
+  const [leaveTypes, setLeaveTypes] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [departmentFilter, setDepartmentFilter] = useState('')
@@ -15,6 +16,7 @@ export default function LeaveBalance() {
 
   useEffect(() => {
     loadBalances()
+    loadLeaveTypes()
   }, [])
 
   useEffect(() => {
@@ -30,6 +32,17 @@ export default function LeaveBalance() {
       console.error('Error:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadLeaveTypes = async () => {
+    try {
+      const rules = await apiService.getLeaveRules()
+      const types = rules.map((rule: any) => rule.leaveName || rule.leaveType || rule.name).filter(Boolean)
+      setLeaveTypes(types)
+      console.log('✅ Loaded leave types:', types)
+    } catch (error) {
+      console.error('❌ Error loading leave types:', error)
     }
   }
 
@@ -125,7 +138,7 @@ export default function LeaveBalance() {
             </div>
             <form onSubmit={handleAdjustment} className="space-y-4">
               <div><label className="block text-sm font-medium mb-1">Employee *</label><select value={adjustmentData.employeeId} onChange={(e) => setAdjustmentData({ ...adjustmentData, employeeId: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required><option value="">Select</option>{balances.map((b, i) => <option key={i} value={b.employeeId}>{b.employeeName}</option>)}</select></div>
-              <div><label className="block text-sm font-medium mb-1">Leave Type *</label><select value={adjustmentData.leaveType} onChange={(e) => setAdjustmentData({ ...adjustmentData, leaveType: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required><option value="">Select</option><option value="Casual Leave">Casual Leave</option><option value="Sick Leave">Sick Leave</option></select></div>
+              <div><label className="block text-sm font-medium mb-1">Leave Type *</label><select value={adjustmentData.leaveType} onChange={(e) => setAdjustmentData({ ...adjustmentData, leaveType: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required><option value="">Select Leave Type</option>{leaveTypes.length === 0 ? <option disabled>No leave types configured</option> : leaveTypes.map((type, i) => <option key={i} value={type}>{type}</option>)}</select></div>
               <div><label className="block text-sm font-medium mb-1">Type *</label><div className="flex space-x-4"><label className="flex items-center"><input type="radio" value="Add" checked={adjustmentData.adjustmentType === 'Add'} onChange={(e) => setAdjustmentData({ ...adjustmentData, adjustmentType: e.target.value })} className="mr-2" />Add</label><label className="flex items-center"><input type="radio" value="Deduct" checked={adjustmentData.adjustmentType === 'Deduct'} onChange={(e) => setAdjustmentData({ ...adjustmentData, adjustmentType: e.target.value })} className="mr-2" />Deduct</label></div></div>
               <div><label className="block text-sm font-medium mb-1">Days *</label><input type="number" step="0.5" value={adjustmentData.days} onChange={(e) => setAdjustmentData({ ...adjustmentData, days: e.target.value })} className="w-full px-3 py-2 border rounded-lg" required /></div>
               <div><label className="block text-sm font-medium mb-1">Reason *</label><textarea value={adjustmentData.reason} onChange={(e) => setAdjustmentData({ ...adjustmentData, reason: e.target.value })} className="w-full px-3 py-2 border rounded-lg" rows={3} required /></div>

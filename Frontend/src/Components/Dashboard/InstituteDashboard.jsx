@@ -22,6 +22,7 @@ import CourseQuizManager from './CourseQuizManager';
 import GovtSchemeModal from './GovtSchemeModal';
 import StaffinnPartner from './StaffinnPartner';
 import CourseEnrollmentHistory from './CourseEnrollmentHistory';
+import StudentTracking from './StudentTracking';
 
 
 const InstituteDashboard = () => {
@@ -1887,7 +1888,7 @@ const InstituteDashboard = () => {
                     <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => handleTabChange('profile')}>
                         My Profile
                     </li>
-                    <li className={`dropdown ${['courses', 'enrollment-tracking'].includes(activeTab) ? 'active' : ''}`}>
+                    <li className={`dropdown ${['courses', 'enrollment-tracking', 'student-tracking'].includes(activeTab) ? 'active' : ''}`}>
                         <div className="dropdown-header" onClick={() => setCoursesDropdownOpen(!coursesDropdownOpen)}>
                             My Courses
                             <span className={`dropdown-arrow ${coursesDropdownOpen ? 'open' : ''}`}>▼</span>
@@ -1899,6 +1900,9 @@ const InstituteDashboard = () => {
                                 </li>
                                 <li className={activeTab === 'enrollment-tracking' ? 'active' : ''} onClick={() => handleTabChange('enrollment-tracking')}>
                                     Course Enrollment Tracking
+                                </li>
+                                <li className={activeTab === 'student-tracking' ? 'active' : ''} onClick={() => handleTabChange('student-tracking')}>
+                                    Student Tracking
                                 </li>
                             </ul>
                         )}
@@ -2669,6 +2673,10 @@ const InstituteDashboard = () => {
 
                 {activeTab === 'enrollment-tracking' && (
                     <CourseEnrollmentHistory />
+                )}
+
+                {activeTab === 'student-tracking' && (
+                    <StudentTracking />
                 )}
 
 

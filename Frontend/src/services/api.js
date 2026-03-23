@@ -4966,6 +4966,31 @@ const apiService = {
     }
   },
 
+  getEnrolledInstituteStudents: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('🔍 [API] Fetching enrolled students for course:', courseId);
+      const response = await fetch(`${API_URL}/institute-course-enrollment/courses/${courseId}/enrolled-students`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const result = await response.json();
+      console.log('📊 [API] Enrolled students response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ [API] Get enrolled students error:', error);
+      return { success: false, message: 'Failed to get enrolled students', data: [] };
+    }
+  },
+
   getAvailableStudentsForEnrollment: async () => {
     try {
       const token = localStorage.getItem('token');
@@ -4984,6 +5009,123 @@ const apiService = {
     } catch (error) {
       console.error('Get available students error:', error);
       return { success: false, message: 'Failed to get available students' };
+    }
+  },
+
+  // Payment API - Razorpay Integration
+  createPaymentOrder: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('💳 Creating payment order for course:', courseId);
+      const response = await fetch(`${API_URL}/payments/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ courseId })
+      });
+      
+      const result = await response.json();
+      console.log('📊 Payment order response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Create payment order error:', error);
+      return { success: false, message: 'Failed to create payment order' };
+    }
+  },
+
+  verifyPayment: async (paymentData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('🔐 Verifying payment:', paymentData);
+      const response = await fetch(`${API_URL}/payments/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(paymentData)
+      });
+      
+      const result = await response.json();
+      console.log('✅ Payment verification response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Verify payment error:', error);
+      return { success: false, message: 'Failed to verify payment' };
+    }
+  },
+
+  getPaymentHistory: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/payments/history`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get payment history error:', error);
+      return { success: false, message: 'Failed to get payment history' };
+    }
+  },
+
+  getInstituteEarnings: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/payments/institute-earnings`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get institute earnings error:', error);
+      return { success: false, message: 'Failed to get earnings' };
+    }
+  },
+
+  handlePaymentFailure: async (failureData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/payments/failure`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(failureData)
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Handle payment failure error:', error);
+      return { success: false, message: 'Failed to handle payment failure' };
     }
   }
 

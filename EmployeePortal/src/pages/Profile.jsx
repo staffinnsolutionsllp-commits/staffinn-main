@@ -14,9 +14,11 @@ export default function Profile() {
   });
 
   useEffect(() => {
+    console.log('👤 User data in Profile:', user);
+    console.log('🏢 Employee data:', user?.employee);
     if (user?.employee) {
       setFormData({
-        phone: user.employee.emergencyContactNumber || '',
+        phone: user.employee.phone || user.employee.emergencyContactNumber || '',
         currentAddress: user.employee.currentAddress || '',
         emergencyContactName: user.employee.emergencyContactName || '',
         emergencyContactNumber: user.employee.emergencyContactNumber || '',

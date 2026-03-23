@@ -75,12 +75,19 @@ const updateAdminPassword = async (adminId, newPassword) => {
 /**
  * Initialize default admin (run once)
  * @param {string} adminId - Admin ID
- * @param {string} defaultPassword - Default password
+ * @param {string} defaultPassword - Default password (should be provided via environment variable)
  * @param {string} role - Admin role
  * @returns {Promise<object>} - Created admin
  */
-const initializeDefaultAdmin = async (adminId = 'admin', defaultPassword = 'admin123', role = 'admin') => {
+const initializeDefaultAdmin = async (adminId = 'admin', defaultPassword = null, role = 'admin') => {
   try {
+    // SECURITY FIX (CWE-798, CWE-259): Use environment variable instead of hardcoded password
+    const password = defaultPassword || process.env.DEFAULT_ADMIN_PASSWORD;
+    
+    if (!password) {
+      throw new Error('Admin password must be provided via DEFAULT_ADMIN_PASSWORD environment variable');
+    }
+    
     // Check if admin already exists
     const existingAdmin = await getAdminById(adminId);
     if (existingAdmin) {
@@ -89,7 +96,7 @@ const initializeDefaultAdmin = async (adminId = 'admin', defaultPassword = 'admi
     
     // Hash the default password
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
     
     const adminData = {
       adminId,
@@ -113,8 +120,13 @@ const initializeDefaultAdmin = async (adminId = 'admin', defaultPassword = 'admi
  */
 const createStaffAdmin = async () => {
   try {
-    const staffAdminId = 'staff_admin';
-    const staffPassword = 'staff123';
+    // SECURITY FIX (CWE-798, CWE-259): Use environment variables for credentials
+    const staffAdminId = process.env.STAFF_ADMIN_ID || 'staff_admin';
+    const staffPassword = process.env.STAFF_ADMIN_PASSWORD;
+    
+    if (!staffPassword) {
+      throw new Error('Staff admin password must be provided via STAFF_ADMIN_PASSWORD environment variable');
+    }
     
     // Check if staff admin already exists
     const existingStaffAdmin = await getAdminById(staffAdminId);
@@ -148,8 +160,13 @@ const createStaffAdmin = async () => {
  */
 const createRecruiterAdmin = async () => {
   try {
-    const recruiterAdminId = 'recruiter_admin';
-    const recruiterPassword = 'recruiter123';
+    // SECURITY FIX (CWE-798, CWE-259): Use environment variables for credentials
+    const recruiterAdminId = process.env.RECRUITER_ADMIN_ID || 'recruiter_admin';
+    const recruiterPassword = process.env.RECRUITER_ADMIN_PASSWORD;
+    
+    if (!recruiterPassword) {
+      throw new Error('Recruiter admin password must be provided via RECRUITER_ADMIN_PASSWORD environment variable');
+    }
     
     // Check if recruiter admin already exists
     const existingRecruiterAdmin = await getAdminById(recruiterAdminId);
@@ -183,8 +200,13 @@ const createRecruiterAdmin = async () => {
  */
 const createInstituteAdmin = async () => {
   try {
-    const instituteAdminId = 'institute_admin';
-    const institutePassword = 'institute123';
+    // SECURITY FIX (CWE-798, CWE-259): Use environment variables for credentials
+    const instituteAdminId = process.env.INSTITUTE_ADMIN_ID || 'institute_admin';
+    const institutePassword = process.env.INSTITUTE_ADMIN_PASSWORD;
+    
+    if (!institutePassword) {
+      throw new Error('Institute admin password must be provided via INSTITUTE_ADMIN_PASSWORD environment variable');
+    }
     
     // Check if institute admin already exists
     const existingInstituteAdmin = await getAdminById(instituteAdminId);

@@ -377,7 +377,10 @@ const createLeaveRule = async (req, res) => {
       await dynamoClient.send(putCommand);
     }
 
-    res.status(201).json(successResponse(rule, 'Leave rule created successfully'));
+    // 🚀 AUTO-ALLOCATE: Automatically allocate this leave type to all employees
+    await autoAllocateLeaveToAllEmployees(recruiterId, rule);
+
+    res.status(201).json(successResponse(rule, 'Leave rule created and allocated to all employees successfully'));
   } catch (error) {
     handleError(error, res);
   }
@@ -975,6 +978,100 @@ const calculateProRataLeaves = (joinDate, rule) => {
   const joiningMonth = joiningDate.getMonth();
   const remainingMonths = 12 - joiningMonth;
   return Math.round((remainingMonths / 12) * totalLeavesPerYear);
+};
+
+// 🚀 AUTO-ALLOCATE: Function to automatically allocate a leave type to all employees
+const autoAllocateLeaveToAllEmployees = async (recruiterId, rule) => {
+  try {
+    console.log(`🚀 Auto-allocating leave type "${rule.leaveName}" to all employees for recruiterId: ${recruiterId}`);
+
+    // Get all active employees for this recruiter
+    let employees;
+    if (isUsingMockDB()) {
+      employees = mockDB().scan(HRMS_EMPLOYEES_TABLE).filter(e => 
+        e.recruiterId === recruiterId && (!e.isDeleted || e.isDeleted === false)
+      );
+    } else {
+      const scanCommand = new ScanCommand({ 
+        TableName: HRMS_EMPLOYEES_TABLE,
+        FilterExpression: 'recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
+        ExpressionAttributeValues: { ':recruiterId': recruiterId, ':false': false }
+      });
+      const result = await dynamoClient.send(scanCommand);
+      employees = result.Items || [];
+    }
+
+    console.log(`📊 Found ${employees.length} active employees`);
+
+    let allocated = 0;
+
+    // Allocate leave balance to each employee
+    for (const employee of employees) {
+      // Check if balance already exists
+      let existingBalance;
+      if (isUsingMockDB()) {
+        const allBalances = mockDB().scan(HRMS_LEAVES_TABLE);
+        existingBalance = allBalances.find(b => 
+          b.entityType === 'BALANCE' && 
+          b.employeeId === employee.employeeId && 
+          b.leaveType === rule.leaveName
+        );
+      } else {
+        const scanCommand = new ScanCommand({
+          TableName: HRMS_LEAVES_TABLE,
+          FilterExpression: 'entityType = :type AND employeeId = :empId AND leaveType = :leaveType',
+          ExpressionAttributeValues: {
+            ':type': 'BALANCE',
+            ':empId': employee.employeeId,
+            ':leaveType': rule.leaveName
+          }
+        });
+        const result = await dynamoClient.send(scanCommand);
+        existingBalance = result.Items && result.Items.length > 0 ? result.Items[0] : null;
+      }
+
+      // Only create if balance doesn't exist
+      if (!existingBalance) {
+        const allocatedLeaves = calculateProRataLeaves(employee.dateOfJoining || employee.joinDate, rule);
+
+        const leaveId = generateId();
+        const balance = {
+          leaveId,
+          entityType: 'BALANCE',
+          employeeId: employee.employeeId,
+          employeeName: employee.fullName || employee.name,
+          department: employee.department,
+          leaveType: rule.leaveName,
+          totalAllocated: allocatedLeaves,
+          used: 0,
+          remaining: allocatedLeaves,
+          carryForward: 0,
+          lwp: 0,
+          createdAt: getCurrentTimestamp(),
+          updatedAt: getCurrentTimestamp()
+        };
+
+        if (isUsingMockDB()) {
+          mockDB().put(HRMS_LEAVES_TABLE, balance);
+        } else {
+          const putCommand = new PutCommand({
+            TableName: HRMS_LEAVES_TABLE,
+            Item: balance
+          });
+          await dynamoClient.send(putCommand);
+        }
+
+        allocated++;
+        console.log(`✅ Allocated ${allocatedLeaves} ${rule.leaveName} to ${employee.fullName || employee.name}`);
+      }
+    }
+
+    console.log(`🎉 Auto-allocation complete: ${allocated} new leave balances created`);
+    return allocated;
+  } catch (error) {
+    console.error('❌ Error in auto-allocation:', error);
+    throw error;
+  }
 };
 
 const updateLeaveSettings = async (req, res) => {

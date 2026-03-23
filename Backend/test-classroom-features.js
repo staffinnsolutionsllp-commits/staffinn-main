@@ -1,6 +1,28 @@
 /**
  * Test script for Classroom Photos and Type features
  * This script tests the enhanced Course Details functionality
+ * 
+ * SECURITY (CWE-798, CWE-259 Fix): This script uses environment variables for all credentials
+ * 
+ * Required Environment Variables:
+ *   - TEST_AUTH_TOKEN: Authentication token for API requests (required)
+ *   - API_URL: API endpoint URL (optional, defaults to http://localhost:4001/api/v1)
+ * 
+ * Usage:
+ * 1. Set environment variables in .env file or export them:
+ *    export TEST_AUTH_TOKEN="your-auth-token-here"
+ *    export API_URL="http://localhost:4001/api/v1"  # optional
+ * 
+ * 2. Run the test:
+ *    node test-classroom-features.js
+ * 
+ * OR run with inline environment variables:
+ *    TEST_AUTH_TOKEN="your-token" API_URL="http://localhost:4001/api/v1" node test-classroom-features.js
+ * 
+ * SECURITY NOTES:
+ *   - Never hardcode authentication tokens or credentials in code
+ *   - Always use environment variables for sensitive data
+ *   - Never commit .env files with actual credentials to version control
  */
 
 const fs = require('fs');
@@ -8,7 +30,8 @@ const path = require('path');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
 
-const API_URL = 'http://localhost:4001/api/v1';
+// SECURITY FIX (CWE-798, CWE-259): Use environment variable for API URL
+const API_URL = process.env.API_URL || 'http://localhost:4001/api/v1';
 
 // Test data
 const testData = {
@@ -82,8 +105,20 @@ async function testClassroomFeatures() {
       contentType: 'image/png'
     });
 
-    // You would need a valid token for this test
-    const token = 'your-test-token-here';
+    // Get token from environment variable for security
+    // SECURITY: Never hardcode tokens - always use environment variables
+    const token = process.env.TEST_AUTH_TOKEN;
+    
+    if (!token) {
+      console.error('❌ TEST_AUTH_TOKEN environment variable not set');
+      console.log('💡 Set it using: export TEST_AUTH_TOKEN="your-token-here"');
+      console.log('💡 Or run: TEST_AUTH_TOKEN="your-token" node test-classroom-features.js');
+      return;
+    }
+    
+    console.log('✅ Using token from environment variable (secure)');
+    
+    // SECURITY NOTE: Token is dynamically loaded from environment, not hardcoded
     
     const createResponse = await fetch(`${API_URL}/course-details`, {
       method: 'POST',
@@ -175,8 +210,15 @@ function testValidation() {
 console.log('🚀 Starting Classroom Features Test Suite\n');
 testValidation();
 
-// Uncomment the line below to run the API tests (requires valid token and running server)
-// testClassroomFeatures();
+// SECURITY NOTE: API tests require TEST_AUTH_TOKEN environment variable
+// Run API tests only when token is provided
+if (process.env.TEST_AUTH_TOKEN) {
+  console.log('\n🔐 TEST_AUTH_TOKEN detected, running API tests...\n');
+  testClassroomFeatures();
+} else {
+  console.log('\n⚠️  Skipping API tests (TEST_AUTH_TOKEN not set)');
+  console.log('💡 To run API tests, set: TEST_AUTH_TOKEN="your-token" node test-classroom-features.js');
+}
 
 console.log('\n📋 Test Summary:');
 console.log('1. ✅ Classroom Type Selection (Classroom/Lab) - Implemented');

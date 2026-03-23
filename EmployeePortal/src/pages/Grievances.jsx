@@ -1,29 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
-import { MessageSquare, Plus, Clock, CheckCircle, AlertCircle, Users, Eye } from 'lucide-react';
+import { grievanceAPI } from '../services/api';
+import { MessageSquare, Plus, Clock, CheckCircle, AlertCircle, Users, Eye, UserX } from 'lucide-react';
 import io from 'socket.io-client';
 
 export default function Grievances() {
   const { user } = useAuth();
   const [grievances, setGrievances] = useState([]);
   const [assignedGrievances, setAssignedGrievances] = useState([]);
+  const [reportingManagers, setReportingManagers] = useState({ immediateManager: null, nextLevelManager: null });
+  const [organizationEmployees, setOrganizationEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState('my-grievances');
   const [selectedGrievance, setSelectedGrievance] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [actionRemark, setActionRemark] = useState('');
+  const [grievanceType, setGrievanceType] = useState('general'); // 'general' or 'complaint'
   const [formData, setFormData] = useState({
     title: '',
     category: '',
     priority: 'medium',
-    description: ''
+    description: '',
+    assignedTo: '',
+    complaintAgainstEmployeeId: ''
   });
 
   useEffect(() => {
     fetchGrievances();
     fetchAssignedGrievances();
+    fetchReportingManagers();
+    fetchOrganizationEmployees();
     
     // Setup WebSocket for real-time updates
     const socket = io(import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001');
@@ -38,6 +45,16 @@ export default function Grievances() {
       fetchGrievances();
       fetchAssignedGrievances();
     });
+
+    socket.on('grievance-assigned', (data) => {
+      console.log('📡 New grievance assigned:', data);
+      fetchAssignedGrievances();
+    });
+
+    socket.on('grievance-escalated', (data) => {
+      console.log('📡 Grievance escalated:', data);
+      fetchAssignedGrievances();
+    });
     
     return () => {
       socket.disconnect();
@@ -46,7 +63,7 @@ export default function Grievances() {
 
   const fetchGrievances = async () => {
     try {
-      const response = await api.get('/employee/grievances');
+      const response = await grievanceAPI.getMyGrievances();
       setGrievances(response.data.data || []);
     } catch (error) {
       console.error('Error fetching grievances:', error);
@@ -57,29 +74,100 @@ export default function Grievances() {
 
   const fetchAssignedGrievances = async () => {
     try {
-      const response = await api.get('/employee/grievances/assigned');
+      const response = await grievanceAPI.getAssignedGrievances();
       setAssignedGrievances(response.data.data || []);
     } catch (error) {
       console.error('Error fetching assigned grievances:', error);
     }
   };
 
+  const fetchReportingManagers = async () => {
+    try {
+      console.log('🔍 Fetching reporting managers...');
+      const response = await grievanceAPI.getReportingManagers();
+      console.log('📊 Reporting managers FULL response:', response);
+      console.log('📊 Reporting managers response.data:', response.data);
+      
+      if (response.data.success) {
+        console.log('✅ Managers data:', response.data.data);
+        console.log('✅ Immediate Manager:', response.data.data.immediateManager);
+        console.log('✅ Next Level Manager:', response.data.data.nextLevelManager);
+        setReportingManagers(response.data.data);
+      } else {
+        console.error('❌ Failed to fetch managers:', response.data.message);
+        setReportingManagers({ immediateManager: null, nextLevelManager: null });
+      }
+    } catch (error) {
+      console.error('❌ Error fetching reporting managers:', error);
+      console.error('❌ Error details:', error.response?.data);
+      setReportingManagers({ immediateManager: null, nextLevelManager: null });
+    }
+  };
+
+  const fetchOrganizationEmployees = async () => {
+    try {
+      console.log('🔍 Fetching organization employees...');
+      const response = await grievanceAPI.getOrganizationEmployees();
+      console.log('📊 Organization employees response:', response.data);
+      if (response.data.success) {
+        const employees = response.data.data || [];
+        console.log('✅ Employees loaded:', employees.length, employees);
+        setOrganizationEmployees(employees);
+      } else {
+        console.error('❌ Failed to fetch employees:', response.data);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching organization employees:', error);
+      console.error('Error details:', error.response?.data);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate based on grievance type
+    if (grievanceType === 'complaint') {
+      if (!formData.complaintAgainstEmployeeId) {
+        alert('Please select an employee to file complaint against');
+        return;
+      }
+    }
+    
     try {
-      await api.post('/employee/grievances', formData);
+      const submitData = {
+        title: formData.title,
+        category: formData.category,
+        priority: formData.priority,
+        description: formData.description
+      };
+      
+      // Add complaint-specific field if needed
+      if (grievanceType === 'complaint') {
+        submitData.complaintAgainstEmployeeId = formData.complaintAgainstEmployeeId;
+      }
+      
+      await grievanceAPI.submitGrievance(submitData);
       alert('Grievance submitted successfully');
       setShowForm(false);
-      setFormData({ title: '', category: '', priority: 'medium', description: '' });
+      setGrievanceType('general');
+      setFormData({ 
+        title: '', 
+        category: '', 
+        priority: 'medium', 
+        description: '', 
+        assignedTo: '',
+        complaintAgainstEmployeeId: ''
+      });
       fetchGrievances();
     } catch (error) {
-      alert('Error submitting grievance');
+      const errorMessage = error.response?.data?.message || 'Error submitting grievance';
+      alert(errorMessage);
     }
   };
 
   const handleStatusUpdate = async (grievanceId, status) => {
     try {
-      await api.put(`/employee/grievances/${grievanceId}/status`, {
+      await grievanceAPI.updateGrievanceStatus(grievanceId, {
         status,
         remark: actionRemark
       });
@@ -236,6 +324,51 @@ export default function Grievances() {
       {showForm && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">Submit New Grievance</h2>
+          
+          {/* Grievance Type Selection */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <label className="block text-sm font-medium text-gray-700 mb-3">Grievance Type</label>
+            <div className="flex space-x-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setGrievanceType('general');
+                  setFormData({ ...formData, complaintAgainstEmployeeId: '' });
+                }}
+                className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                  grievanceType === 'general'
+                    ? 'border-blue-600 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                }`}
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <MessageSquare size={20} />
+                  <span className="font-medium">General Grievance</span>
+                </div>
+                <p className="text-xs mt-1">Automatically assigned to your reporting manager</p>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setGrievanceType('complaint');
+                  setFormData({ ...formData, assignedTo: '' });
+                }}
+                className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all ${
+                  grievanceType === 'complaint'
+                    ? 'border-red-600 bg-red-50 text-red-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                }`}
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <UserX size={20} />
+                  <span className="font-medium">Complaint Against Employee</span>
+                </div>
+                <p className="text-xs mt-1">Automatically assigned to the employee's manager</p>
+              </button>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -275,6 +408,95 @@ export default function Grievances() {
                 <option value="high">High</option>
               </select>
             </div>
+            
+            {/* Conditional Field Based on Grievance Type */}
+            {grievanceType === 'complaint' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Complaint Against Employee <span className="text-red-500">*</span>
+                </label>
+                
+                {/* Custom Employee Cards Grid */}
+                <div className="border rounded-lg p-4 max-h-96 overflow-y-auto bg-gray-50">
+                  {organizationEmployees.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-2">No employees found</p>
+                      <p className="text-xs text-gray-400">Make sure employees are added to your organization</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {organizationEmployees.map((emp) => (
+                        <div
+                          key={emp.employeeId}
+                          onClick={() => setFormData({ ...formData, complaintAgainstEmployeeId: emp.employeeId })}
+                          className={`flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            formData.complaintAgainstEmployeeId === emp.employeeId
+                              ? 'border-red-500 bg-red-50'
+                              : 'border-gray-200 bg-white hover:border-red-300 hover:bg-red-50'
+                          }`}
+                        >
+                          {/* Avatar */}
+                          <div className="flex-shrink-0">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                              {emp.fullName?.charAt(0).toUpperCase()}
+                            </div>
+                          </div>
+                          
+                          {/* Employee Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {emp.fullName}
+                            </p>
+                            <p className="text-xs text-gray-600 truncate">
+                              {emp.designation}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {emp.department}
+                            </p>
+                          </div>
+                          
+                          {/* Selection Indicator */}
+                          {formData.complaintAgainstEmployeeId === emp.employeeId && (
+                            <div className="flex-shrink-0">
+                              <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <p className="text-sm text-red-600 mt-2 flex items-center">
+                  <span className="mr-1">ℹ️</span>
+                  This complaint will be automatically assigned to the selected employee's manager
+                </p>
+              </div>
+            ) : (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-900 mb-1">Automatic Assignment</h4>
+                    <p className="text-sm text-blue-800">
+                      This grievance will be automatically assigned to your immediate reporting manager based on the organization hierarchy.
+                    </p>
+                    <p className="text-xs text-blue-700 mt-2">
+                      ⏱️ If no action is taken within 2 days, it will automatically escalate to the next level manager.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
               <textarea
@@ -323,6 +545,11 @@ export default function Grievances() {
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900">{grievance.title || grievance.subject}</div>
                       <div className="text-sm text-gray-600">{grievance.description?.substring(0, 50)}...</div>
+                      {grievance.complaintAgainstEmployeeName && (
+                        <div className="mt-1 text-xs text-red-600 font-medium">
+                          🚨 Complaint against: {grievance.complaintAgainstEmployeeName}
+                        </div>
+                      )}
                       {grievance.escalationLevel > 0 && (
                         <div className="mt-1 text-xs text-orange-600 font-medium">
                           ⚠️ Escalated (Level {grievance.escalationLevel})
@@ -424,6 +651,14 @@ export default function Grievances() {
                   <label className="text-sm font-medium text-gray-500">Description</label>
                   <p className="text-gray-900 whitespace-pre-wrap">{selectedGrievance.description}</p>
                 </div>
+
+                {selectedGrievance.complaintAgainstEmployeeName && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <label className="text-sm font-medium text-red-700">Complaint Against</label>
+                    <p className="text-red-900 font-medium">{selectedGrievance.complaintAgainstEmployeeName}</p>
+                    <p className="text-sm text-red-600">{selectedGrievance.complaintAgainstEmployeeEmail}</p>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-sm font-medium text-gray-500">Submitted Date</label>

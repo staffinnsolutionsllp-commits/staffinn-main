@@ -1,147 +1,273 @@
 /* Course Enrollment Container */
 .course-enrollment-container {
-    padding: 20px;
+    padding: 30px;
     max-width: 1400px;
     margin: 0 auto;
+    background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+    min-height: 100vh;
 }
 
 .enrollment-header {
-    margin-bottom: 30px;
+    margin-bottom: 40px;
+    text-align: center;
+    padding: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.enrollment-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: pulse 15s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
 }
 
 .enrollment-header h2 {
-    color: #1e293b;
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0 0 10px 0;
+    color: #ffffff;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0 0 15px 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    position: relative;
+    z-index: 1;
 }
 
 .enrollment-header p {
-    color: #64748b;
-    font-size: 1rem;
+    color: #e0e7ff;
+    font-size: 1.1rem;
     margin: 0;
+    position: relative;
+    z-index: 1;
+    font-weight: 500;
 }
 
 /* Loading and Empty States */
 .loading-state,
 .empty-state {
     text-align: center;
-    padding: 60px 20px;
+    padding: 80px 40px;
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    border: 2px solid #e0e7ff;
 }
 
 .empty-state p {
     color: #64748b;
-    font-size: 1rem;
-    margin: 10px 0;
+    font-size: 1.1rem;
+    margin: 15px 0;
+    line-height: 1.6;
+}
+
+.empty-state p:first-child {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #475569;
 }
 
 /* Courses Grid */
 .courses-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 30px;
     margin-top: 20px;
 }
 
 .enrollment-course-card {
     background: white;
-    border-radius: 12px;
+    border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 2px solid #e0e7ff;
+    position: relative;
+}
+
+.enrollment-course-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transform: scaleX(0);
+    transition: transform 0.4s ease;
 }
 
 .enrollment-course-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-    border-color: #4863f7;
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.25);
+    border-color: #667eea;
+}
+
+.enrollment-course-card:hover::before {
+    transform: scaleX(1);
 }
 
 .course-thumbnail {
     width: 100%;
-    height: 180px;
+    height: 200px;
     overflow: hidden;
-    background: #f1f5f9;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+}
+
+.course-thumbnail::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(to top, rgba(0,0,0,0.3), transparent);
 }
 
 .course-thumbnail img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.enrollment-course-card:hover .course-thumbnail img {
+    transform: scale(1.1);
 }
 
 .course-info {
-    padding: 20px;
+    padding: 25px;
 }
 
 .course-info h3 {
     color: #1e293b;
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin: 0 0 15px 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 20px 0;
     line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .course-meta {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 12px;
+    margin-bottom: 25px;
 }
 
 .meta-item {
     color: #64748b;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     display: flex;
     justify-content: space-between;
-    padding: 8px 12px;
-    background: #f8fafc;
-    border-radius: 6px;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 10px;
+    border-left: 4px solid #cbd5e1;
+    transition: all 0.3s ease;
+}
+
+.meta-item:hover {
+    background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+    border-left-color: #667eea;
+    transform: translateX(5px);
 }
 
 .meta-item strong {
     color: #475569;
-    font-weight: 600;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.meta-item strong::before {
+    content: '•';
+    color: #667eea;
+    font-size: 1.5rem;
 }
 
 .enrollment-count-badge {
-    background: #e0f2fe !important;
-    border-left: 3px solid #0284c7;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+    border-left: 4px solid #3b82f6 !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 .count-value {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #0284c7;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #2563eb;
     margin-left: 8px;
+    padding: 4px 12px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
 }
 
 .enroll-button {
     width: 100%;
-    padding: 12px 20px;
-    background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.enroll-button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.enroll-button:hover:not(:disabled)::before {
+    width: 300px;
+    height: 300px;
 }
 
 .enroll-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(72, 99, 247, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+}
+
+.enroll-button:active:not(:disabled) {
+    transform: translateY(-1px);
 }
 
 .enroll-button:disabled {
-    background: #cbd5e1;
+    background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
     cursor: not-allowed;
     transform: none;
+    opacity: 0.7;
 }
 
 /* Enrollment Modal */
@@ -151,31 +277,38 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
     padding: 20px;
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .enrollment-modal-content {
     background: white;
-    border-radius: 16px;
+    border-radius: 24px;
     width: 100%;
-    max-width: 700px;
+    max-width: 750px;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    animation: modalSlideIn 0.3s ease-out;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 3px solid #e0e7ff;
 }
 
 @keyframes modalSlideIn {
     from {
         opacity: 0;
-        transform: translateY(-30px) scale(0.95);
+        transform: translateY(-50px) scale(0.9);
     }
     to {
         opacity: 1;
@@ -187,37 +320,55 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 25px 30px;
-    border-bottom: 2px solid #f1f5f9;
-    background: #f8fafc;
-    border-radius: 16px 16px 0 0;
+    padding: 30px 35px;
+    border-bottom: 3px solid #e0e7ff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 24px 24px 0 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
 }
 
 .modal-header h2 {
-    color: #1e293b;
-    font-size: 1.4rem;
-    font-weight: 600;
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: 700;
     margin: 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    position: relative;
+    z-index: 1;
 }
 
 .close-button {
-    background: none;
-    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
     font-size: 2rem;
-    color: #64748b;
+    color: white;
     cursor: pointer;
-    width: 40px;
-    height: 40px;
+    width: 45px;
+    height: 45px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
 }
 
 .close-button:hover {
-    background: #f1f5f9;
-    color: #1e293b;
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg) scale(1.1);
+    border-color: white;
 }
 
 .modal-body {
@@ -232,50 +383,55 @@
 
 .search-input {
     width: 100%;
-    padding: 12px 16px;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
+    padding: 14px 20px;
+    border: 2px solid #e0e7ff;
+    border-radius: 12px;
     font-size: 1rem;
     transition: all 0.3s ease;
     margin-bottom: 15px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
 }
 
 .search-input:focus {
     outline: none;
-    border-color: #4863f7;
-    box-shadow: 0 0 0 3px rgba(72, 99, 247, 0.1);
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+    background: white;
 }
 
 .selection-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 15px;
-    background: #f8fafc;
-    border-radius: 8px;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+    border-radius: 12px;
+    border: 2px solid #c7d2fe;
 }
 
 .selection-info span {
     color: #475569;
-    font-weight: 600;
-    font-size: 0.95rem;
+    font-weight: 700;
+    font-size: 1rem;
 }
 
 .select-all-button {
-    padding: 8px 16px;
+    padding: 10px 20px;
     background: white;
-    color: #4863f7;
-    border: 2px solid #4863f7;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
+    color: #667eea;
+    border: 2px solid #667eea;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .select-all-button:hover {
-    background: #4863f7;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .students-list {
@@ -295,22 +451,26 @@
     display: flex;
     align-items: flex-start;
     gap: 15px;
-    padding: 15px;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
-    margin-bottom: 10px;
+    padding: 18px;
+    border: 2px solid #e0e7ff;
+    border-radius: 12px;
+    margin-bottom: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
+    background: white;
 }
 
 .student-item:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-color: #c7d2fe;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .student-item.selected {
-    background: #eff6ff;
-    border-color: #4863f7;
+    background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+    border-color: #667eea;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
 }
 
 .student-item input[type="checkbox"] {
@@ -355,42 +515,65 @@
     display: flex;
     justify-content: flex-end;
     gap: 15px;
-    padding: 20px 30px;
-    border-top: 2px solid #f1f5f9;
-    background: #f8fafc;
-    border-radius: 0 0 16px 16px;
+    padding: 25px 35px;
+    border-top: 3px solid #e0e7ff;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 0 0 24px 24px;
 }
 
 .cancel-button,
 .submit-button {
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
     border: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .cancel-button {
     background: white;
     color: #64748b;
-    border: 2px solid #e2e8f0;
+    border: 2px solid #e0e7ff;
 }
 
 .cancel-button:hover:not(:disabled) {
-    background: #f8fafc;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
     border-color: #cbd5e1;
+    transform: translateY(-2px);
 }
 
 .submit-button {
-    background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.submit-button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.submit-button:hover:not(:disabled)::before {
+    width: 300px;
+    height: 300px;
 }
 
 .submit-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(72, 99, 247, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
 }
 
 .submit-button:disabled,

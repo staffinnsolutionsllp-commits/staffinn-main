@@ -1,19 +1,41 @@
 /**
  * Test script for HRMS Payroll System
- * Run: node test-payroll-system.js
+ * 
+ * SECURITY: This script requires environment variables for credentials (CWE-798, CWE-259 compliance)
+ * 
+ * Usage:
+ *   1. Set environment variables in .env file:
+ *      TEST_HRMS_EMAIL=your-test-email@example.com
+ *      TEST_HRMS_PASSWORD=your-test-password
+ *      TEST_PAYROLL_MONTH=2024-03 (optional)
+ *      API_URL=http://localhost:5000/api/v1 (optional)
+ * 
+ *   2. Run the script:
+ *      node test-payroll-system.js
+ * 
+ *   Or set variables inline:
+ *      TEST_HRMS_EMAIL=user@example.com TEST_HRMS_PASSWORD=pass123 node test-payroll-system.js
  */
 
 const axios = require('axios');
 
-const API_URL = 'http://localhost:5000/api/v1';
+const API_URL = process.env.API_URL || 'http://localhost:5000/api/v1';
 let authToken = '';
 
-// Test configuration
+// SECURITY FIX (CWE-798, CWE-259): Use environment variables instead of hardcoded credentials
 const testConfig = {
-  email: 'test@hrms.com', // Replace with actual HRMS user
-  password: 'test123',     // Replace with actual password
-  month: '2024-03'
+  email: process.env.TEST_HRMS_EMAIL,
+  password: process.env.TEST_HRMS_PASSWORD,
+  month: process.env.TEST_PAYROLL_MONTH || '2024-03'
 };
+
+// Validate required environment variables
+if (!testConfig.email || !testConfig.password) {
+  console.error('❌ Error: TEST_HRMS_EMAIL and TEST_HRMS_PASSWORD environment variables are required');
+  console.error('   Please set them in your .env file or export them before running this script');
+  console.error('   Example: TEST_HRMS_EMAIL=user@example.com TEST_HRMS_PASSWORD=yourpassword node test-payroll-system.js');
+  process.exit(1);
+}
 
 // Helper function for API calls
 const apiCall = async (method, endpoint, data = null) => {

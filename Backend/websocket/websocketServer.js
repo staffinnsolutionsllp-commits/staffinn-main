@@ -90,9 +90,24 @@ const emitGrievanceUpdate = (employeeId, grievanceData) => {
   }
 };
 
+// Emit notification to specific employee
+const emitEmployeeNotification = (employeeId, notificationData) => {
+  if (io) {
+    console.log(`🔔 Emitting notification to employee ${employeeId}`);
+    io.to(`employee-${employeeId}`).emit('employee-notification', {
+      notification: notificationData,
+      timestamp: new Date().toISOString()
+    });
+    console.log(`🔔 Notification emitted successfully`);
+  } else {
+    console.error('❌ WebSocket server (io) is not initialized!');
+  }
+};
+
 module.exports = {
   initializeWebSocket,
   emitMisStatusUpdate,
   emitNotification,
-  emitGrievanceUpdate
+  emitGrievanceUpdate,
+  emitEmployeeNotification
 };

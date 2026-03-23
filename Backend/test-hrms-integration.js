@@ -11,12 +11,27 @@ async function testHRMSIntegration() {
   console.log('🧪 Testing HRMS Integration...\n');
 
   try {
+    // SECURITY FIX (CWE-798, CWE-259): Use environment variables instead of hardcoded credentials
+    const testEmail = process.env.TEST_HRMS_EMAIL || 'hr.test@staffinn.com';
+    const testPassword = process.env.TEST_HRMS_PASSWORD;
+    const testName = process.env.TEST_HRMS_NAME || 'Test HR Manager';
+    
+    if (!testPassword) {
+      console.error('❌ TEST_HRMS_PASSWORD environment variable not set');
+      console.log('\n💡 To run this test:');
+      console.log('   export TEST_HRMS_PASSWORD="your-secure-password"');
+      console.log('   export TEST_HRMS_EMAIL="hr@company.com"  # Optional');
+      console.log('   export TEST_HRMS_NAME="HR Manager"  # Optional');
+      console.log('\n   Then run: node test-hrms-integration.js\n');
+      process.exit(1);
+    }
+    
     // Test 1: Register a new HRMS user
     console.log('1. Testing HRMS User Registration...');
     const registerResponse = await axios.post(`${BASE_URL}/auth/register`, {
-      name: 'Test HR Manager',
-      email: 'hr.test@staffinn.com',
-      password: 'testpassword123',
+      name: testName,
+      email: testEmail,
+      password: testPassword,
       role: 'hr'
     });
     
@@ -27,8 +42,8 @@ async function testHRMSIntegration() {
       // Test 2: Login with the created user
       console.log('2. Testing HRMS User Login...');
       const loginResponse = await axios.post(`${BASE_URL}/auth/login`, {
-        email: 'hr.test@staffinn.com',
-        password: 'testpassword123'
+        email: testEmail,
+        password: testPassword
       });
       
       if (loginResponse.data.success) {

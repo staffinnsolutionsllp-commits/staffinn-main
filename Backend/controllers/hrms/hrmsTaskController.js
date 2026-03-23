@@ -1,4 +1,4 @@
-const { dynamoClient, isUsingMockDB, mockDB } = require('../../config/dynamodb-wrapper');
+const { dynamoClient, isUsingMockDB, mockDB, HRMS_ORGANIZATION_CHART_TABLE } = require('../../config/dynamodb-wrapper');
 const { PutCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { generateId, getCurrentTimestamp, handleError, successResponse, errorResponse } = require('../../utils/hrmsHelpers');
 
@@ -7,13 +7,46 @@ const HRMS_TASK_TABLE = 'HRMS-Task-Management';
 const assignTask = async (req, res) => {
   try {
     const recruiterId = req.user?.recruiterId || req.user?.userId;
+    const assignerId = req.user?.userId || req.user?.employeeId;
+    
     if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
 
-    console.log('=== ASSIGN TASK DEBUG ===');
+    console.log('=== ASSIGN TASK WITH HIERARCHY CHECK ===');
     console.log('Recruiter ID:', recruiterId);
+    console.log('Assigner ID:', assignerId);
     console.log('Request body:', req.body);
 
     const { employeeIds, employeeEmails, title, description, priority, startDate, deadline, category, attachments } = req.body;
+
+    // Get all org nodes for hierarchy validation
+    let allNodes;
+    if (isUsingMockDB()) {
+      allNodes = mockDB().scan(HRMS_ORGANIZATION_CHART_TABLE);
+    } else {
+      const scanCommand = new ScanCommand({
+        TableName: HRMS_ORGANIZATION_CHART_TABLE
+      });
+      const result = await dynamoClient.send(scanCommand);
+      allNodes = result.Items || [];
+    }
+    
+    // Find assigner's node
+    const assignerNode = allNodes.find(n => n.employeeId === assignerId);
+    
+    if (!assignerNode) {
+      return res.status(403).json(errorResponse('You are not in the organization chart. Please contact HR.'));
+    }
+    
+    console.log('📋 Assigner node:', assignerNode.nodeId);
+    
+    // Check if assigner has any subordinates
+    const hasSubordinates = allNodes.some(n => n.parentId === assignerNode.nodeId);
+    
+    if (!hasSubordinates) {
+      return res.status(403).json(errorResponse('You do not have permission to assign tasks. Only employees with subordinates can assign tasks.'));
+    }
+    
+    console.log('✅ Assigner has subordinates');
 
     const targetEmployees = [];
     if (employeeIds && Array.isArray(employeeIds)) {
@@ -28,6 +61,18 @@ const assignTask = async (req, res) => {
     if (targetEmployees.length === 0 || !title || !deadline) {
       return res.status(400).json(errorResponse('Missing required fields'));
     }
+    
+    // Validate each target employee is a subordinate
+    for (const target of targetEmployees) {
+      if (target.employeeId) {
+        const isSubordinate = checkIfSubordinate(assignerNode.nodeId, target.employeeId, allNodes);
+        if (!isSubordinate) {
+          return res.status(403).json(errorResponse(`You can only assign tasks to your direct or indirect subordinates. Employee ID ${target.employeeId} is not your subordinate.`));
+        }
+      }
+    }
+    
+    console.log('✅ All target employees are subordinates');
 
     const tasks = [];
     for (const target of targetEmployees) {
@@ -69,6 +114,28 @@ const assignTask = async (req, res) => {
     console.error('❌ Assign task error:', error);
     handleError(error, res);
   }
+};
+
+// Helper function to check if employee is a subordinate (direct or indirect)
+const checkIfSubordinate = (managerNodeId, employeeId, allNodes) => {
+  const employeeNode = allNodes.find(n => n.employeeId === employeeId);
+  if (!employeeNode) return false;
+  
+  // Traverse up the tree to see if we reach the manager
+  let currentNode = employeeNode;
+  let depth = 0;
+  const maxDepth = 20; // Prevent infinite loops
+  
+  while (currentNode.parentId && depth < maxDepth) {
+    if (currentNode.parentId === managerNodeId) {
+      return true;
+    }
+    currentNode = allNodes.find(n => n.nodeId === currentNode.parentId);
+    if (!currentNode) break;
+    depth++;
+  }
+  
+  return false;
 };
 
 const getTasks = async (req, res) => {

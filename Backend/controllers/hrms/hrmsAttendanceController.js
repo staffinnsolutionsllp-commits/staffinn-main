@@ -123,6 +123,7 @@ const syncFromBridge = async (req, res) => {
         const attendanceRecord = {
           attendanceId,
           employeeId: record.employeeId,
+          recruiterId: employee.recruiterId, // Add recruiterId for multi-tenant isolation
           date,
           checkIn: time,
           checkOut: '',
@@ -182,18 +183,22 @@ const markAttendance = async (req, res) => {
       return res.status(400).json(errorResponse('Employee ID and check-in time are required'));
     }
 
+    // Secure query: Filter by both employeeId AND recruiterId to prevent unauthorized access
     let employee;
     if (isUsingMockDB()) {
-      employee = mockDB().get(HRMS_EMPLOYEES_TABLE, employeeId);
-      if (employee && employee.recruiterId !== recruiterId) employee = null;
+      const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
+      employee = allEmployees.find(e => e.employeeId === employeeId && e.recruiterId === recruiterId);
     } else {
-      const getCommand = new GetCommand({
+      const scanCommand = new ScanCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
-        Key: { employeeId }
+        FilterExpression: 'employeeId = :employeeId AND recruiterId = :recruiterId',
+        ExpressionAttributeValues: {
+          ':employeeId': employeeId,
+          ':recruiterId': recruiterId
+        }
       });
-      const result = await dynamoClient.send(getCommand);
-      employee = result.Item;
-      if (employee && employee.recruiterId !== recruiterId) employee = null;
+      const result = await dynamoClient.send(scanCommand);
+      employee = result.Items && result.Items.length > 0 ? result.Items[0] : null;
     }
 
     if (!employee) {
@@ -205,24 +210,36 @@ const markAttendance = async (req, res) => {
     console.log('Processing attendance for date:', attendanceDate);
     
     // Check if attendance already exists for this employee and date
+    // SECURITY: Filter by recruiterId to ensure multi-tenant isolation
     let existingAttendance;
     if (isUsingMockDB()) {
       const allAttendance = mockDB().scan(HRMS_ATTENDANCE_TABLE);
-      existingAttendance = allAttendance.find(a => a.employeeId === employeeId && a.date === attendanceDate);
+      existingAttendance = allAttendance.find(a => 
+        a.employeeId === employeeId && 
+        a.date === attendanceDate &&
+        (!a.recruiterId || a.recruiterId === recruiterId) // Backward compatible: support old records without recruiterId
+      );
     } else {
       const scanCommand = new ScanCommand({
         TableName: HRMS_ATTENDANCE_TABLE,
-        FilterExpression: 'employeeId = :employeeId AND #date = :date',
+        FilterExpression: 'employeeId = :employeeId AND #date = :date AND (attribute_not_exists(recruiterId) OR recruiterId = :recruiterId)',
         ExpressionAttributeNames: {
           '#date': 'date'
         },
         ExpressionAttributeValues: {
           ':employeeId': employeeId,
-          ':date': attendanceDate
+          ':date': attendanceDate,
+          ':recruiterId': recruiterId
         }
       });
       const result = await dynamoClient.send(scanCommand);
       existingAttendance = result.Items && result.Items.length > 0 ? result.Items[0] : null;
+    }
+    
+    // Additional security check: Verify attendance belongs to authorized employee
+    if (existingAttendance && existingAttendance.employeeId !== employeeId) {
+      console.error('⚠️ Security: Attendance-Employee mismatch detected');
+      existingAttendance = null;
     }
 
     let attendanceRecord;
@@ -246,7 +263,8 @@ const markAttendance = async (req, res) => {
         checkOut: checkOut || existingAttendance.checkOut || '',
         hours,
         status, // Update status based on new check-in time
-        source: 'manual' // Mark as manually edited
+        source: 'manual', // Mark as manually edited
+        recruiterId: recruiterId // Ensure recruiterId is set for old records
       };
 
       if (isUsingMockDB()) {
@@ -256,7 +274,7 @@ const markAttendance = async (req, res) => {
         const updateCommand = new UpdateCommand({
           TableName: HRMS_ATTENDANCE_TABLE,
           Key: { attendanceId: existingAttendance.attendanceId },
-          UpdateExpression: 'SET checkIn = :checkIn, checkOut = :checkOut, hours = :hours, #status = :status, #source = :source',
+          UpdateExpression: 'SET checkIn = :checkIn, checkOut = :checkOut, hours = :hours, #status = :status, #source = :source, recruiterId = :recruiterId',
           ExpressionAttributeNames: {
             '#status': 'status',
             '#source': 'source'
@@ -266,7 +284,8 @@ const markAttendance = async (req, res) => {
             ':checkOut': checkOut || existingAttendance.checkOut || '',
             ':hours': hours,
             ':status': status,
-            ':source': 'manual'
+            ':source': 'manual',
+            ':recruiterId': recruiterId
           },
           ReturnValues: 'ALL_NEW'
         });
@@ -293,6 +312,7 @@ const markAttendance = async (req, res) => {
       attendanceRecord = {
         attendanceId,
         employeeId,
+        recruiterId, // Add recruiterId for multi-tenant isolation
         date: attendanceDate,
         checkIn,
         checkOut: checkOut || '',

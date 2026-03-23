@@ -79,6 +79,8 @@ const hrmsPayrollRoutes = require('./routes/hrms/hrmsPayrollRoutes');
 const biometricAuthRoutes = require('./routes/hrms/biometricAuthRoutes');
 const biometricWebhookRoutes = require('./routes/hrms/biometricWebhookRoutes');
 const employeePortalRoutes = require('./routes/hrms/employeePortalRoutes');
+const hrmsAccessRoutes = require('./routes/hrmsAccessRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -177,7 +179,10 @@ app.use(`${API_PREFIX}/upload`, uploadReportRoutes);
 app.use('/api', uploadRoute);
 
 // Public hero images endpoint (no authentication required)
-app.get(`${API_PREFIX}/hero-images/:section/public`, heroImageController.getPublicHeroImages);
+app.use(`${API_PREFIX}/hero-images/:section/public`, heroImageController.getPublicHeroImages);
+
+// HRMS Access Control routes (must be before HRMS routes)
+app.use(`${API_PREFIX}/hrms-access`, hrmsAccessRoutes);
 
 // HRMS API routes
 app.use(`${API_PREFIX}/hrms/auth`, hrmsAuthRoutes);
@@ -196,6 +201,7 @@ app.use(`${API_PREFIX}/hrms/payroll`, hrmsPayrollRoutes);
 app.use(`${API_PREFIX}/biometric/auth`, biometricAuthRoutes);
 app.use(`${API_PREFIX}/biometric`, biometricWebhookRoutes);
 app.use(`${API_PREFIX}/employee`, employeePortalRoutes);
+app.use(`${API_PREFIX}/payments`, paymentRoutes);
 
 console.log('✅ HRMS routes registered successfully:');
 console.log('   - /api/v1/hrms/auth/*');
@@ -348,8 +354,9 @@ const server = http.createServer(app);
 const { initializeWebSocket } = require('./websocket/websocketServer');
 const io = initializeWebSocket(server);
 
-// Make io available globally
+// Make io available globally for services
 app.set('io', io);
+global.io = io;
 
 // Start server
 server.listen(PORT, async () => {
@@ -372,9 +379,12 @@ server.listen(PORT, async () => {
         
         // Start grievance escalation service
         try {
-            const { startEscalationService } = require('./services/grievanceEscalationService');
-            startEscalationService();
-            console.log('✅ Grievance escalation service started');
+            const escalationService = require('./services/grievanceAutoEscalationService');
+            escalationService.start();
+            console.log('✅ Grievance auto-escalation service started');
+            
+            // Make escalation service available globally
+            global.escalationService = escalationService;
         } catch (escalationError) {
             console.log('⚠️  Grievance escalation service failed to start:', escalationError.message);
         }

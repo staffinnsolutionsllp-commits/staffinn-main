@@ -1,16 +1,13 @@
 /**
  * DynamoDB Wrapper
- * Provides fallback to mock service when DynamoDB Local is not available
+ * Connects to real AWS DynamoDB
  */
 
 const { DynamoDBClient, CreateTableCommand, ListTablesCommand } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 const awsConfig = require('./aws');
 
-let useMockDB = false;
-let mockDB = null;
-
-// Try to initialize real DynamoDB client
+// Initialize real DynamoDB client
 const client = new DynamoDBClient(awsConfig);
 const dynamoClient = DynamoDBDocumentClient.from(client);
 
@@ -20,16 +17,11 @@ const testConnection = async () => {
     console.log('🔍 Testing AWS DynamoDB connection...');
     const command = new ListTablesCommand({});
     await client.send(command);
-    console.log('✅ Using real AWS DynamoDB');
+    console.log('✅ Connected to AWS DynamoDB');
     return true;
   } catch (error) {
-    console.log('⚠️  AWS DynamoDB connection failed:', error.message);
-    console.log('🔄 Falling back to mock database for local development');
-    useMockDB = true;
-    if (!mockDB) {
-      mockDB = require('../mock-dynamodb');
-    }
-    return false;
+    console.error('❌ AWS DynamoDB connection failed:', error.message);
+    throw error;
   }
 };
 
@@ -71,57 +63,19 @@ const createTablesIfNotExist = async () => {
   try {
     await testConnection();
     
-    if (useMockDB) {
-      // Initialize mock tables
-      mockDB.createTable(USERS_TABLE);
-      mockDB.createTable(STAFF_TABLE);
-      mockDB.createTable(INSTITUTE_PROFILES_TABLE);
-      mockDB.createTable(CONTACT_TABLE);
-      mockDB.createTable(HIRING_TABLE);
-      mockDB.createTable(NOTIFICATIONS_TABLE);
-      mockDB.createTable(INSTITUTE_COURSES_TABLE);
-      mockDB.createTable(INSTITUTE_STUDENTS_TABLE);
-      mockDB.createTable(JOBS_TABLE);
-      mockDB.createTable(JOB_APPLICATIONS_TABLE);
-      mockDB.createTable(RECRUITER_NEWS_TABLE);
-      mockDB.createTable(ISSUES_TABLE);
-      mockDB.createTable(ADMIN_TABLE);
-      mockDB.createTable(QUIZ_PROGRESS_TABLE);
-      mockDB.createTable(REGISTRATION_REQUESTS_TABLE);
-      mockDB.createTable(MIS_REQUESTS_TABLE);
-      mockDB.createTable(MESSAGES_TABLE);
-      mockDB.createTable(FACULTY_LIST_TABLE);
-      mockDB.createTable(MIS_PLACEMENT_ANALYTICS_TABLE);
-      
-      // HRMS Tables
-      mockDB.createTable(HRMS_USERS_TABLE);
-      mockDB.createTable(HRMS_EMPLOYEES_TABLE);
-      mockDB.createTable(HRMS_LEAVES_TABLE);
-      mockDB.createTable(HRMS_ATTENDANCE_TABLE);
-      mockDB.createTable(HRMS_GRIEVANCES_TABLE);
-      mockDB.createTable(HRMS_GRIEVANCE_COMMENTS_TABLE);
-      mockDB.createTable(HRMS_ORGANIZATION_CHART_TABLE);
-      mockDB.createTable(HRMS_PAYROLL_TABLE);
-      
-      console.log('Mock database tables initialized (including HRMS tables)');
-      return;
-    }
-
-    // Use original DynamoDB logic
+    // Use real DynamoDB
     const originalConfig = require('./dynamodb');
     await originalConfig.createTablesIfNotExist();
   } catch (error) {
     console.error('Error creating tables:', error);
-    // Fall back to mock DB
-    useMockDB = true;
-    if (!mockDB) mockDB = require('../mock-dynamodb');
+    throw error;
   }
 };
 
 module.exports = {
-  dynamoClient: useMockDB ? null : dynamoClient,
-  mockDB: () => mockDB,
-  isUsingMockDB: () => useMockDB,
+  dynamoClient,
+  mockDB: () => null,
+  isUsingMockDB: () => false,
   USERS_TABLE,
   STAFF_TABLE,
   INSTITUTE_PROFILES_TABLE,

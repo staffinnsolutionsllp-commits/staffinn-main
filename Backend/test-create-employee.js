@@ -6,10 +6,24 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-south-
 const docClient = DynamoDBDocumentClient.from(client);
 
 async function createTestEmployee() {
-  const recruiterId = 'test-recruiter-001'; // Apna recruiter ID dalo
-  const employeeId = 'EMP-TEST-001';
-  const email = 'test.employee@company.com';
-  const password = 'Test@123';
+  // SECURITY FIX (CWE-798, CWE-259): Use environment variables instead of hardcoded credentials
+  const recruiterId = process.env.TEST_RECRUITER_ID || 'test-recruiter-001';
+  const employeeId = process.env.TEST_EMPLOYEE_ID || 'EMP-TEST-001';
+  const email = process.env.TEST_EMPLOYEE_EMAIL || 'test.employee@company.com';
+  const password = process.env.TEST_EMPLOYEE_PASSWORD;
+  const employeeName = process.env.TEST_EMPLOYEE_NAME || 'Test Employee';
+
+  if (!password) {
+    console.error('❌ TEST_EMPLOYEE_PASSWORD environment variable not set');
+    console.log('\n💡 To run this test:');
+    console.log('   export TEST_EMPLOYEE_PASSWORD="your-secure-password"');
+    console.log('   export TEST_EMPLOYEE_EMAIL="employee@company.com"  # Optional');
+    console.log('   export TEST_EMPLOYEE_ID="EMP-001"  # Optional');
+    console.log('   export TEST_EMPLOYEE_NAME="Employee Name"  # Optional');
+    console.log('   export TEST_RECRUITER_ID="recruiter-id"  # Optional');
+    console.log('\n   Then run: node test-create-employee.js\n');
+    process.exit(1);
+  }
 
   // Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -21,7 +35,7 @@ async function createTestEmployee() {
     companyId: recruiterId,
     email: email,
     password: hashedPassword,
-    name: 'Test Employee',
+    name: employeeName,
     roleId: 'employee-role',
     isActive: true,
     createdAt: new Date().toISOString()

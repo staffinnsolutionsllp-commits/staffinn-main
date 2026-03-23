@@ -97,12 +97,14 @@ pm2 logs --lines 30
 ### Test 1: Register Company
 
 ```bash
+# SECURITY NOTE (CWE-798): Use secure passwords in production
+# This is a test example only - replace with strong passwords
 curl -X POST http://localhost:4001/api/v1/hrms/company/register \
   -H "Content-Type: application/json" \
   -d '{
     "companyName": "Test Company",
     "adminEmail": "admin@test.com",
-    "adminPassword": "test123",
+    "adminPassword": "<use-secure-password>",
     "adminName": "Admin User"
   }'
 ```

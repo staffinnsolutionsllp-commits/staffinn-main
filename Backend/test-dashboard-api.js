@@ -11,6 +11,19 @@ async function testDashboardAPI() {
   try {
     console.log('Testing Dashboard API...\n');
     
+    // SECURITY FIX (CWE-798, CWE-259): Use environment variables instead of hardcoded credentials
+    const adminId = process.env.TEST_ADMIN_ID || 'admin';
+    const adminPassword = process.env.TEST_ADMIN_PASSWORD;
+    
+    if (!adminPassword) {
+      console.error('❌ TEST_ADMIN_PASSWORD environment variable not set');
+      console.log('\n💡 To run this test:');
+      console.log('   export TEST_ADMIN_ID="admin"  # Optional');
+      console.log('   export TEST_ADMIN_PASSWORD="your-admin-password"');
+      console.log('\n   Then run: node test-dashboard-api.js\n');
+      process.exit(1);
+    }
+    
     // First, try to initialize admin
     console.log('1. Initializing admin...');
     const initResponse = await fetch(`${API_BASE_URL}/admin/initialize`, {
@@ -27,8 +40,8 @@ async function testDashboardAPI() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        adminId: 'admin',
-        password: 'admin123'
+        adminId: adminId,
+        password: adminPassword
       })
     });
     

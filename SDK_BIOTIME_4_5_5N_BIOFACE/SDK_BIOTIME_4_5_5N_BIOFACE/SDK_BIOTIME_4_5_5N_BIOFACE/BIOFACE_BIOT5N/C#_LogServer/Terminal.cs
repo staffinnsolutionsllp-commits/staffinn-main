@@ -131,7 +131,38 @@ namespace LogServerApp
             uint year = invalid_val, month = invalid_val, day = invalid_val, 
                 hour = invalid_val, minute = invalid_val, second = invalid_val;
 
-			doc.Load(new StringReader(message));
+			// SECURITY FIX (CWE-94): Prevent XXE and Code Injection attacks
+			// Validate and sanitize XML before processing
+			try
+			{
+				// Create secure XML reader settings
+				XmlReaderSettings settings = new XmlReaderSettings();
+				settings.DtdProcessing = DtdProcessing.Prohibit;  // Disable DTD processing
+				settings.XmlResolver = null;  // Disable external entity resolution
+				settings.MaxCharactersFromEntities = 1024;  // Limit entity expansion
+				settings.IgnoreComments = true;
+				settings.IgnoreProcessingInstructions = true;
+
+				// Load XML with secure settings
+				using (StringReader stringReader = new StringReader(message))
+				using (XmlReader reader = XmlReader.Create(stringReader, settings))
+				{
+					doc.Load(reader);
+				}
+			}
+			catch (XmlException ex)
+			{
+				// Log security event and reject malicious XML
+				Console.WriteLine("[SECURITY] Invalid or malicious XML blocked: " + ex.Message);
+				return;
+			}
+			catch (Exception ex)
+			{
+				// Log unexpected errors
+				Console.WriteLine("[ERROR] XML processing failed: " + ex.Message);
+				return;
+			}
+
 
 			// Terminal type
 			try
@@ -146,7 +177,12 @@ namespace LogServerApp
 			// Terminal ID
 			try
 			{
-				termID = uint.Parse(GetElementValue(doc, "TerminalID"));
+				// SECURITY FIX (CWE-94): Safe parsing with validation
+				string termIDStr = GetElementValue(doc, "TerminalID");
+				if (uint.TryParse(termIDStr, out uint parsedTermID))
+				{
+					termID = parsedTermID;
+				}
 			}
 			catch (System.Exception){ }
 
@@ -160,7 +196,12 @@ namespace LogServerApp
 			// Transaction ID
 			try
 			{
-				transID = uint.Parse(GetElementValue(doc, "TransID"));
+				// SECURITY FIX (CWE-94): Safe parsing with validation
+				string transIDStr = GetElementValue(doc, "TransID");
+				if (uint.TryParse(transIDStr, out uint parsedTransID))
+				{
+					transID = parsedTransID;
+				}
 			}
 			catch (System.Exception){ }
 
@@ -201,42 +242,72 @@ namespace LogServerApp
                     // Year
                     try
                     {
-                        year = uint.Parse(GetElementValue(doc, "Year"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string yearStr = GetElementValue(doc, "Year");
+                        if (uint.TryParse(yearStr, out uint parsedYear))
+                        {
+                            year = parsedYear;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Month
                     try
                     {
-                        month = uint.Parse(GetElementValue(doc, "Month"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string monthStr = GetElementValue(doc, "Month");
+                        if (uint.TryParse(monthStr, out uint parsedMonth))
+                        {
+                            month = parsedMonth;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Day
                     try
                     {
-                        day = uint.Parse(GetElementValue(doc, "Day"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string dayStr = GetElementValue(doc, "Day");
+                        if (uint.TryParse(dayStr, out uint parsedDay))
+                        {
+                            day = parsedDay;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Hour
                     try
                     {
-                        hour = uint.Parse(GetElementValue(doc, "Hour"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string hourStr = GetElementValue(doc, "Hour");
+                        if (uint.TryParse(hourStr, out uint parsedHour))
+                        {
+                            hour = parsedHour;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Minute
                     try
                     {
-                        minute = uint.Parse(GetElementValue(doc, "Minute"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string minuteStr = GetElementValue(doc, "Minute");
+                        if (uint.TryParse(minuteStr, out uint parsedMinute))
+                        {
+                            minute = parsedMinute;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Second
                     try
                     {
-                        second = uint.Parse(GetElementValue(doc, "Second"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string secondStr = GetElementValue(doc, "Second");
+                        if (uint.TryParse(secondStr, out uint parsedSecond))
+                        {
+                            second = parsedSecond;
+                        }
                     }
                     catch (System.Exception) { }
 
@@ -244,14 +315,24 @@ namespace LogServerApp
 					// User ID
 					try
 					{
-						userID = ulong.Parse(GetElementValue(doc, "UserID"));
+						// SECURITY FIX (CWE-94): Safe parsing with validation
+						string userIDStr = GetElementValue(doc, "UserID");
+						if (ulong.TryParse(userIDStr, out ulong parsedUserID))
+						{
+							userID = parsedUserID;
+						}
 					}
 					catch (System.Exception){}
 
 					// Door ID
 					try
 					{
-						doorID = uint.Parse(GetElementValue(doc, "DoorID"));
+						// SECURITY FIX (CWE-94): Safe parsing with validation
+						string doorIDStr = GetElementValue(doc, "DoorID");
+						if (uint.TryParse(doorIDStr, out uint parsedDoorID))
+						{
+							doorID = parsedDoorID;
+						}
 					}
 					catch (System.Exception){}
 
@@ -272,7 +353,12 @@ namespace LogServerApp
 					// Job code
 					try
 					{
-						jobCode = uint.Parse(GetElementValue(doc, "JobCode"));
+						// SECURITY FIX (CWE-94): Safe parsing with validation
+						string jobCodeStr = GetElementValue(doc, "JobCode");
+						if (uint.TryParse(jobCodeStr, out uint parsedJobCode))
+						{
+							jobCode = parsedJobCode;
+						}
 					}
 					catch (System.Exception){}
 
@@ -332,56 +418,96 @@ namespace LogServerApp
                     // Year
                     try
                     {
-                        year = uint.Parse(GetElementValue(doc, "Year"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string yearStr = GetElementValue(doc, "Year");
+                        if (uint.TryParse(yearStr, out uint parsedYear))
+                        {
+                            year = parsedYear;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Month
                     try
                     {
-                        month = uint.Parse(GetElementValue(doc, "Month"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string monthStr = GetElementValue(doc, "Month");
+                        if (uint.TryParse(monthStr, out uint parsedMonth))
+                        {
+                            month = parsedMonth;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Day
                     try
                     {
-                        day = uint.Parse(GetElementValue(doc, "Day"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string dayStr = GetElementValue(doc, "Day");
+                        if (uint.TryParse(dayStr, out uint parsedDay))
+                        {
+                            day = parsedDay;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Hour
                     try
                     {
-                        hour = uint.Parse(GetElementValue(doc, "Hour"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string hourStr = GetElementValue(doc, "Hour");
+                        if (uint.TryParse(hourStr, out uint parsedHour))
+                        {
+                            hour = parsedHour;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Minute
                     try
                     {
-                        minute = uint.Parse(GetElementValue(doc, "Minute"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string minuteStr = GetElementValue(doc, "Minute");
+                        if (uint.TryParse(minuteStr, out uint parsedMinute))
+                        {
+                            minute = parsedMinute;
+                        }
                     }
                     catch (System.Exception) { }
 
                     // Second
                     try
                     {
-                        second = uint.Parse(GetElementValue(doc, "Second"));
+                        // SECURITY FIX (CWE-94): Safe parsing with validation
+                        string secondStr = GetElementValue(doc, "Second");
+                        if (uint.TryParse(secondStr, out uint parsedSecond))
+                        {
+                            second = parsedSecond;
+                        }
                     }
                     catch (System.Exception) { }
 
 					// Administrator ID
 					try
 					{
-						adminID = ulong.Parse(GetElementValue(doc, "AdminID"));
+						// SECURITY FIX (CWE-94): Safe parsing with validation
+						string adminIDStr = GetElementValue(doc, "AdminID");
+						if (ulong.TryParse(adminIDStr, out ulong parsedAdminID))
+						{
+							adminID = parsedAdminID;
+						}
 					}
 					catch (System.Exception){}
 
 					// User ID
 					try
 					{
-						userID = ulong.Parse(GetElementValue(doc, "UserID"));
+						// SECURITY FIX (CWE-94): Safe parsing with validation
+						string userIDStr = GetElementValue(doc, "UserID");
+						if (ulong.TryParse(userIDStr, out ulong parsedUserID))
+						{
+							userID = parsedUserID;
+						}
 					}
 					catch (System.Exception){}
 
@@ -395,7 +521,12 @@ namespace LogServerApp
 					// Action status
 					try
 					{
-						actionStat = uint.Parse(GetElementValue(doc, "Stat"));
+						// SECURITY FIX (CWE-94): Safe parsing with validation
+						string actionStatStr = GetElementValue(doc, "Stat");
+						if (uint.TryParse(actionStatStr, out uint parsedActionStat))
+						{
+							actionStat = parsedActionStat;
+						}
 					}
 					catch (System.Exception){}
 

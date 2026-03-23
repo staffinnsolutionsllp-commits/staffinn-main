@@ -250,6 +250,11 @@ const updateClaimStatus = async (req, res) => {
     const { claimId } = req.params;
     const { status, remarks } = req.body;
 
+    console.log('\n=== UPDATE CLAIM STATUS ===');
+    console.log('Claim ID:', claimId);
+    console.log('New Status:', status);
+    console.log('Remarks:', remarks);
+
     if (!status) return res.status(400).json(errorResponse('Status is required'));
 
     let claim;
@@ -268,6 +273,9 @@ const updateClaimStatus = async (req, res) => {
 
     if (!claim) return res.status(404).json(errorResponse('Claim not found'));
 
+    console.log('Claim found for employee:', claim.employeeId);
+    console.log('Claim amount:', claim.amount);
+
     const updatedClaim = {
       ...claim,
       status,
@@ -281,6 +289,42 @@ const updateClaimStatus = async (req, res) => {
       const putCommand = new PutCommand({ TableName: HRMS_CLAIMS_TABLE, Item: updatedClaim });
       await dynamoClient.send(putCommand);
     }
+
+    console.log('Claim status updated successfully');
+
+    // Send notification to employee
+    try {
+      const { notifyClaimApproved, notifyClaimRejected } = require('../../services/hrmsNotificationService');
+      
+      if (claim.employeeId) {
+        if (status === 'Approved') {
+          console.log('Sending approval notification to employee:', claim.employeeId);
+          await notifyClaimApproved(
+            claim.employeeId,
+            claim.recruiterId,
+            claimId,
+            claim.amount
+          );
+          console.log('✅ Approval notification sent successfully');
+        } else if (status === 'Rejected') {
+          console.log('Sending rejection notification to employee:', claim.employeeId);
+          await notifyClaimRejected(
+            claim.employeeId,
+            claim.recruiterId,
+            claimId,
+            claim.amount,
+            remarks || 'No reason provided'
+          );
+          console.log('✅ Rejection notification sent successfully');
+        }
+      } else {
+        console.log('⚠️ No employeeId found in claim, cannot send notification');
+      }
+    } catch (notifError) {
+      console.error('⚠️ Failed to send notification:', notifError);
+    }
+
+    console.log('===========================\n');
 
     res.json(successResponse(updatedClaim, 'Claim status updated successfully'));
   } catch (error) {

@@ -178,6 +178,11 @@ const updateOrgNode = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
+    const recruiterId = req.user?.recruiterId;
+
+    if (!recruiterId) {
+      return res.status(400).json(errorResponse('Recruiter ID not found'));
+    }
 
     // Remove fields that shouldn't be updated
     delete updates.nodeId;
@@ -202,6 +207,11 @@ const updateOrgNode = async (req, res) => {
       if (!existingNode) {
         return res.status(404).json(errorResponse('Organization node not found'));
       }
+    }
+
+    // Verify ownership - CWE-807 fix
+    if (existingNode.recruiterId !== recruiterId) {
+      return res.status(403).json(errorResponse('Unauthorized: You do not have permission to update this organization node'));
     }
 
     // Prevent circular reference
@@ -333,6 +343,11 @@ const updateOrgNode = async (req, res) => {
 const deleteOrgNode = async (req, res) => {
   try {
     const { id } = req.params;
+    const recruiterId = req.user?.recruiterId;
+
+    if (!recruiterId) {
+      return res.status(400).json(errorResponse('Recruiter ID not found'));
+    }
 
     // Check if node exists
     let existingNode;
@@ -340,6 +355,11 @@ const deleteOrgNode = async (req, res) => {
       existingNode = mockDB().get(HRMS_ORGANIZATION_CHART_TABLE, id);
       if (!existingNode) {
         return res.status(404).json(errorResponse('Organization node not found'));
+      }
+
+      // Verify ownership - CWE-807 fix
+      if (existingNode.recruiterId !== recruiterId) {
+        return res.status(403).json(errorResponse('Unauthorized: You do not have permission to delete this organization node'));
       }
 
       // Remove from parent's children array
@@ -379,6 +399,11 @@ const deleteOrgNode = async (req, res) => {
 
       if (!existingNode) {
         return res.status(404).json(errorResponse('Organization node not found'));
+      }
+
+      // Verify ownership - CWE-807 fix
+      if (existingNode.recruiterId !== recruiterId) {
+        return res.status(403).json(errorResponse('Unauthorized: You do not have permission to delete this organization node'));
       }
 
       // Remove from parent's children array

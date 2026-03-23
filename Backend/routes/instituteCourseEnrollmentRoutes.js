@@ -18,4 +18,7 @@ router.get('/enrollments/:enrollmentId', authenticate, instituteCourseEnrollment
 // Get available students for enrollment
 router.get('/available-students', authenticate, instituteCourseEnrollmentController.getAvailableStudents);
 
+// Get enrolled students for a specific course
+router.get('/courses/:courseId/enrolled-students', authenticate, instituteCourseEnrollmentController.getEnrolledStudents);
+
 module.exports = router;

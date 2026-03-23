@@ -16,10 +16,11 @@ const enrollStudentsInCourse = async (req, res) => {
     const { courseId } = req.params;
     const { studentIds, paymentDetails } = req.body;
 
-    console.log('Institute enrollment request:', {
+    console.log('🎓 [BACKEND] Institute enrollment request:', {
       enrollingInstituteId,
       courseId,
-      studentCount: studentIds?.length
+      studentCount: studentIds?.length,
+      studentIds
     });
 
     // Validate input
@@ -32,6 +33,13 @@ const enrollStudentsInCourse = async (req, res) => {
 
     // Verify the enrolling institute is a Staffinn Partner
     const enrollingInstitute = await userModel.findUserById(enrollingInstituteId);
+    console.log('🏢 [BACKEND] Enrolling institute:', {
+      found: !!enrollingInstitute,
+      role: enrollingInstitute?.role,
+      instituteType: enrollingInstitute?.instituteType,
+      instituteName: enrollingInstitute?.instituteName
+    });
+
     if (!enrollingInstitute || enrollingInstitute.role !== 'institute' || enrollingInstitute.instituteType !== 'staffinn_partner') {
       return res.status(403).json({
         success: false,
@@ -41,6 +49,13 @@ const enrollStudentsInCourse = async (req, res) => {
 
     // Get course details
     const course = await dynamoService.getItem(COURSES_TABLE, { coursesId: courseId });
+    console.log('📚 [BACKEND] Course details:', {
+      found: !!course,
+      courseName: course?.courseName,
+      mode: course?.mode,
+      instituteId: course?.instituteId
+    });
+
     if (!course) {
       return res.status(404).json({
         success: false,
@@ -49,58 +64,94 @@ const enrollStudentsInCourse = async (req, res) => {
     }
 
     // Verify course is On-Campus
-    if (course.mode !== 'On Campus') {
+    if (course.mode !== 'On Campus' && course.mode !== 'Offline') {
       return res.status(400).json({
         success: false,
         message: 'Only On-Campus courses can be enrolled by institutes'
       });
     }
 
+    // Check for existing enrollments in course-enrolled-user table
+    const alreadyEnrolledStudentIds = new Set();
+    for (const studentId of studentIds) {
+      const isEnrolled = await instituteCourseEnrollmentModel.isStudentEnrolled(courseId, studentId);
+      if (isEnrolled) {
+        alreadyEnrolledStudentIds.add(studentId);
+      }
+    }
+    console.log('📋 [BACKEND] Already enrolled student IDs:', Array.from(alreadyEnrolledStudentIds));
+
     // Get student details from MIS students table
     const students = [];
-    console.log('📋 Fetching student details for IDs:', studentIds);
+    const skippedStudents = [];
+    const notFoundStudents = [];
+    console.log('📋 [BACKEND] Fetching student details for IDs:', studentIds);
     
     for (const studentId of studentIds) {
       try {
-        console.log('🔍 Looking for student:', studentId);
+        // Check if student is already enrolled
+        if (alreadyEnrolledStudentIds.has(studentId)) {
+          console.log('⚠️ [BACKEND] Student already enrolled, skipping:', studentId);
+          skippedStudents.push(studentId);
+          continue;
+        }
+
+        console.log('🔍 [BACKEND] Looking for student:', studentId);
         const params = {
-          FilterExpression: 'studentsId = :studentId',
+          FilterExpression: 'studentsId = :studentId AND instituteId = :instituteId',
           ExpressionAttributeValues: {
-            ':studentId': studentId
+            ':studentId': studentId,
+            ':instituteId': enrollingInstituteId
           }
         };
         const result = await dynamoService.scanItems('mis-students', params);
-        console.log('📊 Query result for', studentId, ':', result);
+        console.log('📊 [BACKEND] Query result for', studentId, ':', result?.length || 0, 'found');
         
         const student = result && result.length > 0 ? result[0] : null;
-        console.log('👤 Student found:', student ? student.studentName : 'NOT FOUND');
         
-        if (student && student.instituteId === enrollingInstituteId) {
+        if (student) {
           students.push({
             studentId: student.studentsId,
             studentName: student.studentName || student.fatherName || 'Unknown',
-            studentEmail: student.email || 'N/A'
+            studentEmail: student.email || 'N/A',
+            enrollmentDate: new Date().toISOString(),
+            status: 'active'
           });
-          console.log('✅ Student added to enrollment list:', student.studentName);
+          console.log('✅ [BACKEND] Student added to enrollment list:', student.studentName);
         } else {
-          console.log('❌ Student not valid:', {
-            found: !!student,
-            instituteMatch: student?.instituteId === enrollingInstituteId,
-            studentInstituteId: student?.instituteId,
-            enrollingInstituteId
-          });
+          console.log('❌ [BACKEND] Student not found or invalid:', studentId);
+          notFoundStudents.push(studentId);
         }
       } catch (error) {
-        console.error('❌ Error fetching student', studentId, ':', error);
+        console.error('❌ [BACKEND] Error fetching student', studentId, ':', error);
+        notFoundStudents.push(studentId);
       }
     }
     
-    console.log('📋 Total valid students:', students.length);
+    console.log('📋 [BACKEND] Enrollment summary:', {
+      validStudents: students.length,
+      skippedStudents: skippedStudents.length,
+      notFoundStudents: notFoundStudents.length,
+      totalRequested: studentIds.length
+    });
 
     if (students.length === 0) {
+      if (skippedStudents.length === studentIds.length) {
+        return res.status(200).json({
+          success: true,
+          message: 'All selected students are already enrolled in this course',
+          data: null,
+          stats: {
+            enrolled: 0,
+            skipped: skippedStudents.length,
+            notFound: 0,
+            total: studentIds.length
+          }
+        });
+      }
       return res.status(400).json({
         success: false,
-        message: 'No valid students found'
+        message: 'No valid students found for enrollment'
       });
     }
 
@@ -118,17 +169,55 @@ const enrollStudentsInCourse = async (req, res) => {
       paymentDetails: paymentDetails || {}
     };
 
-    const enrollment = await instituteCourseEnrollmentModel.createEnrollment(enrollmentData);
+    console.log('💾 [BACKEND] Creating enrollment records in both tables:', {
+      courseId: enrollmentData.courseId,
+      courseInstituteId: enrollmentData.courseInstituteId,
+      enrollingInstituteId: enrollmentData.enrollingInstituteId,
+      studentCount: enrollmentData.enrolledStudents.length,
+      totalAmount: enrollmentData.totalAmount
+    });
 
-    console.log('Institute enrollment created successfully:', enrollment.enrollmentsId);
+    const enrollment = await instituteCourseEnrollmentModel.createEnrollment(enrollmentData);
+    console.log('✅ [BACKEND] Saved to staffinn-institute-course-enrollments table');
+    console.log('✅ [BACKEND] Saved all students to course-enrolled-user table');
+
+    console.log('✅ [BACKEND] Institute enrollment created successfully:', {
+      enrollmentId: enrollment.enrollmentsId,
+      courseId: enrollment.courseId,
+      enrollingInstituteId: enrollment.enrollingInstituteId,
+      totalStudents: enrollment.totalStudentsEnrolled,
+      paymentStatus: enrollment.paymentStatus
+    });
+
+    // Prepare response message
+    let message = `Successfully enrolled ${students.length} student(s) in the course`;
+    if (skippedStudents.length > 0) {
+      message += `. ${skippedStudents.length} student(s) were already enrolled and skipped.`;
+    }
+    if (notFoundStudents.length > 0) {
+      message += ` ${notFoundStudents.length} student(s) were not found or invalid.`;
+    }
+
+    console.log('✅ [BACKEND] Enrollment response:', {
+      success: true,
+      enrolled: students.length,
+      skipped: skippedStudents.length,
+      notFound: notFoundStudents.length
+    });
 
     res.status(201).json({
       success: true,
-      message: `Successfully enrolled ${students.length} student(s) in the course`,
-      data: enrollment
+      message,
+      data: enrollment,
+      stats: {
+        enrolled: students.length,
+        skipped: skippedStudents.length,
+        notFound: notFoundStudents.length,
+        total: studentIds.length
+      }
     });
   } catch (error) {
-    console.error('Error enrolling students in course:', error);
+    console.error('❌ [BACKEND] Error enrolling students in course:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to enroll students in course'
@@ -396,10 +485,68 @@ const getAvailableStudents = async (req, res) => {
   }
 };
 
+/**
+ * Get enrolled students for a specific course
+ */
+const getEnrolledStudents = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const instituteId = req.user.userId;
+
+    console.log('🔍 [BACKEND] Fetching enrolled students for course:', courseId);
+    console.log('🔍 [BACKEND] Requesting institute:', instituteId);
+
+    // Verify the institute is a Staffinn Partner
+    const institute = await userModel.findUserById(instituteId);
+    if (!institute || institute.role !== 'institute' || institute.instituteType !== 'staffinn_partner') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only Staffinn Partner Institutes can access enrolled students'
+      });
+    }
+
+    // Get all enrolled students from course-enrolled-user table for this course
+    const params = {
+      FilterExpression: 'courseId = :courseId AND enrollingInstituteId = :instituteId',
+      ExpressionAttributeValues: {
+        ':courseId': courseId,
+        ':instituteId': instituteId
+      }
+    };
+    const enrolledStudents = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, params);
+    console.log('🔍 [BACKEND] Enrolled students found:', enrolledStudents?.length || 0);
+
+    // Extract student IDs and details
+    const students = (enrolledStudents || []).map(enrollment => ({
+      studentsId: enrollment.userId,
+      studentId: enrollment.userId,
+      studentName: enrollment.studentName,
+      studentEmail: enrollment.studentEmail,
+      enrollmentDate: enrollment.enrollmentDate,
+      status: enrollment.paymentStatus
+    }));
+
+    console.log('✅ [BACKEND] Returning enrolled students:', students.length);
+
+    res.status(200).json({
+      success: true,
+      data: students
+    });
+  } catch (error) {
+    console.error('❌ [BACKEND] Error fetching enrolled students:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch enrolled students',
+      data: []
+    });
+  }
+};
+
 module.exports = {
   enrollStudentsInCourse,
   getEnrollmentHistory,
   getCourseEnrollmentTracking,
   getEnrollmentDetails,
-  getAvailableStudents
+  getAvailableStudents,
+  getEnrolledStudents
 };

@@ -3,13 +3,32 @@
  */
 const AWS = require('aws-sdk');
 
-// Configure AWS
+// SECURITY FIX (CWE-798, CWE-259): Use environment variables instead of hardcoded credentials
+// For local DynamoDB testing, set these environment variables:
+//   export AWS_ACCESS_KEY_ID="dummy"
+//   export AWS_SECRET_ACCESS_KEY="dummy"
+//   export AWS_REGION="us-east-1"
+//   export DYNAMODB_ENDPOINT="http://localhost:8000"
+
+// Configure AWS from environment variables
 AWS.config.update({
-  region: 'us-east-1',
-  endpoint: 'http://localhost:8000', // Local DynamoDB endpoint
-  accessKeyId: 'dummy',
-  secretAccessKey: 'dummy'
+  region: process.env.AWS_REGION || 'us-east-1',
+  endpoint: process.env.DYNAMODB_ENDPOINT || 'http://localhost:8000',
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
 });
+
+// Validate credentials are set
+if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+  console.error('❌ AWS credentials not found in environment variables');
+  console.log('\n💡 For local DynamoDB testing, run:');
+  console.log('   export AWS_ACCESS_KEY_ID="dummy"');
+  console.log('   export AWS_SECRET_ACCESS_KEY="dummy"');
+  console.log('\n   Then run: node createInstituteJobApplicationsTable.js');
+  console.log('\n   Or run with inline variables:');
+  console.log('   AWS_ACCESS_KEY_ID="dummy" AWS_SECRET_ACCESS_KEY="dummy" node createInstituteJobApplicationsTable.js\n');
+  process.exit(1);
+}
 
 const dynamodb = new AWS.DynamoDB();
 

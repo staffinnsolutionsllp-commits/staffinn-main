@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import './CourseEnrollmentHistory.css';
 import apiService from '../../services/api';
 
@@ -8,9 +9,25 @@ const CourseEnrollmentHistory = () => {
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
+  const ModalPortal = ({ children }) => {
+    const modalRoot = document.getElementById('modal-root') || document.body;
+    return ReactDOM.createPortal(children, modalRoot);
+  };
+
   useEffect(() => {
     fetchTrackingData();
   }, []);
+
+  useEffect(() => {
+    if (showDetailsModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showDetailsModal]);
 
   const fetchTrackingData = async () => {
     try {
@@ -149,45 +166,47 @@ const CourseEnrollmentHistory = () => {
       )}
 
       {showDetailsModal && selectedEnrollment && (
-        <div className="modal-overlay" onClick={() => setShowDetailsModal(false)}>
-          <div className="details-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Enrolled Students</h3>
-              <button onClick={() => setShowDetailsModal(false)}>×</button>
-            </div>
-            <div className="modal-content">
-              <div className="enrollment-info">
-                <p><strong>Institute:</strong> {selectedEnrollment.enrollingInstituteDetails?.instituteName}</p>
-                <p><strong>Course:</strong> {selectedEnrollment.courseDetails?.courseName}</p>
-                <p><strong>Total Students:</strong> {selectedEnrollment.totalStudentsEnrolled}</p>
+        <ModalPortal>
+          <div className="modal-overlay" onClick={() => setShowDetailsModal(false)}>
+            <div className="details-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Enrolled Students</h3>
+                <button onClick={() => setShowDetailsModal(false)}>×</button>
               </div>
-              <table className="students-table">
-                <thead>
-                  <tr>
-                    <th>Student Name</th>
-                    <th>Email</th>
-                    <th>Enrollment Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedEnrollment.enrolledStudents.map(student => (
-                    <tr key={student.studentId}>
-                      <td>{student.studentName}</td>
-                      <td>{student.studentEmail}</td>
-                      <td>{new Date(student.enrollmentDate).toLocaleDateString()}</td>
-                      <td>
-                        <span className={`status-badge status-${student.status}`}>
-                          {student.status}
-                        </span>
-                      </td>
+              <div className="modal-content">
+                <div className="enrollment-info">
+                  <p><strong>Institute:</strong> {selectedEnrollment.enrollingInstituteDetails?.instituteName}</p>
+                  <p><strong>Course:</strong> {selectedEnrollment.courseDetails?.courseName}</p>
+                  <p><strong>Total Students:</strong> {selectedEnrollment.totalStudentsEnrolled}</p>
+                </div>
+                <table className="students-table">
+                  <thead>
+                    <tr>
+                      <th>Student Name</th>
+                      <th>Email</th>
+                      <th>Enrollment Date</th>
+                      <th>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {selectedEnrollment.enrolledStudents.map(student => (
+                      <tr key={student.studentId}>
+                        <td>{student.studentName}</td>
+                        <td>{student.studentEmail}</td>
+                        <td>{new Date(student.enrollmentDate).toLocaleDateString()}</td>
+                        <td>
+                          <span className={`status-badge status-${student.status}`}>
+                            {student.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );

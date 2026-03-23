@@ -6,7 +6,8 @@ const {
   getMyAttendance, 
   markAttendance, 
   getMyLeaves, 
-  getLeaveBalance, 
+  getLeaveBalance,
+  getLeaveTypes, 
   applyLeave, 
   cancelLeave, 
   getMyPayslips, 
@@ -23,8 +24,25 @@ const {
   updateGrievanceStatus,
   getMyHierarchy,
   getFullOrganogram,
-  getNodeDetails
+  getNodeDetails,
+  getSubordinatesHierarchy,
+  assignTask
 } = require('../../controllers/hrms/employeePortalController');
+
+// Import grievance-specific controllers
+const { 
+  getReportingManagers, 
+  getOrganizationEmployees 
+} = require('../../controllers/hrms/hrmsGrievanceController');
+
+// Import notification controller
+const {
+  getMyNotifications,
+  getUnreadNotificationCount,
+  markNotificationAsRead,
+  markAllNotificationsAsRead
+} = require('../../controllers/hrms/notificationController');
+
 const { authenticateEmployee, checkPermission } = require('../../middleware/employeeAuth');
 
 // Auth routes
@@ -45,6 +63,7 @@ router.post('/attendance/mark', authenticateEmployee, checkPermission('mark_atte
 // Leave routes
 router.get('/leaves', authenticateEmployee, checkPermission('apply_leave'), getMyLeaves);
 router.get('/leaves/balance', authenticateEmployee, checkPermission('apply_leave'), getLeaveBalance);
+router.get('/leaves/types', authenticateEmployee, checkPermission('apply_leave'), getLeaveTypes);
 router.post('/leaves/apply', authenticateEmployee, checkPermission('apply_leave'), applyLeave);
 router.delete('/leaves/:id', authenticateEmployee, checkPermission('apply_leave'), cancelLeave);
 
@@ -59,17 +78,27 @@ router.post('/claims', authenticateEmployee, submitClaim);
 // Task routes
 router.get('/tasks', authenticateEmployee, getMyTasks);
 router.put('/tasks/:taskId', authenticateEmployee, updateMyTask);
+router.post('/tasks/assign', authenticateEmployee, assignTask);
 router.get('/performance/ratings', authenticateEmployee, getMyRatings);
 
 // Grievance routes
 router.get('/grievances', authenticateEmployee, getMyGrievances);
 router.post('/grievances', authenticateEmployee, submitGrievance);
 router.get('/grievances/assigned', authenticateEmployee, getAssignedGrievances);
+router.get('/grievances/reporting-managers', authenticateEmployee, getReportingManagers);
+router.get('/grievances/organization-employees', authenticateEmployee, getOrganizationEmployees);
 router.put('/grievances/:grievanceId/status', authenticateEmployee, updateGrievanceStatus);
 
 // Organogram routes
 router.get('/organogram', authenticateEmployee, getMyHierarchy);
+router.get('/organogram/subordinates', authenticateEmployee, getSubordinatesHierarchy);
 router.get('/organogram/full', authenticateEmployee, getFullOrganogram);
 router.get('/organogram/node/:nodeId', authenticateEmployee, getNodeDetails);
+
+// Notification routes
+router.get('/notifications', authenticateEmployee, getMyNotifications);
+router.get('/notifications/unread-count', authenticateEmployee, getUnreadNotificationCount);
+router.put('/notifications/:notificationId/read', authenticateEmployee, markNotificationAsRead);
+router.put('/notifications/mark-all-read', authenticateEmployee, markAllNotificationsAsRead);
 
 module.exports = router;

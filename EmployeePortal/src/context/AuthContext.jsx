@@ -19,8 +19,12 @@ export const AuthProvider = ({ children }) => {
   const loadUser = async () => {
     try {
       const response = await authAPI.getProfile();
-      setUser(response.data.data);
+      const userData = response.data.data;
+      console.log('👤 User loaded:', userData);
+      console.log('🏢 Recruiter ID:', userData.recruiterId || userData.companyId);
+      setUser(userData);
     } catch (error) {
+      console.error('❌ Error loading user:', error);
       localStorage.removeItem('employeeToken');
     } finally {
       setLoading(false);

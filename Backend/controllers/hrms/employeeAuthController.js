@@ -124,27 +124,59 @@ const getProfile = async (req, res) => {
   try {
     const { employeeId, companyId } = req.user;
 
-    // Get employee details using Scan
-    const empResult = await docClient.send(new QueryCommand({
+    console.log('🔍 getProfile called for employeeId:', employeeId);
+
+    // Get employee details
+    const empResult = await docClient.send(new GetCommand({
       TableName: 'staffinn-hrms-employees',
-      KeyConditionExpression: 'employeeId = :eid',
-      ExpressionAttributeValues: {
-        ':eid': employeeId
-      }
+      Key: { employeeId }
     }));
 
-    if (!empResult.Items || empResult.Items.length === 0) {
+    console.log('📋 Employee found:', empResult.Item ? empResult.Item.fullName : 'Not found');
+
+    if (!empResult.Item) {
       return res.status(404).json({ success: false, message: 'Employee not found' });
     }
 
+    const employee = empResult.Item;
     const { password: _, ...userWithoutPassword } = req.user;
+    
+    // Return complete user profile with all employee details
+    const enrichedUser = {
+      ...userWithoutPassword,
+      recruiterId: employee.recruiterId || companyId,
+      employee: {
+        employeeId: employee.employeeId,
+        fullName: employee.fullName || employee.name,
+        email: employee.email,
+        designation: employee.designation,
+        department: employee.department,
+        dateOfBirth: employee.dateOfBirth,
+        bloodGroup: employee.bloodGroup,
+        phone: employee.phone,
+        currentAddress: employee.currentAddress,
+        permanentAddress: employee.permanentAddress,
+        dateOfJoining: employee.dateOfJoining,
+        employmentType: employee.employmentType,
+        emergencyContactName: employee.emergencyContactName,
+        emergencyContactNumber: employee.emergencyContactNumber,
+        emergencyContactRelation: employee.emergencyContactRelation,
+        gender: employee.gender,
+        maritalStatus: employee.maritalStatus,
+        nationality: employee.nationality,
+        aadharNumber: employee.aadharNumber,
+        panNumber: employee.panNumber,
+        bankAccountNumber: employee.bankAccountNumber,
+        bankName: employee.bankName,
+        ifscCode: employee.ifscCode
+      }
+    };
+
+    console.log('📤 Returning complete profile with all employee details');
     
     res.json({
       success: true,
-      data: {
-        user: userWithoutPassword,
-        employee: empResult.Items[0]
-      }
+      data: enrichedUser
     });
 
   } catch (error) {

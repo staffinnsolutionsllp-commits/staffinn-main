@@ -8,8 +8,17 @@ const axios = require('axios');
 const testProfileAutofill = async () => {
   console.log('🧪 Testing Profile Autofill...\n');
   
-  // Use the token from the registration test
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3ZDg0NDYyNC0xODBhLTQwYmUtODhjYS00N2YzZmQyZGUyYzMiLCJlbWFpbCI6InRlc3Rwcm9maWxlQGluc3RpdHV0ZS5jb20iLCJyb2xlIjoiaW5zdGl0dXRlIiwiaWF0IjoxNzYyNjAyMzE2LCJleHAiOjE3NjMyMDcxMTZ9.KXer3xCqOCCX74WnmLiyRuC_CMmCXP9vFce_px5pDv0';
+  // SECURITY FIX (CWE-798, CWE-259): Use environment variable instead of hardcoded token
+  const token = process.env.TEST_AUTH_TOKEN;
+  
+  if (!token) {
+    console.error('❌ TEST_AUTH_TOKEN environment variable not set');
+    console.log('\n💡 To run this test:');
+    console.log('   1. Login or register to get a valid token');
+    console.log('   2. Set the token: export TEST_AUTH_TOKEN="your-token-here"');
+    console.log('   3. Run: node test-profile-autofill.js\n');
+    process.exit(1);
+  }
   
   try {
     console.log('📤 Getting institute profile details...');
