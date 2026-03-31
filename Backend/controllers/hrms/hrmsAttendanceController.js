@@ -171,11 +171,10 @@ const syncFromBridge = async (req, res) => {
 const markAttendance = async (req, res) => {
   try {
     const recruiterId = req.user?.recruiterId;
-    if (!recruiterId) {
-      return res.status(400).json(errorResponse('Recruiter ID not found'));
-    }
-
+    
     console.log('Mark attendance request:', req.body);
+    console.log('User context:', { recruiterId, headers: req.headers });
+    
     const { employeeId, checkIn, checkOut, date } = req.body;
 
     if (!employeeId || !checkIn) {
@@ -183,27 +182,60 @@ const markAttendance = async (req, res) => {
       return res.status(400).json(errorResponse('Employee ID and check-in time are required'));
     }
 
-    // Secure query: Filter by both employeeId AND recruiterId to prevent unauthorized access
+    // For bridge requests, find employee first to get recruiterId
     let employee;
-    if (isUsingMockDB()) {
-      const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
-      employee = allEmployees.find(e => e.employeeId === employeeId && e.recruiterId === recruiterId);
+    if (!recruiterId) {
+      // Bridge request - find employee by employeeId only
+      console.log('🔍 Bridge request detected, searching employee by ID only:', employeeId);
+      
+      if (isUsingMockDB()) {
+        employee = mockDB().get(HRMS_EMPLOYEES_TABLE, employeeId);
+      } else {
+        const scanCommand = new ScanCommand({
+          TableName: HRMS_EMPLOYEES_TABLE,
+          FilterExpression: 'employeeId = :employeeId',
+          ExpressionAttributeValues: {
+            ':employeeId': employeeId
+          }
+        });
+        const result = await dynamoClient.send(scanCommand);
+        employee = result.Items && result.Items.length > 0 ? result.Items[0] : null;
+      }
+      
+      if (!employee) {
+        console.log('❌ Employee not found:', employeeId);
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Employee not found',
+          statusCode: 400
+        });
+      }
+      
+      // Use employee's recruiterId for the attendance record
+      req.user = { recruiterId: employee.recruiterId };
+      console.log('✅ Found employee, using recruiterId:', employee.recruiterId);
     } else {
-      const scanCommand = new ScanCommand({
-        TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: 'employeeId = :employeeId AND recruiterId = :recruiterId',
-        ExpressionAttributeValues: {
-          ':employeeId': employeeId,
-          ':recruiterId': recruiterId
-        }
-      });
-      const result = await dynamoClient.send(scanCommand);
-      employee = result.Items && result.Items.length > 0 ? result.Items[0] : null;
-    }
+      // Regular authenticated request - filter by both employeeId AND recruiterId
+      if (isUsingMockDB()) {
+        const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
+        employee = allEmployees.find(e => e.employeeId === employeeId && e.recruiterId === recruiterId);
+      } else {
+        const scanCommand = new ScanCommand({
+          TableName: HRMS_EMPLOYEES_TABLE,
+          FilterExpression: 'employeeId = :employeeId AND recruiterId = :recruiterId',
+          ExpressionAttributeValues: {
+            ':employeeId': employeeId,
+            ':recruiterId': recruiterId
+          }
+        });
+        const result = await dynamoClient.send(scanCommand);
+        employee = result.Items && result.Items.length > 0 ? result.Items[0] : null;
+      }
 
-    if (!employee) {
-      console.log('Employee not found or not authorized:', employeeId);
-      return res.status(404).json(errorResponse('Employee not found'));
+      if (!employee) {
+        console.log('Employee not found or not authorized:', employeeId);
+        return res.status(404).json(errorResponse('Employee not found'));
+      }
     }
 
     const attendanceDate = date || formatDate(new Date());
