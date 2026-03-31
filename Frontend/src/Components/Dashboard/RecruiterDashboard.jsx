@@ -1366,34 +1366,13 @@ const RecruiterDashboard = () => {
         setIsMobileSidebarOpen(false);
     };
     
-    // Handle HRMS access with secure token
-    const handleHRMSAccess = async () => {
-        try {
-            setLoading(true);
-            
-            // Generate secure access token from backend
-            const response = await apiService.generateHRMSAccessToken();
-            
-            if (response.success && response.data) {
-                const { hrmsUrl, hasAccount } = response.data;
-                
-                // Show message to user
-                const message = hasAccount 
-                    ? 'Opening HRMS login. You will be automatically authenticated.' 
-                    : 'Opening HRMS registration. Please complete your HRMS account setup.';
-                
-                alert(message);
-                
-                // Open HRMS in new tab with secure access token
-                window.open(hrmsUrl, '_blank');
-            } else {
-                alert('Failed to access HRMS: ' + (response.message || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Error accessing HRMS:', error);
-            alert('Failed to access HRMS. Please try again.');
-        } finally {
-            setLoading(false);
+    // Handle HRMS access - Direct redirect
+    const handleHRMSAccess = () => {
+        if (currentUser && currentUser.userId) {
+            const hrmsUrl = `https://hrms.staffinn.com?recruiterId=${currentUser.userId}`;
+            window.open(hrmsUrl, '_blank');
+        } else {
+            alert('User information not found. Please login again.');
         }
     };
     

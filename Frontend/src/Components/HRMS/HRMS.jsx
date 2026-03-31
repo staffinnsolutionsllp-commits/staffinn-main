@@ -7,7 +7,7 @@ const HRMS = () => {
 
     useEffect(() => {
         if (currentUser && currentUser.userId) {
-            const hrmsUrl = `http://localhost:5175?recruiterId=${currentUser.userId}`;
+            const hrmsUrl = `https://hrms.staffinn.com?recruiterId=${currentUser.userId}`;
             window.location.href = hrmsUrl;
         } else {
             console.error('User not found. Please login first.');

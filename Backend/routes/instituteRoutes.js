@@ -230,3 +230,8 @@ const misRequestRoutes = require('./misRequestRoutes');
 router.use('/mis-request', misRequestRoutes);
 
 module.exports = router;
+
+
+// Institute student enrollment count for courses
+const { getInstituteStudentEnrollmentCount } = require('../controllers/instituteCourseEnrollmentController');
+router.get('/courses/:courseId/institute-enrollment-count', getInstituteStudentEnrollmentCount);

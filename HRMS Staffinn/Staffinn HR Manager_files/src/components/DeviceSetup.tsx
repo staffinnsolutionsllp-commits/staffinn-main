@@ -22,7 +22,7 @@ export default function DeviceSetup({ companyId, apiKey }: DeviceSetupProps) {
   const checkDevices = async () => {
     try {
       const token = localStorage.getItem('hrms_token');
-      const response = await fetch('http://localhost:4001/api/v1/hrms/attendance/device-status', {
+      const response = await fetch('https://api.staffinn.com/api/v1/hrms/attendance/device-status', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

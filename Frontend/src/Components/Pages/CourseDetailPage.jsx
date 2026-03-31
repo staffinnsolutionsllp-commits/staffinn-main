@@ -49,7 +49,7 @@ const CourseDetailPage = () => {
     }
   };
 
-  const handleEnrollClick = () => {
+  const handleEnrollClick = async () => {
     const token = localStorage.getItem('token');
     if (!token) {
       alert('Please login to enroll in this course');
@@ -57,12 +57,43 @@ const CourseDetailPage = () => {
       return;
     }
 
-    if (course.fees && course.fees > 0) {
-      // Paid course - show payment modal
-      setShowPaymentModal(true);
+    // Check if course is paid and online
+    if (course.mode === 'Online' && course.fees && course.fees > 0) {
+      // Check payment status first
+      try {
+        const paymentStatus = await apiService.checkPaymentStatus(courseId);
+        
+        if (paymentStatus.success && paymentStatus.hasPaid) {
+          // Already paid - proceed with enrollment
+          handlePaidEnrollment();
+        } else {
+          // Not paid - show payment modal
+          setShowPaymentModal(true);
+        }
+      } catch (error) {
+        console.error('Error checking payment status:', error);
+        // Show payment modal on error
+        setShowPaymentModal(true);
+      }
     } else {
-      // Free course - direct enrollment
+      // Free course or offline course - direct enrollment
       handleFreeEnrollment();
+    }
+  };
+
+  const handlePaidEnrollment = async () => {
+    try {
+      const response = await apiService.enrollInCourse(courseId);
+      
+      if (response.success) {
+        alert('Successfully enrolled in the course!');
+        checkEnrollmentStatus();
+      } else {
+        alert(response.message || 'Failed to enroll in course');
+      }
+    } catch (error) {
+      console.error('Error enrolling:', error);
+      alert('Failed to enroll in course');
     }
   };
 

@@ -318,7 +318,7 @@ export default function Onboarding() {
         uploadFormData.append('file', profilePicture)
         uploadFormData.append('folder', `hrms/${user?.userId}/employees/${formData.employeeId}/profile`)
         
-        const uploadResponse = await fetch('http://localhost:4001/api/upload', {
+        const uploadResponse = await fetch('https://api.staffinn.com/api/upload', {
           method: 'POST',
           body: uploadFormData
         })
@@ -341,7 +341,7 @@ export default function Onboarding() {
           uploadFormData.append('file', file)
           uploadFormData.append('folder', `hrms/${user?.userId}/employees/${formData.employeeId}/documents`)
           
-          const uploadResponse = await fetch('http://localhost:4001/api/upload', {
+          const uploadResponse = await fetch('https://api.staffinn.com/api/upload', {
             method: 'POST',
             body: uploadFormData
           })

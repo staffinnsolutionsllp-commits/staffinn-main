@@ -5127,6 +5127,127 @@ const apiService = {
       console.error('Handle payment failure error:', error);
       return { success: false, message: 'Failed to handle payment failure' };
     }
+  },
+
+  // Institute Bank Details API
+  saveBankDetails: async (bankData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('🏦 Saving bank details:', bankData);
+      const response = await fetch(`${API_URL}/institute/bank-details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bankData)
+      });
+      
+      const result = await response.json();
+      console.log('✅ Bank details saved:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Save bank details error:', error);
+      return { success: false, message: 'Failed to save bank details' };
+    }
+  },
+
+  getBankDetails: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institute/bank-details`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get bank details error:', error);
+      return { success: false, message: 'Failed to get bank details' };
+    }
+  },
+
+  updateBankDetails: async (bankData) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('🏦 Updating bank details:', bankData);
+      const response = await fetch(`${API_URL}/institute/bank-details`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bankData)
+      });
+      
+      const result = await response.json();
+      console.log('✅ Bank details updated:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Update bank details error:', error);
+      return { success: false, message: 'Failed to update bank details' };
+    }
+  },
+
+  deleteBankDetails: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/institute/bank-details`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Delete bank details error:', error);
+      return { success: false, message: 'Failed to delete bank details' };
+    }
+  },
+
+  // Check Payment Status API
+  checkPaymentStatus: async (courseId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('🔍 Checking payment status for course:', courseId);
+      const response = await fetch(`${API_URL}/payments/check-status/${courseId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const result = await response.json();
+      console.log('✅ Payment status:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Check payment status error:', error);
+      return { success: false, hasPaid: false, message: 'Failed to check payment status' };
+    }
   }
 
 };

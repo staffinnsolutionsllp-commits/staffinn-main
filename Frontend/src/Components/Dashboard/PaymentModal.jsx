@@ -32,26 +32,27 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
         throw new Error(orderResponse.message || 'Failed to create payment order');
       }
 
-      const { orderId, amount, currency, keyId, courseName, courseInstructor } = orderResponse.data;
+      const { orderId, amount, currency, razorpayKeyId, courseDetails } = orderResponse.data;
+
+      console.log('🔑 Razorpay Key ID:', razorpayKeyId);
 
       // Razorpay options
       const options = {
-        key: keyId,
+        key: razorpayKeyId,
         amount: amount,
         currency: currency,
         name: 'Staffinn',
-        description: `Course: ${courseName}`,
+        description: `Course: ${courseDetails.courseName}`,
         order_id: orderId,
         handler: async function (response) {
           try {
             console.log('✅ Payment successful:', response);
 
-            // Verify payment
+            // Verify payment with correct field names
             const verifyResponse = await apiService.verifyPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              courseId: course.coursesId
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
             });
 
             if (verifyResponse.success) {
@@ -74,7 +75,7 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
         },
         notes: {
           courseId: course.coursesId,
-          courseName: courseName
+          courseName: courseDetails.courseName
         },
         theme: {
           color: '#3399cc'
@@ -83,28 +84,16 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
           ondismiss: function() {
             console.log('Payment cancelled by user');
             setLoading(false);
-            
-            // Record payment failure
-            apiService.handlePaymentFailure({
-              orderId: orderId,
-              error: 'Payment cancelled by user'
-            });
           }
         }
       };
 
       const razorpay = new window.Razorpay(options);
       
-      razorpay.on('payment.failed', async function (response) {
+      razorpay.on('payment.failed', function (response) {
         console.error('❌ Payment failed:', response.error);
         setError(response.error.description || 'Payment failed');
         setLoading(false);
-        
-        // Record payment failure
-        await apiService.handlePaymentFailure({
-          orderId: orderId,
-          error: response.error.description
-        });
       });
 
       razorpay.open();

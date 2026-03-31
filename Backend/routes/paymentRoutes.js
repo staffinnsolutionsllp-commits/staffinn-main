@@ -1,21 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
-const { authenticate } = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 
-// Create payment order
-router.post('/create-order', authenticate, paymentController.createOrder);
+// User payment routes (require authentication)
+router.post('/create-order', protect, paymentController.createPaymentOrder);
+router.post('/verify', protect, paymentController.verifyPayment);
+router.get('/transactions', protect, paymentController.getUserTransactions);
+router.get('/check-status/:courseId', protect, paymentController.checkPaymentStatus);
 
-// Verify payment
-router.post('/verify', authenticate, paymentController.verifyPayment);
+// Institute payment routes (require authentication)
+router.get('/institute/transactions', protect, paymentController.getInstituteTransactions);
 
-// Get payment history
-router.get('/history', authenticate, paymentController.getPaymentHistory);
-
-// Get institute earnings
-router.get('/institute-earnings', authenticate, paymentController.getInstituteEarnings);
-
-// Handle payment failure
-router.post('/failure', authenticate, paymentController.handlePaymentFailure);
+// Webhook route (no authentication - verified by signature)
+router.post('/webhook', express.raw({ type: 'application/json' }), paymentController.handleWebhook);
 
 module.exports = router;

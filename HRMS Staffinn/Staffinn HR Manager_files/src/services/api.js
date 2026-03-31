@@ -1,5 +1,5 @@
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-api-gateway-url.amazonaws.com/dev/api/v1/hrms'
+  ? 'https://api.staffinn.com/api/v1/hrms'
   : 'http://localhost:4001/api/v1/hrms';
 
 class ApiService {

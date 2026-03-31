@@ -1,0 +1,17 @@
+{
+  "Changes": [
+    {
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "_a3a26e6ce8eee45fb3ab0b2e86aeced0.employee.staffinn.com.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [
+          {
+            "Value": "_25354d5af50d37f9bfc76bb80dcb0c02.jkddzztszm.acm-validations.aws."
+          }
+        ]
+      }
+    }
+  ]
+}

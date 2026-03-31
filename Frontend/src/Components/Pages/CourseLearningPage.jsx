@@ -4,6 +4,7 @@ import apiService from '../../services/api';
 import progressSocketService from '../../services/progressSocket';
 import { debugVideoContent, logVideoError } from '../../utils/videoUtils';
 import { calculateCourseProgress } from '../../utils/progressUtils';
+import PaymentModal from '../Dashboard/PaymentModal';
 import './CourseLearningPage.css';
 import { FaPlay, FaLock, FaCheck, FaChevronDown, FaChevronUp, FaStar, FaUsers, FaClock, FaGlobe } from 'react-icons/fa';
 
@@ -29,6 +30,7 @@ const CourseLearningPage = () => {
   const [enrollmentCount, setEnrollmentCount] = useState(0);
   const [reviewForm, setReviewForm] = useState({ rating: 5, review: '' });
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     if (courseId) {
@@ -141,7 +143,32 @@ const CourseLearningPage = () => {
 
   const handleEnroll = async () => {
     try {
+      console.log('🚀 Attempting to enroll in course:', courseId);
+      
+      // Check if course is paid
+      if (course.mode === 'Online' && parseFloat(course.fees) > 0) {
+        console.log('💰 Paid course detected, checking payment status...');
+        
+        // Check if user has already paid
+        try {
+          const paymentStatus = await apiService.checkPaymentStatus(courseId);
+          console.log('💳 Payment status:', paymentStatus);
+          
+          if (!paymentStatus.hasPaid) {
+            console.log('💳 Payment not found, showing payment modal');
+            setShowPaymentModal(true);
+            return;
+          }
+          
+          console.log('✅ Payment verified, proceeding with enrollment');
+        } catch (paymentError) {
+          console.error('❌ Payment check error:', paymentError);
+          // If payment check fails, try to enroll anyway (backend will validate)
+        }
+      }
+      
       const response = await apiService.enrollInCourse(courseId);
+      
       if (response.success) {
         setEnrollmentStatus({ enrolled: true, hasStarted: false, progressPercentage: 0 });
         
@@ -152,11 +179,28 @@ const CourseLearningPage = () => {
         }
         
         // For Online courses, refresh to get accessible content
+        alert('Successfully enrolled in the course!');
         fetchCourseData();
       }
     } catch (error) {
-      console.error('Error enrolling:', error);
+      console.error('❌ Error enrolling:', error);
+      
+      // Check if it's a payment required error (402)
+      if (error.message && error.message.includes('Payment required')) {
+        console.log('💳 Payment required, showing payment modal');
+        setShowPaymentModal(true);
+      } else {
+        alert('Failed to enroll in course. Please try again.');
+      }
     }
+  };
+
+  const handlePaymentSuccess = async () => {
+    console.log('✅ Payment successful, refreshing course data...');
+    setShowPaymentModal(false);
+    setEnrollmentStatus({ enrolled: true, hasStarted: false, progressPercentage: 0 });
+    await fetchCourseData();
+    await checkEnrollmentStatus();
   };
 
   const toggleSection = (index) => {
@@ -1506,6 +1550,22 @@ const CourseLearningPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && course && (
+        <PaymentModal
+          course={{
+            coursesId: courseId,
+            courseName: course.courseName || course.name,
+            name: course.courseName || course.name,
+            instructor: course.instructor,
+            duration: course.duration,
+            fees: course.fees
+          }}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={handlePaymentSuccess}
+        />
       )}
     </div>
   );

@@ -82,6 +82,7 @@ const employeePortalRoutes = require('./routes/hrms/employeePortalRoutes');
 const hrmsNotificationRoutes = require('./routes/hrms/hrmsNotificationRoutes');
 const hrmsAccessRoutes = require('./routes/hrmsAccessRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const instituteBankDetailsRoutes = require('./routes/instituteBankDetailsRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -103,6 +104,8 @@ const allowedOrigins = process.env.CORS_ORIGINS
       'http://staffinn-frontend-app.s3-website.ap-south-1.amazonaws.com',
       'https://admin.staffinn.com',
       'https://staffinn.com',
+      'https://hrms.staffinn.com',
+      'https://employee.staffinn.com',
       'http://localhost:5173',
       'http://localhost:5174', 
       'http://localhost:5175',
@@ -204,6 +207,7 @@ app.use(`${API_PREFIX}/biometric`, biometricWebhookRoutes);
 app.use(`${API_PREFIX}/employee`, employeePortalRoutes);
 app.use(`${API_PREFIX}/hrms/notifications`, hrmsNotificationRoutes);
 app.use(`${API_PREFIX}/payments`, paymentRoutes);
+app.use(`${API_PREFIX}/institute`, instituteBankDetailsRoutes);
 
 console.log('✅ HRMS routes registered successfully:');
 console.log('   - /api/v1/hrms/auth/*');

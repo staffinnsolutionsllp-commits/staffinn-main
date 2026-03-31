@@ -31,7 +31,7 @@ const createEmployee = async (req, res) => {
         TableName: HRMS_EMPLOYEES_TABLE,
         FilterExpression: 'recruiterId = :rid AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
         ExpressionAttributeValues: {
-          ':recruiterId': recruiterId,
+          ':rid': recruiterId,
           ':false': false
         }
       });

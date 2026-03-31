@@ -88,7 +88,7 @@ const allocateLeaveBalances = async (leaveRule: any) => {
         console.log('Creating balance:', balanceData)
         
         // Create balance entry in backend
-        const response = await fetch('http://localhost:4001/api/v1/hrms/leaves/balances/create', {
+        const response = await fetch('http://3.109.94.100:4001/api/v1/hrms/leaves/balances/create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('hrms_token')}` },
           body: JSON.stringify(balanceData)
@@ -135,7 +135,7 @@ const allocateLeaveBalances = async (leaveRule: any) => {
   const deleteLeaveBalances = async (leaveType: string) => {
     try {
       // Call backend to delete all balances for this leave type
-      await fetch(`http://localhost:4001/api/v1/hrms/leaves/balances/delete-by-type?leaveType=${encodeURIComponent(leaveType)}`, {
+      await fetch(`http://3.109.94.100:4001/api/v1/hrms/leaves/balances/delete-by-type?leaveType=${encodeURIComponent(leaveType)}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('hrms_token')}` }
       })

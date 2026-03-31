@@ -416,10 +416,11 @@ const enrollInCourse = async (req, res) => {
     const userId = req.user.userId;
     const { courseId } = req.params;
     
-    console.log('Enrolling user in course:', { userId, courseId });
+    console.log('🚀 Enrolling user in course:', { userId, courseId });
     
     // Validate courseId
     if (!courseId) {
+      console.log('❌ Course ID missing');
       return res.status(400).json({
         success: false,
         message: 'Course ID is required'
@@ -432,10 +433,47 @@ const enrollInCourse = async (req, res) => {
     });
     
     if (!course) {
+      console.log('❌ Course not found:', courseId);
       return res.status(404).json({
         success: false,
         message: 'Course not found'
       });
+    }
+    
+    console.log('✅ Course found:', { courseName: course.courseName, mode: course.mode, fees: course.fees });
+    
+    // ✅ Check if course is Online and has fees
+    if (course.mode === 'Online' && parseFloat(course.fees) > 0) {
+      console.log('💰 Paid course detected, checking payment status...');
+      try {
+        const paymentTransactionModel = require('../models/paymentTransactionModel');
+        const hasPaid = await paymentTransactionModel.hasUserPaidForCourse(userId, courseId);
+        
+        console.log('💳 Payment status:', hasPaid);
+        
+        if (!hasPaid) {
+          console.log('❌ Payment not found, enrollment blocked');
+          return res.status(402).json({
+            success: false,
+            message: 'Payment required. Please complete payment to enroll in this course.',
+            requiresPayment: true,
+            courseDetails: {
+              courseId: course.coursesId,
+              courseName: course.courseName,
+              fees: course.fees
+            }
+          });
+        }
+        console.log('✅ Payment verified, proceeding with enrollment');
+      } catch (paymentError) {
+        console.error('❌ Payment check error:', paymentError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to verify payment status: ' + paymentError.message
+        });
+      }
+    } else {
+      console.log('🆓 Free course or On Campus mode, skipping payment check');
     }
     
     // Check if already enrolled
@@ -450,6 +488,7 @@ const enrollInCourse = async (req, res) => {
     const existingEnrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, params);
     
     if (existingEnrollments && existingEnrollments.length > 0) {
+      console.log('⚠️ User already enrolled');
       return res.status(400).json({
         success: false,
         message: 'Already enrolled in this course'
@@ -460,18 +499,20 @@ const enrollInCourse = async (req, res) => {
     const enrollment = {
       enrolledID: enrollmentId,
       userId: userId,
-      courseId: courseId, // Ensure courseId is explicitly set
+      courseId: courseId,
       courseName: course.courseName,
       instituteId: course.instituteId,
       enrollmentDate: new Date().toISOString(),
       progressPercentage: 0,
       status: 'active',
-      paymentStatus: 'free'
+      paymentStatus: course.mode === 'Online' && parseFloat(course.fees) > 0 ? 'paid' : 'free'
     };
     
-    console.log('Creating enrollment record:', enrollment);
+    console.log('📝 Creating enrollment record:', enrollment);
     
     await dynamoService.putItem(COURSE_ENROLLMENTS_TABLE, enrollment);
+    
+    console.log('✅ Enrollment successful!');
     
     res.status(201).json({
       success: true,
@@ -479,10 +520,11 @@ const enrollInCourse = async (req, res) => {
       data: enrollment
     });
   } catch (error) {
-    console.error('Error enrolling in course:', error);
+    console.error('❌ Error enrolling in course:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      message: 'Failed to enroll in course'
+      message: 'Failed to enroll in course: ' + error.message
     });
   }
 };
@@ -578,6 +620,20 @@ const getCourseContent = async (req, res) => {
         success: false,
         message: 'Course not found'
       });
+    }
+    
+    // ✅ NEW: Check payment for online paid courses
+    if (course.mode === 'Online' && parseFloat(course.fees) > 0) {
+      const paymentTransactionModel = require('../models/paymentTransactionModel');
+      const hasPaid = await paymentTransactionModel.hasUserPaidForCourse(userId, courseId);
+      
+      if (!hasPaid) {
+        return res.status(402).json({
+          success: false,
+          message: 'Payment required to access course content',
+          requiresPayment: true
+        });
+      }
     }
     
     // Transform course data to match frontend expectations
