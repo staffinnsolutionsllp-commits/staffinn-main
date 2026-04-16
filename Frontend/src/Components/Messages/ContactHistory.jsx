@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import messageApi from '../../services/messageApi';
 import ChatWindow from './ChatWindow';
@@ -9,6 +9,10 @@ const ContactHistory = () => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarWidth, setSidebarWidth] = useState(380);
+  const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     fetchConversations();
@@ -56,7 +60,7 @@ const ContactHistory = () => {
     }
   };
 
-  const truncateMessage = (message, maxLength = 50) => {
+  const truncateMessage = (message, maxLength = 35) => {
     if (message.length <= maxLength) return message;
     return message.substring(0, maxLength) + '...';
   };
@@ -71,14 +75,16 @@ const ContactHistory = () => {
   };
 
   const handleChatClose = () => {
-    setSelectedChat(null);
-    // Refresh conversations to update unread counts
+    // Don't close the chat, just keep it open
+    // The sidebar will remain visible
+    // User can select another chat from the sidebar
+    // Optionally refresh conversations to update unread counts
     fetchConversations();
   };
 
   const getUserTypeLabel = (userType) => {
     switch (userType) {
-      case 'staff': return 'Staff Member';
+      case 'staff': return 'Staff';
       case 'recruiter': return 'Recruiter';
       case 'institute': return 'Institute';
       case 'seeker': return 'Seeker';
@@ -96,125 +102,177 @@ const ContactHistory = () => {
     }
   };
 
-  return (
-    <div className="contact-history">
-      <div className="contact-history-header">
-        <h2>Contact History</h2>
-        <p>Your recent conversations with other users</p>
-        <button 
-          className="refresh-btn"
-          onClick={fetchConversations}
-          disabled={loading}
-        >
-          <i className="fas fa-sync-alt"></i>
-          {loading ? 'Loading...' : 'Refresh'}
-        </button>
-      </div>
+  const filteredConversations = conversations.filter(conv =>
+    conv.partnerName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-      {loading ? (
-        <div className="loading-state">
-          <div className="spinner"></div>
-          <p>Loading conversations...</p>
-        </div>
-      ) : conversations.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">💬</div>
-          <h3>No conversations yet</h3>
-          <p>Start chatting with staff members or recruiters to see your conversation history here</p>
-        </div>
-      ) : (
-        <div className="contact-history-table">
-          <table className="conversations-table">
-            <thead>
-              <tr>
-                <th>Contact</th>
-                <th>Type</th>
-                <th>Last Message</th>
-                <th>Time</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {conversations.map((conversation) => (
-                <tr key={conversation.partnerId} className={conversation.unreadCount > 0 ? 'unread-row' : ''}>
-                  <td>
-                    <div className="contact-info">
-                      <div className="contact-avatar">
-                        {conversation.partnerProfilePhoto ? (
-                          <img 
-                            src={conversation.partnerProfilePhoto} 
-                            alt={conversation.partnerName}
-                            className="avatar-img"
-                          />
-                        ) : (
-                          <div className="avatar-placeholder">
-                            {conversation.partnerName?.charAt(0) || 'U'}
-                          </div>
-                        )}
+  // Handle resizing
+  const handleMouseDown = (e) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizing || !containerRef.current) return;
+      
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+      
+      // Set min and max width constraints
+      if (newWidth >= 250 && newWidth <= 600) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
+
+  return (
+    <div className="contact-history-container" ref={containerRef}>
+      <div className="chat-layout">
+        {/* Left Sidebar - Contacts List */}
+        <div className="contacts-sidebar" style={{ width: `${sidebarWidth}px` }}>
+          <div className="sidebar-header">
+            <h2>Messages</h2>
+            <button 
+              className="refresh-icon-btn"
+              onClick={fetchConversations}
+              disabled={loading}
+              title="Refresh"
+            >
+              <img src="/icons8-refresh.svg" alt="Refresh" className="refresh-icon-svg" />
+            </button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="search-container">
+            <i className="fas fa-search search-icon"></i>
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+          </div>
+
+          {/* Contacts List */}
+          <div className="contacts-list">
+            {loading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading...</p>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">💬</div>
+                <h3>No conversations</h3>
+                <p>Start chatting to see your messages here</p>
+              </div>
+            ) : (
+              filteredConversations.map((conversation) => (
+                <div
+                  key={conversation.partnerId}
+                  className={`contact-item ${
+                    selectedChat?.recipientId === conversation.partnerId ? 'active' : ''
+                  } ${conversation.unreadCount > 0 ? 'unread' : ''}`}
+                  onClick={() => handleChatOpen(conversation)}
+                >
+                  <div className="contact-avatar">
+                    {conversation.partnerProfilePhoto ? (
+                      <img 
+                        src={conversation.partnerProfilePhoto} 
+                        alt={conversation.partnerName}
+                        className="avatar-img"
+                      />
+                    ) : (
+                      <div className="avatar-placeholder">
+                        {conversation.partnerName?.charAt(0) || 'U'}
                       </div>
-                      <div className="contact-details">
-                        <div className="contact-name">{conversation.partnerName}</div>
-                        <div className="contact-type">{getUserTypeLabel(conversation.partnerUserType)}</div>
+                    )}
+                    {conversation.unreadCount > 0 && (
+                      <div className="online-indicator"></div>
+                    )}
+                  </div>
+                  <div className="contact-content">
+                    <div className="contact-header">
+                      <div className="contact-name-wrapper">
+                        <span className="contact-name">{conversation.partnerName}</span>
+                        <span 
+                          className="user-type-badge"
+                          style={{ backgroundColor: getUserTypeColor(conversation.partnerUserType) }}
+                        >
+                          {getUserTypeLabel(conversation.partnerUserType)}
+                        </span>
                       </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span 
-                      className="user-type-badge"
-                      style={{ backgroundColor: getUserTypeColor(conversation.partnerUserType) }}
-                    >
-                      {getUserTypeLabel(conversation.partnerUserType)}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="last-message-preview">
-                      <span className="message-text">
-                        {conversation.lastMessage.senderId === currentUser.userId ? 'You: ' : ''}
-                        {truncateMessage(conversation.lastMessage.message, 40)}
+                      <span className="message-time">
+                        {formatTime(conversation.lastMessage.createdAt)}
                       </span>
                     </div>
-                  </td>
-                  <td>
-                    <span className="message-time">
-                      {formatTime(conversation.lastMessage.createdAt)}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="message-status">
-                      {conversation.unreadCount > 0 ? (
-                        <span className="unread-badge">
-                          {conversation.unreadCount} new
-                        </span>
-                      ) : (
-                        <span className="read-status">Read</span>
+                    <div className="contact-footer">
+                      <span className={`last-message ${conversation.unreadCount > 0 ? 'unread-text' : ''}`}>
+                        {conversation.lastMessage.senderId === currentUser.userId ? (
+                          <i className="fas fa-check message-check"></i>
+                        ) : null}
+                        {truncateMessage(conversation.lastMessage.message)}
+                      </span>
+                      {conversation.unreadCount > 0 && (
+                        <span className="unread-count">{conversation.unreadCount}</span>
                       )}
                     </div>
-                  </td>
-                  <td>
-                    <button 
-                      className="chat-btn"
-                      onClick={() => handleChatOpen(conversation)}
-                    >
-                      <i className="fas fa-comment"></i>
-                      Chat
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      )}
 
-      {selectedChat && (
-        <ChatWindow
-          isOpen={true}
-          onClose={handleChatClose}
-          recipientId={selectedChat.recipientId}
-          recipientName={selectedChat.recipientName}
-        />
-      )}
+        {/* Resizable Divider */}
+        <div 
+          className="resize-divider"
+          onMouseDown={handleMouseDown}
+          style={{ cursor: isResizing ? 'col-resize' : 'col-resize' }}
+        >
+          <div className="resize-handle"></div>
+        </div>
+
+        {/* Right Side - Chat Window */}
+        <div className="chat-area">
+          {selectedChat ? (
+            <div className="chat-window-wrapper">
+              <ChatWindow
+                isOpen={true}
+                onClose={handleChatClose}
+                recipientId={selectedChat.recipientId}
+                recipientName={selectedChat.recipientName}
+              />
+            </div>
+          ) : (
+            <div className="no-chat-selected">
+              <div className="no-chat-icon">💬</div>
+              <h3>Select a conversation</h3>
+              <p>Choose a contact from the left to start chatting</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

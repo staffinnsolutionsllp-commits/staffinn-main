@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const dynamoService = require('../services/dynamoService');
 const s3Service = require('../services/s3Service');
+const pendingPaymentModel = require('../models/pendingInstitutePaymentModel');
 
 const COURSES_TABLE = 'staffinn-courses';
 const COURSE_ENROLLMENTS_TABLE = 'course-enrolled-user';
@@ -1224,23 +1225,357 @@ const getTrendingCourses = async (req, res) => {
   }
 };
 
+// Get ALL public courses from ALL institutes
+const getAllPublicCourses = async (req, res) => {
+  try {
+    console.log('🔍 Getting all public courses from all institutes...');
+    
+    // Get all active courses from all institutes
+    const params = {
+      FilterExpression: 'isActive = :isActive',
+      ExpressionAttributeValues: {
+        ':isActive': true
+      }
+    };
+    
+    const courses = await dynamoService.scanItems(COURSES_TABLE, params);
+    console.log('📊 Found courses:', courses ? courses.length : 0);
+    
+    if (!courses || courses.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: 'No courses available'
+      });
+    }
+    
+    // Get institute info for each course
+    const coursesWithInstituteInfo = await Promise.all(
+      courses.map(async (course) => {
+        try {
+          const userModel = require('../models/userModel');
+          const institute = await userModel.findUserById(course.instituteId);
+          
+          return {
+            coursesId: course.coursesId,
+            instituteCourseID: course.coursesId, // For compatibility
+            courseName: course.courseName,
+            name: course.courseName, // For compatibility
+            duration: course.duration,
+            fees: course.fees,
+            instructor: course.instructor,
+            category: course.category,
+            mode: course.mode,
+            thumbnailUrl: course.thumbnailUrl,
+            thumbnail: course.thumbnailUrl, // For compatibility
+            description: course.description,
+            prerequisites: course.prerequisites,
+            syllabusOverview: course.syllabusOverview,
+            certification: course.certification,
+            isActive: course.isActive,
+            createdAt: course.createdAt,
+            updatedAt: course.updatedAt,
+            instituteId: course.instituteId,
+            instituteName: institute ? (institute.name || institute.instituteName) : 'Unknown Institute',
+            instituteProfileImage: institute ? institute.profileImage : null
+          };
+        } catch (error) {
+          console.error('Error getting institute info for course:', course.coursesId, error);
+          return {
+            coursesId: course.coursesId,
+            instituteCourseID: course.coursesId,
+            courseName: course.courseName,
+            name: course.courseName,
+            duration: course.duration,
+            fees: course.fees,
+            instructor: course.instructor,
+            category: course.category,
+            mode: course.mode,
+            thumbnailUrl: course.thumbnailUrl,
+            thumbnail: course.thumbnailUrl,
+            description: course.description,
+            prerequisites: course.prerequisites,
+            syllabusOverview: course.syllabusOverview,
+            certification: course.certification,
+            isActive: course.isActive,
+            createdAt: course.createdAt,
+            updatedAt: course.updatedAt,
+            instituteId: course.instituteId,
+            instituteName: 'Unknown Institute',
+            instituteProfileImage: null
+          };
+        }
+      })
+    );
+    
+    console.log('✅ Returning courses with institute info:', coursesWithInstituteInfo.length);
+    
+    res.status(200).json({
+      success: true,
+      data: coursesWithInstituteInfo
+    });
+  } catch (error) {
+    console.error('❌ Error getting all public courses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get all courses',
+      data: []
+    });
+  }
+};
+
+// Enroll in course with "Pay at Institute" option
+const enrollInCoursePayAtInstitute = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { courseId } = req.params;
+    
+    console.log('🏢 Pay at Institute enrollment:', { userId, courseId });
+    
+    // Validate courseId
+    if (!courseId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Course ID is required'
+      });
+    }
+    
+    // Get course details
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+    
+    console.log('✅ Course found:', { courseName: course.courseName, mode: course.mode, fees: course.fees });
+    
+    // Validate course is On Campus
+    if (course.mode !== 'On Campus') {
+      return res.status(400).json({
+        success: false,
+        message: 'Pay at Institute option is only available for On Campus courses'
+      });
+    }
+    
+    // Validate course has fees
+    if (!course.fees || parseFloat(course.fees) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'This course is free, no payment required'
+      });
+    }
+    
+    // Check if already enrolled
+    const existingEnrollmentParams = {
+      FilterExpression: 'userId = :userId AND courseId = :courseId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+        ':courseId': courseId
+      }
+    };
+    
+    const existingEnrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, existingEnrollmentParams);
+    
+    if (existingEnrollments && existingEnrollments.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Already enrolled in this course'
+      });
+    }
+    
+    // Check if already has pending payment
+    const hasPending = await pendingPaymentModel.hasPendingPayment(courseId, userId);
+    
+    if (hasPending) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have a pending payment for this course. Please contact the institute.'
+      });
+    }
+    
+    // Get user details
+    const userModel = require('../models/userModel');
+    const user = await userModel.findUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Get institute details
+    const institute = await userModel.findUserById(course.instituteId);
+    const instituteName = institute ? (institute.name || institute.instituteName || 'Institute') : 'Institute';
+    
+    // Create pending payment record
+    const paymentData = {
+      userId: userId,
+      userName: user.name || user.fullName || 'Student',
+      userEmail: user.email,
+      courseId: courseId,
+      courseName: course.courseName,
+      instituteId: course.instituteId,
+      instituteName: instituteName,
+      amount: parseFloat(course.fees)
+    };
+    
+    const pendingPayment = await pendingPaymentModel.createPendingPayment(paymentData);
+    
+    console.log('✅ Pending payment created:', pendingPayment.pendingPaymentId);
+    
+    // Create enrollment record with pending status
+    const enrollmentId = uuidv4();
+    const enrollment = {
+      enrolledID: enrollmentId,
+      userId: userId,
+      courseId: courseId,
+      courseName: course.courseName,
+      instituteId: course.instituteId,
+      enrollmentDate: new Date().toISOString(),
+      progressPercentage: 0,
+      status: 'pending_payment',
+      paymentStatus: 'pending_at_institute',
+      paymentMode: 'PAY_AT_INSTITUTE',
+      pendingPaymentId: pendingPayment.pendingPaymentId
+    };
+    
+    await dynamoService.putItem(COURSE_ENROLLMENTS_TABLE, enrollment);
+    
+    console.log('✅ Enrollment created with pending payment status');
+    
+    // Send notification to institute
+    console.log('📬 Attempting to send notification to institute:', course.instituteId);
+    try {
+      const notificationController = require('./notificationController');
+      const notificationMessage = `${user.name || user.fullName || 'A student'} has enrolled in ${course.courseName} with "Pay at Institute" option. Amount: ₹${course.fees}`;
+      
+      console.log('📝 Creating notification with data:', {
+        instituteId: course.instituteId,
+        type: 'pending_payment',
+        title: 'New Pending Payment',
+        message: notificationMessage
+      });
+      
+      const notification = await notificationController.createNotification(
+        course.instituteId,
+        'pending_payment',
+        'New Pending Payment',
+        notificationMessage,
+        {
+          userId: userId,
+          userName: user.name || user.fullName || 'Student',
+          userEmail: user.email,
+          courseId: courseId,
+          courseName: course.courseName,
+          amount: parseFloat(course.fees),
+          pendingPaymentId: pendingPayment.pendingPaymentId,
+          enrollmentId: enrollmentId
+        },
+        true
+      );
+      
+      console.log('✅ Notification created successfully:', notification.notificationId);
+      console.log('✅ Notification sent to institute');
+    } catch (notificationError) {
+      console.error('❌ Failed to send notification - Full error:', notificationError);
+      console.error('❌ Error stack:', notificationError.stack);
+      // Don't fail the enrollment if notification fails
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: 'Enrollment request submitted successfully. Please pay at the institute to activate your enrollment.',
+      data: {
+        enrollment,
+        pendingPayment: {
+          pendingPaymentId: pendingPayment.pendingPaymentId,
+          amount: pendingPayment.amount,
+          status: pendingPayment.paymentStatus
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error in pay at institute enrollment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process enrollment: ' + error.message
+    });
+  }
+};
+
+// Get institute student enrollment count for a course
+const getInstituteStudentEnrollmentCount = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const instituteId = req.user.userId;
+    
+    console.log('📊 Getting institute enrollment count:', { courseId, instituteId });
+    
+    // Get enrollments from staffinn-institute-course-enrollments table
+    const INSTITUTE_ENROLLMENTS_TABLE = 'staffinn-institute-course-enrollments';
+    
+    const params = {
+      FilterExpression: 'courseId = :courseId AND enrollingInstituteId = :instituteId',
+      ExpressionAttributeValues: {
+        ':courseId': courseId,
+        ':instituteId': instituteId
+      }
+    };
+    
+    const enrollments = await dynamoService.scanItems(INSTITUTE_ENROLLMENTS_TABLE, params);
+    
+    // Count total students from all enrollment batches
+    let totalStudents = 0;
+    if (enrollments && enrollments.length > 0) {
+      enrollments.forEach(enrollment => {
+        totalStudents += enrollment.totalStudentsEnrolled || 0;
+      });
+    }
+    
+    console.log('✅ Institute enrollment count:', totalStudents);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        enrollmentCount: totalStudents
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error getting institute enrollment count:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get enrollment count',
+      data: { enrollmentCount: 0 }
+    });
+  }
+};
+
 module.exports = {
   createCourse,
   updateCourse,
   getCourseById,
   getCourses,
   getPublicCourses,
+  getAllPublicCourses,
   getPublicCourseById,
   getCourseModules,
   getModuleContent,
   getModuleAssignments,
   checkEnrollmentStatus,
   enrollInCourse,
+  enrollInCoursePayAtInstitute,
   getUserEnrollments,
   getCourseContent,
   updateProgress,
   getActiveCourseCount,
   debugCourseContent,
   fixContentUrls,
-  getTrendingCourses
+  getTrendingCourses,
+  getInstituteStudentEnrollmentCount
 };

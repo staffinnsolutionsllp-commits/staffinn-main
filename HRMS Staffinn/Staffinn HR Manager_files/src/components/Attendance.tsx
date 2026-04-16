@@ -1,4 +1,4 @@
-import  { useState, useEffect } from 'react'
+import  { useState, useEffect, useRef } from 'react'
 import { Calendar, Clock, CheckCircle, Plus, X, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { apiService } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -30,9 +30,8 @@ export default function Attendance() {
     loadData()
     // Refresh stats when date changes
     refreshStats(selectedDate)
-    
+
     const interval = setInterval(() => {
-      // Only auto-refresh if viewing today's data
       if (isToday) {
         loadData()
         refreshStats(selectedDate)
@@ -40,6 +39,70 @@ export default function Attendance() {
     }, 30000)
     return () => clearInterval(interval)
   }, [selectedDate, isToday])
+
+  // Listen for real-time attendance updates from Bridge via WebSocket
+  useEffect(() => {
+    if (!isToday) return
+    
+    let socket: any = null
+    
+    const connectSocket = async () => {
+      try {
+        const { io } = await import('socket.io-client')
+        const wsUrl = import.meta.env.PROD
+          ? 'https://api.staffinn.com'
+          : 'http://localhost:4001'
+        
+        const token = localStorage.getItem('hrms_token')
+        const recruiterId = user?.recruiterId
+        
+        console.log('🔌 Connecting to WebSocket:', wsUrl)
+        
+        socket = io(wsUrl, {
+          auth: { token },
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionDelay: 1000
+        })
+        
+        socket.on('connect', () => {
+          console.log('✅ WebSocket connected')
+          
+          // Join recruiter-specific room
+          if (recruiterId) {
+            socket.emit('join-room', `recruiter-${recruiterId}`)
+            console.log(`📡 Joined room: recruiter-${recruiterId}`)
+          }
+        })
+        
+        socket.on('attendance-update', (data: any) => {
+          console.log('📡 Real-time attendance update:', data)
+          loadData()
+          refreshStats(selectedDate)
+        })
+        
+        socket.on('disconnect', (reason: string) => {
+          console.log('❌ WebSocket disconnected:', reason)
+        })
+        
+        socket.on('connect_error', (error: any) => {
+          console.error('❌ WebSocket error:', error.message)
+        })
+        
+      } catch (err) {
+        console.warn('WebSocket unavailable:', err)
+      }
+    }
+    
+    connectSocket()
+    
+    return () => {
+      if (socket) {
+        console.log('🔌 Disconnecting WebSocket')
+        socket.disconnect()
+      }
+    }
+  }, [isToday, user?.recruiterId])
 
   useEffect(() => {
     loadData()

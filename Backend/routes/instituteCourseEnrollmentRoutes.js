@@ -21,4 +21,13 @@ router.get('/available-students', authenticate, instituteCourseEnrollmentControl
 // Get enrolled students for a specific course
 router.get('/courses/:courseId/enrolled-students', authenticate, instituteCourseEnrollmentController.getEnrolledStudents);
 
+// Get enrollment status for a course (check if all students are enrolled)
+router.get('/courses/:courseId/enrollment-status', authenticate, instituteCourseEnrollmentController.getCourseEnrollmentStatus);
+
+// Approve pending payment
+router.put('/payment/:pendingPaymentId/approve', authenticate, instituteCourseEnrollmentController.approvePayment);
+
+// Reject pending payment
+router.put('/payment/:pendingPaymentId/reject', authenticate, instituteCourseEnrollmentController.rejectPayment);
+
 module.exports = router;

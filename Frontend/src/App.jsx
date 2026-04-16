@@ -14,6 +14,9 @@ import InstitutePage from './Components/Pages/InstitutePage.jsx';
 import InstitutePageList from './Components/Pages/InstitutePageList.jsx'; // Added this import
 import NewsPage from './Components/Pages/NewsPage.jsx';
 import RecruiterPage from './Components/Pages/RecruiterPage.jsx';
+import JobsPage from './Components/Pages/JobsPage.jsx';
+import CoursesPage from './Components/Pages/CoursesPage.jsx';
+import CourseDetailPage from './Components/Pages/CourseDetailPage.jsx';
 import CourseLearningPage from './Components/Pages/CourseLearningPage.jsx';
 import LoadingExample from './Components/common/LoadingExample.jsx';
 import MessageCenter from './Components/Messages/MessageCenter.jsx';
@@ -50,7 +53,22 @@ function AppContent() {
         );
     }
     
-    const { isLoggedIn, currentUser, login, register, logout } = authContext;
+    const { isLoggedIn, currentUser, login, register, logout, loading } = authContext;
+    
+    // Show loading screen while authentication is being checked
+    if (loading) {
+        return (
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: '100vh',
+                backgroundColor: '#0c0c0c'
+            }}>
+                <HourglassLoader message="Loading Staffinn..." />
+            </div>
+        );
+    }
 
     const openLoginPopup = () => setShowLoginPopup(true);
     const openLoginPopupWithMessage = () => {
@@ -132,7 +150,10 @@ function AppContent() {
                     <Route path="/news" element={<NewsPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/recruiter" element={<RecruiterPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/recruiter/:recruiterId" element={<RecruiterPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
-                    <Route path="/course/:courseId" element={<CourseLearningPage />} />
+                    <Route path="/jobs" element={<JobsPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    <Route path="/courses" element={<CoursesPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    <Route path="/course/:courseId" element={<CourseDetailPage />} />
+                    <Route path="/course-learning/:courseId" element={<CourseLearningPage />} />
                     <Route path="/loading-demo" element={<LoadingExample />} />
                     <Route 
                         path="/dashboard/staff" 

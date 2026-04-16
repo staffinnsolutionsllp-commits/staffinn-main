@@ -16,13 +16,25 @@ const createCompaniesTable = async () => {
     ],
     AttributeDefinitions: [
       { AttributeName: 'companyId', AttributeType: 'S' },
-      { AttributeName: 'adminEmail', AttributeType: 'S' }
+      { AttributeName: 'adminEmail', AttributeType: 'S' },
+      { AttributeName: 'recruiterId', AttributeType: 'S' }
     ],
     GlobalSecondaryIndexes: [
       {
         IndexName: 'adminEmail-index',
         KeySchema: [
           { AttributeName: 'adminEmail', KeyType: 'HASH' }
+        ],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: {
+          ReadCapacityUnits: 5,
+          WriteCapacityUnits: 5
+        }
+      },
+      {
+        IndexName: 'recruiterId-index',
+        KeySchema: [
+          { AttributeName: 'recruiterId', KeyType: 'HASH' }
         ],
         Projection: { ProjectionType: 'ALL' },
         ProvisionedThroughput: {

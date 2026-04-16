@@ -1,4 +1,224 @@
-/* Course Card Styles */
+/* New Course Card Design - Matching Reference Image */
+.course-card-new {
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+}
+
+.course-card-new:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Banner Image */
+.course-banner {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.course-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.course-card-new:hover .course-banner img {
+  transform: scale(1.05);
+}
+
+.course-banner-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Course Content */
+.course-content {
+  padding: 12px 10px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  background: #ffffff;
+  min-height: 0;
+  text-align: left;
+  align-items: flex-start;
+}
+
+/* Course Title */
+.course-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  width: 100%;
+}
+
+/* Instructor Name */
+.course-instructor {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 6px 0;
+  font-weight: 400;
+  line-height: 1.2;
+  text-align: left;
+  width: 100%;
+}
+
+/* Course Description */
+.course-description {
+  font-size: 13px;
+  color: #4b5563;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  width: 100%;
+}
+
+/* Rating Section */
+.course-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px 0;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.rating-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1;
+}
+
+.rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.star-icon {
+  font-size: 14px;
+}
+
+.star-icon.filled {
+  color: #f59e0b;
+}
+
+.star-icon.empty {
+  color: #d1d5db;
+}
+
+.rating-count {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* Price */
+.course-price {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1;
+  text-align: left;
+  width: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .course-banner {
+    height: 140px;
+  }
+
+  .course-content {
+    padding: 14px;
+    gap: 5px;
+  }
+
+  .course-title {
+    font-size: 16px;
+  }
+
+  .course-instructor {
+    font-size: 12px;
+  }
+
+  .course-description {
+    font-size: 12px;
+  }
+
+  .rating-value {
+    font-size: 14px;
+  }
+
+  .star-icon {
+    font-size: 13px;
+  }
+
+  .rating-count {
+    font-size: 12px;
+  }
+
+  .course-price {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .course-banner {
+    height: 130px;
+  }
+
+  .course-content {
+    padding: 12px;
+    gap: 4px;
+  }
+
+  .course-title {
+    font-size: 15px;
+  }
+
+  .course-price {
+    font-size: 18px;
+  }
+}
+
+/* Old Course Card Styles - Keep for backward compatibility */
 .course-card {
   position: relative;
   border: 1px solid #e5e7eb;
@@ -127,7 +347,7 @@
   transform: translateY(0);
 }
 
-/* Responsive Design */
+/* Responsive Design for Old Card */
 @media (max-width: 768px) {
   .course-card {
     padding: 1.25rem;

@@ -22,12 +22,19 @@ const generateCompanyId = () => {
 // Register new company
 exports.registerCompany = async (req, res) => {
   try {
-    const { companyName, adminEmail, adminPassword, adminName } = req.body;
+    const { companyName, adminEmail, adminPassword, adminName, recruiterId } = req.body;
 
     if (!companyName || !adminEmail || !adminPassword) {
       return res.status(400).json({
         success: false,
         message: 'Company name, admin email, and password are required'
+      });
+    }
+
+    if (!recruiterId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Recruiter ID is required'
       });
     }
 
@@ -56,6 +63,7 @@ exports.registerCompany = async (req, res) => {
     const now = new Date().toISOString();
     const companyData = {
       companyId,
+      recruiterId, // Link company to recruiter
       companyName,
       adminEmail,
       adminName: adminName || companyName,
@@ -120,6 +128,7 @@ exports.getCompanyProfile = async (req, res) => {
       success: true,
       data: {
         ...companyData,
+        recruiterId: companyData.recruiterId || null,
         apiKeyPreview: apiKey ? `${apiKey.substring(0, 15)}...` : null
       }
     });
@@ -369,6 +378,7 @@ exports.validateCredentials = async (req, res) => {
       data: {
         companyId: result.Item.companyId,
         companyName: result.Item.companyName,
+        recruiterId: result.Item.recruiterId || null,
         devices: result.Item.devices || []
       }
     });
@@ -378,6 +388,51 @@ exports.validateCredentials = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to validate credentials',
+      error: error.message
+    });
+  }
+};
+
+// Get companies by recruiterId
+exports.getCompaniesByRecruiterId = async (req, res) => {
+  try {
+    const { recruiterId } = req.params;
+
+    if (!recruiterId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Recruiter ID is required'
+      });
+    }
+
+    const result = await docClient.send(new QueryCommand({
+      TableName: COMPANIES_TABLE,
+      IndexName: 'recruiterId-index',
+      KeyConditionExpression: 'recruiterId = :recruiterId',
+      ExpressionAttributeValues: {
+        ':recruiterId': recruiterId
+      }
+    }));
+
+    const companies = (result.Items || []).map(company => {
+      const { adminPassword, apiKey, ...companyData } = company;
+      return {
+        ...companyData,
+        apiKeyPreview: apiKey ? `${apiKey.substring(0, 15)}...` : null
+      };
+    });
+
+    res.json({
+      success: true,
+      data: companies,
+      count: companies.length
+    });
+
+  } catch (error) {
+    console.error('Get companies by recruiterId error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get companies',
       error: error.message
     });
   }

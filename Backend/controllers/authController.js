@@ -10,10 +10,10 @@ const { validateRegistration, validateLogin, validateStaffRegistration, validate
 const emailService = require('../services/emailService');
 
 /**
- * Verify email existence before registration
- * @route POST /api/auth/verify-email
+ * Send OTP to email for verification
+ * @route POST /api/auth/send-otp
  */
-const verifyEmail = async (req, res) => {
+const sendOTP = async (req, res) => {
   try {
     const { email } = req.body;
     
@@ -23,6 +23,15 @@ const verifyEmail = async (req, res) => {
         message: 'Email is required'
       });
     }
+
+    // Check if email already exists
+    const existingUser = await userModel.findUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is already registered'
+      });
+    }
     
     // Send OTP to email for verification
     const otpSent = await emailService.sendVerificationOTP(email);
@@ -30,20 +39,20 @@ const verifyEmail = async (req, res) => {
     if (!otpSent) {
       return res.status(400).json({
         success: false,
-        message: 'Failed to send verification email. Please check if email exists.'
+        message: 'Failed to send OTP. Please try again or check rate limits.'
       });
     }
     
     res.status(200).json({
       success: true,
-      message: 'Verification OTP sent to email successfully'
+      message: 'OTP sent to your email successfully'
     });
     
   } catch (error) {
-    console.error('Email verification error:', error);
+    console.error('Send OTP error:', error);
     res.status(500).json({
       success: false,
-      message: 'Email verification failed'
+      message: 'Failed to send OTP'
     });
   }
 };
@@ -371,7 +380,7 @@ module.exports = {
   register,
   login,
   getCurrentUser,
-  verifyEmail,
+  sendOTP,
   verifyOTP,
   changePassword,
   requestHelp,

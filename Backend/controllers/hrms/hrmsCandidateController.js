@@ -438,10 +438,12 @@ const deleteCandidate = async (req, res) => {
       await dynamoClient.send(deleteCommand);
     }
 
-    // Clean up leave balances for deleted employee
+    // CASCADE DELETE: Clean up all related data
     await cleanupLeaveBalancesForEmployee(id);
+    await cleanupAttendanceForEmployee(id);
+    await cleanupEmployeeUserAccount(id);
 
-    res.json(successResponse(null, 'Candidate deleted successfully'));
+    res.json(successResponse(null, 'Employee and all related data deleted successfully'));
 
   } catch (error) {
     handleError(error, res);
@@ -480,9 +482,88 @@ const cleanupLeaveBalancesForEmployee = async (employeeId) => {
       }
     }
 
-    console.log(`✅ Cleaned up ${balances.length} leave balance records for employee ${employeeId}`);
+    console.log(`✅ Cleaned up ${balances.length} leave balance records`);
   } catch (error) {
     console.error('❌ Error cleaning up leave balances:', error);
+  }
+};
+
+// Helper function to clean up attendance records when employee is deleted
+const cleanupAttendanceForEmployee = async (employeeId) => {
+  try {
+    console.log('🧹 Cleaning up attendance records for deleted employee:', employeeId);
+    
+    const ATTENDANCE_TABLE = 'staffinn-hrms-attendance';
+    
+    if (isUsingMockDB()) {
+      const allAttendance = mockDB().scan(ATTENDANCE_TABLE);
+      const employeeAttendance = allAttendance.filter(a => a.employeeId === employeeId);
+      employeeAttendance.forEach(a => mockDB().delete(ATTENDANCE_TABLE, a.attendanceId));
+      console.log(`✅ Cleaned up ${employeeAttendance.length} attendance records`);
+    } else {
+      const scanCommand = new ScanCommand({
+        TableName: ATTENDANCE_TABLE,
+        FilterExpression: 'employeeId = :empId',
+        ExpressionAttributeValues: {
+          ':empId': employeeId
+        }
+      });
+      const result = await dynamoClient.send(scanCommand);
+      const attendanceRecords = result.Items || [];
+
+      // Delete each attendance record
+      for (const record of attendanceRecords) {
+        const deleteCommand = new DeleteCommand({
+          TableName: ATTENDANCE_TABLE,
+          Key: { attendanceId: record.attendanceId }
+        });
+        await dynamoClient.send(deleteCommand);
+      }
+
+      console.log(`✅ Cleaned up ${attendanceRecords.length} attendance records`);
+    }
+  } catch (error) {
+    console.error('❌ Error cleaning up attendance:', error);
+  }
+};
+
+// Helper function to clean up employee user account when employee is deleted
+const cleanupEmployeeUserAccount = async (employeeId) => {
+  try {
+    console.log('🧹 Cleaning up user account for deleted employee:', employeeId);
+    
+    const EMPLOYEE_USERS_TABLE = 'staffinn-hrms-employee-users';
+    
+    if (isUsingMockDB()) {
+      const allUsers = mockDB().scan(EMPLOYEE_USERS_TABLE);
+      const employeeUser = allUsers.find(u => u.employeeId === employeeId);
+      if (employeeUser) {
+        mockDB().delete(EMPLOYEE_USERS_TABLE, employeeUser.userId);
+        console.log(`✅ Cleaned up user account: ${employeeUser.userId}`);
+      }
+    } else {
+      const scanCommand = new ScanCommand({
+        TableName: EMPLOYEE_USERS_TABLE,
+        FilterExpression: 'employeeId = :empId',
+        ExpressionAttributeValues: {
+          ':empId': employeeId
+        }
+      });
+      const result = await dynamoClient.send(scanCommand);
+      const users = result.Items || [];
+
+      // Delete each user account
+      for (const user of users) {
+        const deleteCommand = new DeleteCommand({
+          TableName: EMPLOYEE_USERS_TABLE,
+          Key: { userId: user.userId }
+        });
+        await dynamoClient.send(deleteCommand);
+        console.log(`✅ Cleaned up user account: ${user.userId}`);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error cleaning up user account:', error);
   }
 };
 

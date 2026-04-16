@@ -6,7 +6,8 @@ const {
   regenerateApiKey,
   registerDevice,
   getDevices,
-  validateCredentials
+  validateCredentials,
+  getCompaniesByRecruiterId
 } = require('../../controllers/hrms/hrmsCompanyController');
 
 // Public routes (no auth required)
@@ -18,5 +19,8 @@ router.get('/:companyId/profile', getCompanyProfile);
 router.post('/:companyId/regenerate-key', regenerateApiKey);
 router.post('/:companyId/devices', registerDevice);
 router.get('/:companyId/devices', getDevices);
+
+// Get companies by recruiterId
+router.get('/recruiter/:recruiterId', getCompaniesByRecruiterId);
 
 module.exports = router;

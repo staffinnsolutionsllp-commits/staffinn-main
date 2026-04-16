@@ -7,6 +7,7 @@ import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
 import { useGlobalLoading } from '../../hooks/useGlobalLoading';
 import useWebSocket from '../../hooks/useWebSocket';
 import { FaBars } from 'react-icons/fa';
+import * as XLSX from 'xlsx';
 
 import './InstituteDashboard.css';
 import './BadgeStyles.css';
@@ -24,6 +25,8 @@ import StaffinnPartner from './StaffinnPartner';
 import CourseEnrollmentHistory from './CourseEnrollmentHistory';
 import StudentTracking from './StudentTracking';
 import BankDetailsForm from './BankDetailsForm';
+import PlacementTracking from './Placement/PlacementTracking';
+import AwardsRecognition from './AwardsRecognition';
 
 
 const InstituteDashboard = () => {
@@ -37,12 +40,21 @@ const InstituteDashboard = () => {
     const [achievementsDropdownOpen, setAchievementsDropdownOpen] = useState(false);
     const [staffinnPartnerDropdownOpen, setStaffinnPartnerDropdownOpen] = useState(false);
     const [coursesDropdownOpen, setCoursesDropdownOpen] = useState(false);
+    const [placementDropdownOpen, setPlacementDropdownOpen] = useState(false);
     const [infrastructureDropdownOpen, setInfrastructureDropdownOpen] = useState(false);
     const [batchesDropdownOpen, setBatchesDropdownOpen] = useState(false);
     const [reportDropdownOpen, setReportDropdownOpen] = useState(false);
     
     // Course management states
     const [selectedCourseId, setSelectedCourseId] = useState(null);
+    
+    // Helper function to check if URL is a video
+    const isVideoUrl = (url) => {
+        if (!url) return false;
+        const videoExtensions = ['.mp4', '.mpeg', '.mov', '.avi', '.webm', '.m4v', '.mkv'];
+        const lowerUrl = url.toLowerCase();
+        return videoExtensions.some(ext => lowerUrl.includes(ext));
+    };
     
     const [profileData, setProfileData] = useState({
         instituteName: '',
@@ -119,9 +131,17 @@ const InstituteDashboard = () => {
     const [selectedGovtScheme, setSelectedGovtScheme] = useState(null);
     const [showGovtSchemeModal, setShowGovtSchemeModal] = useState(false);
     
+    // Awards and Recognition states
+    const [awards, setAwards] = useState([]);
+    const [awardForm, setAwardForm] = useState({
+        title: '',
+        description: '',
+        photos: []
+    });
+    const [selectedAward, setSelectedAward] = useState(null);
+    
     // Modal states
     const [showEventNewsModal, setShowEventNewsModal] = useState(false);
-    const [showPlacementHistoryModal, setShowPlacementHistoryModal] = useState(false);
 
     // Load profile data on component mount
     useEffect(() => {
@@ -134,6 +154,7 @@ const InstituteDashboard = () => {
         loadEventNewsData();
         loadChartData();
         loadInstituteGovtSchemes();
+        loadAwards();
         // MIS status will be loaded in loadProfileData for Staffinn Partners
     }, []);
     
@@ -197,11 +218,17 @@ const InstituteDashboard = () => {
             }
         };
         updateFilters();
+        
+        // Update dashboard stats with real-time student count
+        setDashboardStats(prev => ({
+            ...prev,
+            totalStudents: students.length
+        }));
     }, [students]);
     
     // Prevent body scroll when modal is open and fix Lenis conflict
     useEffect(() => {
-        const isAnyModalOpen = showModal || showPlacementHistoryModal || showEventNewsModal || showGovtSchemeModal;
+        const isAnyModalOpen = showModal || showEventNewsModal || showGovtSchemeModal;
         
         if (isAnyModalOpen) {
             // Store original body styles
@@ -225,14 +252,15 @@ const InstituteDashboard = () => {
                 document.body.style.paddingRight = originalPaddingRight;
             };
         }
-    }, [showModal, showPlacementHistoryModal, showEventNewsModal, showGovtSchemeModal]);
+    }, [showModal, showEventNewsModal, showGovtSchemeModal]);
     
     const loadDashboardData = async () => {
         try {
-            const [statsResponse, courseCountResponse, industryCollabResponse] = await Promise.all([
+            const [statsResponse, courseCountResponse, industryCollabResponse, studentsResponse] = await Promise.all([
                 apiService.getDashboardStats(),
                 apiService.getActiveCourseCount(),
-                apiService.getIndustryCollaborations()
+                apiService.getIndustryCollaborations(),
+                apiService.getStudents()
             ]);
             
             // Calculate industry partners from collaboration cards
@@ -240,8 +268,13 @@ const InstituteDashboard = () => {
                 ? (industryCollabResponse.data.collaborationCards || []).length 
                 : 0;
             
+            // Get total students count from students API response (real-time data)
+            const totalStudentsCount = studentsResponse.success && studentsResponse.data 
+                ? studentsResponse.data.length 
+                : 0;
+            
             setDashboardStats({
-                totalStudents: statsResponse.success ? statsResponse.data.totalStudents : 0,
+                totalStudents: totalStudentsCount,
                 activeCourses: courseCountResponse.success ? courseCountResponse.data.activeCourses : 0,
                 placementRate: statsResponse.success ? statsResponse.data.placementRate : 0,
                 placedStudents: statsResponse.success ? statsResponse.data.placedStudents : 0,
@@ -481,6 +514,20 @@ const InstituteDashboard = () => {
         }
     };
 
+    const loadAwards = async () => {
+        try {
+            const response = await apiService.getAwards();
+            if (response.success && response.data) {
+                setAwards(response.data);
+            } else {
+                setAwards([]);
+            }
+        } catch (error) {
+            console.error('Error loading awards:', error);
+            setAwards([]);
+        }
+    };
+
     const loadEventNewsData = async () => {
         try {
             console.log('Loading event/news data...');
@@ -697,7 +744,8 @@ const InstituteDashboard = () => {
         details: '',
         type: 'Event',
         verified: false,
-        bannerImage: null
+        bannerMedia: null,
+        bannerMediaType: null
     });
 
     const [newsForm, setNewsForm] = useState({
@@ -709,7 +757,8 @@ const InstituteDashboard = () => {
         details: '',
         type: 'News',
         verified: false,
-        bannerImage: null
+        bannerMedia: null,
+        bannerMediaType: null
     });
 
     const [eventNewsData, setEventNewsData] = useState({
@@ -743,12 +792,14 @@ const InstituteDashboard = () => {
     // Student view/edit states
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [editingStudentId, setEditingStudentId] = useState(null);
-    const [selectedStudentPlacementHistory, setSelectedStudentPlacementHistory] = useState([]);
     
     // Search and filter states for student management
     const [searchQuery, setSearchQuery] = useState('');
     const [placementStatusFilter, setPlacementStatusFilter] = useState('all');
     const [filteredStudents, setFilteredStudents] = useState([]);
+    
+    // Excel upload state
+    const [uploadingExcel, setUploadingExcel] = useState(false);
 
     // Load chart data based on filters
     const loadChartData = async () => {
@@ -888,10 +939,10 @@ const InstituteDashboard = () => {
         });
         setSelectedCourseId(null);
         setEventForm({
-            title: '', date: '', company: '', venue: '', expectedParticipants: '', details: '', type: 'Event', verified: false, bannerImage: null
+            title: '', date: '', company: '', venue: '', expectedParticipants: '', details: '', type: 'Event', verified: false, bannerMedia: null, bannerMediaType: null
         });
         setNewsForm({
-            title: '', date: '', company: '', venue: '', expectedParticipants: '', details: '', type: 'News', verified: false, bannerImage: null
+            title: '', date: '', company: '', venue: '', expectedParticipants: '', details: '', type: 'News', verified: false, bannerMedia: null, bannerMediaType: null
         });
         setGovtSchemeForm({
             schemeName: '', description: '', link: ''
@@ -1283,7 +1334,8 @@ const InstituteDashboard = () => {
                 details: item.details || '',
                 type: 'Event',
                 verified: item.verified || false,
-                bannerImage: null
+                bannerMedia: null,
+                bannerMediaType: null
             });
             setSelectedEventNews(item);
             openModal('editEvent');
@@ -1297,7 +1349,8 @@ const InstituteDashboard = () => {
                 details: item.details || '',
                 type: 'News',
                 verified: item.verified || false,
-                bannerImage: null
+                bannerMedia: null,
+                bannerMediaType: null
             });
             setSelectedEventNews(item);
             openModal('editNews');
@@ -1548,7 +1601,7 @@ const InstituteDashboard = () => {
                         await filterStudents(searchQuery, placementStatusFilter);
                     }, 100);
                     // If on placements tab, refresh placement data as well
-                    if (activeTab === 'placements') {
+                    if (activeTab === 'placements' || activeTab === 'student-management') {
                         await refreshPlacementData();
                     }
                 } else {
@@ -1561,6 +1614,206 @@ const InstituteDashboard = () => {
                 setLoading(false);
             }
         }
+    };
+
+    // Excel Template Download
+    const handleDownloadTemplate = () => {
+        const template = [
+            {
+                'Full Name *': '',
+                'Email *': '',
+                'Phone Number *': '',
+                'Date of Birth': '',
+                'Gender': '',
+                'Address': '',
+                '10th Board Name': '',
+                '10th Percentage/Grade': '',
+                '10th Year of Passing': '',
+                '12th Board Name': '',
+                '12th Percentage/Grade': '',
+                '12th Year of Passing': '',
+                'Degree Name': '',
+                'Specialization/Major': '',
+                'Expected Year of Passing': '',
+                'Currently Pursuing (Yes/No)': '',
+                'Skills (comma separated)': ''
+            }
+        ];
+        
+        const ws = XLSX.utils.json_to_sheet(template);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Students');
+        XLSX.writeFile(wb, 'Student_Template.xlsx');
+    };
+
+    // Excel Upload Handler
+    const handleExcelUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+            alert('Please upload a valid Excel file (.xlsx or .xls)');
+            return;
+        }
+        
+        try {
+            setUploadingExcel(true);
+            
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    if (jsonData.length === 0) {
+                        alert('Excel file is empty. Please add student data.');
+                        setUploadingExcel(false);
+                        return;
+                    }
+                    
+                    let successCount = 0;
+                    let errorCount = 0;
+                    const errors = [];
+                    
+                    for (let i = 0; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        
+                        // Validate required fields
+                        if (!row['Full Name *'] || !row['Email *'] || !row['Phone Number *']) {
+                            errors.push(`Row ${i + 2}: Missing required fields (Full Name, Email, or Phone Number)`);
+                            errorCount++;
+                            continue;
+                        }
+                        
+                        // Parse skills
+                        const skillsString = row['Skills (comma separated)'] || '';
+                        const skills = skillsString.split(',').map(s => s.trim()).filter(s => s);
+                        
+                        // Parse Currently Pursuing
+                        const currentlyPursuingStr = (row['Currently Pursuing (Yes/No)'] || '').toLowerCase();
+                        const currentlyPursuing = currentlyPursuingStr === 'yes' || currentlyPursuingStr === 'y';
+                        
+                        const studentData = {
+                            fullName: row['Full Name *'],
+                            email: row['Email *'],
+                            phoneNumber: row['Phone Number *'],
+                            dateOfBirth: row['Date of Birth'] || '',
+                            gender: row['Gender'] || '',
+                            address: row['Address'] || '',
+                            tenthGradeDetails: row['10th Board Name'] || '',
+                            tenthPercentage: row['10th Percentage/Grade'] || '',
+                            tenthYearOfPassing: row['10th Year of Passing'] || '',
+                            twelfthGradeDetails: row['12th Board Name'] || '',
+                            twelfthPercentage: row['12th Percentage/Grade'] || '',
+                            twelfthYearOfPassing: row['12th Year of Passing'] || '',
+                            degreeName: row['Degree Name'] || '',
+                            specialization: row['Specialization/Major'] || '',
+                            expectedYearOfPassing: row['Expected Year of Passing'] || '',
+                            currentlyPursuing: currentlyPursuing,
+                            skills: skills
+                        };
+                        
+                        const formData = new FormData();
+                        Object.keys(studentData).forEach(key => {
+                            if (key === 'skills') {
+                                formData.append(key, JSON.stringify(studentData[key]));
+                            } else if (studentData[key] !== null && studentData[key] !== undefined) {
+                                formData.append(key, studentData[key]);
+                            }
+                        });
+                        
+                        try {
+                            const response = await apiService.addStudent(formData);
+                            if (response.success) {
+                                successCount++;
+                            } else {
+                                errors.push(`Row ${i + 2}: ${response.message || 'Failed to add student'}`);
+                                errorCount++;
+                            }
+                        } catch (error) {
+                            errors.push(`Row ${i + 2}: ${error.message || 'Failed to add student'}`);
+                            errorCount++;
+                        }
+                    }
+                    
+                    // Show results
+                    let message = `Excel upload completed!\n\nSuccessfully added: ${successCount} students`;
+                    if (errorCount > 0) {
+                        message += `\nFailed: ${errorCount} students`;
+                        if (errors.length > 0) {
+                            message += `\n\nErrors:\n${errors.slice(0, 5).join('\n')}`;
+                            if (errors.length > 5) {
+                                message += `\n... and ${errors.length - 5} more errors`;
+                            }
+                        }
+                    }
+                    alert(message);
+                    
+                    // Refresh data
+                    await Promise.all([
+                        loadDashboardData(),
+                        loadStudents()
+                    ]);
+                    setTimeout(async () => {
+                        await filterStudents(searchQuery, placementStatusFilter);
+                    }, 100);
+                    if (activeTab === 'placements') {
+                        await refreshPlacementData();
+                    }
+                    
+                } catch (error) {
+                    console.error('Error parsing Excel file:', error);
+                    alert('Failed to parse Excel file. Please check the file format.');
+                } finally {
+                    setUploadingExcel(false);
+                    e.target.value = '';
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        } catch (error) {
+            console.error('Error reading Excel file:', error);
+            alert('Failed to read Excel file. Please try again.');
+            setUploadingExcel(false);
+            e.target.value = '';
+        }
+    };
+
+    // Export Students to Excel
+    const handleExportStudents = () => {
+        if (filteredStudents.length === 0) {
+            alert('No students to export.');
+            return;
+        }
+        
+        const exportData = filteredStudents.map(student => ({
+            'Full Name': student.fullName || '',
+            'Email': student.email || '',
+            'Phone Number': student.phoneNumber || '',
+            'Date of Birth': student.dateOfBirth || '',
+            'Gender': student.gender || '',
+            'Address': student.address || '',
+            '10th Board Name': student.tenthGradeDetails || '',
+            '10th Percentage/Grade': student.tenthPercentage || '',
+            '10th Year of Passing': student.tenthYearOfPassing || '',
+            '12th Board Name': student.twelfthGradeDetails || '',
+            '12th Percentage/Grade': student.twelfthPercentage || '',
+            '12th Year of Passing': student.twelfthYearOfPassing || '',
+            'Degree Name': student.degreeName || '',
+            'Specialization/Major': student.specialization || '',
+            'Expected Year of Passing': student.expectedYearOfPassing || '',
+            'Currently Pursuing': student.currentlyPursuing ? 'Yes' : 'No',
+            'Skills': Array.isArray(student.skills) ? student.skills.join(', ') : ''
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Students');
+        const fileName = `Students_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
     };
 
     // Quiz update handler
@@ -1889,9 +2142,6 @@ const InstituteDashboard = () => {
                     <li className={activeTab === 'profile' ? 'active' : ''} onClick={() => handleTabChange('profile')}>
                         My Profile
                     </li>
-                    <li className={activeTab === 'bank-details' ? 'active' : ''} onClick={() => handleTabChange('bank-details')}>
-                        💳 Bank Details
-                    </li>
                     <li className={`dropdown ${['courses', 'enrollment-tracking', 'student-tracking'].includes(activeTab) ? 'active' : ''}`}>
                         <div className="dropdown-header" onClick={() => setCoursesDropdownOpen(!coursesDropdownOpen)}>
                             My Courses
@@ -1903,7 +2153,7 @@ const InstituteDashboard = () => {
                                     Course Management
                                 </li>
                                 <li className={activeTab === 'enrollment-tracking' ? 'active' : ''} onClick={() => handleTabChange('enrollment-tracking')}>
-                                    Course Enrollment Tracking
+                                    Admission Tracking
                                 </li>
                                 <li className={activeTab === 'student-tracking' ? 'active' : ''} onClick={() => handleTabChange('student-tracking')}>
                                     Student Tracking
@@ -1911,30 +2161,55 @@ const InstituteDashboard = () => {
                             </ul>
                         )}
                     </li>
-                    <li className={activeTab === 'students' ? 'active' : ''} onClick={() => handleTabChange('students')}>
-                        My Placement
+                    <li className={`dropdown ${['student-management', 'applied-jobs', 'placement-tracking'].includes(activeTab) ? 'active' : ''}`}>
+                        <div className="dropdown-header" onClick={() => setPlacementDropdownOpen(!placementDropdownOpen)}>
+                            My Placement
+                            <span className={`dropdown-arrow ${placementDropdownOpen ? 'open' : ''}`}>▼</span>
+                        </div>
+                        {placementDropdownOpen && (
+                            <ul className="dropdown-menu">
+                                <li className={activeTab === 'student-management' ? 'active' : ''} onClick={() => handleTabChange('student-management')}>
+                                    Student Management
+                                </li>
+                                <li className={activeTab === 'applied-jobs' ? 'active' : ''} onClick={() => {
+                                    // Redirect to Recruiter page
+                                    navigate('/recruiter');
+                                }}>
+                                    Applied Jobs
+                                </li>
+                                <li className={activeTab === 'placement-tracking' ? 'active' : ''} onClick={() => handleTabChange('placement-tracking')}>
+                                    Placement Tracking
+                                </li>
+                            </ul>
+                        )}
                     </li>
-                    <li className={`dropdown ${['placements', 'industry-collaboration', 'government-scheme'].includes(activeTab) ? 'active' : ''}`}>
+                    <li className={`dropdown ${['government-affiliation', 'placements', 'awards-recognition', 'industry-collaboration'].includes(activeTab) ? 'active' : ''}`}>
                         <div className="dropdown-header" onClick={() => setAchievementsDropdownOpen(!achievementsDropdownOpen)}>
                             My Achievements
                             <span className={`dropdown-arrow ${achievementsDropdownOpen ? 'open' : ''}`}>▼</span>
                         </div>
                         {achievementsDropdownOpen && (
                             <ul className="dropdown-menu">
+                                <li className={activeTab === 'government-affiliation' ? 'active' : ''} onClick={() => handleTabChange('government-affiliation')}>
+                                    Government Affiliation
+                                </li>
                                 <li className={activeTab === 'placements' ? 'active' : ''} onClick={() => handleTabChange('placements')}>
-                                    Placement
+                                    Placement Achieved
+                                </li>
+                                <li className={activeTab === 'awards-recognition' ? 'active' : ''} onClick={() => handleTabChange('awards-recognition')}>
+                                    Awards and Recognition
                                 </li>
                                 <li className={activeTab === 'industry-collaboration' ? 'active' : ''} onClick={() => handleTabChange('industry-collaboration')}>
                                     Industry Collaboration
                                 </li>
-                                <li className={activeTab === 'government-scheme' ? 'active' : ''} onClick={() => handleTabChange('government-scheme')}>
-                                    Government Scheme
-                                </li>
                             </ul>
                         )}
                     </li>
+                    <li className={activeTab === 'news-events' ? 'active' : ''} onClick={() => handleTabChange('news-events')}>
+                        News & Events
+                    </li>
                     {profileData.instituteType === 'staffinn_partner' && (
-                        <li className={`dropdown ${staffinnPartnerDropdownOpen ? 'active' : ''}`}>
+                        <li className={`dropdown staffinn-partner-item ${staffinnPartnerDropdownOpen ? 'active' : ''}`}>
                             <div className="dropdown-header" onClick={() => {
                                 console.log('🔍 Staffinn Partner clicked, MIS Status:', misStatus);
                                 if (misStatus === 'approved') {
@@ -1946,56 +2221,62 @@ const InstituteDashboard = () => {
                                     handleTabChange('staffinn-partner');
                                 }
                             }}>
-                                <span>Staffinn Partner</span>
-                                {misStatus === 'pending' && (
-                                    <>
-                                        <span style={{marginLeft: '8px', padding: '2px 6px', backgroundColor: '#ffc107', color: '#212529', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold'}}>PENDING</span>
-                                        <button 
-                                            onClick={async (e) => {
-                                                e.stopPropagation();
-                                                console.log('🔄 Manual refresh clicked - PENDING');
-                                                await loadMisStatus();
-                                            }}
-                                            style={{marginLeft: '8px', padding: '2px 6px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer'}}
-                                            title="Refresh MIS Status Now"
-                                        >
-                                            🔄
-                                        </button>
-                                    </>
-                                )}
-                                {misStatus === 'approved' && (
-                                    <>
-                                        <span style={{marginLeft: '8px', padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold'}}>APPROVED</span>
-                                        <button 
-                                            onClick={async (e) => {
-                                                e.stopPropagation();
-                                                console.log('🔄 Manual refresh clicked - APPROVED');
-                                                await loadMisStatus();
-                                            }}
-                                            style={{marginLeft: '8px', padding: '2px 6px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer'}}
-                                            title="Refresh MIS Status Now"
-                                        >
-                                            🔄
-                                        </button>
-                                        <span className={`dropdown-arrow ${staffinnPartnerDropdownOpen ? 'open' : ''}`} style={{marginLeft: '8px', fontSize: '0.8rem', transition: 'transform 0.2s ease'}}>▼</span>
-                                    </>
-                                )}
-                                {misStatus === 'rejected' && (
-                                    <>
-                                        <span style={{marginLeft: '8px', padding: '2px 6px', backgroundColor: '#dc3545', color: 'white', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold'}}>REJECTED</span>
-                                        <button 
-                                            onClick={async (e) => {
-                                                e.stopPropagation();
-                                                console.log('🔄 Manual refresh clicked - REJECTED');
-                                                await loadMisStatus();
-                                            }}
-                                            style={{marginLeft: '8px', padding: '2px 6px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer'}}
-                                            title="Refresh MIS Status Now"
-                                        >
-                                            🔄
-                                        </button>
-                                    </>
-                                )}
+                                <div className="staffinn-title-row">
+                                    <span className="staffinn-title">Staffinn Partner</span>
+                                    {misStatus === 'approved' && (
+                                        <span className={`dropdown-arrow ${staffinnPartnerDropdownOpen ? 'open' : ''}`}>▼</span>
+                                    )}
+                                </div>
+                                <div className="staffinn-status-row">
+                                    {misStatus === 'pending' && (
+                                        <>
+                                            <span style={{padding: '2px 6px', backgroundColor: '#ffc107', color: '#212529', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold'}}>PENDING</span>
+                                            <button 
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    console.log('🔄 Manual refresh clicked - PENDING');
+                                                    await loadMisStatus();
+                                                }}
+                                                style={{padding: '2px 6px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer'}}
+                                                title="Refresh MIS Status Now"
+                                            >
+                                                🔄
+                                            </button>
+                                        </>
+                                    )}
+                                    {misStatus === 'approved' && (
+                                        <>
+                                            <span style={{padding: '2px 6px', backgroundColor: '#28a745', color: 'white', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold'}}>APPROVED</span>
+                                            <button 
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    console.log('🔄 Manual refresh clicked - APPROVED');
+                                                    await loadMisStatus();
+                                                }}
+                                                style={{padding: '2px 6px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer'}}
+                                                title="Refresh MIS Status Now"
+                                            >
+                                                🔄
+                                            </button>
+                                        </>
+                                    )}
+                                    {misStatus === 'rejected' && (
+                                        <>
+                                            <span style={{padding: '2px 6px', backgroundColor: '#dc3545', color: 'white', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold'}}>REJECTED</span>
+                                            <button 
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    console.log('🔄 Manual refresh clicked - REJECTED');
+                                                    await loadMisStatus();
+                                                }}
+                                                style={{padding: '2px 6px', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px', fontSize: '0.7rem', cursor: 'pointer'}}
+                                                title="Refresh MIS Status Now"
+                                            >
+                                                🔄
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                             {(() => {
                                 console.log('🔍 Dropdown render check:', {
@@ -2006,7 +2287,7 @@ const InstituteDashboard = () => {
                                 return misStatus === 'approved' && staffinnPartnerDropdownOpen;
                             })() && (
                                 <ul className="dropdown-menu staffinn-partner-menu">
-                                    <li onClick={() => { setActivePartnerTab('dashboard'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Dashboard</li>
+                                    <li onClick={() => { setActivePartnerTab('dashboard'); handleTabChange('staffinn-partner'); }}>Dashboard</li>
                                     <li className="menu-group">
                                         <div className="menu-group-header" onClick={(e) => { e.stopPropagation(); setInfrastructureDropdownOpen(!infrastructureDropdownOpen); }}>
                                             <span className="menu-group-title">Infrastructure</span>
@@ -2014,14 +2295,14 @@ const InstituteDashboard = () => {
                                         </div>
                                         {infrastructureDropdownOpen && (
                                             <ul className="submenu">
-                                                <li onClick={() => { setActivePartnerTab('training-center'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Training Center Details</li>
-                                                <li onClick={() => { setActivePartnerTab('training-infrastructure'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Training Infrastructure</li>
-                                                <li onClick={() => { setActivePartnerTab('course-detail'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Course Detail</li>
-                                                <li onClick={() => { setActivePartnerTab('faculty-list'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Add Faculty List</li>
+                                                <li onClick={() => { setActivePartnerTab('training-center'); handleTabChange('staffinn-partner'); }}>Training Center Details</li>
+                                                <li onClick={() => { setActivePartnerTab('training-infrastructure'); handleTabChange('staffinn-partner'); }}>Training Infrastructure</li>
+                                                <li onClick={() => { setActivePartnerTab('course-detail'); handleTabChange('staffinn-partner'); }}>Course Detail</li>
+                                                <li onClick={() => { setActivePartnerTab('faculty-list'); handleTabChange('staffinn-partner'); }}>Add Faculty List</li>
                                             </ul>
                                         )}
                                     </li>
-                                    <li onClick={() => { setActivePartnerTab('student-management'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Student Management</li>
+                                    <li onClick={() => { setActivePartnerTab('student-management'); handleTabChange('staffinn-partner'); }}>Student Management</li>
                                     <li className="menu-group">
                                         <div className="menu-group-header" onClick={(e) => { e.stopPropagation(); setBatchesDropdownOpen(!batchesDropdownOpen); }}>
                                             <span className="menu-group-title">Batches</span>
@@ -2029,15 +2310,15 @@ const InstituteDashboard = () => {
                                         </div>
                                         {batchesDropdownOpen && (
                                             <ul className="submenu">
-                                                <li onClick={() => { setActivePartnerTab('create-batch'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Create Batch</li>
-                                                <li onClick={() => { setActivePartnerTab('applied-batch'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Applied Batch</li>
-                                                <li onClick={() => { setActivePartnerTab('approved-batches'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Approved Batches</li>
-                                                <li onClick={() => { setActivePartnerTab('rejected-batches'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Rejected Batches</li>
-                                                <li onClick={() => { setActivePartnerTab('closed-batches'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Closed Batches</li>
+                                                <li onClick={() => { setActivePartnerTab('create-batch'); handleTabChange('staffinn-partner'); }}>Create Batch</li>
+                                                <li onClick={() => { setActivePartnerTab('applied-batch'); handleTabChange('staffinn-partner'); }}>Applied Batch</li>
+                                                <li onClick={() => { setActivePartnerTab('approved-batches'); handleTabChange('staffinn-partner'); }}>Approved Batches</li>
+                                                <li onClick={() => { setActivePartnerTab('rejected-batches'); handleTabChange('staffinn-partner'); }}>Rejected Batches</li>
+                                                <li onClick={() => { setActivePartnerTab('closed-batches'); handleTabChange('staffinn-partner'); }}>Closed Batches</li>
                                             </ul>
                                         )}
                                     </li>
-                                    <li onClick={() => { setActivePartnerTab('attendance'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Attendance</li>
+                                    <li onClick={() => { setActivePartnerTab('attendance'); handleTabChange('staffinn-partner'); }}>Attendance</li>
                                     <li className="menu-group">
                                         <div className="menu-group-header" onClick={(e) => { e.stopPropagation(); setReportDropdownOpen(!reportDropdownOpen); }}>
                                             <span className="menu-group-title">Report</span>
@@ -2045,12 +2326,12 @@ const InstituteDashboard = () => {
                                         </div>
                                         {reportDropdownOpen && (
                                             <ul className="submenu">
-                                                <li onClick={() => { setActivePartnerTab('physical-progress-report'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Physical Progress Report</li>
-                                                <li onClick={() => { setActivePartnerTab('assessed-batches-report'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Assessed Batches Report</li>
+                                                <li onClick={() => { setActivePartnerTab('physical-progress-report'); handleTabChange('staffinn-partner'); }}>Physical Progress Report</li>
+                                                <li onClick={() => { setActivePartnerTab('assessed-batches-report'); handleTabChange('staffinn-partner'); }}>Assessed Batches Report</li>
                                             </ul>
                                         )}
                                     </li>
-                                    <li onClick={() => { setActivePartnerTab('placement'); handleTabChange('staffinn-partner'); setStaffinnPartnerDropdownOpen(false); }}>Placement</li>
+                                    <li onClick={() => { setActivePartnerTab('placement'); handleTabChange('staffinn-partner'); }}>Placement</li>
                                 </ul>
                             )}
                         </li>
@@ -2110,17 +2391,6 @@ const InstituteDashboard = () => {
 
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {/* Bank Details Tab */}
-                {activeTab === 'bank-details' && (
-                    <div className="institute-bank-details-tab">
-                        <div className="institute-tab-header">
-                            <h1>Bank Account Details</h1>
-                            <p>Add your bank account details to receive course payments</p>
-                        </div>
-                        <BankDetailsForm />
                     </div>
                 )}
 
@@ -2320,6 +2590,16 @@ const InstituteDashboard = () => {
                                 <p className="institute-metric-value">{dashboardStats.industryPartners}</p>
                                 <p className="institute-metric-trend positive">Real-time data</p>
                             </div>
+                            <div className="institute-metric-card">
+                                <h3>Government Affiliation</h3>
+                                <p className="institute-metric-value">{instituteGovtSchemes.length}</p>
+                                <p className="institute-metric-trend positive">Real-time data</p>
+                            </div>
+                            <div className="institute-metric-card">
+                                <h3>Awards & Recognition</h3>
+                                <p className="institute-metric-value">{awards.length}</p>
+                                <p className="institute-metric-trend positive">Real-time data</p>
+                            </div>
                         </div>
 
                         <div className="institute-chart-filters">
@@ -2384,51 +2664,63 @@ const InstituteDashboard = () => {
                     </div>
                 )}
 
-                {activeTab === 'students' && (
+                {activeTab === 'student-management' && (
                     <div className="institute-students-tab">
                         <div className="institute-tab-header">
-                            <h1>My Placement</h1>
-                            <button className="institute-primary-button" onClick={() => openModal('student')}>+ Add New Student</button>
+                            <h1>Student Management</h1>
+                            <div style={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                                <button className="institute-primary-button" onClick={() => openModal('student')}>+ Add New Student</button>
+                                <button className="institute-action-button" onClick={handleDownloadTemplate}>📥 Download Template</button>
+                                <label className="institute-action-button" style={{cursor: 'pointer', margin: 0}}>
+                                    {uploadingExcel ? '⏳ Uploading...' : '📤 Upload Excel'}
+                                    <input 
+                                        type="file" 
+                                        accept=".xlsx,.xls" 
+                                        onChange={handleExcelUpload}
+                                        style={{display: 'none'}}
+                                        disabled={uploadingExcel}
+                                    />
+                                </label>
+                                <button className="institute-action-button" onClick={handleExportStudents}>📊 Export</button>
+                            </div>
                         </div>
 
-                        <div className="institute-search-section">
-                            <div className="institute-search-row">
-                                <input 
-                                    type="text" 
-                                    placeholder="Search by student name or company name..." 
-                                    className="institute-search-input large"
-                                    value={searchQuery}
-                                    onChange={handleSearchInputChange}
-                                    onKeyPress={(e) => {
-                                        if (e.key === 'Enter') {
-                                            handleSearch();
-                                        }
-                                    }}
-                                />
-                                <button 
-                                    className="institute-primary-button"
-                                    onClick={handleSearch}
-                                >
-                                    Search
-                                </button>
-                            </div>
-                            <div className="institute-filter-row">
-                                <select 
-                                    className="institute-filter-select"
-                                    value={placementStatusFilter}
-                                    onChange={handlePlacementStatusFilterChange}
-                                    disabled={loading}
-                                >
-                                    <option value="all">All Placement Status</option>
-                                    <option value="hired">Hired</option>
-                                    <option value="rejected">Rejected</option>
-                                </select>
-                                {(searchQuery.trim() || placementStatusFilter !== 'all') && (
-                                    <div style={{display: 'flex', alignItems: 'center', marginLeft: '15px', color: '#64748b', fontSize: '0.9rem'}}>
-                                        Showing {filteredStudents.length} of {students.length} students
-                                    </div>
-                                )}
-                            </div>
+                        <div className="institute-search-row">
+                            <input 
+                                type="text" 
+                                placeholder="Search by student name or company name..." 
+                                className="institute-search-input large"
+                                value={searchQuery}
+                                onChange={handleSearchInputChange}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleSearch();
+                                    }
+                                }}
+                            />
+                            <button 
+                                className="institute-primary-button"
+                                onClick={handleSearch}
+                            >
+                                Search
+                            </button>
+                        </div>
+                        <div className="institute-filter-row">
+                            <select 
+                                className="institute-filter-select"
+                                value={placementStatusFilter}
+                                onChange={handlePlacementStatusFilterChange}
+                                disabled={loading}
+                            >
+                                <option value="all">All Placement Status</option>
+                                <option value="hired">Hired</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                            {(searchQuery.trim() || placementStatusFilter !== 'all') && (
+                                <div style={{display: 'flex', alignItems: 'center', marginLeft: '15px', color: '#64748b', fontSize: '0.9rem'}}>
+                                    Showing {filteredStudents.length} of {students.length} students
+                                </div>
+                            )}
                         </div>
 
                         <table className="institute-data-table full-width">
@@ -2438,7 +2730,6 @@ const InstituteDashboard = () => {
                                     <th>Email</th>
                                     <th>Phone</th>
                                     <th>Degree</th>
-                                    <th>View Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -2449,16 +2740,6 @@ const InstituteDashboard = () => {
                                         <td>{student.email}</td>
                                         <td>{student.phoneNumber}</td>
                                         <td>{student.degreeName} - {student.specialization}</td>
-                                        <td>
-                                            <button 
-                                                className="institute-table-action" 
-                                                onClick={() => handleViewPlacementHistory(student)}
-                                                style={{backgroundColor: '#6f42c1', color: 'white', padding: '6px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer'}}
-                                                disabled={loading}
-                                            >
-                                                View Status
-                                            </button>
-                                        </td>
                                         <td>
                                             <button 
                                                 className="institute-table-action view" 
@@ -2502,6 +2783,11 @@ const InstituteDashboard = () => {
                             </tbody>
                         </table>
                     </div>
+                )}
+
+                {/* Placement Tracking Tab */}
+                {activeTab === 'placement-tracking' && (
+                    <PlacementTracking />
                 )}
 
                 {activeTab === 'courses' && (
@@ -3041,6 +3327,110 @@ const InstituteDashboard = () => {
                     </div>
                 )}
 
+                {activeTab === 'awards-recognition' && (
+                    <AwardsRecognition />
+                )}
+
+                {activeTab === 'news-events' && (
+                    <div className="institute-achievements-tab">
+                        <div className="institute-tab-header">
+                            <h1>News & Events</h1>
+                            <div>
+                                <button className="institute-primary-button" onClick={() => openModal('event')}>+ Add Event</button>
+                                <button className="institute-action-button" onClick={() => openModal('news')} style={{marginLeft: '10px'}}>+ Add News</button>
+                            </div>
+                        </div>
+
+                        <div className="institute-events-management-grid">
+                            <div className="institute-events-section">
+                                <h3>Events ({eventNewsData.events.length})</h3>
+                                {eventNewsData.events.length > 0 ? (
+                                    <div className="institute-events-grid">
+                                        {eventNewsData.events.map(event => (
+                                            <div className="institute-event-management-card" key={event.eventNewsId}>
+                                                {event.bannerImage && (
+                                                    <div className="institute-event-banner">
+                                                        {isVideoUrl(event.bannerImage) ? (
+                                                            <video 
+                                                                src={event.bannerImage} 
+                                                                controls
+                                                                style={{width: '100%', maxHeight: '200px', objectFit: 'cover'}}
+                                                            />
+                                                        ) : (
+                                                            <img src={event.bannerImage} alt={event.title} />
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <div className="institute-event-card-header">
+                                                    <h3>{event.title}</h3>
+                                                    <span className={`institute-event-type-badge ${event.type.toLowerCase()}`}>{event.type}</span>
+                                                </div>
+                                                <div className="institute-event-card-details">
+                                                    <p><strong>Company:</strong> {event.company}</p>
+                                                    <p><strong>Date:</strong> {new Date(event.date).toLocaleDateString()}</p>
+                                                    <p><strong>Details:</strong> {event.details.substring(0, 100)}...</p>
+                                                </div>
+                                                <div className="institute-event-card-actions">
+                                                    <button className="institute-table-action view" onClick={() => handleViewEventNews(event)}>View</button>
+                                                    <button className="institute-table-action edit" onClick={() => handleEditEventNews(event)} style={{backgroundColor: '#28a745', color: 'white', marginRight: '5px'}}>Edit</button>
+                                                    <button className="institute-table-action delete" onClick={() => handleDeleteEventNews(event.eventNewsId, event.title, event.type)} disabled={loading}>Delete</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                        <p>No events added yet. Click "Add Event" to get started.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="institute-news-section">
+                                <h3>News ({eventNewsData.news.length})</h3>
+                                {eventNewsData.news.length > 0 ? (
+                                    <div className="institute-news-grid">
+                                        {eventNewsData.news.map(newsItem => (
+                                            <div className="institute-event-management-card" key={newsItem.eventNewsId}>
+                                                {newsItem.bannerImage && (
+                                                    <div className="institute-event-banner">
+                                                        {isVideoUrl(newsItem.bannerImage) ? (
+                                                            <video 
+                                                                src={newsItem.bannerImage} 
+                                                                controls
+                                                                style={{width: '100%', maxHeight: '200px', objectFit: 'cover'}}
+                                                            />
+                                                        ) : (
+                                                            <img src={newsItem.bannerImage} alt={newsItem.title} />
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <div className="institute-event-card-header">
+                                                    <h3>{newsItem.title}</h3>
+                                                    <span className={`institute-event-type-badge ${newsItem.type.toLowerCase()}`}>{newsItem.type}</span>
+                                                </div>
+                                                <div className="institute-event-card-details">
+                                                    <p><strong>Company:</strong> {newsItem.company}</p>
+                                                    <p><strong>Date:</strong> {new Date(newsItem.date).toLocaleDateString()}</p>
+                                                    <p><strong>Details:</strong> {newsItem.details.substring(0, 100)}...</p>
+                                                </div>
+                                                <div className="institute-event-card-actions">
+                                                    <button className="institute-table-action view" onClick={() => handleViewEventNews(newsItem)}>View</button>
+                                                    <button className="institute-table-action edit" onClick={() => handleEditEventNews(newsItem)} style={{backgroundColor: '#28a745', color: 'white', marginRight: '5px'}}>Edit</button>
+                                                    <button className="institute-table-action delete" onClick={() => handleDeleteEventNews(newsItem.eventNewsId, newsItem.title, newsItem.type)} disabled={loading}>Delete</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                        <p>No news added yet. Click "Add News" to get started.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'industry-collaboration' && (
                     <div className="institute-achievements-tab">
                         <div className="institute-tab-header">
@@ -3431,11 +3821,11 @@ const InstituteDashboard = () => {
                     </div>
                 )}
 
-                {activeTab === 'government-scheme' && (
+                {activeTab === 'government-affiliation' && (
                     <div className="institute-achievements-tab">
                         <div className="institute-tab-header">
-                            <h1>Government Schemes & Projects</h1>
-                            <button className="institute-primary-button" onClick={() => openModal('govtScheme')}>+ Add Government Scheme</button>
+                            <h1>Government Affiliation</h1>
+                            <button className="institute-primary-button" onClick={() => openModal('govtScheme')}>+ Add Government Affiliation</button>
                         </div>
                         
                         <div className="institute-govt-schemes-grid">
@@ -3475,7 +3865,7 @@ const InstituteDashboard = () => {
                                 </div>
                             )) : (
                                 <div style={{textAlign: 'center', padding: '40px', color: '#666', gridColumn: '1 / -1'}}>
-                                    <p>No government schemes added yet. Click "Add Government Scheme" to get started.</p>
+                                    <p>No government affiliations added yet. Click "Add Government Affiliation" to get started.</p>
                                 </div>
                             )}
                         </div>
@@ -3484,67 +3874,6 @@ const InstituteDashboard = () => {
             </div>
 
             {/* Placement History Modal */}
-            {showPlacementHistoryModal && selectedStudent && (
-                <div className="institute-modal-overlay" onClick={closePlacementHistoryModal}>
-                    <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="institute-modal-header">
-                            <h2>Placement History - {selectedStudent.fullName}</h2>
-                            <button className="institute-close-button" onClick={closePlacementHistoryModal}>×</button>
-                        </div>
-                        
-                        <div className="institute-placement-history-content">
-                            {loading ? (
-                                <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-                                    <p>Loading application history...</p>
-                                </div>
-                            ) : selectedStudentPlacementHistory.length > 0 ? (
-                                <table className="institute-data-table full-width">
-                                    <thead>
-                                        <tr>
-                                            <th>Recruiter</th>
-                                            <th>Company Name</th>
-                                            <th>Job Title</th>
-                                            <th>Status</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {selectedStudentPlacementHistory.map((record, index) => (
-                                            <tr key={record.staffinnjob || index}>
-                                                <td>{record.recruiterName}</td>
-                                                <td>{record.companyName}</td>
-                                                <td>{record.jobTitle}</td>
-                                                <td>
-                                                    <span className={`institute-status-badge ${record.status.toLowerCase().replace(' ', '-')}`}>
-                                                        {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                                                    </span>
-                                                </td>
-                                                <td>{new Date(record.lastUpdated || record.appliedDate).toLocaleDateString()}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-                                    <p>No job applications found for this student.</p>
-                                    <p>The student has not applied to any jobs yet.</p>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="institute-form-buttons">
-                            <button 
-                                type="button" 
-                                className="institute-secondary-button" 
-                                onClick={closePlacementHistoryModal}
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Event/News View Modal */}
             {showEventNewsModal && selectedEventNews && (
                 <div className="institute-modal-overlay" onClick={() => setShowEventNewsModal(false)}>
@@ -3557,7 +3886,15 @@ const InstituteDashboard = () => {
                         <div className="institute-event-news-details">
                             {selectedEventNews.bannerImage && (
                                 <div className="institute-event-news-banner">
-                                    <img src={selectedEventNews.bannerImage} alt={selectedEventNews.title} />
+                                    {isVideoUrl(selectedEventNews.bannerImage) ? (
+                                        <video 
+                                            src={selectedEventNews.bannerImage} 
+                                            controls
+                                            style={{width: '100%', maxHeight: '400px', objectFit: 'contain'}}
+                                        />
+                                    ) : (
+                                        <img src={selectedEventNews.bannerImage} alt={selectedEventNews.title} />
+                                    )}
                                 </div>
                             )}
                             
@@ -3608,7 +3945,469 @@ const InstituteDashboard = () => {
             />
 
             {/* Modal for forms */}
-            {showModal && modalType !== 'course' && modalType !== 'editCourse' && (
+            {showModal && modalType !== 'course' && modalType !== 'editCourse' && modalType !== 'student' && modalType !== 'editStudent' && modalType !== 'viewStudent' && modalType !== 'govtScheme' && modalType !== 'editGovtScheme' && (
+                <div className="institute-modal-overlay" onClick={closeModal}>
+                    <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="institute-modal-header">
+                            <h2>
+                                {modalType === 'event' && 'Add New Event'}
+                                {modalType === 'editEvent' && 'Edit Event'}
+                                {modalType === 'news' && 'Add News'}
+                                {modalType === 'editNews' && 'Edit News'}
+                                {modalType === 'profile' && 'Edit Profile'}
+                            </h2>
+                            <button className="institute-close-button" onClick={closeModal}>×</button>
+                        </div>
+
+                        {/* Event Form */}
+                        {(modalType === 'event' || modalType === 'editEvent') && (
+                            <form onSubmit={handleEventSubmit} className="institute-modal-form">
+                                <div className="institute-form-grid">
+                                    <div className="institute-form-group">
+                                        <label>Title *</label>
+                                        <input
+                                            type="text"
+                                            value={eventForm.title}
+                                            onChange={(e) => setEventForm({...eventForm, title: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Date * (dd-mm-yyyy)</label>
+                                        <input
+                                            type="date"
+                                            value={eventForm.date}
+                                            onChange={(e) => setEventForm({...eventForm, date: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Company/Organizer *</label>
+                                        <input
+                                            type="text"
+                                            value={eventForm.company}
+                                            onChange={(e) => setEventForm({...eventForm, company: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Venue</label>
+                                        <input
+                                            type="text"
+                                            value={eventForm.venue}
+                                            onChange={(e) => setEventForm({...eventForm, venue: e.target.value})}
+                                            placeholder="Event venue/location"
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Expected Participants</label>
+                                        <input
+                                            type="number"
+                                            value={eventForm.expectedParticipants}
+                                            onChange={(e) => setEventForm({...eventForm, expectedParticipants: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="institute-form-group">
+                                    <label>Details * (Event details and description)</label>
+                                    <textarea
+                                        value={eventForm.details}
+                                        onChange={(e) => setEventForm({...eventForm, details: e.target.value})}
+                                        rows="4"
+                                        placeholder="Event details and description"
+                                        required
+                                    />
+                                </div>
+                                
+                                <div className="institute-form-group">
+                                    <label>Banner Media (Image or Video)</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*,video/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const isVideo = file.type.startsWith('video/');
+                                                const isImage = file.type.startsWith('image/');
+                                                if (!isVideo && !isImage) {
+                                                    alert('Please select a valid image or video file');
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+                                                if (file.size > 100 * 1024 * 1024) {
+                                                    alert('File size should be less than 100MB');
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+                                                setEventForm({...eventForm, bannerMedia: file, bannerMediaType: isVideo ? 'video' : 'image'});
+                                            }
+                                        }}
+                                    />
+                                    <small style={{color: '#6c757d', fontSize: '0.85rem'}}>Supports images and videos (Max 100MB)</small>
+                                    {eventForm.bannerMedia && (
+                                        <div className="institute-image-preview" style={{marginTop: '10px'}}>
+                                            {eventForm.bannerMediaType === 'video' ? (
+                                                <video 
+                                                    src={URL.createObjectURL(eventForm.bannerMedia)} 
+                                                    controls
+                                                    style={{maxWidth: '300px', maxHeight: '200px'}}
+                                                />
+                                            ) : (
+                                                <img 
+                                                    src={URL.createObjectURL(eventForm.bannerMedia)} 
+                                                    alt="Banner Preview" 
+                                                    style={{maxWidth: '300px', maxHeight: '200px', objectFit: 'contain'}}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="institute-form-group institute-checkbox-group">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={eventForm.verified}
+                                            onChange={(e) => setEventForm({...eventForm, verified: e.target.checked})}
+                                        />
+                                        Mark as Verified (Institute Verified)
+                                    </label>
+                                </div>
+                                <div className="institute-form-buttons">
+                                    <button type="submit" className="institute-primary-button" disabled={loading}>
+                                        {loading ? (modalType === 'editEvent' ? 'Updating...' : 'Adding...') : (modalType === 'editEvent' ? 'Update Event' : 'Add Event')}
+                                    </button>
+                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* News Form */}
+                        {(modalType === 'news' || modalType === 'editNews') && (
+                            <form onSubmit={handleNewsSubmit} className="institute-modal-form">
+                                <div className="institute-form-grid">
+                                    <div className="institute-form-group">
+                                        <label>Title *</label>
+                                        <input
+                                            type="text"
+                                            value={newsForm.title}
+                                            onChange={(e) => setNewsForm({...newsForm, title: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Date * (dd-mm-yyyy)</label>
+                                        <input
+                                            type="date"
+                                            value={newsForm.date}
+                                            onChange={(e) => setNewsForm({...newsForm, date: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Company/Organizer *</label>
+                                        <input
+                                            type="text"
+                                            value={newsForm.company}
+                                            onChange={(e) => setNewsForm({...newsForm, company: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Venue</label>
+                                        <input
+                                            type="text"
+                                            value={newsForm.venue}
+                                            onChange={(e) => setNewsForm({...newsForm, venue: e.target.value})}
+                                            placeholder="News venue/location"
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Expected Participants</label>
+                                        <input
+                                            type="number"
+                                            value={newsForm.expectedParticipants}
+                                            onChange={(e) => setNewsForm({...newsForm, expectedParticipants: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="institute-form-group">
+                                    <label>Details *</label>
+                                    <textarea
+                                        value={newsForm.details}
+                                        onChange={(e) => setNewsForm({...newsForm, details: e.target.value})}
+                                        rows="4"
+                                        placeholder="News details and description"
+                                        required
+                                    />
+                                </div>
+                                
+                                <div className="institute-form-group">
+                                    <label>Banner Media (Image or Video)</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*,video/*"
+                                        onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const isVideo = file.type.startsWith('video/');
+                                                const isImage = file.type.startsWith('image/');
+                                                if (!isVideo && !isImage) {
+                                                    alert('Please select a valid image or video file');
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+                                                if (file.size > 100 * 1024 * 1024) {
+                                                    alert('File size should be less than 100MB');
+                                                    e.target.value = '';
+                                                    return;
+                                                }
+                                                setNewsForm({...newsForm, bannerMedia: file, bannerMediaType: isVideo ? 'video' : 'image'});
+                                            }
+                                        }}
+                                    />
+                                    <small style={{color: '#6c757d', fontSize: '0.85rem'}}>Supports images and videos (Max 100MB)</small>
+                                    {newsForm.bannerMedia && (
+                                        <div className="institute-image-preview" style={{marginTop: '10px'}}>
+                                            {newsForm.bannerMediaType === 'video' ? (
+                                                <video 
+                                                    src={URL.createObjectURL(newsForm.bannerMedia)} 
+                                                    controls
+                                                    style={{maxWidth: '300px', maxHeight: '200px'}}
+                                                />
+                                            ) : (
+                                                <img 
+                                                    src={URL.createObjectURL(newsForm.bannerMedia)} 
+                                                    alt="Banner Preview" 
+                                                    style={{maxWidth: '300px', maxHeight: '200px', objectFit: 'contain'}}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="institute-form-group institute-checkbox-group">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={newsForm.verified}
+                                            onChange={(e) => setNewsForm({...newsForm, verified: e.target.checked})}
+                                        />
+                                        Mark as Verified (Institute Verified)
+                                    </label>
+                                </div>
+                                <div className="institute-form-buttons">
+                                    <button type="submit" className="institute-primary-button" disabled={loading}>
+                                        {loading ? 'Saving...' : (modalType === 'editNews' ? 'Update News' : 'Add News')}
+                                    </button>
+                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
+                                </div>
+                            </form>
+                        )}
+
+                        {/* Profile Form */}
+                        {modalType === 'profile' && (
+                            <form onSubmit={handleProfileUpdate} className="institute-modal-form">
+                                <div className="institute-form-group">
+                                    <label>Profile Image</label>
+                                    <div className="institute-image-upload-section">
+                                        {imagePreview ? (
+                                            <div className="institute-image-preview-container">
+                                                <img 
+                                                    src={imagePreview} 
+                                                    alt="Profile Preview" 
+                                                    className="institute-profile-preview-image"
+                                                    onError={(e) => {
+                                                        console.error('Image preview error:', e);
+                                                        console.log('Failed image URL:', imagePreview);
+                                                        e.target.style.display = 'none';
+                                                    }}
+                                                    onLoad={() => {
+                                                        console.log('Image preview loaded successfully:', imagePreview);
+                                                    }}
+                                                />
+                                                <button 
+                                                    type="button" 
+                                                    className="institute-remove-image-btn"
+                                                    onClick={() => {
+                                                        setImagePreview(null);
+                                                        setImageFile(null);
+                                                    }}
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="institute-no-image-placeholder">
+                                                <p>No image selected</p>
+                                            </div>
+                                        )}
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            onChange={handleImageChange}
+                                            className="institute-file-input"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="institute-form-grid">
+                                    <div className="institute-form-group">
+                                        <label>Institute Name *</label>
+                                        <input
+                                            type="text"
+                                            value={profileData.instituteName}
+                                            onChange={(e) => setProfileData({...profileData, instituteName: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Phone *</label>
+                                        <input
+                                            type="tel"
+                                            value={profileData.phone}
+                                            onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="institute-form-group">
+                                        <label>Email *</label>
+                                        <input
+                                            type="email"
+                                            value={profileData.email}
+                                            onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                                            required
+                                            disabled
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Address *</label>
+                                    <textarea
+                                        value={profileData.address}
+                                        onChange={(e) => setProfileData({...profileData, address: e.target.value})}
+                                        rows="3"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Pincode *</label>
+                                    <input
+                                        type="text"
+                                        value={profileData.pincode}
+                                        onChange={(e) => setProfileData({...profileData, pincode: e.target.value})}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Website</label>
+                                    <input
+                                        type="url"
+                                        value={profileData.website}
+                                        onChange={(e) => setProfileData({...profileData, website: e.target.value})}
+                                        placeholder="https://example.com"
+                                    />
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Years of Experience *</label>
+                                    <input
+                                        type="number"
+                                        value={profileData.experience}
+                                        onChange={(e) => setProfileData({...profileData, experience: e.target.value})}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Established Year</label>
+                                    <input
+                                        type="number"
+                                        value={profileData.establishedYear}
+                                        onChange={(e) => setProfileData({...profileData, establishedYear: e.target.value})}
+                                        placeholder="2000"
+                                    />
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Description</label>
+                                    <textarea
+                                        value={profileData.description}
+                                        onChange={(e) => setProfileData({...profileData, description: e.target.value})}
+                                        rows="4"
+                                        placeholder="Brief description about your institute..."
+                                    />
+                                </div>
+
+                                <div className="institute-form-group">
+                                    <label>Badges</label>
+                                    <div className="institute-badges-input">
+                                        <div className="institute-badges-list">
+                                            {profileData.badges.map((badge, index) => (
+                                                <span key={index} className="institute-badge-tag">
+                                                    {badge}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newBadges = profileData.badges.filter((_, i) => i !== index);
+                                                            setProfileData({...profileData, badges: newBadges});
+                                                        }}
+                                                        className="institute-remove-badge-btn"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <div className="institute-add-badge-section">
+                                            <input
+                                                type="text"
+                                                value={currentBadge}
+                                                onChange={(e) => setCurrentBadge(e.target.value)}
+                                                placeholder="Enter badge name"
+                                                onKeyPress={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        if (currentBadge.trim() && !profileData.badges.includes(currentBadge.trim())) {
+                                                            setProfileData({...profileData, badges: [...profileData.badges, currentBadge.trim()]});
+                                                            setCurrentBadge('');
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (currentBadge.trim() && !profileData.badges.includes(currentBadge.trim())) {
+                                                        setProfileData({...profileData, badges: [...profileData.badges, currentBadge.trim()]});
+                                                        setCurrentBadge('');
+                                                    }
+                                                }}
+                                                className="institute-add-badge-btn"
+                                            >
+                                                Add Badge
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="institute-form-buttons">
+                                    <button type="submit" className="institute-primary-button" disabled={loading}>
+                                        {loading ? 'Updating...' : 'Update Profile'}
+                                    </button>
+                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Student Modal */}
+            {showModal && (modalType === 'student' || modalType === 'editStudent' || modalType === 'viewStudent') && (
                 <div className="institute-modal-overlay" onClick={closeModal}>
                     <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="institute-modal-header">
@@ -3616,13 +4415,6 @@ const InstituteDashboard = () => {
                                 {modalType === 'student' && 'Add New Student'}
                                 {modalType === 'editStudent' && 'Edit Student'}
                                 {modalType === 'viewStudent' && 'Student Profile'}
-                                {modalType === 'event' && 'Add New Event'}
-                                {modalType === 'editEvent' && 'Edit Event'}
-                                {modalType === 'news' && 'Add News'}
-                                {modalType === 'editNews' && 'Edit News'}
-                                {modalType === 'govtScheme' && 'Add Government Scheme'}
-                                {modalType === 'editGovtScheme' && 'Edit Government Scheme'}
-                                {modalType === 'profile' && 'Edit Profile'}
                             </h2>
                             <button className="institute-close-button" onClick={closeModal}>×</button>
                         </div>
@@ -3788,52 +4580,6 @@ const InstituteDashboard = () => {
                                     </div>
                                 )}
                             </div>
-                        )}
-
-                        {/* Government Scheme Form */}
-                        {(modalType === 'govtScheme' || modalType === 'editGovtScheme') && (
-                            <form onSubmit={handleGovtSchemeSubmit} className="institute-modal-form">
-                                <div className="institute-form-group">
-                                    <label>Scheme Name *</label>
-                                    <input
-                                        type="text"
-                                        value={govtSchemeForm.schemeName}
-                                        onChange={(e) => setGovtSchemeForm({...govtSchemeForm, schemeName: e.target.value})}
-                                        required
-                                    />
-                                </div>
-                                
-                                <div className="institute-form-group">
-                                    <label>Description *</label>
-                                    <textarea
-                                        value={govtSchemeForm.description}
-                                        onChange={(e) => setGovtSchemeForm({...govtSchemeForm, description: e.target.value})}
-                                        rows="4"
-                                        placeholder="Describe the government scheme..."
-                                        required
-                                    />
-                                </div>
-                                
-                                <div className="institute-form-group">
-                                    <label>Link *</label>
-                                    <input
-                                        type="url"
-                                        value={govtSchemeForm.link}
-                                        onChange={(e) => setGovtSchemeForm({...govtSchemeForm, link: e.target.value})}
-                                        placeholder="https://example.com/scheme-details"
-                                        required
-                                    />
-                                </div>
-                                
-                                <div className="institute-form-buttons">
-                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>
-                                        Cancel
-                                    </button>
-                                    <button type="submit" className="institute-primary-button" disabled={loading}>
-                                        {loading ? 'Saving...' : (modalType === 'editGovtScheme' ? 'Update Scheme' : 'Add Scheme')}
-                                    </button>
-                                </div>
-                            </form>
                         )}
 
                         {/* Student Form */}
@@ -4492,7 +5238,7 @@ const InstituteDashboard = () => {
                                 <div className="institute-form-group">
                                     <label>Categories</label>
                                     <div className="categories-selection">
-                                        {['Colleges', 'Skill and Vocational', 'Upskilling', 'School', 'Coaching Center'].map(category => (
+                                        {['Colleges', 'Skill and Vocational', 'Upskilling', 'School', 'Coaching Centre'].map(category => (
                                             <label key={category} className="category-checkbox">
                                                 <input
                                                     type="checkbox"
@@ -4518,64 +5264,6 @@ const InstituteDashboard = () => {
                                 </div>
                                 <div className="institute-form-buttons">
                                     <button type="submit" className="institute-primary-button">Update and Go Live</button>
-                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
-                                </div>
-                            </form>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Student Modal */}
-            {showModal && (modalType === 'student' || modalType === 'editStudent' || modalType === 'viewStudent') && (
-                <div className="institute-modal-overlay" onClick={closeModal}>
-                    <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="institute-modal-header">
-                            <h2>
-                                {modalType === 'student' ? 'Add New Student' : 
-                                 modalType === 'editStudent' ? 'Edit Student' : 'Student Details'}
-                            </h2>
-                            <button className="institute-modal-close" onClick={closeModal}>×</button>
-                        </div>
-                        
-                        {modalType === 'viewStudent' && selectedStudent && (
-                            <div className="institute-student-details">
-                                <div className="institute-student-info">
-                                    <h3>{selectedStudent.fullName}</h3>
-                                    <p><strong>Email:</strong> {selectedStudent.email}</p>
-                                    <p><strong>Phone:</strong> {selectedStudent.phoneNumber}</p>
-                                    <p><strong>Degree:</strong> {selectedStudent.degreeName} - {selectedStudent.specialization}</p>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {(modalType === 'student' || modalType === 'editStudent') && (
-                            <form onSubmit={handleStudentSubmit} className="institute-modal-form">
-                                <div className="institute-form-grid">
-                                    <div className="institute-form-group">
-                                        <label>Full Name *</label>
-                                        <input
-                                            type="text"
-                                            value={studentForm.fullName}
-                                            onChange={(e) => setStudentForm({...studentForm, fullName: e.target.value})}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="institute-form-group">
-                                        <label>Email *</label>
-                                        <input
-                                            type="email"
-                                            value={studentForm.email}
-                                            onChange={(e) => setStudentForm({...studentForm, email: e.target.value})}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="institute-form-buttons">
-                                    <button type="submit" className="institute-primary-button" disabled={loading}>
-                                        {loading ? (modalType === 'editStudent' ? 'Updating...' : 'Adding...') : 
-                                         (modalType === 'editStudent' ? 'Update Student' : 'Add Student')}
-                                    </button>
                                     <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                                 </div>
                             </form>
@@ -4961,61 +5649,39 @@ const InstituteDashboard = () => {
                                     required
                                 />
                             </div>
+                            
+                            <div className="institute-form-group">
+                                <label>Description *</label>
+                                <textarea
+                                    value={govtSchemeForm.description}
+                                    onChange={(e) => setGovtSchemeForm({...govtSchemeForm, description: e.target.value})}
+                                    rows="4"
+                                    placeholder="Describe the government scheme..."
+                                    required
+                                />
+                            </div>
+                            
+                            <div className="institute-form-group">
+                                <label>Link *</label>
+                                <input
+                                    type="url"
+                                    value={govtSchemeForm.link}
+                                    onChange={(e) => setGovtSchemeForm({...govtSchemeForm, link: e.target.value})}
+                                    placeholder="https://example.com/scheme-details"
+                                    required
+                                />
+                            </div>
+                            
                             <div className="institute-form-buttons">
+                                <button type="button" className="institute-secondary-button" onClick={closeModal}>
+                                    Cancel
+                                </button>
                                 <button type="submit" className="institute-primary-button" disabled={loading}>
                                     {loading ? (modalType === 'editGovtScheme' ? 'Updating...' : 'Adding...') : 
                                      (modalType === 'editGovtScheme' ? 'Update Scheme' : 'Add Scheme')}
                                 </button>
-                                <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Placement History Modal */}
-            {showPlacementHistoryModal && selectedStudent && (
-                <div className="institute-modal-overlay" onClick={closePlacementHistoryModal}>
-                    <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="institute-modal-header">
-                            <h2>Placement History - {selectedStudent.fullName}</h2>
-                            <button className="institute-modal-close" onClick={closePlacementHistoryModal}>×</button>
-                        </div>
-                        
-                        <div className="institute-placement-history">
-                            {selectedStudentPlacementHistory.length > 0 ? (
-                                <div className="institute-history-list">
-                                    {selectedStudentPlacementHistory.map((record, index) => (
-                                        <div key={index} className="institute-history-item">
-                                            <h4>{record.companyName}</h4>
-                                            <p><strong>Status:</strong> {record.status}</p>
-                                            <p><strong>Applied:</strong> {new Date(record.appliedDate).toLocaleDateString()}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p>No placement history available.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Event/News View Modal */}
-            {showEventNewsModal && selectedEventNews && (
-                <div className="institute-modal-overlay" onClick={() => setShowEventNewsModal(false)}>
-                    <div className="institute-modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="institute-modal-header">
-                            <h2>{selectedEventNews.title}</h2>
-                            <button className="institute-modal-close" onClick={() => setShowEventNewsModal(false)}>×</button>
-                        </div>
-                        
-                        <div className="institute-event-details">
-                            <p><strong>Type:</strong> {selectedEventNews.type}</p>
-                            <p><strong>Company:</strong> {selectedEventNews.company}</p>
-                            <p><strong>Date:</strong> {new Date(selectedEventNews.date).toLocaleDateString()}</p>
-                            <p><strong>Details:</strong> {selectedEventNews.details}</p>
-                        </div>
                     </div>
                 </div>
             )}
@@ -5032,3 +5698,4 @@ const InstituteDashboard = () => {
 };
 
 export default InstituteDashboard;
+

@@ -190,7 +190,7 @@
 }
 
 .stat-label {
-    color: #6b7280;
+    color: black !important;
     font-size: 0.875rem;
     margin-top: 0.5rem;
 }

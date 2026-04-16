@@ -9,8 +9,16 @@ const StudentTracking = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStudentType, setFilterStudentType] = useState('all');  // ✅ NEW: Student type filter
+  const [filterCourse, setFilterCourse] = useState('all');  // ✅ NEW: Course filter
+  const [filterInstitute, setFilterInstitute] = useState('all');  // ✅ NEW: Institute filter
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  // ✅ NEW: Extract unique values for filters
+  const uniqueCourses = [...new Set(enrollmentHistory.map(e => e.courseDetails?.courseName).filter(Boolean))];
+  const uniqueInstitutes = [...new Set(enrollmentHistory.map(e => e.courseInstituteDetails?.instituteName).filter(Boolean))];
+  const hasMultipleStudentTypes = enrollmentHistory.some(e => e.studentType === 'mis');
 
   useEffect(() => {
     fetchEnrollmentHistory();
@@ -54,20 +62,33 @@ const StudentTracking = () => {
   };
 
   const handleViewDetails = (enrollment) => {
+    console.log('📋 Opening enrollment details:', enrollment);
+    console.log('💳 Payment Status:', enrollment.paymentStatus);
     setSelectedEnrollment(enrollment);
     setShowDetailsModal(true);
   };
 
   const filteredEnrollments = enrollmentHistory.filter(enrollment => {
+    // Search filter
     const matchesSearch = 
       enrollment.courseDetails?.courseName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       enrollment.enrolledStudents?.some(student => 
         student.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     
-    const matchesFilter = filterStatus === 'all' || enrollment.paymentStatus === filterStatus;
+    // Payment status filter
+    const matchesStatus = filterStatus === 'all' || enrollment.paymentStatus === filterStatus;
     
-    return matchesSearch && matchesFilter;
+    // ✅ NEW: Student type filter
+    const matchesStudentType = filterStudentType === 'all' || enrollment.studentType === filterStudentType;
+    
+    // ✅ NEW: Course filter
+    const matchesCourse = filterCourse === 'all' || enrollment.courseDetails?.courseName === filterCourse;
+    
+    // ✅ NEW: Institute filter
+    const matchesInstitute = filterInstitute === 'all' || enrollment.courseInstituteDetails?.instituteName === filterInstitute;
+    
+    return matchesSearch && matchesStatus && matchesStudentType && matchesCourse && matchesInstitute;
   });
 
   const getStatusBadge = (status) => {
@@ -116,8 +137,13 @@ const StudentTracking = () => {
             <FaBook />
           </div>
           <div className="stat-content">
-            <h3>{enrollmentHistory.length}</h3>
+            <h3>{filteredEnrollments.length}</h3>
             <p>Total Enrollments</p>
+            {filteredEnrollments.length !== enrollmentHistory.length && (
+              <small style={{ fontSize: '11px', color: '#6b7280' }}>
+                (of {enrollmentHistory.length} total)
+              </small>
+            )}
           </div>
         </div>
         <div className="stat-card">
@@ -126,9 +152,9 @@ const StudentTracking = () => {
           </div>
           <div className="stat-content">
             <h3>
-              {enrollmentHistory.filter(e => e.paymentStatus === 'completed').length}
+              {filteredEnrollments.filter(e => e.paymentStatus === 'completed').length}
             </h3>
-            <p>Completed</p>
+            <p>Payment Completed</p>
           </div>
         </div>
         <div className="stat-card">
@@ -137,9 +163,9 @@ const StudentTracking = () => {
           </div>
           <div className="stat-content">
             <h3>
-              {enrollmentHistory.filter(e => e.paymentStatus === 'pending').length}
+              {filteredEnrollments.filter(e => e.paymentStatus === 'pending').length}
             </h3>
-            <p>Pending</p>
+            <p>Payment Pending</p>
           </div>
         </div>
         <div className="stat-card">
@@ -148,9 +174,14 @@ const StudentTracking = () => {
           </div>
           <div className="stat-content">
             <h3>
-              {enrollmentHistory.reduce((sum, e) => sum + (e.totalStudentsEnrolled || 0), 0)}
+              {filteredEnrollments.reduce((sum, e) => sum + (e.totalStudentsEnrolled || 0), 0)}
             </h3>
             <p>Total Students</p>
+            {filteredEnrollments.length !== enrollmentHistory.length && (
+              <small style={{ fontSize: '11px', color: '#6b7280' }}>
+                (of {enrollmentHistory.reduce((sum, e) => sum + (e.totalStudentsEnrolled || 0), 0)} total)
+              </small>
+            )}
           </div>
         </div>
       </div>
@@ -166,15 +197,84 @@ const StudentTracking = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        
+        {/* ✅ NEW: Student Type Filter - Only show if Staffinn Partner */}
+        {hasMultipleStudentTypes && (
+          <div className="filter-box">
+            <FaFilter />
+            <select value={filterStudentType} onChange={(e) => setFilterStudentType(e.target.value)}>
+              <option value="all">👥 All Student Types</option>
+              <option value="institute">🏫 Institute Students</option>
+              <option value="mis">📊 MIS Students</option>
+            </select>
+          </div>
+        )}
+        
+        {/* ✅ NEW: Course Filter */}
+        {uniqueCourses.length > 1 && (
+          <div className="filter-box">
+            <FaBook />
+            <select value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)}>
+              <option value="all">📚 All Courses</option>
+              {uniqueCourses.map((course, index) => (
+                <option key={index} value={course}>{course}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        
+        {/* ✅ NEW: Institute Filter */}
+        {uniqueInstitutes.length > 1 && (
+          <div className="filter-box">
+            <FaGraduationCap />
+            <select value={filterInstitute} onChange={(e) => setFilterInstitute(e.target.value)}>
+              <option value="all">🏛️ All Institutes</option>
+              {uniqueInstitutes.map((institute, index) => (
+                <option key={index} value={institute}>{institute}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        
+        {/* Payment Status Filter */}
         <div className="filter-box">
           <FaFilter />
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="all">All Status</option>
+            <option value="all">✅ All Status</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
             <option value="failed">Failed</option>
           </select>
         </div>
+        
+        {/* ✅ NEW: Clear All Filters Button */}
+        {(filterStudentType !== 'all' || filterCourse !== 'all' || filterInstitute !== 'all' || filterStatus !== 'all' || searchTerm) && (
+          <button 
+            className="clear-filters-btn"
+            onClick={() => {
+              setFilterStudentType('all');
+              setFilterCourse('all');
+              setFilterInstitute('all');
+              setFilterStatus('all');
+              setSearchTerm('');
+            }}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            ❌ Clear Filters
+          </button>
+        )}
       </div>
 
       {/* Enrollments List */}
@@ -199,6 +299,24 @@ const StudentTracking = () => {
                     <p className="institute-name">
                       {enrollment.courseInstituteDetails?.instituteName || 'Institute'}
                     </p>
+                    {/* ✅ NEW: Student Type Badge */}
+                    {enrollment.studentType && (
+                      <span 
+                        className="student-type-badge"
+                        style={{
+                          display: 'inline-block',
+                          marginTop: '5px',
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          backgroundColor: enrollment.studentType === 'mis' ? '#10b981' : '#3b82f6',
+                          color: 'white'
+                        }}
+                      >
+                        {enrollment.studentType === 'mis' ? '📊 MIS Students' : '🏫 Institute Students'}
+                      </span>
+                    )}
                   </div>
                   {getStatusBadge(enrollment.paymentStatus)}
                 </div>
@@ -320,8 +438,10 @@ const StudentTracking = () => {
                   <h3>Payment Information</h3>
                   <div className="info-grid">
                     <div className="info-item">
-                      <span className="label">Status:</span>
-                      {getStatusBadge(selectedEnrollment.paymentStatus)}
+                      <span className="label">Payment Status:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', marginTop: '0.5rem' }}>
+                        {getStatusBadge(selectedEnrollment.paymentStatus)}
+                      </div>
                     </div>
                     <div className="info-item">
                       <span className="label">Total Amount:</span>

@@ -39,14 +39,6 @@ const createPaymentOrder = async (req, res) => {
 
     console.log('📚 Course details:', { courseName: course.courseName, mode: course.mode, fees: course.fees });
 
-    // Check if course is online (only online courses require payment)
-    if (course.mode !== 'Online') {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment is only required for online courses'
-      });
-    }
-
     // Check if user has already paid for this course
     const hasPaid = await paymentTransactionModel.hasUserPaidForCourse(userId, courseId);
     if (hasPaid) {
@@ -267,6 +259,7 @@ const verifyPayment = async (req, res) => {
       courseName: transaction.courseName,
       instituteId: transaction.instituteId,
       enrollmentDate: new Date().toISOString(),
+      enrollmentSource: 'individual',  // ✅ ADDED: Mark as individual enrollment
       progressPercentage: 0,
       status: 'active',
       paymentStatus: 'paid',

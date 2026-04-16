@@ -1,0 +1,25 @@
+  // Get available students for course enrollment
+  getAvailableStudents: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      console.log('📚 Fetching available students...');
+      const response = await fetch(`${API_URL}/institute-course-enrollment/available-students`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const result = await response.json();
+      console.log('✅ Available students response:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Get available students error:', error);
+      return { success: false, message: 'Failed to get available students' };
+    }
+  },

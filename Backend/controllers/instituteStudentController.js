@@ -136,6 +136,56 @@ const getStudentApplicationHistory = async (req, res) => {
   }
 };
 
+const getPlacementTracking = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    console.log('🔍 Placement Tracking - Institute ID:', instituteId);
+    
+    const jobApplicationModel = require('../models/jobApplicationModel');
+    
+    const students = await instituteStudentModel.getStudentsByInstitute(instituteId);
+    console.log('📚 Students found:', students.length);
+    
+    // Flatten all applications into a single array
+    const allApplications = [];
+    
+    for (const student of students) {
+      const applications = await jobApplicationModel.getStudentApplicationHistory(student.instituteStudntsID);
+      console.log(`👤 Student ${student.fullName} (${student.instituteStudntsID}): ${applications?.length || 0} applications`);
+      
+      if (applications && applications.length > 0) {
+        applications.forEach(app => {
+          allApplications.push({
+            applicationId: app.staffinnjob || app.applicationId,
+            studentId: student.instituteStudntsID,
+            studentName: student.fullName,
+            jobTitle: app.jobTitle,
+            // Use companyName as recruiterName (companyName contains the actual recruiter/company)
+            recruiterName: app.companyName || app.recruiterName || 'Unknown Recruiter',
+            status: app.status,
+            appliedDate: app.appliedDate || app.timestamp,
+            updatedAt: app.lastUpdated || app.updatedAt
+          });
+        });
+      }
+    }
+    
+    console.log('✅ Total applications:', allApplications.length);
+    console.log('📊 Sample application:', JSON.stringify(allApplications[0], null, 2));
+    
+    res.status(200).json({
+      success: true,
+      data: allApplications
+    });
+  } catch (error) {
+    console.error('❌ Error getting placement tracking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get placement tracking data'
+    });
+  }
+};
+
 const getStudentById = async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -273,5 +323,6 @@ module.exports = {
   deleteStudent,
   getDashboardStats,
   updatePlacementStatus,
-  getStudentApplicationHistory
+  getStudentApplicationHistory,
+  getPlacementTracking
 };

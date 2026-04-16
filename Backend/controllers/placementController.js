@@ -485,8 +485,141 @@ const getSectorFromCourse = (courseName) => {
   }
 };
 
+/**
+ * Get placement tracking data - all applications for institute students
+ */
+const getPlacementTracking = async (req, res) => {
+  try {
+    const instituteId = req.user?.userId;
+    if (!instituteId) {
+      return res.status(401).json({ success: false, message: 'Institute ID not found' });
+    }
+
+    const jobApplicationModel = require('../models/jobApplicationModel');
+    const misJobApplicationModel = require('../models/misJobApplicationModel');
+    const instituteStudentModel = require('../models/instituteStudentModel');
+    const misStudentModel = require('../models/misStudentModel');
+    const jobModel = require('../models/jobModel');
+    const userModel = require('../models/userModel');
+
+    // Check if this is a Staffinn Partner (MIS) institute
+    const instituteUser = await userModel.findUserById(instituteId);
+    const isMISInstitute = instituteUser?.misApproved === true || 
+                          instituteUser?.misApproved === 'true' || 
+                          instituteUser?.instituteType === 'staffinn_partner';
+
+    console.log('🔍 [PLACEMENT TRACKING] ========== START ==========');
+    console.log('🔍 [PLACEMENT TRACKING] Institute ID:', instituteId);
+    console.log('🔍 [PLACEMENT TRACKING] Institute User:', JSON.stringify(instituteUser, null, 2));
+    console.log('🔍 [PLACEMENT TRACKING] misApproved:', instituteUser?.misApproved, 'Type:', typeof instituteUser?.misApproved);
+    console.log('🔍 [PLACEMENT TRACKING] instituteType:', instituteUser?.instituteType);
+    console.log('🔍 [PLACEMENT TRACKING] Is MIS Institute:', isMISInstitute);
+    console.log('🔍 [PLACEMENT TRACKING] ========== DECISION ==========');
+
+    let students = [];
+    let allApplications = [];
+
+    if (isMISInstitute) {
+      // Get MIS students for Staffinn Partner
+      console.log('📚 [PLACEMENT TRACKING] Fetching MIS students...');
+      students = await misStudentModel.getStudentsByInstitute(instituteId);
+      console.log('📊 [PLACEMENT TRACKING] MIS Students found:', students.length);
+      if (students.length > 0) {
+        console.log('📋 [PLACEMENT TRACKING] Sample MIS student:', {
+          studentsId: students[0].studentsId,
+          candidateName: students[0].candidateName,
+          fatherName: students[0].fatherName
+        });
+      }
+      
+      // Get MIS applications from MIS job applications table
+      console.log('📚 [PLACEMENT TRACKING] Fetching MIS applications...');
+      allApplications = await misJobApplicationModel.getByInstitute(instituteId);
+      console.log('📊 [PLACEMENT TRACKING] MIS Applications found:', allApplications.length);
+      if (allApplications.length > 0) {
+        console.log('📋 [PLACEMENT TRACKING] Sample MIS application:', {
+          misApplicationId: allApplications[0].misApplicationId,
+          studentId: allApplications[0].studentId,
+          jobId: allApplications[0].jobId,
+          status: allApplications[0].status
+        });
+      }
+    } else {
+      // Get regular institute students
+      console.log('📚 [PLACEMENT TRACKING] Fetching Institute students...');
+      students = await instituteStudentModel.getStudentsByInstitute(instituteId);
+      console.log('📊 [PLACEMENT TRACKING] Institute Students found:', students.length);
+      
+      const studentIds = students.map(s => s.instituteStudntsID);
+      
+      // Get regular applications from job applications table
+      console.log('📚 [PLACEMENT TRACKING] Fetching Institute applications...');
+      const allApps = await jobApplicationModel.getAllApplications();
+      allApplications = allApps.filter(app => studentIds.includes(app.studentID));
+      console.log('📊 [PLACEMENT TRACKING] Institute Applications found:', allApplications.length);
+    }
+
+    // Enrich with student, job, and recruiter details
+    const trackingData = await Promise.all(
+      allApplications.map(async (app) => {
+        let student;
+        let studentName = 'Unknown Student';
+        
+        if (isMISInstitute) {
+          // MIS applications use 'studentId' field, MIS students use 'studentsId' field
+          student = students.find(s => s.studentsId === app.studentId);
+          studentName = student?.candidateName || student?.fatherName || 'Unknown MIS Student';
+          console.log('🔍 [TRACKING] MIS Student match:', {
+            appStudentId: app.studentId,
+            foundStudent: !!student,
+            studentName: studentName
+          });
+        } else {
+          student = students.find(s => s.instituteStudntsID === app.studentID);
+          studentName = student?.fullName || 'Unknown Student';
+        }
+
+        let job = null;
+        let recruiter = null;
+
+        try {
+          job = await jobModel.getJobById(app.jobId || app.jobID);
+          recruiter = await userModel.findUserById(app.recruiterId || app.recruiterID);
+        } catch (error) {
+          console.error('Error fetching job/recruiter details:', error);
+        }
+
+        return {
+          applicationId: app.misApplicationId || app.staffinnjob,
+          studentId: app.studentId || app.studentID,
+          studentName: studentName,
+          jobId: app.jobId || app.jobID,
+          jobTitle: job?.title || 'Unknown Job',
+          recruiterId: app.recruiterId || app.recruiterID,
+          recruiterName: recruiter?.name || recruiter?.recruiterName || recruiter?.companyName || 'Unknown Recruiter',
+          companyName: recruiter?.companyName || recruiter?.name || job?.companyName || 'Unknown Company',
+          status: (app.status === 'hired' || app.status === 'Hired') ? 'Hired' : 
+                  (app.status === 'rejected' || app.status === 'Rejected') ? 'Rejected' : 'Applied',
+          appliedDate: app.createdAt || app.timestamp,
+          updatedAt: app.updatedAt || app.createdAt || app.timestamp
+        };
+      })
+    );
+
+    // Sort by most recent first
+    trackingData.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    console.log('✅ [PLACEMENT TRACKING] Final tracking data count:', trackingData.length);
+    res.json({ success: true, data: trackingData });
+  } catch (error) {
+    console.error('❌ [PLACEMENT TRACKING] Error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAllPlacements,
+  getPlacementTracking,
   getPlacementStats,
   getPlacementsByType,
   getPlacementsByInstitute,

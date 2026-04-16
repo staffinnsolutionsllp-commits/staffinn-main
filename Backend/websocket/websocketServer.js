@@ -8,23 +8,36 @@ const { Server } = require('socket.io');
 let io;
 
 const initializeWebSocket = (server) => {
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+    : [
+        'https://hrms.staffinn.com',
+        'https://staffinn.com',
+        'https://employee.staffinn.com',
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        'http://localhost:5176',
+        'http://localhost:5177'
+      ];
+
   io = new Server(server, {
     cors: {
-      origin: [
-        "http://localhost:3000", 
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:5176",
-        "http://localhost:5177"
-      ],
-      methods: ["GET", "POST"],
+      origin: allowedOrigins,
+      methods: ['GET', 'POST'],
       credentials: true
     }
   });
 
   io.on('connection', (socket) => {
     console.log('🔌 Client connected:', socket.id);
+
+    // Handle recruiter joining their room for attendance updates
+    socket.on('join-recruiter-room', (recruiterId) => {
+      socket.join(`recruiter-${recruiterId}`);
+      console.log(`💼 Recruiter ${recruiterId} joined room for attendance updates`);
+    });
 
     // Handle institute joining their room for MIS updates
     socket.on('join-institute-room', (instituteId) => {

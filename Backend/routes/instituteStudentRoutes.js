@@ -9,6 +9,12 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Get all students for logged-in institute
 router.get('/', authenticate, instituteStudentController.getStudents);
 
+// Get dashboard stats (must be before /:studentId)
+router.get('/stats/dashboard', authenticate, instituteStudentController.getDashboardStats);
+
+// Get placement tracking for all students (must be before /:studentId)
+router.get('/tracking/placement', authenticate, instituteStudentController.getPlacementTracking);
+
 // Get student by ID
 router.get('/:studentId', authenticate, instituteStudentController.getStudentById);
 
@@ -70,9 +76,6 @@ router.post('/upload-document', authenticate, upload.single('document'), async (
     res.status(500).json({ success: false, message: 'Upload failed' });
   }
 });
-
-// Get dashboard stats
-router.get('/stats/dashboard', authenticate, instituteStudentController.getDashboardStats);
 
 // Update placement status
 router.patch('/:studentId/placement-status', authenticate, instituteStudentController.updatePlacementStatus);

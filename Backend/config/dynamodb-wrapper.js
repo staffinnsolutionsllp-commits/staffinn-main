@@ -31,7 +31,7 @@ testConnection().catch(console.error);
 // Define table names
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'staffinn-users';
 const STAFF_TABLE = process.env.STAFF_TABLE || 'staffinn-staff-profiles';
-const INSTITUTE_PROFILES_TABLE = 'staffinn-institute-profiles';
+const INSTITUTE_PROFILES_TABLE = process.env.INSTITUTE_PROFILES_TABLE || 'staffinn-institute-profiles';
 const CONTACT_TABLE = process.env.CONTACT_HISTORY_TABLE || 'staffinn-contact-history';
 const HIRING_TABLE = process.env.HIRING_TABLE || 'staffinn-hiring-records';
 const NOTIFICATIONS_TABLE = process.env.NOTIFICATIONS_TABLE || 'staffinn-notifications';
@@ -48,6 +48,11 @@ const MIS_REQUESTS_TABLE = process.env.MIS_REQUESTS_TABLE || 'staffinn-mis-reque
 const MESSAGES_TABLE = process.env.MESSAGES_TABLE || 'Messages';
 const FACULTY_LIST_TABLE = process.env.FACULTY_LIST_TABLE || 'mis-faculty-list';
 const MIS_PLACEMENT_ANALYTICS_TABLE = process.env.MIS_PLACEMENT_ANALYTICS_TABLE || 'staffinn-mis-placement-analytics';
+const COURSE_ENROLLMENTS_TABLE = process.env.COURSE_ENROLLMENTS_TABLE || 'course-enrolled-user';
+const COURSE_PROGRESS_TABLE = process.env.COURSE_PROGRESS_TABLE || 'staffinn-course-progress';
+const PAYMENTS_TABLE = process.env.PAYMENTS_TABLE || 'staffinn-payments';
+const PENDING_INSTITUTE_PAYMENTS_TABLE = process.env.PENDING_INSTITUTE_PAYMENTS_TABLE || 'staffinn-pending-institute-payments';
+const INSTITUTE_COURSE_ENROLLMENTS_TABLE = process.env.INSTITUTE_COURSE_ENROLLMENTS_TABLE || 'staffinn-institute-course-enrollments';
 
 // HRMS Tables
 const HRMS_USERS_TABLE = process.env.HRMS_USERS_TABLE || 'staffinn-hrms-users';
@@ -95,6 +100,11 @@ module.exports = {
   MESSAGES_TABLE,
   FACULTY_LIST_TABLE,
   MIS_PLACEMENT_ANALYTICS_TABLE,
+  COURSE_ENROLLMENTS_TABLE,
+  COURSE_PROGRESS_TABLE,
+  PAYMENTS_TABLE,
+  PENDING_INSTITUTE_PAYMENTS_TABLE,
+  INSTITUTE_COURSE_ENROLLMENTS_TABLE,
   // HRMS Tables
   HRMS_USERS_TABLE,
   HRMS_EMPLOYEES_TABLE,

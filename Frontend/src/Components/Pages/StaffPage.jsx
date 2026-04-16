@@ -840,6 +840,12 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                     key={staff.userId}
                                 >
                                     <div className="clean-card-header">
+                                        <span className="header-text">STAFFINN STAFF</span>
+                                        {staff.availability && (
+                                            <span className={`status-badge ${staff.availability?.toLowerCase()?.replace(' ', '-') || 'available'}`}>
+                                                {staff.availability?.charAt(0)?.toUpperCase() + staff.availability?.slice(1) || 'Available'}
+                                            </span>
+                                        )}
                                         <div className="clean-avatar">
                                             {staff.profilePhoto ? (
                                                 <img src={staff.profilePhoto} alt={staff.fullName} className="avatar-img" />
@@ -849,47 +855,63 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="clean-info">
-                                            <h3 className="clean-name">{staff.fullName}</h3>
-                                            <p className="clean-profession">{staff.skills?.split(',')[0] || 'Professional'}</p>
-                                            <div className="clean-rating">
-                                                <span className="rating-text">
-                                                    ⭐ {staff.rating ? `${staff.rating}` : '0.0'} 
-                                                    {staff.reviewCount ? ` (${staff.reviewCount} reviews)` : ' (0 reviews)'}
-                                                </span>
-                                                <span className={`status-badge ${staff.availability?.toLowerCase()?.replace(' ', '-') || 'available'}`}>
-                                                    {staff.availability?.charAt(0)?.toUpperCase() + staff.availability?.slice(1) || 'Available'}
-                                                </span>
-                                            </div>
-                                        </div>
                                     </div>
                                     
-                                    {staff.sector && staff.role && (
-                                        <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
-                                    )}
-                                    {(staff.area || staff.city || staff.state || staff.pincode) && (
-                                        <div className="clean-location-info">
-                                            {[staff.area, staff.city, staff.state, staff.pincode].filter(Boolean).join(', ')}
-                                        </div>
-                                    )}
-                                    
-
-                                    
-                                    <div className="clean-details">
-                                        <span>Experience: {getExperienceLevel(staff)}</span>
-                                    </div>
-                                    
-                                    <div className="clean-rate">
-                                        <span>Contact by Chat</span>
-                                    </div>
-                                    
-                                    <div className="clean-skills">
-                                        {getSkillsArray(staff).slice(0, 2).map((skill, index) => (
-                                            <span key={index} className="skill-tag">{skill}</span>
-                                        ))}
-                                        {getSkillsArray(staff).length > 2 && (
-                                            <span className="more-skills">+{getSkillsArray(staff).length - 2} more</span>
+                                    <div className="clean-info">
+                                        <h3 className="clean-name">{staff.fullName}</h3>
+                                        <p className="clean-profession">{staff.skills?.split(',')[0] || 'Professional'}</p>
+                                        
+                                        {staff.sector && staff.role && (
+                                            <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
                                         )}
+                                        
+                                        <div className="clean-skills">
+                                            {getSkillsArray(staff).slice(0, 3).map((skill, index) => (
+                                                <span key={index} className="skill-tag">{skill}</span>
+                                            ))}
+                                            {getSkillsArray(staff).length > 3 && (
+                                                <span className="more-skills">+{getSkillsArray(staff).length - 3}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="clean-stats-row">
+                                        <div className="clean-stat-item">
+                                            <img src="/satisfaction.png" alt="Rating" className="stat-icon" />
+                                            <div className="stat-value">
+                                                {staff.rating ? parseFloat(staff.rating).toFixed(1) : '0.0'}
+                                            </div>
+                                            <div className="stat-label" style={{ color: '#000000' }}>Rating</div>
+                                        </div>
+                                        <div className="stat-divider"></div>
+                                        <div className="clean-stat-item">
+                                            <img src="/call.png" alt="Clients" className="stat-icon" />
+                                            <div className="stat-value">
+                                                {staff.reviewCount || 0}
+                                            </div>
+                                            <div className="stat-label" style={{ color: '#000000' }}>Clients</div>
+                                        </div>
+                                        <div className="stat-divider"></div>
+                                        <div className="clean-stat-item">
+                                            <img src="/certification_11112875.png" alt="Experience" className="stat-icon" />
+                                            <div className="stat-value">
+                                                {(() => {
+                                                    const experiences = staff.experiences || [];
+                                                    if (experiences.length === 0) return '0';
+                                                    const totalYears = experiences.reduce((total, exp) => {
+                                                        if (exp.startDate && exp.endDate) {
+                                                            const start = new Date(exp.startDate);
+                                                            const end = new Date(exp.endDate);
+                                                            const years = (end - start) / (1000 * 60 * 60 * 24 * 365);
+                                                            return total + years;
+                                                        }
+                                                        return total;
+                                                    }, 0);
+                                                    return Math.round(totalYears);
+                                                })()}
+                                            </div>
+                                            <div className="stat-label" style={{ color: '#000000' }}>Experience</div>
+                                        </div>
                                     </div>
                                     
                                     <div className="clean-actions">
@@ -897,7 +919,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                             className="clean-view-btn"
                                             onClick={() => handleViewProfile(staff)}
                                         >
-                                            View Profile
+                                            Get In Touch
                                         </button>
                                     </div>
                                 </div>

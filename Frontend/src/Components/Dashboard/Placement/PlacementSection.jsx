@@ -4,6 +4,7 @@ import PlacementDashboard from './PlacementDashboard';
 import CenterWiseAnalytics from './CenterWiseAnalytics';
 import SectorWiseAnalytics from './SectorWiseAnalytics';
 import StudentWiseAnalytics from './StudentWiseAnalytics';
+import PlacementTracking from './PlacementTracking';
 import apiService from '../../../services/api';
 
 const PlacementSection = () => {
@@ -16,7 +17,6 @@ const PlacementSection = () => {
     totalApplications: 0
   });
 
-  // Load dashboard summary on component mount
   useEffect(() => {
     loadDashboardSummary();
   }, []);
@@ -50,6 +50,12 @@ const PlacementSection = () => {
           📊 Dashboard
         </button>
         <button 
+          className={`placement-nav-btn ${activeTab === 'placement-tracking' ? 'active' : ''}`}
+          onClick={() => setActiveTab('placement-tracking')}
+        >
+          📋 Placement Tracking
+        </button>
+        <button 
           className={`placement-nav-btn ${activeTab === 'center-wise' ? 'active' : ''}`}
           onClick={() => setActiveTab('center-wise')}
         >
@@ -65,7 +71,7 @@ const PlacementSection = () => {
           className={`placement-nav-btn ${activeTab === 'student-wise' ? 'active' : ''}`}
           onClick={() => setActiveTab('student-wise')}
         >
-          👨‍🎓 Student Wise
+          👨🎓 Student Wise
         </button>
       </div>
 
@@ -77,6 +83,7 @@ const PlacementSection = () => {
             onRefresh={loadDashboardSummary}
           />
         )}
+        {activeTab === 'placement-tracking' && <PlacementTracking />}
         {activeTab === 'center-wise' && <CenterWiseAnalytics />}
         {activeTab === 'sector-wise' && <SectorWiseAnalytics />}
         {activeTab === 'student-wise' && <StudentWiseAnalytics />}

@@ -26,7 +26,7 @@ function NotificationBell({ isLoggedIn }) {
       
       if (notificationResponse.success) {
         setNotifications(notificationResponse.data || []);
-        setUnreadCount(notificationResponse.count || 0);
+        setUnreadCount(notificationResponse.unreadCount || 0);
       }
       
       if (messageResponse.success) {
@@ -49,7 +49,7 @@ function NotificationBell({ isLoggedIn }) {
       if (response.success) {
         // Remove notification from list (mark as read removes it)
         setNotifications(prev => 
-          prev.filter(notif => notif.notificationsId !== notificationId)
+          prev.filter(notif => notif.notificationId !== notificationId)
         );
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
@@ -63,7 +63,7 @@ function NotificationBell({ isLoggedIn }) {
     try {
       // Mark each notification as read
       const markPromises = notifications.map(notif => 
-        apiService.markNotificationAsRead(notif.notificationsId)
+        apiService.markNotificationAsRead(notif.notificationId)
       );
       
       await Promise.all(markPromises);
@@ -234,7 +234,7 @@ function NotificationBell({ isLoggedIn }) {
             ) : (
               notifications.map((notification) => (
                 <div 
-                  key={notification.notificationsId}
+                  key={notification.notificationId}
                   className="notification-item unread"
                 >
                   <div className="notification-content">
@@ -245,7 +245,7 @@ function NotificationBell({ isLoggedIn }) {
                   <div className="notification-actions">
                     <button 
                       className="mark-read-btn"
-                      onClick={() => markAsRead(notification.notificationsId)}
+                      onClick={() => markAsRead(notification.notificationId)}
                       title="Mark as read"
                     >
                       ✓

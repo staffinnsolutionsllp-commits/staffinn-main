@@ -3,15 +3,23 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiService from '../../services/api';
 import './InstitutePage.css';
+import CourseCard from '../common/CourseCard';
 import '../Dashboard/Categories.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaSearch, FaGraduationCap, FaBriefcase, FaHandshake, FaChalkboardTeacher, FaCalendarAlt, FaUsers, FaCheckCircle } from 'react-icons/fa';
 import axios from 'axios';
-import StudentEnrollmentModal from '../Modals/StudentEnrollmentModal';
 
 const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   const { id } = useParams(); // Get the institute ID from URL params
   const navigate = useNavigate();
+
+  // Helper function to check if URL is a video
+  const isVideoUrl = (url) => {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.mpeg', '.mov', '.avi', '.webm', '.m4v', '.mkv'];
+    return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+  };
   const [activeTab, setActiveTab] = useState('courses');
+  const [courseTypeFilter, setCourseTypeFilter] = useState('online'); // Changed default to 'online'
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     category: 'all',
@@ -47,9 +55,8 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [showEnrollmentSuccess, setShowEnrollmentSuccess] = useState(false);
   const [governmentSchemes, setGovernmentSchemes] = useState([]);
-  const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
-  const [selectedCourseForEnrollment, setSelectedCourseForEnrollment] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [awards, setAwards] = useState([]);
 
 
 
@@ -108,6 +115,10 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
     return userProfile?.role === 'institute' && userProfile?.instituteType === 'staffinn_partner';
   };
   
+  const isNormalInstitute = () => {
+    return userProfile?.role === 'institute' && userProfile?.instituteType !== 'staffinn_partner';
+  };
+  
   // Fetch institute data based on ID
   useEffect(() => {
     if (id) {
@@ -118,6 +129,7 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
       fetchEventNewsData();
       fetchCourses();
       fetchGovernmentSchemes();
+      fetchAwards();
     }
   }, [id]);
   
@@ -323,6 +335,17 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
     }
   };
 
+  const fetchAwards = async () => {
+    try {
+      const response = await apiService.getPublicAwards(id);
+      if (response.success && response.data) {
+        setAwards(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching awards:', error);
+    }
+  };
+
   const handleEnrollInCourse = async (courseId) => {
     try {
       console.log('🎯 Attempting to enroll in course:', courseId);
@@ -513,8 +536,9 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
 
       {/* Header Section */}
       <header className="institute-header">
-        <div className="institute-header-content">
-          <div className="institute-logo-section">
+        <div className="institute-header-row">
+          {/* Left - Logo + Name + Badges */}
+          <div className="institute-left-section">
             <div className="institute-logo">
               <img 
                 src={instituteData?.profileImage || `https://via.placeholder.com/150?text=${instituteData?.name.charAt(0)}`} 
@@ -522,53 +546,78 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                 data-institute-image
               />
             </div>
-            <div className="institute-name">
+            <div className="institute-name-verified">
               <h1>{instituteData?.name}</h1>
-              <div className="institute-badges">
-                {instituteData?.badges && instituteData.badges.map((badge, index) => (
-                  <div key={index} className="badge">{badge}</div>
-                ))}
-                {instituteData?.categories && instituteData.categories.map((category, index) => (
-                  <div key={`cat-${index}`} className="category-badge">{category}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="institute-quick-info">
-            <div className="info-item">
-              <FaMapMarkerAlt />
-              <span>
-                {instituteData?.address}
-                {instituteData?.pincode && `, ${instituteData.pincode}`}
-              </span>
-            </div>
-            <div className="info-item">
-              <FaPhone />
-              <span>{instituteData?.phone}</span>
-            </div>
-            <div className="info-item">
-              <FaEnvelope />
-              <span>{instituteData?.email}</span>
-            </div>
-            <div className="info-item">
-              <FaGlobe />
-              {instituteData?.website ? (
-                <a href={instituteData.website} target="_blank" rel="noopener noreferrer" className="website-link">
-                  Website
-                </a>
-              ) : (
-                <span>Website Not Available</span>
+              {instituteData?.isBrainaryVerified && (
+                <div className="verified-badge">
+                  <FaCheckCircle />
+                </div>
               )}
             </div>
-            <div className="info-item experience">
-              <span>{instituteData?.experience ? `${instituteData.experience}+ Years of Experience` : 'Experience Not Available'}</span>
+            <div className="institute-badges-grid">
+              {instituteData?.badges && instituteData.badges.map((badge, index) => (
+                <span key={index} className="badge-pill">{badge}</span>
+              ))}
+              {instituteData?.categories && instituteData.categories.map((category, index) => (
+                <span key={`cat-${index}`} className="badge-pill category">{category}</span>
+              ))}
             </div>
           </div>
-        </div>
-        <div className="cta-buttons">
-          <button className="cta-button primary" onClick={scrollToCourses}>
-            View Offered Courses
-          </button>
+
+          {/* Right - Contact Card */}
+          <div className="institute-contact-card">
+            <div className="contact-grid">
+              <div className="contact-item">
+                <FaMapMarkerAlt className="contact-icon" />
+                <div className="contact-content">
+                  <span className="contact-label">ADDRESS</span>
+                  <span className="contact-text">
+                    {instituteData?.address}
+                    {instituteData?.pincode && `, ${instituteData.pincode}`}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="contact-item">
+                <FaPhone className="contact-icon" />
+                <div className="contact-content">
+                  <span className="contact-label">PHONE</span>
+                  <span className="contact-text">{instituteData?.phone}</span>
+                </div>
+              </div>
+              
+              <div className="contact-item">
+                <FaGlobe className="contact-icon" />
+                <div className="contact-content">
+                  <span className="contact-label">WEBSITE</span>
+                  {instituteData?.website ? (
+                    <a href={instituteData.website.startsWith('http') ? instituteData.website : `https://${instituteData.website}`} target="_blank" rel="noopener noreferrer" className="contact-text link">
+                      {instituteData.website.replace(/^https?:\/\//, '').replace(/^www\./, '')}
+                    </a>
+                  ) : (
+                    <span className="contact-text">Not Available</span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="contact-item">
+                <FaBriefcase className="contact-icon" />
+                <div className="contact-content">
+                  <span className="contact-label">EXPERIENCE</span>
+                  <span className="contact-text">{instituteData?.experience ? `${instituteData.experience}+ Years Excellence` : 'Not Available'}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="contact-buttons">
+              <button className="btn-primary" onClick={scrollToCourses}>
+                View Offered Courses
+              </button>
+              <button className="btn-secondary">
+                Contact
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -605,6 +654,12 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
         >
           <FaCalendarAlt /> Events & News
         </button>
+        <button 
+          className={`tab-button ${activeTab === 'awards' ? 'active' : ''}`}
+          onClick={() => setActiveTab('awards')}
+        >
+          🏆 Awards and Recognition
+        </button>
       </div>
 
       {/* Main Content Area */}
@@ -613,8 +668,28 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
         {activeTab === 'courses' && (
           <section className="courses-section">
             <div className="section-header">
-              <h2>Courses & Training Programs</h2>
-              <p>Industry-relevant courses designed by experts to prepare you for the job market</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div>
+                  <h2>Courses & Training Programs</h2>
+                  <p>Industry-relevant courses designed by experts to prepare you for the job market</p>
+                </div>
+                
+                {/* Course Type Toggle */}
+                <div className="course-type-toggle">
+                  <button 
+                    className={`toggle-btn ${courseTypeFilter === 'online' ? 'active' : ''}`}
+                    onClick={() => setCourseTypeFilter('online')}
+                  >
+                    Online
+                  </button>
+                  <button 
+                    className={`toggle-btn ${courseTypeFilter === 'on-campus' ? 'active' : ''}`}
+                    onClick={() => setCourseTypeFilter('on-campus')}
+                  >
+                    On-Campus
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="search-filter-container">
@@ -660,197 +735,66 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
               </div>
             </div>
 
-            {/* Online Courses Section */}
-            <div className="course-category-section">
-              <h3 className="course-category-title">Online Courses ({filteredCourses.filter(course => course.mode === 'Online').length})</h3>
-              <div className="courses-grid">
-                {filteredCourses.filter(course => course.mode === 'Online').length > 0 ? (
-                  filteredCourses.filter(course => course.mode === 'Online').map(course => {
-                    const courseId = course.coursesId || course.instituteCourseID;
-                    const courseName = course.courseName || course.name;
-                    return (
-                      <div key={courseId} className="course-card">
-                        {course.thumbnailUrl && (
-                          <div className="course-thumbnail">
-                            <img src={course.thumbnailUrl} alt={courseName} />
-                          </div>
-                        )}
-                        <div className="course-header">
-                          <span className="course-status">Enrollment Open</span>
-                          <h3 className="course-name">{courseName}</h3>
-                        </div>
-                        <div className="course-details">
-                          <div className="course-detail">
-                            <span className="detail-label">Duration:</span>
-                            <span className="detail-value">{course.duration}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Fees:</span>
-                            <span className="detail-value">₹{course.fees}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Mode:</span>
-                            <span className="detail-value">{course.mode}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Category:</span>
-                            <span className="detail-value">{course.category}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Certification:</span>
-                            <span className="detail-value">{course.certification}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Instructor:</span>
-                            <span className="detail-value">{course.instructor}</span>
-                          </div>
-                        </div>
-                        <div className="course-enrollment-section">
-                          {enrollmentStatuses[courseId]?.enrolled && (
-                            <div className="enrollment-status">
-                              <span className="enrolled-badge">✓ Enrolled</span>
-                              <div className="progress-indicator">
-                                <div className="progress-bar">
-                                  <div 
-                                    className="progress-fill" 
-                                    style={{ width: `${enrollmentStatuses[courseId]?.progressPercentage || 0}%` }}
-                                  ></div>
-                                </div>
-                                <span className="progress-text">
-                                  {enrollmentStatuses[courseId]?.progressPercentage || 0}% Complete
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          <button 
-                            className="view-details-button"
-                            onClick={() => {
-                              // Check authentication first
-                              if (!isLoggedIn) {
-                                onShowLogin();
-                                return;
-                              }
-                              // Navigate to course details page instead of opening modal
-                              navigate(`/course/${courseId}?preview=true&institute=${id}`);
-                            }}
-                          >
-                            View Details
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="no-courses">
-                    <p>No online courses available at the moment.</p>
-                  </div>
-                )}
+            {/* Conditional rendering based on toggle */}
+            {courseTypeFilter === 'online' && (
+              <div className="course-category-section">
+                <h3 className="course-category-title">Online Courses ({filteredCourses.filter(course => course.mode === 'Online').length})</h3>
+                <div className="courses-grid">
+                  {filteredCourses.filter(course => course.mode === 'Online').length > 0 ? (
+                    filteredCourses.filter(course => course.mode === 'Online').map(course => {
+                      const courseId = course.coursesId || course.instituteCourseID;
+                      return (
+                        <CourseCard
+                          key={courseId}
+                          course={course}
+                          onViewCourse={() => {
+                            if (!isLoggedIn) {
+                              onShowLogin();
+                              return;
+                            }
+                            navigate(`/course-learning/${courseId}`);
+                          }}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="no-courses">
+                      <p>No online courses available at the moment.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* On-Campus Courses Section */}
-            <div className="course-category-section">
-              <h3 className="course-category-title">On-Campus Courses ({filteredCourses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').length})</h3>
-              <div className="courses-grid">
-                {filteredCourses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').length > 0 ? (
-                  filteredCourses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').map(course => {
-                    const courseId = course.coursesId || course.instituteCourseID;
-                    const courseName = course.courseName || course.name;
-                    return (
-                      <div key={courseId} className="course-card">
-                        {course.thumbnailUrl && (
-                          <div className="course-thumbnail">
-                            <img src={course.thumbnailUrl} alt={courseName} />
-                          </div>
-                        )}
-                        <div className="course-header">
-                          <span className="course-status">Enrollment Open</span>
-                          <h3 className="course-name">{courseName}</h3>
-                        </div>
-                        <div className="course-details">
-                          <div className="course-detail">
-                            <span className="detail-label">Duration:</span>
-                            <span className="detail-value">{course.duration}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Fees:</span>
-                            <span className="detail-value">₹{course.fees}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Mode:</span>
-                            <span className="detail-value">{course.mode === 'Offline' ? 'On Campus' : course.mode}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Category:</span>
-                            <span className="detail-value">{course.category}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Certification:</span>
-                            <span className="detail-value">{course.certification}</span>
-                          </div>
-                          <div className="course-detail">
-                            <span className="detail-label">Instructor:</span>
-                            <span className="detail-value">{course.instructor}</span>
-                          </div>
-                        </div>
-                        <div className="course-enrollment-section">
-                          {enrollmentStatuses[courseId]?.enrolled && (
-                            <div className="enrollment-status">
-                              <span className="enrolled-badge">✓ Enrolled</span>
-                              <div className="progress-indicator">
-                                <div className="progress-bar">
-                                  <div 
-                                    className="progress-fill" 
-                                    style={{ width: `${enrollmentStatuses[courseId]?.progressPercentage || 0}%` }}
-                                  ></div>
-                                </div>
-                                <span className="progress-text">
-                                  {enrollmentStatuses[courseId]?.progressPercentage || 0}% Complete
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          <div className="course-action-buttons">
-                            <button 
-                              className="view-details-button"
-                              onClick={() => {
-                                if (!isLoggedIn) {
-                                  onShowLogin();
-                                  return;
-                                }
-                                navigate(`/course/${courseId}?preview=true&institute=${id}`);
-                              }}
-                            >
-                              View Details
-                            </button>
-                            {isStaffinnPartner() && course.mode === 'On Campus' && (
-                              <button 
-                                className="enroll-students-button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!isLoggedIn) {
-                                    onShowLogin();
-                                    return;
-                                  }
-                                  setSelectedCourseForEnrollment(course);
-                                  setShowEnrollmentModal(true);
-                                }}
-                              >
-                                Enroll Students
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="no-courses">
-                    <p>No on-campus courses available at the moment.</p>
-                  </div>
-                )}
+            {courseTypeFilter === 'on-campus' && (
+              <div className="course-category-section">
+                <h3 className="course-category-title">On-Campus Courses ({filteredCourses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').length})</h3>
+                <div className="courses-grid">
+                  {filteredCourses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').length > 0 ? (
+                    filteredCourses.filter(course => course.mode === 'On Campus' || course.mode === 'Offline').map(course => {
+                      const courseId = course.coursesId || course.instituteCourseID;
+                      return (
+                        <CourseCard
+                          key={courseId}
+                          course={course}
+                          onViewCourse={() => {
+                            if (!isLoggedIn) {
+                              onShowLogin();
+                              return;
+                            }
+                            navigate(`/course-learning/${courseId}`);
+                          }}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="no-courses">
+                      <p>No on-campus courses available at the moment.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {courses.length === 0 && (
               <div className="no-courses">
@@ -1122,6 +1066,44 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
           </section>
         )}
 
+        {/* Awards and Recognition Tab */}
+        {activeTab === 'awards' && (
+          <section className="awards-section">
+            <div className="section-header">
+              <h2>Awards and Recognition</h2>
+              <p>Celebrating our achievements and recognitions</p>
+            </div>
+
+            <div className="awards-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px'}}>
+              {awards && awards.length > 0 ? (
+                awards.map(award => (
+                  <div key={award.awardId} className="award-card" style={{border: '1px solid #dee2e6', borderRadius: '8px', padding: '20px', backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'}}>
+                    <h3 style={{marginBottom: '15px', color: '#2c3e50'}}>{award.title}</h3>
+                    <p style={{color: '#6c757d', marginBottom: '15px', lineHeight: '1.6'}}>{award.description}</p>
+                    {award.photos && award.photos.length > 0 && (
+                      <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px'}}>
+                        {award.photos.map((photo, index) => (
+                          <img 
+                            key={index}
+                            src={photo} 
+                            alt={`${award.title} ${index + 1}`}
+                            style={{width: '100%', height: '100px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer'}}
+                            onClick={() => window.open(photo, '_blank')}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="empty-section">
+                  <p>No awards and recognitions available yet.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Events Tab */}
         {activeTab === 'events' && (
           <section className="events-section">
@@ -1142,7 +1124,17 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                       return (
                         <div key={event.eventNewsId} className="compact-event-card">
                           <div className="compact-card-image">
-                            <img src={event.bannerImage || 'https://via.placeholder.com/300x150?text=Event'} alt={event.title} />
+                            {isVideoUrl(event.bannerImage) ? (
+                              <video 
+                                controls 
+                                style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }}
+                              >
+                                <source src={event.bannerImage} type="video/mp4" />
+                                Your browser does not support the video tag.
+                              </video>
+                            ) : (
+                              <img src={event.bannerImage || 'https://via.placeholder.com/300x150?text=Event'} alt={event.title} />
+                            )}
                           </div>
                           <div className="compact-card-content">
                             <div className="compact-card-left">
@@ -1193,7 +1185,17 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                       return (
                         <div key={newsItem.eventNewsId} className="compact-event-card">
                           <div className="compact-card-image">
-                            <img src={newsItem.bannerImage || 'https://via.placeholder.com/300x150?text=News'} alt={newsItem.title} />
+                            {isVideoUrl(newsItem.bannerImage) ? (
+                              <video 
+                                controls 
+                                style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }}
+                              >
+                                <source src={newsItem.bannerImage} type="video/mp4" />
+                                Your browser does not support the video tag.
+                              </video>
+                            ) : (
+                              <img src={newsItem.bannerImage || 'https://via.placeholder.com/300x150?text=News'} alt={newsItem.title} />
+                            )}
                           </div>
                           <div className="compact-card-content">
                             <div className="compact-card-left">
@@ -1349,7 +1351,17 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
             </div>
             
             <div className="modal-banner">
-              <img src={selectedNewsItem.bannerImage || 'https://via.placeholder.com/500x250?text=Event'} alt={selectedNewsItem.title} />
+              {isVideoUrl(selectedNewsItem.bannerImage) ? (
+                <video 
+                  controls 
+                  style={{ width: '100%', maxHeight: '400px', objectFit: 'contain' }}
+                >
+                  <source src={selectedNewsItem.bannerImage} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <img src={selectedNewsItem.bannerImage || 'https://via.placeholder.com/500x250?text=Event'} alt={selectedNewsItem.title} />
+              )}
             </div>
             
             <div className="modal-content">
@@ -1763,19 +1775,6 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Student Enrollment Modal */}
-      {showEnrollmentModal && selectedCourseForEnrollment && (
-        <StudentEnrollmentModal
-          isOpen={showEnrollmentModal}
-          onClose={() => {
-            setShowEnrollmentModal(false);
-            setSelectedCourseForEnrollment(null);
-          }}
-          course={selectedCourseForEnrollment}
-          instituteId={id}
-        />
       )}
 
       {/* Assignment Modal */}

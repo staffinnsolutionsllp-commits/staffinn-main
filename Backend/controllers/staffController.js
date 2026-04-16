@@ -68,6 +68,17 @@ const registerStaff = async (req, res) => {
         message: error
       });
     }
+
+    // Check if email is verified
+    const otpService = require('../services/otpService');
+    const otpStatus = await otpService.getOTPStatus(value.email);
+    
+    if (!otpStatus || !otpStatus.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please verify your email first'
+      });
+    }
     
     // Check if email is already registered
     const existingUser = await userModel.findUserByEmail(value.email);
@@ -124,6 +135,9 @@ const registerStaff = async (req, res) => {
     // Save staff profile
     const staffProfile = await staffModel.createStaffProfile(staffProfileData);
     console.log('Created staff profile:', staffProfile);
+
+    // Clean up OTP after successful registration
+    await otpService.deleteOTP(value.email);
     
     // Generate tokens
     const tokens = jwtUtils.generateTokens(user);

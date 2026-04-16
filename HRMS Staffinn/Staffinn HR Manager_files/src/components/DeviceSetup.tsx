@@ -161,7 +161,7 @@ export default function DeviceSetup({ companyId, apiKey }: DeviceSetupProps) {
                 <Download size={16} />
                 <span>Download Bridge Software</span>
               </button>
-              <p className="text-xs text-gray-500 mt-2">Version 1.0.0 | Windows 10/11 | 82 MB</p>
+              <p className="text-xs text-gray-500 mt-2">Version 1.0.1 | Windows 10/11 | 104 MB</p>
             </div>
           </div>
 

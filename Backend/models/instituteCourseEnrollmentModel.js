@@ -18,6 +18,7 @@ const createEnrollment = async (enrollmentData) => {
       courseId: enrollmentData.courseId,
       courseInstituteId: enrollmentData.courseInstituteId,
       enrollingInstituteId: enrollmentData.enrollingInstituteId,
+      studentType: enrollmentData.studentType || 'institute', // 'institute' or 'mis'
       enrolledStudents: enrollmentData.enrolledStudents.map(student => ({
         studentId: student.studentId,
         studentName: student.studentName,
@@ -43,11 +44,11 @@ const createEnrollment = async (enrollmentData) => {
       const studentEnrollment = {
         enrolledID: uuidv4(),
         courseId: enrollmentData.courseId,
-        userId: student.studentId, // Using studentId as userId for MIS students
+        userId: student.studentId, // Using studentId as userId
         enrollmentDate: timestamp,
         progressPercentage: 0,
         completedModules: [],
-        enrollmentType: 'institute', // Mark as institute enrollment
+        enrollmentType: enrollmentData.studentType || 'institute', // 'institute' or 'mis'
         enrollingInstituteId: enrollmentData.enrollingInstituteId,
         parentEnrollmentId: enrollmentsId, // Link to parent enrollment
         studentName: student.studentName,

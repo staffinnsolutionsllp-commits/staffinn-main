@@ -71,16 +71,19 @@ const {
   getCourseById,
   getCourses,
   getPublicCourses,
+  getAllPublicCourses,
   getPublicCourseById,
   checkEnrollmentStatus,
   enrollInCourse,
+  enrollInCoursePayAtInstitute,
   getUserEnrollments,
   getCourseContent,
   updateProgress,
   getActiveCourseCount,
   debugCourseContent,
   fixContentUrls,
-  getTrendingCourses
+  getTrendingCourses,
+  getInstituteStudentEnrollmentCount
 } = require('../controllers/instituteCourseController');
 
 // Import quiz controller
@@ -102,10 +105,21 @@ const {
   deleteInstituteGovernmentScheme
 } = require('../controllers/instituteGovernmentSchemeController');
 
+// Import awards controller
+const {
+  upload: awardsUpload,
+  addAward,
+  getAwards,
+  updateAwardItem,
+  deleteAwardItem,
+  getPublicAwards
+} = require('../controllers/instituteAwardsController');
+
 // Public routes (no authentication required)
 router.get('/public/all', getAllLiveInstitutes);
 router.get('/public/:id', getInstituteById);
 router.get('/public/:instituteId/courses', getPublicCourses);
+router.get('/courses/all/public', getAllPublicCourses);
 router.get('/courses/:courseId/public', getPublicCourseById);
 router.get('/courses/trending', getTrendingCourses);
 router.get('/public/:id/placement-section', getPublicPlacementSection);
@@ -113,6 +127,7 @@ router.get('/public/:id/dashboard-stats', getPublicDashboardStats);
 router.get('/public/:id/industry-collaborations', getPublicIndustryCollaborations);
 router.get('/public/:instituteId/events-news', getPublicEventNews);
 router.get('/public/:instituteId/government-schemes', getPublicInstituteGovernmentSchemes);
+router.get('/public/:instituteId/awards', getPublicAwards);
 router.get('/mou-pdf/:filename', serveMouPdf); // Public PDF serving route
 
 
@@ -197,6 +212,7 @@ router.post('/courses/:courseId/fix-urls', fixContentUrls);
 // Course enrollment routes
 router.get('/courses/:courseId/enrollment-status', checkEnrollmentStatus);
 router.post('/courses/:courseId/enroll', enrollInCourse);
+router.post('/courses/:courseId/enroll-pay-at-institute', enrollInCoursePayAtInstitute);
 router.get('/my-enrollments', getUserEnrollments);
 router.get('/courses/:courseId/content', getCourseContent);
 router.put('/courses/content/:contentId/progress', updateProgress);
@@ -215,6 +231,12 @@ router.get('/government-schemes', getInstituteGovernmentSchemes);
 router.put('/government-schemes/:schemeId', updateInstituteGovernmentScheme);
 router.delete('/government-schemes/:schemeId', deleteInstituteGovernmentScheme);
 
+// Awards and Recognition routes
+router.post('/awards', awardsUpload.array('photos', 10), addAward);
+router.get('/awards', getAwards);
+router.put('/awards/:awardId', awardsUpload.array('photos', 10), updateAwardItem);
+router.delete('/awards/:awardId', deleteAwardItem);
+
 // MIS Agreement routes (Staffinn Partner functionality)
 router.post('/upload-mis-agreement', industryCollabUpload.single('misAgreement'), uploadMisAgreement);
 router.get('/mis-status', getMisStatus);
@@ -229,9 +251,7 @@ router.delete('/:instituteId', deleteInstitute);
 const misRequestRoutes = require('./misRequestRoutes');
 router.use('/mis-request', misRequestRoutes);
 
-module.exports = router;
-
-
 // Institute student enrollment count for courses
-const { getInstituteStudentEnrollmentCount } = require('../controllers/instituteCourseEnrollmentController');
 router.get('/courses/:courseId/institute-enrollment-count', getInstituteStudentEnrollmentCount);
+
+module.exports = router;

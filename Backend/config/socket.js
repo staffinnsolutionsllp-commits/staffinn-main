@@ -54,6 +54,13 @@ const initializeSocketServer = (server) => {
       socket.join(`user_${socket.user.userId}`);
     }
     
+    // Handle room joining (for recruiter-specific updates)
+    socket.on('join-room', (room) => {
+      socket.join(room);
+      console.log(`✅ User ${socket.user.userId} joined room: ${room}`);
+      socket.emit('room-joined', { room, success: true });
+    });
+    
     // Send unread notifications count on connection
     sendUnreadNotificationsCount(socket);
     
@@ -132,6 +139,7 @@ const sendNotificationToUser = (userId, notification) => {
     
     if (userSocket) {
       userSocket.emit('notification', notification);
+      userSocket.emit('new_notification', notification);
       console.log(`Notification sent to user ${userId}`);
       return true;
     } else {

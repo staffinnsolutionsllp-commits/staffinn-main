@@ -5,12 +5,16 @@ import './CourseEnrollment.css';
 const CourseEnrollment = () => {
     const [courses, setCourses] = useState([]);
     const [students, setStudents] = useState([]);
+    const [misStudents, setMisStudents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState(null);
     const [selectedStudents, setSelectedStudents] = useState([]);
     const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [enrollmentCounts, setEnrollmentCounts] = useState({});
+    const [enrolledStudentsSet, setEnrolledStudentsSet] = useState(new Set());
+    const [activeTab, setActiveTab] = useState('institute');
+    const [isStaffinnPartner, setIsStaffinnPartner] = useState(false);
 
     useEffect(() => {
         loadCourses();
@@ -50,9 +54,24 @@ const CourseEnrollment = () => {
 
     const loadStudents = async () => {
         try {
-            const response = await apiService.getStudents();
+            console.log('📚 Loading students...');
+            const response = await apiService.getAvailableStudents();
+            console.log('📊 Students response:', response);
+            
             if (response.success) {
-                setStudents(response.data || []);
+                setIsStaffinnPartner(response.isStaffinnPartner || false);
+                
+                // Separate MIS and regular students
+                const allStudents = response.data || [];
+                const regularStudents = allStudents.filter(s => !s.isMisStudent);
+                const misStudentsList = allStudents.filter(s => s.isMisStudent);
+                
+                setStudents(regularStudents);
+                setMisStudents(misStudentsList);
+                
+                console.log('✅ Regular students:', regularStudents.length);
+                console.log('✅ MIS students:', misStudentsList.length);
+                console.log('✅ Is Staffinn Partner:', response.isStaffinnPartner);
             }
         } catch (error) {
             console.error('Error loading students:', error);
@@ -84,11 +103,38 @@ const CourseEnrollment = () => {
         }
     };
 
-    const handleEnrollClick = (course) => {
+    const handleEnrollClick = async (course) => {
         setSelectedCourse(course);
         setSelectedStudents([]);
         setSearchQuery('');
+        setActiveTab('institute');
         setShowEnrollmentModal(true);
+        
+        // Fetch already enrolled students for this course
+        await fetchEnrolledStudents(course.coursesId || course.instituteCourseID);
+    };
+
+    const fetchEnrolledStudents = async (courseId) => {
+        try {
+            console.log('🔍 Fetching enrolled students for course:', courseId);
+            const response = await apiService.getEnrolledInstituteStudents(courseId);
+            console.log('📊 Enrolled students response:', response);
+            
+            if (response.success && response.data) {
+                // Create a Set of enrolled student IDs for quick lookup
+                const enrolledIds = new Set(
+                    response.data.map(enrollment => enrollment.studentsId || enrollment.studentId)
+                );
+                console.log('✅ Enrolled Students Set:', Array.from(enrolledIds));
+                setEnrolledStudentsSet(enrolledIds);
+            } else {
+                console.log('⚠️ No enrolled students found or error:', response.message);
+                setEnrolledStudentsSet(new Set());
+            }
+        } catch (error) {
+            console.error('❌ Error fetching enrolled students:', error);
+            setEnrolledStudentsSet(new Set());
+        }
     };
 
     const handleStudentToggle = (studentId) => {
@@ -102,7 +148,9 @@ const CourseEnrollment = () => {
     };
 
     const handleSelectAll = () => {
-        const filteredStudentIds = getFilteredStudents().map(s => s.instituteStudntsID);
+        const filteredStudentIds = getFilteredStudents().map(s => 
+            s.instituteStudntsID || s.studentsId
+        );
         if (selectedStudents.length === filteredStudentIds.length) {
             setSelectedStudents([]);
         } else {
@@ -119,13 +167,28 @@ const CourseEnrollment = () => {
         try {
             setLoading(true);
             const courseId = selectedCourse.coursesId || selectedCourse.instituteCourseID;
-            const response = await apiService.enrollInstituteStudents(courseId, selectedStudents);
+            const studentType = activeTab === 'mis' ? 'mis' : 'institute';
+            
+            const response = await apiService.enrollInstituteStudents(
+                courseId, 
+                selectedStudents,
+                { studentType }
+            );
 
             if (response.success) {
-                alert(`Successfully enrolled ${selectedStudents.length} student(s) in ${selectedCourse.courseName || selectedCourse.name}!`);
+                const stats = response.stats || {};
+                let message = `Successfully enrolled ${stats.enrolled || selectedStudents.length} student(s)!`;
+                
+                if (stats.skipped > 0) {
+                    message += `\n${stats.skipped} student(s) were already enrolled.`;
+                }
+                
+                alert(message);
                 setShowEnrollmentModal(false);
                 setSelectedCourse(null);
                 setSelectedStudents([]);
+                setEnrolledStudentsSet(new Set());
+                setActiveTab('institute');
                 // Reload enrollment counts
                 await loadEnrollmentCounts();
             } else {
@@ -140,14 +203,35 @@ const CourseEnrollment = () => {
     };
 
     const getFilteredStudents = () => {
-        if (!searchQuery.trim()) return students;
+        // Get students based on active tab
+        let filteredList = activeTab === 'institute' ? students : misStudents;
         
-        const query = searchQuery.toLowerCase();
-        return students.filter(student => 
-            student.fullName?.toLowerCase().includes(query) ||
-            student.email?.toLowerCase().includes(query) ||
-            student.phoneNumber?.includes(query)
-        );
+        // Filter out already enrolled students
+        filteredList = filteredList.filter(student => {
+            const studentId = student.instituteStudntsID || student.studentsId;
+            const isEnrolled = enrolledStudentsSet.has(studentId);
+            if (isEnrolled) {
+                console.log('⛔ Student already enrolled, filtering out:', 
+                    student.fullName || student.studentName, studentId);
+            }
+            return !isEnrolled;
+        });
+        
+        // Apply search filter
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            filteredList = filteredList.filter(student => {
+                const name = student.fullName || student.studentName || '';
+                const email = student.email || '';
+                const phone = student.phoneNumber || student.mobile || '';
+                
+                return name.toLowerCase().includes(query) ||
+                       email.toLowerCase().includes(query) ||
+                       phone.includes(query);
+            });
+        }
+        
+        return filteredList;
     };
 
     const closeModal = () => {
@@ -231,6 +315,30 @@ const CourseEnrollment = () => {
                         </div>
                         
                         <div className="modal-body">
+                            {/* Tabs for Institute vs MIS Students */}
+                            {isStaffinnPartner && (
+                                <div className="student-tabs">
+                                    <button 
+                                        className={`tab-button ${activeTab === 'institute' ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setActiveTab('institute');
+                                            setSelectedStudents([]);
+                                        }}
+                                    >
+                                        🏫 Institute Students ({students.length})
+                                    </button>
+                                    <button 
+                                        className={`tab-button ${activeTab === 'mis' ? 'active' : ''}`}
+                                        onClick={() => {
+                                            setActiveTab('mis');
+                                            setSelectedStudents([]);
+                                        }}
+                                    >
+                                        📚 MIS Students ({misStudents.length})
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="search-section">
                                 <input
                                     type="text"
@@ -253,35 +361,55 @@ const CourseEnrollment = () => {
                             <div className="students-list">
                                 {getFilteredStudents().length === 0 ? (
                                     <div className="no-students">
-                                        {searchQuery ? 'No students found matching your search.' : 'No students available.'}
+                                        {searchQuery ? 'No students found matching your search.' : 
+                                         activeTab === 'mis' ? 'No MIS students available.' : 'No students available.'}
                                     </div>
                                 ) : (
-                                    getFilteredStudents().map(student => (
-                                        <div 
-                                            key={student.instituteStudntsID} 
-                                            className={`student-item ${selectedStudents.includes(student.instituteStudntsID) ? 'selected' : ''}`}
-                                            onClick={() => handleStudentToggle(student.instituteStudntsID)}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedStudents.includes(student.instituteStudntsID)}
-                                                onChange={() => handleStudentToggle(student.instituteStudntsID)}
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                            <div className="student-details">
-                                                <div className="student-name">{student.fullName}</div>
-                                                <div className="student-info">
-                                                    <span>{student.email}</span>
-                                                    <span>{student.phoneNumber}</span>
-                                                </div>
-                                                {student.degreeName && (
-                                                    <div className="student-degree">
-                                                        {student.degreeName} - {student.specialization}
+                                    getFilteredStudents().map(student => {
+                                        const studentId = student.instituteStudntsID || student.studentsId;
+                                        const studentName = student.fullName || student.studentName;
+                                        const studentEmail = student.email;
+                                        const studentPhone = student.phoneNumber || student.mobile;
+                                        
+                                        return (
+                                            <div 
+                                                key={studentId} 
+                                                className={`student-item ${selectedStudents.includes(studentId) ? 'selected' : ''}`}
+                                                onClick={() => handleStudentToggle(studentId)}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedStudents.includes(studentId)}
+                                                    onChange={() => handleStudentToggle(studentId)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                                <div className="student-details">
+                                                    <div className="student-name">
+                                                        {studentName}
+                                                        {activeTab === 'mis' && (
+                                                            <span className="mis-badge">MIS</span>
+                                                        )}
                                                     </div>
-                                                )}
+                                                    <div className="student-info">
+                                                        <span>{studentEmail}</span>
+                                                        <span>{studentPhone}</span>
+                                                    </div>
+                                                    {(student.degreeName || student.qualification) && (
+                                                        <div className="student-degree">
+                                                            {student.degreeName || student.qualification}
+                                                            {student.specialization && ` - ${student.specialization}`}
+                                                            {student.course && ` - ${student.course}`}
+                                                        </div>
+                                                    )}
+                                                    {student.fatherName && activeTab === 'mis' && (
+                                                        <div className="student-father">
+                                                            Father: {student.fatherName}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </div>
                         </div>

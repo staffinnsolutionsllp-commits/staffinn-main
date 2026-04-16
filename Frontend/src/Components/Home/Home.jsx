@@ -11,6 +11,7 @@ import apiWithLoading from '../../services/apiWithLoading';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import { AuthContext } from '../../context/AuthContext';
 import ChatButton from '../Messages/ChatButton';
+import { FaComments, FaEnvelope, FaWhatsapp } from 'react-icons/fa';
 
 function Home({ isLoggedIn, onShowLogin }) {
    const { user } = useContext(AuthContext);
@@ -662,6 +663,14 @@ function Home({ isLoggedIn, onShowLogin }) {
                            (showSearchResults ? searchResults : trendingStaffData).map((staff, index) => (
                                <div key={staff.userId || index} className="clean-staff-card">
                                    <div className="clean-card-header">
+                                       <div className="staffinn-staff-label">
+                                           staffinn staff
+                                       </div>
+                                       {staff.availability && (
+                                           <span className={`status-badge ${staff.availability?.toLowerCase()?.replace(' ', '-') || 'available'}`}>
+                                               {staff.availability?.charAt(0)?.toUpperCase() + staff.availability?.slice(1) || 'Available'}
+                                           </span>
+                                       )}
                                        <div className="clean-avatar">
                                            {staff.photo ? (
                                                <img src={staff.photo} alt={staff.name} className="avatar-img" />
@@ -671,48 +680,50 @@ function Home({ isLoggedIn, onShowLogin }) {
                                                </div>
                                            )}
                                        </div>
-                                       <div className="clean-info">
-                                           <h3 className="clean-name">{staff.name}</h3>
-                                           <p className="clean-profession">{staff.profession}</p>
-                                           {staff.sector && staff.role && (
-                                               <p className="clean-sector-role">{staff.sector} - {staff.role}</p>
+                                   </div>
+                                   
+                                   <div className="clean-info">
+                                       <h3 className="clean-name">{staff.name}</h3>
+                                       <p className="clean-profession">{staff.profession}</p>
+                                       
+                                       {staff.sector && staff.role && (
+                                           <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
+                                       )}
+                                       
+                                       <div className="clean-skills">
+                                           {staff.skills.slice(0, 3).map((skill, skillIndex) => (
+                                               <span key={skillIndex} className="skill-tag">{skill}</span>
+                                           ))}
+                                           {staff.skills.length > 3 && (
+                                               <span className="more-skills">+{staff.skills.length - 3}</span>
                                            )}
-                                           {(staff.area || staff.city || staff.state || staff.pincode) && (
-                                               <p className="clean-location-info">{[staff.area, staff.city, staff.state, staff.pincode].filter(Boolean).join(', ')}</p>
-                                           )}
-                                           <div className="clean-rating">
-                                               <span className="rating-text">
-                                                   ⭐ {staff.rating ? `${staff.rating}` : '0.0'} (0 reviews)
-                                               </span>
-                                               <span className={`status-badge ${getAvailabilityStatus(staff.availability).class}`}>
-                                                   {staff.availability?.charAt(0)?.toUpperCase() + staff.availability?.slice(1) || 'Available'}
-                                               </span>
-                                           </div>
                                        </div>
                                    </div>
                                    
-                                   <div className="clean-location">
-                                       <span className="location-icon">📍</span>
-                                       <span>
-                                           {[staff.fullData?.area, staff.city, staff.state, staff.pincode].filter(Boolean).join(', ') || staff.location || 'Location not specified'}
-                                       </span>
-                                   </div>
-                                   
-                                   <div className="clean-details">
-                                       <span>Experience: {staff.experience}</span>
-                                   </div>
-                                   
-                                   <div className="clean-rate">
-                                       <span>Contact by Chat</span>
-                                   </div>
-                                   
-                                   <div className="clean-skills">
-                                       {staff.skills.slice(0, 2).map((skill, skillIndex) => (
-                                           <span key={skillIndex} className="skill-tag">{skill}</span>
-                                       ))}
-                                       {staff.skills.length > 2 && (
-                                           <span className="more-skills">+{staff.skills.length - 2} more</span>
-                                       )}
+                                   <div className="clean-stats-row">
+                                       <div className="clean-stat-item">
+                                           <img src="/satisfaction.png" alt="Rating" className="stat-icon" />
+                                           <div className="stat-value">
+                                               {staff.rating ? parseFloat(staff.rating).toFixed(1) : '0.0'}
+                                           </div>
+                                           <div className="stat-label" style={{ color: '#000000' }}>Rating</div>
+                                       </div>
+                                       <div className="stat-divider"></div>
+                                       <div className="clean-stat-item">
+                                           <img src="/call.png" alt="Clients" className="stat-icon" />
+                                           <div className="stat-value">
+                                               {staff.reviewCount || 0}
+                                           </div>
+                                           <div className="stat-label" style={{ color: '#000000' }}>Clients</div>
+                                       </div>
+                                       <div className="stat-divider"></div>
+                                       <div className="clean-stat-item">
+                                           <img src="/certification_11112875.png" alt="Experience" className="stat-icon" />
+                                           <div className="stat-value">
+                                               {staff.experience?.includes('Year') ? staff.experience.split(' ')[0] : (staff.experience === 'Fresher' ? '0' : '0')}
+                                           </div>
+                                           <div className="stat-label" style={{ color: '#000000' }}>Experience</div>
+                                       </div>
                                    </div>
                                    
                                    <div className="clean-actions">
@@ -720,7 +731,7 @@ function Home({ isLoggedIn, onShowLogin }) {
                                            className="clean-view-btn"
                                            onClick={() => handleViewProfile(staff)}
                                        >
-                                           View Profile
+                                           Get In Touch
                                        </button>
                                    </div>
                                </div>
@@ -953,23 +964,81 @@ function Home({ isLoggedIn, onShowLogin }) {
                                            <ChatButton 
                                                recipientId={selectedStaff.userId}
                                                recipientName={selectedStaff.name}
-                                               size="medium"
-                                               className="contact-option-btn chat-btn"
+                                               buttonClass="contact-option-btn chat-btn"
+                                               buttonText=""
                                            />
                                            <button 
                                                className="contact-option-btn email-btn"
                                                onClick={() => handleEmail(selectedStaff.email, selectedStaff.name)}
+                                               title="Email"
+                                               style={{
+                                                   background: 'white',
+                                                   color: '#4863f7',
+                                                   border: '2px solid #e5e7eb',
+                                                   width: '60px',
+                                                   height: '60px',
+                                                   borderRadius: '50%',
+                                                   padding: '0',
+                                                   display: 'flex',
+                                                   alignItems: 'center',
+                                                   justifyContent: 'center',
+                                                   cursor: 'pointer',
+                                                   transition: 'all 0.3s ease',
+                                                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                               }}
+                                               onMouseEnter={(e) => {
+                                                   e.currentTarget.style.background = '#4863f7';
+                                                   e.currentTarget.style.color = 'white';
+                                                   e.currentTarget.style.borderColor = '#4863f7';
+                                                   e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                                                   e.currentTarget.style.boxShadow = '0 6px 20px rgba(72, 99, 247, 0.4)';
+                                               }}
+                                               onMouseLeave={(e) => {
+                                                   e.currentTarget.style.background = 'white';
+                                                   e.currentTarget.style.color = '#4863f7';
+                                                   e.currentTarget.style.borderColor = '#e5e7eb';
+                                                   e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                                   e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                                               }}
                                            >
-                                               <span className="contact-icon">📧</span>
-                                               Email
+                                               <FaEnvelope style={{ fontSize: '30px' }} />
                                            </button>
                                            {user && user.role?.toLowerCase() === 'recruiter' && (
                                                <button 
                                                    className="contact-option-btn whatsapp-btn"
                                                    onClick={() => handleWhatsApp(selectedStaff.phone, selectedStaff.name)}
+                                                   title="WhatsApp"
+                                                   style={{
+                                                       background: 'white',
+                                                       color: '#4863f7',
+                                                       border: '2px solid #e5e7eb',
+                                                       width: '60px',
+                                                       height: '60px',
+                                                       borderRadius: '50%',
+                                                       padding: '0',
+                                                       display: 'flex',
+                                                       alignItems: 'center',
+                                                       justifyContent: 'center',
+                                                       cursor: 'pointer',
+                                                       transition: 'all 0.3s ease',
+                                                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                                   }}
+                                                   onMouseEnter={(e) => {
+                                                       e.currentTarget.style.background = '#4863f7';
+                                                       e.currentTarget.style.color = 'white';
+                                                       e.currentTarget.style.borderColor = '#4863f7';
+                                                       e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                                                       e.currentTarget.style.boxShadow = '0 6px 20px rgba(72, 99, 247, 0.4)';
+                                                   }}
+                                                   onMouseLeave={(e) => {
+                                                       e.currentTarget.style.background = 'white';
+                                                       e.currentTarget.style.color = '#4863f7';
+                                                       e.currentTarget.style.borderColor = '#e5e7eb';
+                                                       e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                                       e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                                                   }}
                                                >
-                                                   <span className="contact-icon">💬</span>
-                                                   WhatsApp
+                                                   <FaWhatsapp style={{ fontSize: '30px' }} />
                                                </button>
                                            )}
                                        </div>

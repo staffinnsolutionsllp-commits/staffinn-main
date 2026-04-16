@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../../../services/api';
-import StudentStatusModal from './StudentStatusModal';
 
 const StudentWiseAnalytics = () => {
   const [studentData, setStudentData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
 
   useEffect(() => {
     loadStudentWiseData();
@@ -23,11 +20,6 @@ const StudentWiseAnalytics = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleViewStatus = async (student) => {
-    setSelectedStudent(student);
-    setShowStatusModal(true);
   };
 
   if (loading) {
@@ -95,7 +87,7 @@ const StudentWiseAnalytics = () => {
             <th>Sector</th>
             <th>Placed Count</th>
             <th>Total Applications</th>
-            <th>Actions</th>
+            <th>Current Status</th>
           </tr>
         </thead>
         <tbody>
@@ -116,28 +108,18 @@ const StudentWiseAnalytics = () => {
               </td>
               <td>{student.totalApplications || 0}</td>
               <td>
-                <button 
-                  className="placement-action-btn view"
-                  onClick={() => handleViewStatus(student)}
-                >
-                  View Details
-                </button>
+                <span className={`status-badge ${
+                  student.status === 'Hired' ? 'hired' : 
+                  student.status === 'Rejected' ? 'rejected' : 
+                  'pending'
+                }`}>
+                  {student.status || 'Not Applied'}
+                </span>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-
-      {/* Student Status Modal */}
-      {showStatusModal && selectedStudent && (
-        <StudentStatusModal
-          student={selectedStudent}
-          onClose={() => {
-            setShowStatusModal(false);
-            setSelectedStudent(null);
-          }}
-        />
-      )}
     </div>
   );
 };

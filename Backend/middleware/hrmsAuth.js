@@ -29,6 +29,20 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }
 
+    // CRITICAL: Validate recruiterId matches between token and database
+    if (decoded.recruiterId && user.recruiterId && decoded.recruiterId !== user.recruiterId) {
+      console.error('🚨 SECURITY: RecruiterId mismatch detected!', {
+        tokenRecruiterId: decoded.recruiterId,
+        userRecruiterId: user.recruiterId,
+        userId: user.userId
+      });
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Session validation failed. Please login again.',
+        code: 'RECRUITER_ID_MISMATCH'
+      });
+    }
+
     // Add companyId and recruiterId from token OR database to user object
     if (decoded.companyId) {
       user.companyId = decoded.companyId;
@@ -44,6 +58,7 @@ const authenticateToken = async (req, res, next) => {
     console.log('🔐 Auth middleware - User:', { userId: user.userId, recruiterId: user.recruiterId, companyId: user.companyId });
 
     req.user = user;
+    req.recruiterId = user.recruiterId; // Explicitly set recruiterId for downstream use
     next();
   } catch (error) {
     return res.status(403).json({ success: false, message: 'Invalid or expired token' });

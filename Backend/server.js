@@ -39,6 +39,7 @@ const userNotificationRoutes = require('./routes/userNotificationRoutes');
 const adminNotificationRoutes = require('./routes/adminNotificationRoutes');
 const newsRoutes = require('./routes/newsRoutes');
 const newsAdminRoutes = require('./routes/newsAdminRoutes');
+const instituteNewsRoutes = require('./routes/instituteNewsRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const issueRoutes = require('./routes/issueRoutes');
 const assignmentRoutes = require('./routes/assignmentRoutes');
@@ -117,7 +118,7 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires', 'x-company-id', 'x-api-key'],
   exposedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
@@ -160,6 +161,7 @@ app.use(`${API_PREFIX}/notifications`, userNotificationRoutes);
 app.use(`${API_PREFIX}/admin/notifications`, adminNotificationRoutes);
 app.use(`${API_PREFIX}/news`, newsRoutes);
 app.use(`${API_PREFIX}/news-admin`, newsAdminRoutes);
+app.use(`${API_PREFIX}/institute-news`, instituteNewsRoutes);
 app.use(`${API_PREFIX}/admin`, adminRoutes);
 app.use(`${API_PREFIX}/issues`, issueRoutes);
 app.use(`${API_PREFIX}/assignments`, assignmentRoutes);

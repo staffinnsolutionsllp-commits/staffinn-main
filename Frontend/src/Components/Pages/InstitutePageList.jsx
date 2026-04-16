@@ -4,7 +4,7 @@ import axios from 'axios';
 import apiWithLoading from '../../services/apiWithLoading';
 import './InstitutePageList.css';
 import '../Dashboard/Categories.css';
-import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCheckCircle, FaSearch } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCheckCircle, FaSearch, FaGraduationCap, FaUniversity, FaUserGraduate, FaChartLine, FaSchool, FaChalkboardTeacher, FaTh, FaList, FaBriefcase, FaCalendarAlt } from 'react-icons/fa';
 import InstitutepageImage from '../../assets/Institutepage.jpg';
 import { useGlobalLoading } from '../../hooks/useGlobalLoading';
 
@@ -17,6 +17,12 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
   const [loading, setLoading] = useState(true);
   const [heroImages, setHeroImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedState, setSelectedState] = useState('');
+  const [stateSearchTerm, setStateSearchTerm] = useState('');
+  const [selectedAffiliations, setSelectedAffiliations] = useState([]);
+  const [staffinnVerifiedOnly, setStaffinnVerifiedOnly] = useState(false);
+  const [experienceRange, setExperienceRange] = useState('all');
+  const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
   
   // Use global loading hook
   const { withLoading } = useGlobalLoading();
@@ -199,6 +205,39 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
     return InstitutepageImage;
   };
 
+  // Extract unique affiliations from institutes
+  const getUniqueAffiliations = () => {
+    const affiliations = new Set();
+    institutes.forEach(institute => {
+      if (institute.badges && Array.isArray(institute.badges)) {
+        institute.badges.forEach(badge => affiliations.add(badge));
+      }
+    });
+    return Array.from(affiliations).sort();
+  };
+
+  const uniqueAffiliations = getUniqueAffiliations();
+
+  // Extract unique states from institutes
+  const getUniqueStates = () => {
+    const states = new Set();
+    institutes.forEach(institute => {
+      if (institute.location) {
+        const locationParts = institute.location.split(',').map(part => part.trim());
+        const state = locationParts[locationParts.length - 1];
+        if (state) states.add(state);
+      }
+    });
+    return Array.from(states).sort();
+  };
+
+  const uniqueStates = getUniqueStates();
+
+  // Filter states based on search term
+  const filteredStates = uniqueStates.filter(state => 
+    state.toLowerCase().includes(stateSearchTerm.toLowerCase())
+  );
+
   // Filter institutes based on search terms and selected filter
   useEffect(() => {
     let results = institutes;
@@ -224,6 +263,18 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
       );
     }
     
+    // Apply state filter
+    if (selectedState) {
+      results = results.filter(institute => {
+        if (institute.location) {
+          const locationParts = institute.location.split(',').map(part => part.trim());
+          const state = locationParts[locationParts.length - 1];
+          return state === selectedState;
+        }
+        return false;
+      });
+    }
+    
     // Apply category filter
     if (filter === 'colleges') {
       results = results.filter(institute => institute.categories && institute.categories.includes('Colleges'));
@@ -231,10 +282,47 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
       results = results.filter(institute => institute.categories && institute.categories.includes('Skill and Vocational'));
     } else if (filter === 'upskilling') {
       results = results.filter(institute => institute.categories && institute.categories.includes('Upskilling'));
+    } else if (filter === 'school') {
+      results = results.filter(institute => institute.categories && institute.categories.includes('School'));
+    } else if (filter === 'coaching-centre') {
+      results = results.filter(institute => institute.categories && institute.categories.includes('Coaching Centre'));
+    }
+
+    // Apply affiliation filter
+    if (selectedAffiliations.length > 0) {
+      results = results.filter(institute => 
+        institute.badges && selectedAffiliations.some(aff => institute.badges.includes(aff))
+      );
+    }
+
+    // Apply Staffinn Verified filter
+    if (staffinnVerifiedOnly) {
+      results = results.filter(institute => institute.isBrainaryVerified);
+    }
+
+    // Apply experience range filter
+    if (experienceRange !== 'all') {
+      results = results.filter(institute => {
+        const exp = parseInt(institute.experience);
+        if (isNaN(exp)) return false;
+        
+        switch(experienceRange) {
+          case '0-5':
+            return exp >= 0 && exp <= 5;
+          case '5-10':
+            return exp > 5 && exp <= 10;
+          case '10-20':
+            return exp > 10 && exp <= 20;
+          case '20+':
+            return exp > 20;
+          default:
+            return true;
+        }
+      });
     }
     
     setFilteredInstitutes(results);
-  }, [nameLocationSearch, courseSearch, filter, institutes]);
+  }, [nameLocationSearch, courseSearch, filter, institutes, selectedState, selectedAffiliations, staffinnVerifiedOnly, experienceRange]);
 
   return (
     <div className="institute-list-page">
@@ -290,74 +378,157 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
         </div>
       </div>
 
-      {/* Filters Section - Now above the institute cards */}
-      <div className="institute-filters">
-        <h3>Filters</h3>
-        <div className="filter-options">
-          <div className="filter-option">
-            <input 
-              type="radio" 
-              id="filter-all" 
-              name="institute-filter" 
-              value=""
-              checked={filter === ''}
-              onChange={() => setFilter('')}
-            />
-            <label htmlFor="filter-all">All Institutes</label>
+      {/* Main Content with Sidebar and Cards */}
+      <div className="institutes-content-wrapper">
+        {/* Sidebar Filters */}
+        <aside className="institutes-sidebar">
+          <h3 className="sidebar-title">Filters</h3>
+          <p className="sidebar-subtitle">REFINE YOUR SEARCH</p>
+          
+          {/* Category Filters */}
+          <div className="category-filters">
+            <div 
+              className={`category-filter-item ${filter === '' ? 'active' : ''}`}
+              onClick={() => setFilter('')}
+            >
+              <div className="category-icon"><FaGraduationCap /></div>
+              <span className="category-label">All Institutes</span>
+            </div>
+            <div 
+              className={`category-filter-item ${filter === 'colleges' ? 'active' : ''}`}
+              onClick={() => setFilter('colleges')}
+            >
+              <div className="category-icon"><FaUniversity /></div>
+              <span className="category-label">Colleges</span>
+            </div>
+            <div 
+              className={`category-filter-item ${filter === 'skill-vocational' ? 'active' : ''}`}
+              onClick={() => setFilter('skill-vocational')}
+            >
+              <div className="category-icon"><FaUserGraduate /></div>
+              <span className="category-label">Skill and Vocational</span>
+            </div>
+            <div 
+              className={`category-filter-item ${filter === 'upskilling' ? 'active' : ''}`}
+              onClick={() => setFilter('upskilling')}
+            >
+              <div className="category-icon"><FaChartLine /></div>
+              <span className="category-label">Upskilling</span>
+            </div>
+            <div 
+              className={`category-filter-item ${filter === 'school' ? 'active' : ''}`}
+              onClick={() => setFilter('school')}
+            >
+              <div className="category-icon"><FaSchool /></div>
+              <span className="category-label">School</span>
+            </div>
+            <div 
+              className={`category-filter-item ${filter === 'coaching-centre' ? 'active' : ''}`}
+              onClick={() => setFilter('coaching-centre')}
+            >
+              <div className="category-icon"><FaChalkboardTeacher /></div>
+              <span className="category-label">Coaching Centre</span>
+            </div>
           </div>
-          <div className="filter-option">
-            <input 
-              type="radio" 
-              id="filter-colleges" 
-              name="institute-filter" 
-              value="colleges"
-              checked={filter === 'colleges'}
-              onChange={() => setFilter('colleges')}
-            />
-            <label htmlFor="filter-colleges">Colleges</label>
-          </div>
-          <div className="filter-option">
-            <input 
-              type="radio" 
-              id="filter-skill-vocational" 
-              name="institute-filter" 
-              value="skill-vocational"
-              checked={filter === 'skill-vocational'}
-              onChange={() => setFilter('skill-vocational')}
-            />
-            <label htmlFor="filter-skill-vocational">Skill and Vocational</label>
-          </div>
-          <div className="filter-option">
-            <input 
-              type="radio" 
-              id="filter-upskilling" 
-              name="institute-filter" 
-              value="upskilling"
-              checked={filter === 'upskilling'}
-              onChange={() => setFilter('upskilling')}
-            />
-            <label htmlFor="filter-upskilling">Upskilling</label>
-          </div>
-        </div>
-      </div>
 
-      {/* Institutes Grid */}
-      <div className="institutes-grid">
+          {/* Affiliation Filters */}
+          {uniqueAffiliations.length > 0 && (
+            <>
+              <h4 className="filter-section-title">AFFILIATION</h4>
+              <div className="affiliation-filters">
+                {uniqueAffiliations.map((affiliation, index) => (
+                  <div key={index} className="affiliation-item">
+                    <input 
+                      type="checkbox"
+                      id={`affiliation-${index}`}
+                      checked={selectedAffiliations.includes(affiliation)}
+                      onChange={() => {
+                        setSelectedAffiliations(prev => 
+                          prev.includes(affiliation)
+                            ? prev.filter(a => a !== affiliation)
+                            : [...prev, affiliation]
+                        );
+                      }}
+                    />
+                    <label htmlFor={`affiliation-${index}`}>{affiliation}</label>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Verification Filter */}
+          <h4 className="filter-section-title">VERIFICATION</h4>
+          <div className="verification-toggle">
+            <div className="verification-label">
+              <FaCheckCircle className="verification-icon" />
+              Staffinn Verified
+            </div>
+            <div 
+              className={`toggle-switch ${staffinnVerifiedOnly ? 'active' : ''}`}
+              onClick={() => setStaffinnVerifiedOnly(!staffinnVerifiedOnly)}
+            >
+              <div className="toggle-slider"></div>
+            </div>
+          </div>
+
+          {/* Experience Range Filter */}
+          <h4 className="filter-section-title">EXPERIENCE RANGE</h4>
+          <select 
+            className="experience-dropdown"
+            value={experienceRange}
+            onChange={(e) => setExperienceRange(e.target.value)}
+          >
+            <option value="all">All Years</option>
+            <option value="0-5">0-5 Years</option>
+            <option value="5-10">5-10 Years</option>
+            <option value="10-20">10-20 Years</option>
+            <option value="20+">20+ Years</option>
+          </select>
+        </aside>
+
+        {/* Institutes Grid */}
+        <div className="institutes-grid">
+          {/* Results Header */}
+          <div className="results-header">
+            <div className="results-count">
+              Showing <span>{filteredInstitutes.length}</span> Institutes
+            </div>
+            <div className="view-toggle">
+              <button 
+                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                onClick={() => setViewMode('grid')}
+                title="Grid View"
+              >
+                <FaTh />
+              </button>
+              <button 
+                className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                onClick={() => setViewMode('list')}
+                title="List View"
+              >
+                <FaList />
+              </button>
+            </div>
+          </div>
         {loading ? (
           <div className="loading-message">
             <p>Loading institutes...</p>
           </div>
         ) : filteredInstitutes.length > 0 ? (
           filteredInstitutes.map(institute => (
-            <div key={institute.id} className="institute-card">
-              <div className="institute-header">
-                <div className="institute-logo">
+            <div key={institute.id} className="institute-card-horizontal">
+              <div className="institute-card-left">
+                <div className="institute-logo-horizontal">
                   <img 
-                    src={institute.profileImage || `https://via.placeholder.com/80?text=${institute.name.charAt(0)}`} 
+                    src={institute.profileImage || `https://via.placeholder.com/120?text=${institute.name.charAt(0)}`} 
                     alt={`${institute.name} Logo`} 
                   />
                 </div>
-                <div className="institute-name">
+              </div>
+              
+              <div className="institute-card-middle">
+                <div className="institute-name-section">
                   <h2>{institute.name}</h2>
                   {institute.isBrainaryVerified && (
                     <div className="brainary-verified">
@@ -365,46 +536,65 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
                     </div>
                   )}
                 </div>
+                
+                <div className="institute-badges">
+                  {institute.badges && institute.badges.map((badge, index) => (
+                    <span key={index} className="badge">{badge}</span>
+                  ))}
+                  {institute.categories && institute.categories.map((category, index) => (
+                    <span key={`cat-${index}`} className="category-badge">{category}</span>
+                  ))}
+                </div>
+                
+                <div className="institute-details-horizontal">
+                  <div className="info-card">
+                    <div className="info-card-icon">
+                      <FaMapMarkerAlt />
+                    </div>
+                    <div className="info-card-content">
+                      <span className="info-value">
+                        {institute?.location}
+                        {institute?.pincode && ` - ${institute.pincode}`}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="info-card experience-card">
+                    <div className="info-card-icon">
+                      <FaBriefcase />
+                    </div>
+                    <div className="info-card-content">
+                      <span className="info-value">{institute.experience ? `${institute.experience}+ Years of Experience` : 'Experience Not Available'}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="info-card">
+                    <div className="info-card-icon">
+                      <FaPhone />
+                    </div>
+                    <div className="info-card-content">
+                      <span className="info-value">{institute.phone}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="info-card">
+                    <div className="info-card-icon">
+                      <FaGlobe />
+                    </div>
+                    <div className="info-card-content">
+                      {institute.website ? (
+                        <a href={institute.website.startsWith('http') ? institute.website : `https://${institute.website}`} target="_blank" rel="noopener noreferrer" className="info-value website-link">
+                          {institute.website.replace(/^https?:\/\//, '').replace(/^www\./, '')}
+                        </a>
+                      ) : (
+                        <span className="info-value" style={{color: '#cbd5e1'}}>Website Not Available</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="institute-badges">
-                {institute.badges && institute.badges.map((badge, index) => (
-                  <span key={index} className="badge">{badge}</span>
-                ))}
-                {institute.categories && institute.categories.map((category, index) => (
-                  <span key={`cat-${index}`} className="category-badge">{category}</span>
-                ))}
-              </div>
-              <div className="institute-details">
-                <div className="info-item">
-                  <FaMapMarkerAlt />
-                  <span>
-                    {institute?.location}
-                    {institute?.pincode && `, ${institute.pincode}`}
-                  </span>
-                </div>
-                <div className="info-item">
-                  <FaPhone />
-                  <span>{institute.phone}</span>
-                </div>
-                <div className="info-item">
-                  <FaEnvelope />
-                  <span>{institute.email}</span>
-                </div>
-                <div className="info-item">
-                  <FaGlobe />
-                  {institute.website ? (
-                    <a href={institute.website} target="_blank" rel="noopener noreferrer" className="website-link">
-                      Website
-                    </a>
-                  ) : (
-                    <span>Website Not Available</span>
-                  )}
-                </div>
-                <div className="info-item experience">
-                  <span>{institute.experience ? `${institute.experience}+ Years of Experience` : 'Experience Not Available'}</span>
-                </div>
-              </div>
-              <div className="institute-actions">
+              
+              <div className="institute-card-right">
                 <button 
                   className="view-institute-btn"
                   onClick={() => {
@@ -438,6 +628,7 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
             <p>Try adjusting your search or filter settings</p>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

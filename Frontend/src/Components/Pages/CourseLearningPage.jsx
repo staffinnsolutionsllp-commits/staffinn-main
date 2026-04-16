@@ -5,6 +5,8 @@ import progressSocketService from '../../services/progressSocket';
 import { debugVideoContent, logVideoError } from '../../utils/videoUtils';
 import { calculateCourseProgress } from '../../utils/progressUtils';
 import PaymentModal from '../Dashboard/PaymentModal';
+import PaymentOptionModal from '../Dashboard/PaymentOptionModal';
+import StudentEnrollmentModal from '../Modals/StudentEnrollmentModal';
 import './CourseLearningPage.css';
 import { FaPlay, FaLock, FaCheck, FaChevronDown, FaChevronUp, FaStar, FaUsers, FaClock, FaGlobe } from 'react-icons/fa';
 
@@ -31,13 +33,36 @@ const CourseLearningPage = () => {
   const [reviewForm, setReviewForm] = useState({ rating: 5, review: '' });
   const [submittingReview, setSubmittingReview] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentOptionModal, setShowPaymentOptionModal] = useState(false);
+  const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
     if (courseId) {
       fetchCourseData();
       checkEnrollmentStatus();
+      fetchUserProfile();
     }
   }, [courseId]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await apiService.getProfile();
+      if (response.success) {
+        setUserProfile(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const isStaffinnPartner = () => {
+    return userProfile?.role === 'institute' && userProfile?.instituteType === 'staffinn_partner';
+  };
+
+  const isNormalInstitute = () => {
+    return userProfile?.role === 'institute' && userProfile?.instituteType !== 'staffinn_partner';
+  };
 
   useEffect(() => {
     if (courseId && activeTab === 'reviews') {
@@ -144,8 +169,46 @@ const CourseLearningPage = () => {
   const handleEnroll = async () => {
     try {
       console.log('🚀 Attempting to enroll in course:', courseId);
+      console.log('📊 Course mode:', course.mode);
+      console.log('💰 Course fees:', course.fees);
+      console.log('👤 User role:', userProfile?.role);
+      console.log('🏢 Institute type:', userProfile?.instituteType);
       
-      // Check if course is paid
+      // Check if user is an institute (any type)
+      const isInstitute = userProfile?.role === 'institute';
+      
+      // Check if course is Online
+      const isOnline = course.mode && course.mode.toLowerCase() === 'online';
+      
+      // RESTRICTION: Institute users cannot enroll in Online courses
+      if (isInstitute && isOnline) {
+        alert('You can only apply to on-campus courses only.');
+        return;
+      }
+      
+      // Check if user is a Staffinn Partner or Normal Institute
+      const isPartner = isStaffinnPartner();
+      const isNormalInstituteUser = isNormalInstitute();
+      
+      // Check if course is On-Campus
+      const isOnCampus = course.mode && (course.mode.toLowerCase() === 'on campus' || course.mode.toLowerCase() === 'offline');
+      const isPaid = course.fees && parseFloat(course.fees) > 0;
+      
+      // For Staffinn Partner or Normal Institute on On-Campus courses
+      if ((isPartner || isNormalInstituteUser) && isOnCampus) {
+        console.log('🏫 Institute user detected on On-Campus course - showing enrollment modal');
+        setShowEnrollmentModal(true);
+        return;
+      }
+      
+      // For regular users on On-Campus paid courses
+      if (isOnCampus && isPaid && !isPartner && !isNormalInstituteUser) {
+        console.log('🏫 Regular user on On-Campus paid course - showing payment option modal');
+        setShowPaymentOptionModal(true);
+        return;
+      }
+      
+      // Check if course is paid online course
       if (course.mode === 'Online' && parseFloat(course.fees) > 0) {
         console.log('💰 Paid course detected, checking payment status...');
         
@@ -201,6 +264,40 @@ const CourseLearningPage = () => {
     setEnrollmentStatus({ enrolled: true, hasStarted: false, progressPercentage: 0 });
     await fetchCourseData();
     await checkEnrollmentStatus();
+  };
+
+  const handlePayHere = () => {
+    console.log('💳 User selected: Pay Here (Razorpay)');
+    setShowPaymentOptionModal(false);
+    setShowPaymentModal(true);
+  };
+
+  const handlePayAtInstitute = async () => {
+    console.log('🏢 User selected: Pay at Institute');
+    try {
+      console.log('📤 Calling API: enrollInCoursePayAtInstitute');
+      const response = await apiService.enrollInCoursePayAtInstitute(courseId);
+      
+      console.log('📥 API Response:', response);
+      
+      if (response.success) {
+        setShowPaymentOptionModal(false);
+        alert(
+          'Enrollment request submitted successfully!\n\n' +
+          'The institute has been notified about your enrollment.\n' +
+          'Please visit the institute to complete the payment.\n\n' +
+          'You will receive further instructions from the institute.'
+        );
+        // Refresh enrollment status
+        await checkEnrollmentStatus();
+        await fetchCourseData();
+      } else {
+        alert(response.message || 'Failed to submit enrollment request');
+      }
+    } catch (error) {
+      console.error('❌ Error submitting enrollment request:', error);
+      alert('Failed to submit enrollment request: ' + (error.message || 'Unknown error'));
+    }
   };
 
   const toggleSection = (index) => {
@@ -1550,6 +1647,42 @@ const CourseLearningPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Student Enrollment Modal for Institutes */}
+      {showEnrollmentModal && course && (
+        <StudentEnrollmentModal
+          isOpen={showEnrollmentModal}
+          onClose={() => setShowEnrollmentModal(false)}
+          course={{
+            coursesId: courseId,
+            courseName: course.courseName || course.name,
+            name: course.courseName || course.name,
+            instructor: course.instructor,
+            duration: course.duration,
+            fees: course.fees,
+            mode: course.mode
+          }}
+          instituteId={userProfile?.instituteId}
+        />
+      )}
+
+      {/* Payment Option Modal for On-Campus Courses */}
+      {showPaymentOptionModal && course && (
+        <PaymentOptionModal
+          course={{
+            coursesId: courseId,
+            courseName: course.courseName || course.name,
+            name: course.courseName || course.name,
+            instructor: course.instructor,
+            duration: course.duration,
+            fees: course.fees,
+            mode: course.mode
+          }}
+          onClose={() => setShowPaymentOptionModal(false)}
+          onPayHere={handlePayHere}
+          onPayAtInstitute={handlePayAtInstitute}
+        />
       )}
 
       {/* Payment Modal */}

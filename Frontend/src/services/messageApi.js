@@ -137,6 +137,69 @@ const messageApi = {
       }
     });
     return await response.json();
+  },
+
+  // Send file message
+  sendFileMessage: async (formData) => {
+    const response = await fetch(`${API_URL}/messages/send-file`, {
+      method: 'POST',
+      headers: {
+        ...getAuthHeader()
+      },
+      body: formData
+    });
+    return await response.json();
+  },
+
+  // Get user profile (for profile photo)
+  getUserProfile: async (userId) => {
+    const response = await fetch(`${API_URL}/staff/profile/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader()
+      }
+    });
+    return await response.json();
+  },
+
+  // Edit message
+  editMessage: async (messageId, createdAt, newMessage) => {
+    const response = await fetch(`${API_URL}/messages/${messageId}/${createdAt}/edit`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader()
+      },
+      body: JSON.stringify({ newMessage })
+    });
+    return await response.json();
+  },
+
+  // Delete message (for me or everyone)
+  deleteMessageWithType: async (messageId, createdAt, deleteType) => {
+    const response = await fetch(`${API_URL}/messages/${messageId}/${createdAt}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader()
+      },
+      body: JSON.stringify({ deleteType })
+    });
+    return await response.json();
+  },
+
+  // Delete multiple messages
+  deleteMultipleMessages: async (messages, deleteType) => {
+    const response = await fetch(`${API_URL}/messages/delete-multiple`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader()
+      },
+      body: JSON.stringify({ messages, deleteType })
+    });
+    return await response.json();
   }
 };
 

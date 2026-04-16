@@ -5,17 +5,43 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
 class ApiService {
   constructor() {
     this.baseURL = API_BASE_URL;
-    this.token = localStorage.getItem('hrms_token');
+    this.currentRecruiterId = null;
+    this.token = this.getStoredToken();
   }
 
-  setToken(token) {
+  getStoredToken() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const recruiterId = urlParams.get('recruiterId');
+    
+    if (recruiterId) {
+      this.currentRecruiterId = recruiterId;
+      const token = localStorage.getItem(`hrms_token_${recruiterId}`);
+      return token;
+    }
+    
+    const storedRecruiterId = sessionStorage.getItem('current_recruiter_id');
+    if (storedRecruiterId) {
+      this.currentRecruiterId = storedRecruiterId;
+      return localStorage.getItem(`hrms_token_${storedRecruiterId}`);
+    }
+    
+    return null;
+  }
+
+  setToken(token, recruiterId = null) {
     this.token = token;
-    if (token) {
-      localStorage.setItem('hrms_token', token);
-      console.log('Token set:', token.substring(0, 20) + '...');
-    } else {
-      localStorage.removeItem('hrms_token');
-      console.log('Token removed');
+    const targetRecruiterId = recruiterId || this.currentRecruiterId;
+    
+    if (token && targetRecruiterId) {
+      localStorage.setItem(`hrms_token_${targetRecruiterId}`, token);
+      sessionStorage.setItem('current_recruiter_id', targetRecruiterId);
+      this.currentRecruiterId = targetRecruiterId;
+      console.log('Token set for recruiter:', targetRecruiterId);
+    } else if (!token && targetRecruiterId) {
+      localStorage.removeItem(`hrms_token_${targetRecruiterId}`);
+      sessionStorage.removeItem('current_recruiter_id');
+      this.currentRecruiterId = null;
+      console.log('Token removed for recruiter:', targetRecruiterId);
     }
   }
 
@@ -65,7 +91,10 @@ class ApiService {
 
   async login(email, password, recruiterId = null) {
     const body = { email, password };
-    if (recruiterId) body.recruiterId = recruiterId;
+    if (recruiterId) {
+      body.recruiterId = recruiterId;
+      this.currentRecruiterId = recruiterId;
+    }
     
     const response = await this.request('/auth/login', {
       method: 'POST',
@@ -73,17 +102,33 @@ class ApiService {
     });
     
     if (response.success && response.data.token) {
-      this.setToken(response.data.token);
+      const userRecruiterId = response.data.user?.recruiterId || recruiterId;
+      if (userRecruiterId) {
+        this.setToken(response.data.token, userRecruiterId);
+      } else {
+        console.error('No recruiterId found in login response');
+        throw new Error('Invalid session: recruiterId missing');
+      }
     }
     
     return response;
   }
 
   async register(name, email, password, role = 'admin', recruiterId) {
-    return this.request('/auth/register', {
+    if (recruiterId) {
+      this.currentRecruiterId = recruiterId;
+    }
+    
+    const response = await this.request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password, role, recruiterId }),
     });
+    
+    if (response.success && response.data.token && recruiterId) {
+      this.setToken(response.data.token, recruiterId);
+    }
+    
+    return response;
   }
 
   async getProfile() {
@@ -91,7 +136,9 @@ class ApiService {
   }
 
   logout() {
-    this.setToken(null);
+    const recruiterId = this.currentRecruiterId;
+    this.setToken(null, recruiterId);
+    this.currentRecruiterId = null;
   }
 
   // Employee methods
@@ -320,9 +367,13 @@ class ApiService {
 
   // Company methods
   async registerCompany(companyName, adminEmail, adminPassword) {
+    // Extract recruiterId from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const recruiterId = urlParams.get('recruiterId');
+    
     return this.request('/company/register', {
       method: 'POST',
-      body: JSON.stringify({ companyName, adminEmail, adminPassword }),
+      body: JSON.stringify({ companyName, adminEmail, adminPassword, recruiterId }),
     });
   }
 

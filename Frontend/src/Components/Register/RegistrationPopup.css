@@ -363,6 +363,53 @@
 
 .input-group {
     position: relative;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.input-group input {
+    flex: 1;
+    min-width: 200px;
+}
+
+.otp-btn,
+.verify-btn {
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    white-space: nowrap;
+}
+
+.otp-btn {
+    background: var(--primary-color);
+    color: white;
+}
+
+.otp-btn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.verify-btn {
+    background: var(--success-color);
+    color: white;
+}
+
+.verify-btn:hover {
+    background: #218838;
+    transform: translateY(-2px);
+}
+
+.verify-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .error-text {

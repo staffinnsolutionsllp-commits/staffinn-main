@@ -27,6 +27,11 @@ const StaffRegistrationForm = ({ onRegister }) => {
    const [qualityMessage, setQualityMessage] = useState("Start filling the form to become a quality staff member!");
    const [errors, setErrors] = useState({});
    const [fieldErrors, setFieldErrors] = useState({});
+   const [showOtpInput, setShowOtpInput] = useState(false);
+   const [otp, setOtp] = useState('');
+   const [otpSent, setOtpSent] = useState(false);
+   const [isVerifying, setIsVerifying] = useState(false);
+   const [otpError, setOtpError] = useState('');
 
    const updateQuality = (newFormData) => {
        let filledFields = 0;
@@ -73,17 +78,70 @@ const StaffRegistrationForm = ({ onRegister }) => {
        }
    };
 
-   const handleSubmit = (e) => {
+   const handleSendOtp = async () => {
+       if (!formData.email) {
+           setOtpError('Please enter email first');
+           return;
+       }
+       
+       try {
+           console.log('Sending OTP to:', formData.email);
+           const response = await apiService.sendOTP(formData.email);
+           console.log('OTP Response:', response);
+           if (response.success) {
+               setOtpSent(true);
+               setShowOtpInput(true);
+               setOtpError('');
+               alert('OTP sent to your email!');
+           } else {
+               setOtpError(response.message || 'Failed to send OTP');
+           }
+       } catch (error) {
+           console.error('Send OTP Error:', error);
+           setOtpError('Error sending OTP');
+       }
+   };
+
+   const handleVerifyOtp = async () => {
+       if (!otp) {
+           setOtpError('Please enter OTP');
+           return;
+       }
+       
+       setIsVerifying(true);
+       try {
+           console.log('Verifying OTP for:', formData.email);
+           const response = await apiService.verifyOTP(formData.email, otp);
+           console.log('Verify Response:', response);
+           if (response.success) {
+               setOtpError('');
+               alert('Email verified successfully!');
+           } else {
+               setOtpError(response.message || 'Invalid OTP');
+           }
+       } catch (error) {
+           console.error('Verify OTP Error:', error);
+           setOtpError('Error verifying OTP');
+       } finally {
+           setIsVerifying(false);
+       }
+   };
+
+   const handleSubmit = async (e) => {
        e.preventDefault();
        
-       // Validate entire form
        const formErrors = validateStaffForm(formData);
        setErrors(formErrors);
        
-       // Check if there are any errors
        if (Object.keys(formErrors).length > 0) {
            return;
        }
+       
+       // OTP verification is optional for now
+       // if (!otpSent) {
+       //     setOtpError('Please verify your email with OTP first');
+       //     return;
+       // }
        
        onRegister(formData, 'Staff');
    };
@@ -128,11 +186,43 @@ const StaffRegistrationForm = ({ onRegister }) => {
                        onChange={(e) => handleInputChange('email', e.target.value)}
                        className={fieldErrors.email || errors.email ? 'error' : ''}
                        required
+                       disabled={otpSent}
                    />
+                   {!otpSent && (
+                       <button 
+                           type="button" 
+                           className="otp-btn"
+                           onClick={handleSendOtp}
+                       >
+                           Send OTP
+                       </button>
+                   )}
                    {(fieldErrors.email || errors.email) && 
                        <span className="error-text">{fieldErrors.email || errors.email}</span>
                    }
                </div>
+
+               {showOtpInput && (
+                   <div className="input-group">
+                       <input 
+                           type="text"
+                           placeholder="Enter OTP *"
+                           value={otp}
+                           onChange={(e) => setOtp(e.target.value)}
+                           maxLength="6"
+                           required
+                       />
+                       <button 
+                           type="button" 
+                           className="verify-btn"
+                           onClick={handleVerifyOtp}
+                           disabled={isVerifying}
+                       >
+                           {isVerifying ? 'Verifying...' : 'Verify OTP'}
+                       </button>
+                       {otpError && <span className="error-text">{otpError}</span>}
+                   </div>
+               )}
 
                <div className="input-group">
                    <input 

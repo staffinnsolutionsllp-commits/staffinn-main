@@ -377,6 +377,69 @@
     flex: 1;
 }
 
+/* Student Tabs */
+.student-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 3px solid #e0e7ff;
+    padding-bottom: 0;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 14px 20px;
+    background: white;
+    color: #64748b;
+    border: 2px solid #e0e7ff;
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    bottom: -3px;
+}
+
+.tab-button:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #475569;
+}
+
+.tab-button.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 -4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.tab-button.active:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #6a3f91 100%);
+}
+
+/* MIS Badge */
+.mis-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 10px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+}
+
+.student-father {
+    color: #64748b;
+    font-size: 0.85rem;
+    margin-top: 4px;
+    font-style: italic;
+}
+
 .search-section {
     margin-bottom: 20px;
 }

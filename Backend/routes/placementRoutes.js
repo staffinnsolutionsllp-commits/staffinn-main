@@ -18,8 +18,12 @@ const {
   getCenterWiseAnalytics,
   getStudentStatus,
   getTrainingCenters,
-  getCenterWiseStudents
+  getCenterWiseStudents,
+  getPlacementTracking
 } = require('../controllers/placementController');
+
+// Placement Tracking endpoint
+router.get('/placement-tracking', authenticate, getPlacementTracking);
 
 // Get all placement records
 router.get('/', authenticate, getAllPlacements);

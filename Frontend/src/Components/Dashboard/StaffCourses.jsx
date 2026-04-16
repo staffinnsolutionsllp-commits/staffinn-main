@@ -189,12 +189,6 @@ const StaffCourses = () => {
         <div className="no-courses">
           <h3>No Enrolled Courses</h3>
           <p>You haven't enrolled in any courses yet. Visit institute pages to explore available courses.</p>
-          <div className="debug-info" style={{marginTop: '20px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '5px', fontSize: '12px'}}>
-            <p><strong>Debug Info:</strong></p>
-            <p>Check browser console for detailed logs</p>
-            <p>Make sure you're logged in as a staff member</p>
-            <p>Ensure backend server is running on port 4001</p>
-          </div>
         </div>
       ) : (
         <div className="courses-grid">

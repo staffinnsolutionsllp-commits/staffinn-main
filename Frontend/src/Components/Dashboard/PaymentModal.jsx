@@ -119,16 +119,16 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
             <p className="duration">Duration: {course.duration}</p>
           </div>
 
-          <div className="payment-amount">
-            <span className="label">Amount to Pay:</span>
-            <span className="amount">₹{course.fees}</span>
-          </div>
-
           {error && (
             <div className="error-message">
               <span>⚠️ {error}</span>
             </div>
           )}
+
+          <div className="payment-amount">
+            <span className="label">Amount to Pay:</span>
+            <span className="amount">₹{course.fees}</span>
+          </div>
 
           <div className="payment-info">
             <p>✓ Secure payment powered by Razorpay</p>

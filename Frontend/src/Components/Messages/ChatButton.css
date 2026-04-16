@@ -34,53 +34,67 @@
 .contact-option-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  min-width: 120px;
   justify-content: center;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border: 2px solid #e5e7eb;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 24px;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  background: white;
+  color: #4863f7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .contact-option-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: #4863f7;
+  color: white;
+  border-color: #4863f7;
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(72, 99, 247, 0.4);
 }
 
 .contact-option-btn.chat-btn {
-  background: #25d366;
-  color: white;
+  background: white;
+  color: #4863f7;
+  border: 2px solid #e5e7eb;
 }
 
 .contact-option-btn.chat-btn:hover {
-  background: #128c7e;
+  background: #4863f7;
+  color: white;
+  border-color: #4863f7;
 }
 
 .contact-option-btn.whatsapp-btn {
-  background: #25d366;
-  color: white;
+  background: white;
+  color: #4863f7;
+  border: 2px solid #e5e7eb;
 }
 
 .contact-option-btn.whatsapp-btn:hover {
-  background: #128c7e;
+  background: #4863f7;
+  color: white;
+  border-color: #4863f7;
 }
 
 .contact-option-btn.email-btn {
-  background: #3b82f6;
-  color: white;
+  background: white;
+  color: #4863f7;
+  border: 2px solid #e5e7eb;
 }
 
 .contact-option-btn.email-btn:hover {
-  background: #2563eb;
+  background: #4863f7;
+  color: white;
+  border-color: #4863f7;
 }
 
 .contact-icon {
-  font-size: 16px;
+  font-size: 26px;
 }
 
 /* Responsive styles */

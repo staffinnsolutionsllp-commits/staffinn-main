@@ -49,6 +49,73 @@ class MessageController {
     }
   }
 
+  static async sendFileMessage(req, res) {
+    try {
+      const { receiverId, fileType, sendTextMessage } = req.body;
+      const senderId = req.user.userId;
+      const file = req.file;
+
+      if (!receiverId || !file) {
+        return res.status(400).json({
+          success: false,
+          message: 'Receiver ID and file are required'
+        });
+      }
+
+      // Check if receiver exists
+      const receiver = await UserModel.getUserById(receiverId);
+      if (!receiver) {
+        return res.status(404).json({
+          success: false,
+          message: 'Receiver not found'
+        });
+      }
+
+      // Upload file to S3
+      const s3Service = require('../services/s3Service');
+      const fileKey = `chat-files/${senderId}/${receiverId}/${Date.now()}-${file.originalname}`;
+      const uploadResult = await s3Service.uploadFile(file, fileKey);
+
+      if (!uploadResult.success) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload file'
+        });
+      }
+
+      // Create message with attachment (no text message unless explicitly requested)
+      const shouldSendText = sendTextMessage === 'true';
+      const messageData = {
+        senderId,
+        receiverId,
+        subject: `File: ${file.originalname}`,
+        message: shouldSendText ? `Sent a ${fileType}` : '', // Empty message if not requested
+        messageType: 'file',
+        attachments: [{
+          url: uploadResult.url,
+          fileName: file.originalname,
+          fileType: fileType,
+          fileSize: file.size,
+          mimeType: file.mimetype
+        }]
+      };
+
+      const newMessage = await MessageModel.sendMessage(messageData);
+
+      res.status(201).json({
+        success: true,
+        message: 'File sent successfully',
+        data: newMessage
+      });
+    } catch (error) {
+      console.error('Error sending file message:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send file message'
+      });
+    }
+  }
+
   static async getInboxMessages(req, res) {
     try {
       const userId = req.user.userId;
@@ -216,6 +283,7 @@ class MessageController {
   static async deleteMessage(req, res) {
     try {
       const { messageId, createdAt } = req.params;
+      const { deleteType } = req.body; // 'forMe' or 'forEveryone'
       const userId = req.user.userId;
 
       const message = await MessageModel.getMessage(messageId, createdAt);
@@ -235,7 +303,29 @@ class MessageController {
         });
       }
 
-      await MessageModel.deleteMessage(messageId, createdAt);
+      if (deleteType === 'forEveryone') {
+        // Only sender can delete for everyone
+        if (message.senderId !== userId) {
+          return res.status(403).json({
+            success: false,
+            message: 'Only sender can delete for everyone'
+          });
+        }
+
+        // Check if message has been read
+        if (message.status === 'read') {
+          return res.status(403).json({
+            success: false,
+            message: 'Cannot delete for everyone after message has been read'
+          });
+        }
+
+        // Mark as deleted for everyone
+        await MessageModel.deleteForEveryone(messageId, createdAt);
+      } else {
+        // Delete for me only
+        await MessageModel.deleteForUser(messageId, createdAt, userId);
+      }
 
       res.json({
         success: true,
@@ -246,6 +336,136 @@ class MessageController {
       res.status(500).json({
         success: false,
         message: 'Failed to delete message'
+      });
+    }
+  }
+
+  static async editMessage(req, res) {
+    try {
+      const { messageId, createdAt } = req.params;
+      const { newMessage } = req.body;
+      const userId = req.user.userId;
+
+      if (!newMessage || !newMessage.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'New message text is required'
+        });
+      }
+
+      const message = await MessageModel.getMessage(messageId, createdAt);
+      
+      if (!message) {
+        return res.status(404).json({
+          success: false,
+          message: 'Message not found'
+        });
+      }
+
+      // Only sender can edit
+      if (message.senderId !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only sender can edit message'
+        });
+      }
+
+      // Check if message has been read
+      if (message.status === 'read') {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot edit message after it has been read'
+        });
+      }
+
+      // Only text messages can be edited
+      if (message.messageType === 'file') {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot edit file messages'
+        });
+      }
+
+      await MessageModel.editMessage(messageId, createdAt, newMessage.trim());
+
+      res.json({
+        success: true,
+        message: 'Message edited successfully',
+        data: {
+          messageId,
+          createdAt,
+          newMessage: newMessage.trim()
+        }
+      });
+    } catch (error) {
+      console.error('Error editing message:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to edit message'
+      });
+    }
+  }
+
+  static async deleteMultipleMessages(req, res) {
+    try {
+      const { messages, deleteType } = req.body; // messages: [{messageId, createdAt}]
+      const userId = req.user.userId;
+
+      if (!messages || !Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Messages array is required'
+        });
+      }
+
+      const results = [];
+      for (const msg of messages) {
+        try {
+          const message = await MessageModel.getMessage(msg.messageId, msg.createdAt);
+          
+          if (!message) {
+            results.push({ messageId: msg.messageId, success: false, reason: 'Not found' });
+            continue;
+          }
+
+          // Check access
+          if (message.senderId !== userId && message.receiverId !== userId) {
+            results.push({ messageId: msg.messageId, success: false, reason: 'Access denied' });
+            continue;
+          }
+
+          if (deleteType === 'forEveryone') {
+            if (message.senderId !== userId) {
+              results.push({ messageId: msg.messageId, success: false, reason: 'Only sender can delete for everyone' });
+              continue;
+            }
+
+            if (message.status === 'read') {
+              results.push({ messageId: msg.messageId, success: false, reason: 'Message already read' });
+              continue;
+            }
+
+            await MessageModel.deleteForEveryone(msg.messageId, msg.createdAt);
+          } else {
+            await MessageModel.deleteForUser(msg.messageId, msg.createdAt, userId);
+          }
+
+          results.push({ messageId: msg.messageId, success: true });
+        } catch (error) {
+          results.push({ messageId: msg.messageId, success: false, reason: error.message });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: 'Bulk delete completed',
+        data: results
+      });
+    } catch (error) {
+      console.error('Error deleting multiple messages:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete messages'
       });
     }
   }

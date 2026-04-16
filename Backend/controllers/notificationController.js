@@ -19,8 +19,10 @@ const NOTIFICATIONS_TABLE = process.env.NOTIFICATIONS_TABLE || 'staffinn-notific
  */
 const createNotification = async (userId, type, title, message, data = {}, sendRealTime = true) => {
   try {
+    const notificationId = uuidv4();
     const notification = {
-      notificationId: uuidv4(),
+      notificationsId: notificationId, // Primary key for DynamoDB
+      notificationId: notificationId, // Keep for compatibility
       userId,
       type,
       title,
@@ -93,8 +95,8 @@ const markNotificationAsRead = async (req, res) => {
     const { notificationId } = req.params;
     const userId = req.user.userId;
 
-    // Get the notification
-    const notification = await dynamoService.getItem(NOTIFICATIONS_TABLE, { notificationId });
+    // Get the notification using notificationsId as primary key
+    const notification = await dynamoService.getItem(NOTIFICATIONS_TABLE, { notificationsId: notificationId });
     
     if (!notification) {
       return res.status(404).json({
@@ -183,8 +185,8 @@ const deleteNotification = async (req, res) => {
     const { notificationId } = req.params;
     const userId = req.user.userId;
 
-    // Get the notification
-    const notification = await dynamoService.getItem(NOTIFICATIONS_TABLE, { notificationId });
+    // Get the notification using notificationsId as primary key
+    const notification = await dynamoService.getItem(NOTIFICATIONS_TABLE, { notificationsId: notificationId });
     
     if (!notification) {
       return res.status(404).json({
@@ -201,8 +203,8 @@ const deleteNotification = async (req, res) => {
       });
     }
 
-    // Delete notification
-    await dynamoService.deleteItem(NOTIFICATIONS_TABLE, { notificationId });
+    // Delete notification using notificationsId as primary key
+    await dynamoService.deleteItem(NOTIFICATIONS_TABLE, { notificationsId: notificationId });
 
     res.status(200).json({
       success: true,
@@ -246,9 +248,11 @@ const sendJobNotificationToFollowers = async (recruiterId, jobData) => {
       // Create notification with the exact format requested
       const notificationMessage = `${companyName} posted a new job ${jobData.title}`;
       
+      const notificationId = uuidv4();
       // Create notification object
       const notification = {
-        notificationId: uuidv4(),
+        notificationsId: notificationId, // Primary key for DynamoDB
+        notificationId: notificationId, // Keep for compatibility
         userId: followerId,
         type: 'new_job',
         title: 'New Job Posted',
@@ -271,6 +275,7 @@ const sendJobNotificationToFollowers = async (recruiterId, jobData) => {
           const userSocket = require('../config/socket').activeConnections.get(followerId);
           if (userSocket) {
             userSocket.emit('notification', notification);
+            userSocket.emit('new_notification', notification);
             console.log(`Real-time notification sent to user ${followerId}`);
           }
           return notification;

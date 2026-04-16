@@ -26,16 +26,19 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 100 * 1024 * 1024 // 100MB limit for videos
   },
   fileFilter: (req, file, cb) => {
-    // Allow only image files for banner
+    // Allow both images and videos for banner
     if (file.fieldname === 'bannerImage') {
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedTypes = [
+        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+        'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo', 'video/webm'
+      ];
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'));
+        cb(new Error('Invalid file type. Only images (JPEG, PNG, GIF, WebP) and videos (MP4, MPEG, MOV, AVI, WebM) are allowed.'));
       }
     } else {
       cb(new Error('Unexpected field'));
@@ -65,6 +68,7 @@ const uploadToS3 = async (fileBuffer, fileName, mimeType) => {
     
     const s3Url = `https://${S3_BUCKET_NAME}.s3.${awsConfig.region}.amazonaws.com/${key}`;
     console.log('File uploaded to S3:', s3Url);
+    console.log('File type:', mimeType);
     
     return s3Url;
   } catch (error) {

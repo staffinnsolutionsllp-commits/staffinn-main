@@ -3,10 +3,12 @@
  * Sets up DynamoDB tables and configuration
  */
 const { DynamoDBClient, CreateTableCommand, ListTablesCommand } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, ScanCommand, GetCommand, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const awsConfig = require('./aws');
 
 // Initialize DynamoDB client
-const dynamoClient = new DynamoDBClient(awsConfig);
+const client = new DynamoDBClient(awsConfig);
+const dynamoClient = DynamoDBDocumentClient.from(client);
 
 // Define table names
 const USERS_TABLE = process.env.DYNAMODB_USERS_TABLE || 'staffinn-users';
@@ -434,8 +436,67 @@ const createTablesIfNotExist = async () => {
   }
 };
 
+/**
+ * Scan a DynamoDB table
+ * @param {Object} params - Scan parameters (TableName, FilterExpression, ExpressionAttributeValues, etc.)
+ * @returns {Promise<Array>} - Array of items
+ */
+const scanTable = async (params) => {
+  try {
+    const command = new ScanCommand(params);
+    const result = await dynamoClient.send(command);
+    return result.Items || [];
+  } catch (error) {
+    console.error('Error scanning table:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get an item from DynamoDB table
+ * @param {string} tableName - Table name
+ * @param {Object} key - Primary key object
+ * @returns {Promise<Object>} - Item object
+ */
+const getItem = async (tableName, key) => {
+  try {
+    const command = new GetCommand({
+      TableName: tableName,
+      Key: key
+    });
+    const result = await dynamoClient.send(command);
+    return result.Item;
+  } catch (error) {
+    console.error('Error getting item:', error);
+    throw error;
+  }
+};
+
+/**
+ * Put an item into DynamoDB table
+ * @param {string} tableName - Table name
+ * @param {Object} item - Item to put
+ * @returns {Promise<Object>} - Result object
+ */
+const putItem = async (tableName, item) => {
+  try {
+    const command = new PutCommand({
+      TableName: tableName,
+      Item: item
+    });
+    const result = await dynamoClient.send(command);
+    return result;
+  } catch (error) {
+    console.error('Error putting item:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   dynamoClient,
+  scanTable,
+  getItem,
+  putItem,
   USERS_TABLE,
   STAFF_TABLE,
   INSTITUTE_PROFILES_TABLE,

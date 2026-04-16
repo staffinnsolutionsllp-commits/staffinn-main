@@ -245,9 +245,17 @@
 
 .recruiter-metric-card {
     background-color: white;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.recruiter-metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: #4863f7;
 }
 
 .recruiter-metric-card h3 {
@@ -255,14 +263,17 @@
     margin-bottom: 10px;
     color: #64748b;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .recruiter-metric-value {
-    font-size: 2rem;
+    font-size: 2.25rem;
     font-weight: 700;
     margin: 10px 0;
     color: #1e293b;
+    letter-spacing: -0.02em;
 }
 
 .recruiter-metric-trend {
@@ -349,25 +360,30 @@
 }
 
 .recruiter-status-badge {
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-radius: 20px;
     font-size: 0.8rem;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
 }
 
 .recruiter-status-badge.active {
-    background-color: #dcfce7;
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
     color: #16a34a;
+    box-shadow: 0 2px 6px rgba(34, 197, 94, 0.2);
 }
 
 .recruiter-status-badge.closed {
-    background-color: #f1f5f9;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
     color: #64748b;
+    box-shadow: 0 2px 6px rgba(100, 116, 139, 0.15);
 }
 
 .recruiter-status-badge.draft {
-    background-color: #fef3c7;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
     color: #d97706;
+    box-shadow: 0 2px 6px rgba(217, 119, 6, 0.2);
 }
 
 .recruiter-status-badge.new {
@@ -396,19 +412,22 @@
 }
 
 .recruiter-table-action {
-    padding: 6px 12px;
-    border: 1px solid #e2e8f0;
+    padding: 8px 16px;
+    border: 2px solid #e2e8f0;
     background-color: white;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    margin-right: 5px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-right: 6px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 600;
 }
 
 .recruiter-table-action:hover {
     background-color: #f8fafc;
     border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .recruiter-table-action.delete {
@@ -461,20 +480,22 @@
 }
 
 .recruiter-primary-button {
-    padding: 12px 20px;
-    background-color: #4863f7;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-weight: 500;
+    border-radius: 12px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.25);
+    letter-spacing: 0.3px;
 }
 
 .recruiter-primary-button:hover {
-    background-color: #3a4fd8;
+    background: linear-gradient(135deg, #3a4fd8 0%, #2d3ed8 100%);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.2);
+    box-shadow: 0 6px 20px rgba(72, 99, 247, 0.35);
 }
 
 /* Office Images Styles */
@@ -1056,16 +1077,16 @@
 .institute-card {
     background: white;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-bottom: 20px;
 }
 
 .institute-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
     border-color: #4863f7;
 }
 
@@ -1307,20 +1328,21 @@
 
 .view-details-btn {
     padding: 12px 24px;
-    background-color: #4863f7;
+    background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-weight: 500;
+    border-radius: 12px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.95rem;
+    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.25);
 }
 
 .view-details-btn:hover {
-    background-color: #3a4fd8;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(72, 99, 247, 0.2);
+    background: linear-gradient(135deg, #3a4fd8 0%, #2d3ed8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(72, 99, 247, 0.35);
 }
 
 /* Students Modal Styles */
@@ -1348,15 +1370,15 @@
 .student-card {
     background: white;
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .student-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     border-color: #4863f7;
 }
 
@@ -1430,12 +1452,20 @@
 }
 
 .skill-tag {
-    background-color: #e0f2fe;
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
     color: #0284c7;
-    padding: 3px 8px;
-    border-radius: 12px;
+    padding: 5px 10px;
+    border-radius: 16px;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
+    border: 1px solid #7dd3fc;
+    transition: all 0.2s ease;
+}
+
+.skill-tag:hover {
+    background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
 }
 
 .student-actions {
@@ -1597,6 +1627,7 @@
     color: #1e293b;
     font-size: 1.5rem;
     font-weight: 600;
+    letter-spacing: -0.01em;
 }
 
 .verified-badge {
@@ -2074,15 +2105,15 @@
 .news-card {
     background: white;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: 16px;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .news-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
     border-color: #4863f7;
 }
 

@@ -1,6 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { apiService } from '../services/api'
 import { useAuth } from './AuthContext'
+
+const WS_URL = process.env.NODE_ENV === 'production'
+  ? 'https://api.staffinn.com'
+  : 'http://localhost:4001';
 
 interface AttendanceStats {
   totalEmployees: number
@@ -13,7 +17,7 @@ interface AttendanceStats {
 
 interface AttendanceContextType {
   stats: AttendanceStats
-  refreshStats: () => Promise<void>
+  refreshStats: (date?: string | null) => Promise<void>
   isLoading: boolean
 }
 
@@ -43,18 +47,19 @@ export const AttendanceProvider = ({ children }: AttendanceProviderProps) => {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0])
+  const socketRef = useRef<any>(null)
 
-  const refreshStats = async (date = null) => {
+  const refreshStats = async (date: string | null = null) => {
     if (!user) {
       setIsLoading(false)
       return
     }
-    
+
     const targetDate = date || currentDate
-    
+
     try {
       const statsResponse = await apiService.getAttendanceStats(targetDate)
-      
+
       if (statsResponse.success) {
         setStats(statsResponse.data)
         setCurrentDate(targetDate)
@@ -68,10 +73,47 @@ export const AttendanceProvider = ({ children }: AttendanceProviderProps) => {
     }
   }
 
+  // WebSocket connection for real-time attendance updates from Bridge
+  useEffect(() => {
+    if (!user?.recruiterId) return
+
+    let socket: any = null
+
+    const connectSocket = async () => {
+      try {
+        const { io } = await import('socket.io-client')
+        socket = io(WS_URL, { transports: ['websocket', 'polling'] })
+        socketRef.current = socket
+
+        socket.on('connect', () => {
+          console.log('🔌 WebSocket connected')
+          socket.emit('join-recruiter-room', user.recruiterId)
+        })
+
+        socket.on('attendance-update', () => {
+          console.log('📡 Real-time attendance update received — refreshing')
+          const today = new Date().toISOString().split('T')[0]
+          refreshStats(today)
+        })
+
+        socket.on('disconnect', () => {
+          console.log('🔌 WebSocket disconnected')
+        })
+      } catch (err) {
+        console.warn('WebSocket unavailable, falling back to polling:', err)
+      }
+    }
+
+    connectSocket()
+
+    return () => {
+      if (socket) socket.disconnect()
+    }
+  }, [user?.recruiterId])
+
   useEffect(() => {
     if (user) {
       refreshStats()
-      // Only auto-refresh for today's date
       const today = new Date().toISOString().split('T')[0]
       if (currentDate === today) {
         const interval = setInterval(() => refreshStats(), 30000)

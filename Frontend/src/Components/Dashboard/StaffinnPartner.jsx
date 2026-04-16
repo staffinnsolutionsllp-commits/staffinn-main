@@ -15,6 +15,7 @@ import Report from './Report';
 import PhysicalProgressReport from './PhysicalProgressReport';
 import AssessedBatchesReport from './AssessedBatchesReport';
 import PlacementSection from './Placement/PlacementSection';
+import MISPlacementSection from './Placement/MISPlacementSection';
 import StaffinnPartnerDashboard from './StaffinnPartnerDashboard';
 import CourseEnrollment from './CourseEnrollment';
 import CourseEnrollmentHistory from './CourseEnrollmentHistory';
@@ -357,7 +358,7 @@ const StaffinnPartner = ({
                 {activePartnerTab === 'assessed-batches-report' && <AssessedBatchesReport />}
                 
                 {activePartnerTab === 'placement' && (
-                    <PlacementSection />
+                    <MISPlacementSection />
                 )}
                 
                 {activePartnerTab === 'student-tracking' && <StudentTracking />}

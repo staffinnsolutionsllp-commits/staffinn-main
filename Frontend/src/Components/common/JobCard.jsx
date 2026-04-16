@@ -79,7 +79,17 @@ const JobCard = ({ job, onApply, showApplyButton = true, buttonText = "Apply Now
     <>
       <div className="job-card">
         <div className="job-card-header">
-          <h3 className="job-title">{job.title || 'Job Title'}</h3>
+          <div style={{flex: 1}}>
+            <h3 className="job-title">{job.title || 'Job Title'}</h3>
+            {job.recruiterInfo && (
+              <div className="company-info">
+                <span className="company-name">{job.recruiterInfo.companyName}</span>
+                {job.recruiterInfo.verified && (
+                  <span className="verified-badge">✓</span>
+                )}
+              </div>
+            )}
+          </div>
           <div className="job-type-container">
             <span className={`job-type ${(job.jobType || 'full-time').toLowerCase().replace('-', '')}`}>
               {job.jobType || 'Full-time'}
@@ -88,73 +98,50 @@ const JobCard = ({ job, onApply, showApplyButton = true, buttonText = "Apply Now
         </div>
         
         <div className="job-card-content">
-          <div className="job-card-details">
-            <div className="detail-item">
-              <span className="detail-label">Stipend:</span>
-              <span className="detail-text">{formatSalary(job.salary)}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Experience:</span>
-              <span className="detail-text">{formatExperience(job.experience)}</span>
-            </div>
-            <div className="detail-item">
-              <span className="detail-label">Location:</span>
-              <span className="detail-text">{formatLocation(job.location)}</span>
-            </div>
-            {job.graduationYear && (
-              <div className="detail-item">
-                <span className="detail-label">Graduation Year:</span>
-                <span className="detail-text">{job.graduationYear}</span>
-              </div>
-            )}
-          </div>
-          
           {job.description && (
             <p className="job-description">
-              {job.description.length > 80 
-                ? `${job.description.substring(0, 80)}...` 
+              {job.description.length > 150 
+                ? `${job.description.substring(0, 150)}...` 
                 : job.description
               }
             </p>
           )}
           
           <div className="job-skills">
-            {formatSkills(job.skills).slice(0, 3).map((skill, index) => (
+            {formatSkills(job.skills).slice(0, 4).map((skill, index) => (
               <span className="skill-tag" key={index}>{skill}</span>
             ))}
-            {formatSkills(job.skills).length > 3 && (
-              <span className="more-skills">+{formatSkills(job.skills).length - 3} more</span>
+            {formatSkills(job.skills).length > 4 && (
+              <span className="more-skills">+{formatSkills(job.skills).length - 4} more</span>
             )}
           </div>
 
-          {job.recruiterInfo && (
-            <div className="company-info">
-              <span className="company-name">{job.recruiterInfo.companyName}</span>
-              {job.recruiterInfo.verified && (
-                <span className="verified-badge">✓ Verified</span>
-              )}
+          <div className="job-card-details">
+            <div className="detail-item">
+              <span className="detail-text">₹ {formatSalary(job.salary)}</span>
             </div>
-          )}
+            <div className="detail-item">
+              <span className="detail-text">💼 {formatExperience(job.experience)}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-text">📍 {formatLocation(job.location)}</span>
+            </div>
+          </div>
         </div>
         
         <div className="job-card-footer">
           <div className="job-meta">
-            <span className="posted-date">Posted {getTimeSincePosted(job.postedDate)}</span>
-            {job.applicationCount !== undefined && (
-              <span className="application-count">
-                {job.applicationCount} {job.applicationCount === 1 ? 'application' : 'applications'}
-              </span>
-            )}
+            <span className="posted-date">POSTED {getTimeSincePosted(job.postedDate).toUpperCase()}</span>
           </div>
           <div className="job-card-actions">
-            <button className="view-details-btn" onClick={handleViewDetails}>
-              View Details
-            </button>
             {showApplyButton && (
               <button className="apply-btn" onClick={handleApplyClick}>
                 {buttonText}
               </button>
             )}
+            <button className="view-details-btn" onClick={handleViewDetails}>
+              Details
+            </button>
           </div>
         </div>
       </div>

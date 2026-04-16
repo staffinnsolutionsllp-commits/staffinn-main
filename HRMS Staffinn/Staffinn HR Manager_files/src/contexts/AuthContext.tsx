@@ -21,14 +21,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [needsCompanySetup, setNeedsCompanySetup] = useState(false)
+  const [currentRecruiterId, setCurrentRecruiterId] = useState<string | null>(null)
 
   useEffect(() => {
-    const token = localStorage.getItem('hrms_token')
-    if (token) {
-      apiService.setToken(token)
-      loadUserProfile()
+    const urlParams = new URLSearchParams(window.location.search)
+    const recruiterIdParam = urlParams.get('recruiterId')
+    
+    if (recruiterIdParam) {
+      setCurrentRecruiterId(recruiterIdParam)
+      const token = localStorage.getItem(`hrms_token_${recruiterIdParam}`)
+      if (token) {
+        apiService.setToken(token, recruiterIdParam)
+        loadUserProfile()
+      } else {
+        setIsLoading(false)
+      }
     } else {
-      setIsLoading(false)
+      const storedRecruiterId = sessionStorage.getItem('current_recruiter_id')
+      if (storedRecruiterId) {
+        setCurrentRecruiterId(storedRecruiterId)
+        const token = localStorage.getItem(`hrms_token_${storedRecruiterId}`)
+        if (token) {
+          apiService.setToken(token, storedRecruiterId)
+          loadUserProfile()
+        } else {
+          setIsLoading(false)
+        }
+      } else {
+        setIsLoading(false)
+      }
     }
   }, [])
 
@@ -38,7 +59,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (response.success) {
         const userData = response.data
         
-        // Check if user has company setup
+        if (currentRecruiterId && userData.recruiterId !== currentRecruiterId) {
+          console.error('Session mismatch: user recruiterId does not match current session')
+          apiService.logout()
+          setIsLoading(false)
+          return
+        }
+        
         if (userData.role === 'admin' && !userData.companyId) {
           setNeedsCompanySetup(true)
         }
@@ -57,10 +84,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const login = async (email: string, password: string, recruiterId?: string): Promise<boolean> => {
     try {
-      const response = await apiService.login(email, password, recruiterId)
+      const targetRecruiterId = recruiterId || currentRecruiterId
+      if (!targetRecruiterId) {
+        console.error('No recruiterId available for login')
+        return false
+      }
+      
+      const response = await apiService.login(email, password, targetRecruiterId)
       console.log('Login response:', response)
       if (response.success && response.data) {
         const userData = response.data.user
+        
+        if (userData.recruiterId !== targetRecruiterId) {
+          console.error('Session mismatch: login recruiterId does not match')
+          return false
+        }
+        
+        setCurrentRecruiterId(targetRecruiterId)
         
         if (userData.role === 'admin' && !userData.companyId) {
           setNeedsCompanySetup(true)
@@ -78,6 +118,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const register = async (name: string, email: string, password: string, recruiterId: string): Promise<boolean> => {
     try {
+      if (!recruiterId) {
+        console.error('recruiterId is required for registration')
+        return false
+      }
+      
       console.log('🔵 Starting registration with recruiterId:', recruiterId)
       const response = await apiService.register(name, email, password, 'admin', recruiterId)
       console.log('🔵 Registration response:', response)
@@ -86,10 +131,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const userData = response.data.user
         const token = response.data.token
         
-        if (token) {
-          apiService.setToken(token)
+        if (userData.recruiterId !== recruiterId) {
+          console.error('Session mismatch: registration recruiterId does not match')
+          return false
         }
         
+        if (token) {
+          apiService.setToken(token, recruiterId)
+        }
+        
+        setCurrentRecruiterId(recruiterId)
         setUser(userData)
         
         if (userData.role === 'admin' && !userData.companyId) {

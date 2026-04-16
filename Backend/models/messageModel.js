@@ -157,6 +157,65 @@ class MessageModel {
     await docClient.send(command);
   }
 
+  static async deleteForEveryone(messageId, createdAt) {
+    const command = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        messageId,
+        createdAt
+      },
+      UpdateExpression: 'SET deletedForEveryone = :true, message = :deletedMsg, updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':true': true,
+        ':deletedMsg': 'Message Deleted',
+        ':updatedAt': new Date().toISOString()
+      }
+    });
+
+    await docClient.send(command);
+  }
+
+  static async deleteForUser(messageId, createdAt, userId) {
+    const message = await this.getMessage(messageId, createdAt);
+    
+    if (!message) return;
+
+    const deletedForField = message.senderId === userId ? 'deletedForSender' : 'deletedForReceiver';
+
+    const command = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        messageId,
+        createdAt
+      },
+      UpdateExpression: `SET ${deletedForField} = :true, updatedAt = :updatedAt`,
+      ExpressionAttributeValues: {
+        ':true': true,
+        ':updatedAt': new Date().toISOString()
+      }
+    });
+
+    await docClient.send(command);
+  }
+
+  static async editMessage(messageId, createdAt, newMessage) {
+    const command = new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        messageId,
+        createdAt
+      },
+      UpdateExpression: 'SET message = :message, edited = :edited, updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':message': newMessage,
+        ':edited': true,
+        ':updatedAt': new Date().toISOString()
+      }
+    });
+
+    await docClient.send(command);
+  }
+
   static async getUnreadCount(userId) {
     const command = new ScanCommand({
       TableName: TABLE_NAME,
@@ -208,10 +267,30 @@ class MessageModel {
 
     const result = await docClient.send(command);
     
-    // Sort by createdAt ascending for conversation view
-    result.Items.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    // Filter out messages deleted for current user
+    const filteredMessages = result.Items.filter(msg => {
+      // If deleted for everyone, keep it but show "Message Deleted"
+      if (msg.deletedForEveryone) {
+        return true;
+      }
+      
+      // If deleted for sender and current user is sender, hide it
+      if (msg.deletedForSender && msg.senderId === userId1) {
+        return false;
+      }
+      
+      // If deleted for receiver and current user is receiver, hide it
+      if (msg.deletedForReceiver && msg.receiverId === userId1) {
+        return false;
+      }
+      
+      return true;
+    });
     
-    return result.Items;
+    // Sort by createdAt ascending for conversation view
+    filteredMessages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    
+    return filteredMessages;
   }
 
   // Get contact history with conversation partners

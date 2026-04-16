@@ -85,8 +85,8 @@ const validateHRMSAccessToken = (accessToken) => {
  * Checks for valid access token from Staffinn dashboard
  */
 const validateHRMSAccess = (req, res, next) => {
-  // Allow access to login and registration endpoints
-  if (req.path === '/login' || req.path === '/register' || req.path.startsWith('/check-recruiter')) {
+  // Allow access to login, registration, and profile endpoints
+  if (req.path === '/login' || req.path === '/register' || req.path === '/profile' || req.path.startsWith('/check-recruiter')) {
     return next();
   }
   

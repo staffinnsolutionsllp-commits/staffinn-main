@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiService from '../../services/api';
 import PaymentModal from '../Dashboard/PaymentModal';
+import PaymentOptionModal from '../Dashboard/PaymentOptionModal';
 import './CourseDetailPage.css';
 
 const CourseDetailPage = () => {
@@ -11,6 +12,7 @@ const CourseDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [enrollmentStatus, setEnrollmentStatus] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentOptionModal, setShowPaymentOptionModal] = useState(false);
 
   useEffect(() => {
     loadCourseDetails();
@@ -50,6 +52,9 @@ const CourseDetailPage = () => {
   };
 
   const handleEnrollClick = async () => {
+    console.log('\n\n🚨🚨🚨 HANDLE ENROLL CLICK FUNCTION CALLED 🚨🚨🚨\n');
+    console.log('Attempting to enroll in course:', courseId);
+    
     const token = localStorage.getItem('token');
     if (!token) {
       alert('Please login to enroll in this course');
@@ -57,17 +62,66 @@ const CourseDetailPage = () => {
       return;
     }
 
+    // Get user data from localStorage
+    const userDataStr = localStorage.getItem('user');
+    let userData = null;
+    
+    if (userDataStr) {
+      try {
+        userData = JSON.parse(userDataStr);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+
+    console.log('🎯 Enroll button clicked');
+    console.log('📊 Course mode:', course.mode);
+    console.log('💰 Course fees:', course.fees);
+    console.log('✅ Is enrolled:', enrollmentStatus?.enrolled);
+    console.log('👤 User type:', userData?.userType);
+
+    // Check if user is an institute
+    const isInstitute = userData?.userType === 'institute';
+    
+    // Check if course is Online
+    const isOnline = course.mode && course.mode.toLowerCase() === 'online';
+    
+    // RESTRICTION: Institute users cannot enroll in Online courses
+    if (isInstitute && isOnline) {
+      alert('You can only apply to on-campus courses only.');
+      return;
+    }
+
+    // Check if course is On-Campus (case-insensitive check)
+    const isOnCampus = course.mode && (course.mode.toLowerCase() === 'on campus' || course.mode.toLowerCase() === 'offline');
+    
+    console.log('🏫 Is On-Campus:', isOnCampus);
+
+    if (isOnCampus) {
+      // Show payment option modal for PAID on-campus courses
+      if (course.fees && parseFloat(course.fees) > 0) {
+        console.log('💳 Showing payment option modal for paid on-campus course');
+        setShowPaymentOptionModal(true);
+      } else {
+        // Free on-campus course
+        console.log('🆓 Free on-campus course - direct enrollment');
+        handleFreeOnCampusEnrollment();
+      }
+    }
     // Check if course is paid and online
-    if (course.mode === 'Online' && course.fees && course.fees > 0) {
+    else if (course.mode === 'Online' && course.fees && parseFloat(course.fees) > 0) {
+      console.log('💻 Online paid course - checking payment status');
       // Check payment status first
       try {
         const paymentStatus = await apiService.checkPaymentStatus(courseId);
         
         if (paymentStatus.success && paymentStatus.hasPaid) {
           // Already paid - proceed with enrollment
+          console.log('✅ Payment already done - enrolling');
           handlePaidEnrollment();
         } else {
           // Not paid - show payment modal
+          console.log('❌ Payment not done - showing payment modal');
           setShowPaymentModal(true);
         }
       } catch (error) {
@@ -76,7 +130,8 @@ const CourseDetailPage = () => {
         setShowPaymentModal(true);
       }
     } else {
-      // Free course or offline course - direct enrollment
+      // Free online course - direct enrollment
+      console.log('🆓 Free online course - direct enrollment');
       handleFreeEnrollment();
     }
   };
@@ -110,6 +165,54 @@ const CourseDetailPage = () => {
     } catch (error) {
       console.error('Error enrolling:', error);
       alert('Failed to enroll in course');
+    }
+  };
+
+  const handleFreeOnCampusEnrollment = async () => {
+    try {
+      const response = await apiService.enrollInCourse(courseId);
+      
+      if (response.success) {
+        alert('Successfully enrolled! Please visit the campus for further instructions and class schedules.');
+        checkEnrollmentStatus();
+      } else {
+        alert(response.message || 'Failed to enroll in course');
+      }
+    } catch (error) {
+      console.error('Error enrolling:', error);
+      alert('Failed to enroll in course');
+    }
+  };
+
+  const handlePayHere = () => {
+    console.log('💳 User selected: Pay Here (Razorpay)');
+    setShowPaymentOptionModal(false);
+    setShowPaymentModal(true);
+  };
+
+  const handlePayAtInstitute = async () => {
+    console.log('🏢 User selected: Pay at Institute');
+    try {
+      console.log('📤 Calling API: enrollInCoursePayAtInstitute');
+      const response = await apiService.enrollInCoursePayAtInstitute(courseId);
+      
+      console.log('📥 API Response:', response);
+      
+      if (response.success) {
+        setShowPaymentOptionModal(false);
+        alert(
+          'Enrollment request submitted successfully!\n\n' +
+          'The institute has been notified about your enrollment.\n' +
+          'Please visit the institute to complete the payment.\n\n' +
+          'You will receive further instructions from the institute.'
+        );
+        checkEnrollmentStatus();
+      } else {
+        alert(response.message || 'Failed to submit enrollment request');
+      }
+    } catch (error) {
+      console.error('❌ Error submitting enrollment request:', error);
+      alert('Failed to submit enrollment request: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -255,6 +358,16 @@ const CourseDetailPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Payment Option Modal for On-Campus Courses */}
+      {showPaymentOptionModal && (
+        <PaymentOptionModal
+          course={course}
+          onClose={() => setShowPaymentOptionModal(false)}
+          onPayHere={handlePayHere}
+          onPayAtInstitute={handlePayAtInstitute}
+        />
+      )}
 
       {/* Payment Modal */}
       {showPaymentModal && (
