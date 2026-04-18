@@ -74,7 +74,7 @@ const sendOTPEmail = async (email, otp) => {
 
     // Production mode: Send via Resend
     const { data, error } = await resend.emails.send({
-      from: 'Staffinn <onboarding@resend.dev>', // Change to 'Staffinn <noreply@staffinn.com>' after domain verification
+      from: 'Staffinn <onboarding@resend.dev>',
       to: [email],
       subject: 'Verify Your Email - Staffinn Registration',
       html: `
