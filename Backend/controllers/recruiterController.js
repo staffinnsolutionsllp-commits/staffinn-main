@@ -438,6 +438,7 @@ const getAllRecruitersPublic = async (req, res) => {
         website: useProfile.website || recruiter.website,
         phone: useProfile.phone || recruiter.phone,
         profilePhoto: useProfile.profilePhoto || recruiter.profilePhoto,
+        officeImages: useProfile.officeImages || [],
         perks: useProfile.perks || [
           { text: 'Health insurance' },
           { text: 'Work from home options' },
@@ -686,9 +687,18 @@ const uploadProfilePhoto = async (req, res) => {
       });
     }
 
-    // Store the file path with proper URL format
-    const serverPort = process.env.PORT || 4001;
-    const photoUrl = `http://localhost:${serverPort}/uploads/${req.file.filename}`;
+    // Upload to S3
+    const s3Service = require('../services/s3Service');
+    const fileExtension = req.file.originalname.split('.').pop();
+    const s3Key = `recruiter-profiles/${req.user.userId}/profile-photo-${Date.now()}.${fileExtension}`;
+    
+    const uploadResult = await s3Service.uploadFile(req.file, s3Key);
+    
+    if (!uploadResult || !uploadResult.Location) {
+      throw new Error('Failed to upload file to S3');
+    }
+    
+    const photoUrl = uploadResult.Location;
     
     // Update recruiter profile with photo URL in recruiter-profiles table
     const dynamoService = require('../services/dynamoService');

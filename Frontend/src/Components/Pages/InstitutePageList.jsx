@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import apiWithLoading from '../../services/apiWithLoading';
@@ -23,6 +23,7 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
   const [staffinnVerifiedOnly, setStaffinnVerifiedOnly] = useState(false);
   const [experienceRange, setExperienceRange] = useState('all');
   const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
+  const heroSectionRef = useRef(null);
   
   // Use global loading hook
   const { withLoading } = useGlobalLoading();
@@ -31,13 +32,6 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
   useEffect(() => {
     loadInstitutes();
     loadHeroImages();
-    
-    // Refresh hero images every 10 seconds to catch updates
-    const heroImageInterval = setInterval(() => {
-      loadHeroImages();
-    }, 10000);
-    
-    return () => clearInterval(heroImageInterval);
   }, []);
 
   const loadInstitutes = async () => {
@@ -109,29 +103,31 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
   // Load hero images from API
   const loadHeroImages = async () => {
     try {
-      // Add timestamp to prevent caching
       const timestamp = new Date().getTime();
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1'}/hero-images/institute/public?t=${timestamp}`,
-        {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
+      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1'}/hero-images/institute/public?t=${timestamp}`;
+      console.log('🌐 Fetching hero images from:', apiUrl);
+      
+      const response = await axios.get(apiUrl, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         }
-      );
+      });
+      
+      console.log('📦 Hero images API response:', response.data);
       
       if (response.data.success && response.data.data.images && response.data.data.images.length > 0) {
-        console.log('Institute hero images loaded:', response.data.data.images.length);
+        console.log('✅ Institute hero images loaded:', response.data.data.images.length);
+        console.log('🖼️ Image URLs:', response.data.data.images.map(img => img.url));
         setHeroImages(response.data.data.images);
-        setCurrentImageIndex(0); // Reset to first image
+        setCurrentImageIndex(0);
       } else {
-        console.log('No institute hero images found, using default');
+        console.log('⚠️ No institute hero images found, using default');
         setHeroImages([]);
         setCurrentImageIndex(0);
       }
     } catch (error) {
-      console.error('Error loading institute hero images:', error);
+      console.error('❌ Error loading institute hero images:', error);
       setHeroImages([]);
       setCurrentImageIndex(0);
     }
@@ -143,26 +139,13 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
     
     if (heroImages.length > 1) {
       console.log('🎬 Starting institute slideshow with', heroImages.length, 'images');
-      console.log('🖼️ Available images:', heroImages.map((img, idx) => `${idx}: ${img.imageId}`));
       
-      // Reset to 0 when starting slideshow
       setCurrentImageIndex(0);
       
       slideInterval = setInterval(() => {
         setCurrentImageIndex((prevIndex) => {
-          console.log('📊 Before calculation - prevIndex:', prevIndex, 'heroImages.length:', heroImages.length);
-          
-          // Simple increment with reset logic
-          let nextIndex;
-          if (prevIndex >= heroImages.length - 1) {
-            nextIndex = 0; // Reset to first image
-          } else {
-            nextIndex = prevIndex + 1; // Go to next image
-          }
-          
-          console.log('🔄 Institute slideshow:', prevIndex, '→', nextIndex, '(total:', heroImages.length, ')');
-          console.log('🎯 Sequence check: 0→1→2→0 - Current transition:', prevIndex, '→', nextIndex);
-          
+          const nextIndex = prevIndex >= heroImages.length - 1 ? 0 : prevIndex + 1;
+          console.log('🔄 Slideshow:', prevIndex, '→', nextIndex);
           return nextIndex;
         });
       }, 5000);
@@ -179,31 +162,40 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
     };
   }, [heroImages]);
 
-  // Debug currentImageIndex changes
-  useEffect(() => {
-    console.log('🔄 currentImageIndex changed to:', currentImageIndex, 'heroImages.length:', heroImages.length);
-    if (heroImages.length > 0 && currentImageIndex < heroImages.length) {
-      console.log('🎯 Now showing image:', heroImages[currentImageIndex]?.url);
-    }
-  }, [currentImageIndex, heroImages]);
 
-  // Get current hero image
-  const getCurrentHeroImage = () => {
+
+  // Get current hero image (memoized)
+  const currentHeroImage = useMemo(() => {
     if (heroImages.length > 0) {
-      // Ensure index is within bounds
       const validIndex = Math.max(0, Math.min(currentImageIndex, heroImages.length - 1));
       const currentImage = heroImages[validIndex];
-      
-      console.log('🎯 Current institute hero image:', validIndex, 'of', heroImages.length, ':', currentImage?.url);
-      
-      if (currentImage?.url) {
-        return currentImage.url;
-      }
+      const imageUrl = currentImage?.url || InstitutepageImage;
+      console.log('🖼️ Current hero image URL:', imageUrl);
+      return imageUrl;
     }
-    
-    console.log('⚠️ Using default institute image');
+    console.log('⚠️ No hero images, using default');
     return InstitutepageImage;
-  };
+  }, [heroImages, currentImageIndex]);
+
+  // Update background image using ref
+  useEffect(() => {
+    if (heroSectionRef.current && currentHeroImage) {
+      console.log('🎨 Setting background image...');
+      console.log('📍 Element found:', heroSectionRef.current);
+      console.log('🖼️ Image URL:', currentHeroImage);
+      heroSectionRef.current.style.setProperty('background-image', `url("${currentHeroImage}")`, 'important');
+      heroSectionRef.current.style.setProperty('background-size', 'cover', 'important');
+      heroSectionRef.current.style.setProperty('background-position', 'center', 'important');
+      heroSectionRef.current.style.setProperty('background-repeat', 'no-repeat', 'important');
+      console.log('✅ Background image applied');
+      console.log('🔍 Verify:', heroSectionRef.current.style.backgroundImage);
+    } else {
+      console.log('❌ Cannot set background:', {
+        hasRef: !!heroSectionRef.current,
+        hasImage: !!currentHeroImage
+      });
+    }
+  }, [currentHeroImage]);
 
   // Extract unique affiliations from institutes
   const getUniqueAffiliations = () => {
@@ -328,13 +320,10 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
     <div className="institute-list-page">
       {/* Hero Section with Dynamic Images */}
       <div 
+        ref={heroSectionRef}
         className="institute-search-section" 
-        style={{ 
-          backgroundImage: `url("${getCurrentHeroImage()}")`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat'
-        }}
+        data-hero-image={currentHeroImage}
+        data-has-images={heroImages.length > 0}
       >
         {heroImages.length > 1 && (
           <div className="slideshow-indicators" key={`indicators-${heroImages.length}`}>

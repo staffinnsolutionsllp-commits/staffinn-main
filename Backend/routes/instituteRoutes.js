@@ -86,6 +86,11 @@ const {
   getInstituteStudentEnrollmentCount
 } = require('../controllers/instituteCourseController');
 
+// Import video duration fix controller
+const {
+  fixAllVideoDurations
+} = require('../controllers/videoDurationFixController');
+
 // Import quiz controller
 const {
   createQuiz,
@@ -208,6 +213,7 @@ router.get('/courses', getCourses);
 router.get('/active-courses-count', getActiveCourseCount);
 router.get('/courses/:courseId/debug', debugCourseContent);
 router.post('/courses/:courseId/fix-urls', fixContentUrls);
+router.post('/fix-video-durations', fixAllVideoDurations);
 
 // Course enrollment routes
 router.get('/courses/:courseId/enrollment-status', checkEnrollmentStatus);

@@ -3888,7 +3888,7 @@ const apiService = {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      const response = await fetch(`${API_URL}/institutes/courses/${courseId}`, {
+      const response = await fetch(`${API_URL}/institute-management/courses/${courseId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -5898,7 +5898,92 @@ const apiService = {
     }
   },
 
+  // Campus Request API
+  sendCampusRequest: async (recruiterId) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
 
+      const response = await fetch(`${API_URL}/campus-requests/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ recruiterId })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Send campus request error:', error);
+      return { success: false, message: 'Failed to send campus request' };
+    }
+  },
+
+  getInstituteCampusRequests: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/campus-requests/institute`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get institute campus requests error:', error);
+      return { success: false, message: 'Failed to get campus requests' };
+    }
+  },
+
+  getRecruiterCampusRequests: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/campus-requests/recruiter`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Get recruiter campus requests error:', error);
+      return { success: false, message: 'Failed to get campus requests' };
+    }
+  },
+
+  updateCampusRequestStatus: async (requestId, status) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found. Please login again.');
+      }
+
+      const response = await fetch(`${API_URL}/campus-requests/${requestId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Update campus request status error:', error);
+      return { success: false, message: 'Failed to update request status' };
+    }
+  },
 
 
 };

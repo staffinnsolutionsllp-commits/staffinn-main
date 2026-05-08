@@ -3,15 +3,15 @@
     display: flex;
     min-height: calc(100vh - 82px); /* Adjust for header height */
     background-color: #f6f8fa;
-    margin-top: 0; /* No margin at the top */
-    padding-top: 0; /* No padding at the top */
+    margin-top: 82px; /* Height of the header */
+    padding-top: 0;
 }
 
 /* Sidebar Styles */
 .recruiter-dashboard-sidebar {
     width: 250px;
     position: fixed;
-    top: 115px; /* Height of the header */
+    top: 82px; /* Height of the header */
     left: 0;
     height: calc(100vh - 82px); /* Adjust height to account for header */
     background-color: #2c3e50;
@@ -20,6 +20,7 @@
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
     z-index: 100;
+    transition: all 0.3s ease;
 }
 
 .recruiter-company-info {
@@ -62,6 +63,34 @@
 
 .recruiter-sidebar-menu li.active {
     background-color: rgba(255, 255, 255, 0.15);
+    border-left-color: #4863f7;
+    font-weight: 600;
+}
+
+/* Submenu Styles */
+.recruiter-submenu {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.recruiter-submenu li {
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+    font-size: 0.9rem;
+    background-color: transparent;
+}
+
+.recruiter-submenu li:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-left-color: rgba(255, 255, 255, 0.3);
+}
+
+.recruiter-submenu li.active {
+    background-color: rgba(255, 255, 255, 0.12);
     border-left-color: #4863f7;
     font-weight: 600;
 }
@@ -891,53 +920,55 @@
     box-shadow: 0 8px 20px rgba(72, 99, 247, 0.3);
 }
 
-/* Responsive Styles */
+/* Mobile Hamburger Button */
+.recruiter-mobile-sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 90px;
+    left: 10px;
+    z-index: 150;
+    background-color: #2c3e50;
+    border: none;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.recruiter-mobile-sidebar-toggle span {
+    width: 25px;
+    height: 3px;
+    background-color: white;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.recruiter-mobile-sidebar-toggle:hover {
+    background-color: #34495e;
+}
+
+/* Mobile Sidebar Styles */
 @media (max-width: 992px) {
-    .recruiter-dashboard {
-        flex-direction: column;
-    }
-
-    .recruiter-dashboard-sidebar {
-        width: 100%;
-        padding: 10px 0;
-    }
-
-    .recruiter-sidebar-menu {
+    .recruiter-mobile-sidebar-toggle {
         display: flex;
-        flex-wrap: wrap;
     }
-
-    .recruiter-sidebar-menu li {
-        flex: 1;
-        min-width: 150px;
-        text-align: center;
-        padding: 10px 15px;
-        border-left: none;
-        border-bottom: 3px solid transparent;
+    
+    .recruiter-dashboard-sidebar {
+        transform: translateX(-100%);
+        width: 280px;
+        z-index: 120;
     }
-
-    .recruiter-sidebar-menu li.active {
-        border-left-color: transparent;
-        border-bottom-color: #4863f7;
+    
+    .recruiter-dashboard-sidebar.mobile-open {
+        transform: translateX(0);
     }
-
-    .recruiter-company-info {
-        padding: 10px;
-        margin-bottom: 10px;
-    }
-
-    .recruiter-company-logo {
-        width: 60px;
-        height: 60px;
-    }
-
-    .recruiter-job-form-modal {
-        width: 95%;
-        margin: 10px;
-    }
-
-    .recruiter-form-row {
-        grid-template-columns: 1fr;
+    
+    .recruiter-dashboard-content {
+        margin-left: 0;
+        width: 100%;
     }
 }
 
@@ -2584,4 +2615,166 @@
         font-size: 0.9rem;
         padding: 10px 20px;
     }
+}
+
+/* Campus Requests Tab Styles */
+.recruiter-campus-requests-tab {
+    background-color: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.campus-requests-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.campus-request-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.campus-request-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: #4863f7;
+}
+
+.request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.request-header h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.2rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.request-date {
+    color: #64748b;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.request-details {
+    margin: 15px 0;
+}
+
+.request-details p {
+    margin: 8px 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.request-details p strong {
+    color: #374151;
+    font-weight: 600;
+}
+
+.request-details .status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.request-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 15px;
+}
+
+.request-actions button {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    .campus-requests-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .request-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .request-date {
+        align-self: flex-start;
+    }
+}
+
+/* Campus Requests Status Badge Styles */
+.campus-request-card .status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.campus-request-card .status-badge.pending {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.campus-request-card .status-badge.accepted {
+  background-color: #28a745;
+  color: white;
+}
+
+.campus-request-card .status-badge.rejected {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Campus Request Action Buttons */
+.campus-request-card .request-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 15px;
+}
+
+.campus-request-card .approve-btn,
+.campus-request-card .reject-btn,
+.campus-request-card .view-details-btn {
+  transition: all 0.3s ease;
+}
+
+.campus-request-card .approve-btn:hover {
+  background-color: #218838 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.campus-request-card .reject-btn:hover {
+  background-color: #c82333 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.campus-request-card .view-details-btn:hover {
+  background-color: #0056b3 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
 }

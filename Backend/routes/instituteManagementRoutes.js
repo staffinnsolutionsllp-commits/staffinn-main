@@ -16,7 +16,8 @@ const {
 const {
   createCourse,
   getCourses,
-  getActiveCourseCount
+  getActiveCourseCount,
+  deleteCourse
 } = require('../controllers/instituteCourseController');
 
 // Configure multer for file uploads
@@ -72,5 +73,6 @@ router.get('/students/:studentId/application-history', getStudentApplicationHist
 router.post('/courses', createCourse);
 router.get('/courses', getCourses);
 router.get('/active-courses-count', getActiveCourseCount);
+router.delete('/courses/:courseId', deleteCourse);
 
 module.exports = router;

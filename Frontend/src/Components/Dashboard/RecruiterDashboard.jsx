@@ -22,13 +22,24 @@ const RecruiterDashboard = () => {
     const [profilePhoto, setProfilePhoto] = useState(null);
     const { updateAllImages, notifyProfilePhotoUpdated } = useProfilePhotoSync(profilePhoto, 'recruiter');
     const [activeTab, setActiveTab] = useState('overview');
+    const [isMyHiringsOpen, setIsMyHiringsOpen] = useState(false);
     
-    // Handle URL tab parameter
+    // Handle URL tab parameter and hash
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const tabParam = urlParams.get('tab');
-        if (tabParam) {
+        const hash = window.location.hash.replace('#', '');
+        
+        // Check for hash-based navigation (e.g., #job-management)
+        if (hash === 'job-management') {
+            setActiveTab('jobs');
+            setIsMyHiringsOpen(true);
+        } else if (tabParam) {
             setActiveTab(tabParam);
+            // Open My Hirings dropdown if tab is jobs, candidates, or hiring
+            if (tabParam === 'jobs' || tabParam === 'candidates' || tabParam === 'hiring') {
+                setIsMyHiringsOpen(true);
+            }
         }
     }, []);
     const [showJobForm, setShowJobForm] = useState(false);
@@ -166,6 +177,10 @@ const RecruiterDashboard = () => {
     const [showHiringHistoryModal, setShowHiringHistoryModal] = useState(false);
     // Removed processedStudents state as backend now handles filtering
     
+    // Campus requests state
+    const [campusRequests, setCampusRequests] = useState([]);
+    const [campusRequestsLoading, setCampusRequestsLoading] = useState(false);
+    
     // Filter institutes based on selected job
     const filteredInstitutes = appliedInstitutes.filter(institute => {
         if (selectedJobFilter === 'all') return true;
@@ -240,6 +255,7 @@ const RecruiterDashboard = () => {
             loadAppliedInstitutes();
             loadHiringHistory();
             loadRecruiterNews();
+            loadCampusRequests();
             setupSocketConnection();
         }
     }, [currentUser]);
@@ -1229,6 +1245,42 @@ const RecruiterDashboard = () => {
         }
     };
     
+    // Load campus requests with institute details
+    const loadCampusRequests = async () => {
+        try {
+            setCampusRequestsLoading(true);
+            const response = await apiService.getRecruiterCampusRequests();
+            if (response.success && response.data) {
+                // Fetch institute details for each request
+                const requestsWithDetails = await Promise.all(
+                    response.data.map(async (request) => {
+                        try {
+                            const instituteResponse = await apiService.getInstituteById(request.instituteId);
+                            if (instituteResponse.success && instituteResponse.data) {
+                                return {
+                                    ...request,
+                                    instituteName: instituteResponse.data.instituteName || 'N/A',
+                                    instituteEmail: instituteResponse.data.email || 'N/A',
+                                    institutePhone: instituteResponse.data.phone || 'Not provided',
+                                    instituteLocation: instituteResponse.data.location || 'Not provided'
+                                };
+                            }
+                            return request;
+                        } catch (err) {
+                            console.error('Error fetching institute details:', err);
+                            return request;
+                        }
+                    })
+                );
+                setCampusRequests(requestsWithDetails);
+            }
+        } catch (error) {
+            console.error('Error loading campus requests:', error);
+        } finally {
+            setCampusRequestsLoading(false);
+        }
+    };
+    
     // Handle news form input changes
     const handleNewsInputChange = (e) => {
         const { name, value, type, checked, files } = e.target;
@@ -1364,6 +1416,15 @@ const RecruiterDashboard = () => {
     const handleTabChange = (tab) => {
         setActiveTab(tab);
         setIsMobileSidebarOpen(false);
+        // Open My Hirings dropdown if navigating to jobs, candidates, or hiring
+        if (tab === 'jobs' || tab === 'candidates' || tab === 'hiring') {
+            setIsMyHiringsOpen(true);
+        }
+    };
+    
+    // Toggle My Hirings dropdown
+    const toggleMyHirings = () => {
+        setIsMyHiringsOpen(!isMyHiringsOpen);
     };
     
     // Handle HRMS access - Direct redirect
@@ -1513,17 +1574,27 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'overview' ? 'active' : ''} onClick={() => handleTabChange('overview')}>
                         Dashboard Overview
                     </li>
-                    <li className={activeTab === 'jobs' ? 'active' : ''} onClick={() => handleTabChange('jobs')}>
-                        Job Management
+                    <li className={activeTab === 'jobs' || activeTab === 'candidates' || activeTab === 'hiring' ? 'active' : ''} onClick={toggleMyHirings}>
+                        My Hirings {isMyHiringsOpen ? '▼' : '▶'}
                     </li>
-                    <li className={activeTab === 'candidates' ? 'active' : ''} onClick={() => handleTabChange('candidates')}>
-                        Candidate Search
-                    </li>
-                    <li className={activeTab === 'hiring' ? 'active' : ''} onClick={() => handleTabChange('hiring')}>
-                        Hiring History
-                    </li>
+                    {isMyHiringsOpen && (
+                        <ul className="recruiter-submenu">
+                            <li className={activeTab === 'jobs' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('jobs'); }}>
+                                Job Management
+                            </li>
+                            <li className={activeTab === 'candidates' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('candidates'); }}>
+                                Apply Candidates
+                            </li>
+                            <li className={activeTab === 'hiring' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('hiring'); }}>
+                                Hiring History
+                            </li>
+                        </ul>
+                    )}
                     <li className={activeTab === 'institutes' ? 'active' : ''} onClick={() => handleTabChange('institutes')}>
                         Institutes
+                    </li>
+                    <li onClick={() => window.location.href = '/staff'}>
+                        Search Staff
                     </li>
                     <li className={activeTab === 'news' ? 'active' : ''} onClick={() => handleTabChange('news')}>
                         News
@@ -1537,6 +1608,9 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'hrms' ? 'active' : ''} onClick={handleHRMSAccess}>
                         HRMS
                     </li>
+                    <li className={activeTab === 'campus-requests' ? 'active' : ''} onClick={() => handleTabChange('campus-requests')}>
+                        Campus Requests
+                    </li>
                 </ul>
             </div>
 
@@ -1546,9 +1620,10 @@ const RecruiterDashboard = () => {
                 <h1>
                     {activeTab === 'overview' && 'Dashboard Overview'}
                     {activeTab === 'jobs' && 'Job Management'}
-                    {activeTab === 'candidates' && 'Candidate Search'}
+                    {activeTab === 'candidates' && 'Apply Candidates'}
                     {activeTab === 'hiring' && 'Hiring History'}
                     {activeTab === 'institutes' && 'Institutes'}
+                    {activeTab === 'campus-requests' && 'Campus Requests'}
                     {activeTab === 'news' && 'News'}
                     {activeTab === 'contact-history' && 'Contact History'}
                     {activeTab === 'government-schemes' && 'Government Schemes'}
@@ -2641,6 +2716,141 @@ const RecruiterDashboard = () => {
                         ) : (
                             <div className="recruiter-empty-state">
                                 <p>No institutes have applied to your jobs yet.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'campus-requests' && (
+                    <div className="recruiter-campus-requests-tab">
+                        {campusRequestsLoading ? (
+                            <div className="loading-section">
+                                <p>Loading campus requests...</p>
+                            </div>
+                        ) : campusRequests.length > 0 ? (
+                            <div className="campus-requests-grid">
+                                {campusRequests.map((request) => (
+                                    <div key={request.campusreq} className="campus-request-card">
+                                        <div className="request-header">
+                                            <h3>{request.instituteName}</h3>
+                                            <span className="request-date">{formatDate(request.createdAt)}</span>
+                                        </div>
+                                        <div className="request-details">
+                                            <p><strong>Email:</strong> {request.instituteEmail}</p>
+                                            <p><strong>Phone:</strong> {request.institutePhone || 'Not provided'}</p>
+                                            <p><strong>Location:</strong> {request.instituteLocation || 'Not provided'}</p>
+                                        </div>
+                                        <div className="request-actions">
+                                            {request.status === 'pending' ? (
+                                                <>
+                                                    <button 
+                                                        className="approve-btn"
+                                                        onClick={async () => {
+                                                            if (window.confirm(`Approve campus invite from ${request.instituteName}?`)) {
+                                                                try {
+                                                                    setLoading(true);
+                                                                    const response = await apiService.updateCampusRequestStatus(request.campusreq, 'accepted');
+                                                                    if (response.success) {
+                                                                        alert('Campus invite approved successfully!');
+                                                                        await loadCampusRequests();
+                                                                    } else {
+                                                                        alert('Failed to approve request: ' + response.message);
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('Error approving request:', error);
+                                                                    alert('Failed to approve request');
+                                                                } finally {
+                                                                    setLoading(false);
+                                                                }
+                                                            }
+                                                        }}
+                                                        disabled={loading}
+                                                        style={{
+                                                            backgroundColor: '#28a745',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            padding: '8px 16px',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '14px',
+                                                            fontWeight: '500',
+                                                            marginRight: '8px'
+                                                        }}
+                                                    >
+                                                        ✅ Approve
+                                                    </button>
+                                                    <button 
+                                                        className="reject-btn"
+                                                        onClick={async () => {
+                                                            if (window.confirm(`Reject campus invite from ${request.instituteName}?`)) {
+                                                                try {
+                                                                    setLoading(true);
+                                                                    const response = await apiService.updateCampusRequestStatus(request.campusreq, 'rejected');
+                                                                    if (response.success) {
+                                                                        alert('Campus invite rejected.');
+                                                                        await loadCampusRequests();
+                                                                    } else {
+                                                                        alert('Failed to reject request: ' + response.message);
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('Error rejecting request:', error);
+                                                                    alert('Failed to reject request');
+                                                                } finally {
+                                                                    setLoading(false);
+                                                                }
+                                                            }
+                                                        }}
+                                                        disabled={loading}
+                                                        style={{
+                                                            backgroundColor: '#dc3545',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            padding: '8px 16px',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '14px',
+                                                            fontWeight: '500',
+                                                            marginRight: '8px'
+                                                        }}
+                                                    >
+                                                        ❌ Reject
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span className={`status-badge ${request.status}`} style={{
+                                                    padding: '8px 16px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '14px',
+                                                    fontWeight: '500',
+                                                    backgroundColor: request.status === 'accepted' ? '#28a745' : '#dc3545',
+                                                    color: 'white'
+                                                }}>
+                                                    {request.status === 'accepted' ? '✅ Approved' : '❌ Rejected'}
+                                                </span>
+                                            )}
+                                            <button 
+                                                className="view-details-btn"
+                                                onClick={() => window.open(`/institute/${request.instituteId}`, '_blank')}
+                                                style={{
+                                                    backgroundColor: '#007bff',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    padding: '8px 16px',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '14px',
+                                                    fontWeight: '500'
+                                                }}
+                                            >
+                                                View Institute
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="recruiter-empty-state">
+                                <p>No campus invite requests received yet.</p>
                             </div>
                         )}
                     </div>

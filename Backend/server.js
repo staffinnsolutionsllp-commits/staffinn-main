@@ -84,6 +84,7 @@ const hrmsNotificationRoutes = require('./routes/hrms/hrmsNotificationRoutes');
 const hrmsAccessRoutes = require('./routes/hrmsAccessRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const instituteBankDetailsRoutes = require('./routes/instituteBankDetailsRoutes');
+const campusRequestRoutes = require('./routes/campusRequestRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -210,6 +211,7 @@ app.use(`${API_PREFIX}/employee`, employeePortalRoutes);
 app.use(`${API_PREFIX}/hrms/notifications`, hrmsNotificationRoutes);
 app.use(`${API_PREFIX}/payments`, paymentRoutes);
 app.use(`${API_PREFIX}/institute`, instituteBankDetailsRoutes);
+app.use(`${API_PREFIX}/campus-requests`, campusRequestRoutes);
 
 console.log('✅ HRMS routes registered successfully:');
 console.log('   - /api/v1/hrms/auth/*');

@@ -23,14 +23,14 @@ body {
 /* Modal scroll prevention */
 body.modal-open {
   overflow: hidden !important;
-  position: fixed;
-  width: 100%;
+  position: relative;
 }
 
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  padding-top: 100px;
 }
 
 main {

@@ -2,9 +2,42 @@ const { v4: uuidv4 } = require('uuid');
 const dynamoService = require('../services/dynamoService');
 const s3Service = require('../services/s3Service');
 const pendingPaymentModel = require('../models/pendingInstitutePaymentModel');
+const ffmpeg = require('fluent-ffmpeg');
+const https = require('https');
+const http = require('http');
 
 const COURSES_TABLE = 'staffinn-courses';
 const COURSE_ENROLLMENTS_TABLE = 'course-enrolled-user';
+
+// Helper function to get video duration from URL
+const getVideoDurationFromUrl = (videoUrl) => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log('🎬 Calculating video duration for:', videoUrl);
+      
+      ffmpeg.ffprobe(videoUrl, (err, metadata) => {
+        if (err) {
+          console.error('❌ FFprobe error:', err.message);
+          resolve(0); // Return 0 instead of rejecting
+          return;
+        }
+        
+        if (metadata && metadata.format && metadata.format.duration) {
+          const durationSeconds = metadata.format.duration;
+          const durationMinutes = Math.ceil(durationSeconds / 60);
+          console.log(`✅ Video duration: ${durationMinutes} minutes (${durationSeconds} seconds)`);
+          resolve(durationMinutes);
+        } else {
+          console.log('⚠️ No duration metadata found');
+          resolve(0);
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error in getVideoDurationFromUrl:', error.message);
+      resolve(0); // Return 0 instead of rejecting
+    }
+  });
+};
 
 // Create course with modules and content
 const createCourse = async (req, res) => {
@@ -145,13 +178,24 @@ const createCourse = async (req, res) => {
               }
             }
 
+            // Calculate video duration if content is video
+            let durationMinutes = 0;
+            if (contentData.type === 'video' && contentUrl) {
+              try {
+                durationMinutes = await getVideoDurationFromUrl(contentUrl);
+              } catch (durationError) {
+                console.error('Duration calculation failed:', durationError);
+                durationMinutes = 0;
+              }
+            }
+
             const processedContent = {
               contentId,
               contentTitle: contentData.title || `Content ${j + 1}`,
               contentType: contentData.type || 'video',
               contentUrl: contentUrl,
               order: j + 1,
-              durationMinutes: parseInt(contentData.duration) || 0,
+              durationMinutes: durationMinutes,
               mandatory: contentData.mandatory !== false
             };
 
@@ -887,13 +931,24 @@ const updateCourse = async (req, res) => {
               }
             }
 
+            // Calculate video duration if content is video
+            let durationMinutes = 0;
+            if (contentData.type === 'video' && contentUrl) {
+              try {
+                durationMinutes = await getVideoDurationFromUrl(contentUrl);
+              } catch (durationError) {
+                console.error('Duration calculation failed:', durationError);
+                durationMinutes = 0;
+              }
+            }
+
             const processedContent = {
               contentId,
               contentTitle: contentData.title || `Content ${j + 1}`,
               contentType: contentData.type || 'video',
               contentUrl: contentUrl,
               order: j + 1,
-              durationMinutes: parseInt(contentData.duration) || 0,
+              durationMinutes: durationMinutes,
               mandatory: contentData.mandatory !== false
             };
 
@@ -1163,7 +1218,7 @@ const getTrendingCourses = async (req, res) => {
       });
     }
     
-    // Get enrollment counts for each course
+    // Get enrollment counts and rating stats for each course
     const coursesWithEnrollments = await Promise.all(
       courses.map(async (course) => {
         try {
@@ -1178,6 +1233,25 @@ const getTrendingCourses = async (req, res) => {
           const enrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, enrollmentParams);
           const enrollmentCount = enrollments ? enrollments.length : 0;
           
+          // Get rating stats for this course
+          const COURSE_REVIEW_TABLE = 'course-review';
+          const reviewParams = {
+            FilterExpression: 'courseId = :courseId',
+            ExpressionAttributeValues: {
+              ':courseId': course.coursesId
+            }
+          };
+          
+          const reviews = await dynamoService.scanItems(COURSE_REVIEW_TABLE, reviewParams);
+          let averageRating = 0;
+          let totalReviews = 0;
+          
+          if (reviews && reviews.length > 0) {
+            const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+            averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
+            totalReviews = reviews.length;
+          }
+          
           // Get institute info
           const userModel = require('../models/userModel');
           const institute = await userModel.findUserById(course.instituteId);
@@ -1185,6 +1259,10 @@ const getTrendingCourses = async (req, res) => {
           return {
             ...course,
             enrollmentCount,
+            averageRating,
+            totalReviews,
+            rating: averageRating, // For compatibility
+            reviewCount: totalReviews, // For compatibility
             instituteInfo: institute ? {
               instituteName: institute.name || institute.instituteName,
               profileImage: institute.profileImage
@@ -1195,6 +1273,10 @@ const getTrendingCourses = async (req, res) => {
           return {
             ...course,
             enrollmentCount: 0,
+            averageRating: 0,
+            totalReviews: 0,
+            rating: 0,
+            reviewCount: 0,
             instituteInfo: null
           };
         }
@@ -1556,6 +1638,54 @@ const getInstituteStudentEnrollmentCount = async (req, res) => {
   }
 };
 
+// Delete course permanently
+const deleteCourse = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    const { courseId } = req.params;
+    
+    console.log('Deleting course:', { courseId, instituteId });
+    
+    // Get course to verify ownership
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+    
+    // Verify ownership
+    if (course.instituteId !== instituteId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only delete your own courses.'
+      });
+    }
+    
+    // Delete course from database
+    await dynamoService.deleteItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    console.log('Course deleted successfully:', courseId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Course deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting course:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete course: ' + error.message
+    });
+  }
+};
+
 module.exports = {
   createCourse,
   updateCourse,
@@ -1577,5 +1707,6 @@ module.exports = {
   debugCourseContent,
   fixContentUrls,
   getTrendingCourses,
-  getInstituteStudentEnrollmentCount
+  getInstituteStudentEnrollmentCount,
+  deleteCourse
 };

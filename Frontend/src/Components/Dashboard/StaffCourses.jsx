@@ -108,8 +108,8 @@ const StaffCourses = () => {
         return;
       }
       
-      // Navigate directly to the CourseLearningPage
-      navigate(`/course/${courseId}`);
+      // Navigate directly to the CourseLearningPage (enrolled user view)
+      navigate(`/course-learning/${courseId}`);
     } catch (error) {
       console.error('Error navigating to course:', error);
       alert('Failed to navigate to course. Please try again.');

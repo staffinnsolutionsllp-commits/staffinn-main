@@ -33,8 +33,8 @@ const Footer = () => {
                 <ul>
                     <li><Link to="/">Home</Link></li>
                     <li><Link to="/staff">Staff</Link></li>
-                    <li><Link to="/recruiter">Recruiter</Link></li>
                     <li><Link to="/institute">Institute</Link></li>
+                    <li><Link to="/recruiter">Recruiter</Link></li>
                     <li><Link to="/jobs">Jobs</Link></li>
                     <li><Link to="/courses">Courses</Link></li>
                     <li><Link to="/news">News</Link></li>

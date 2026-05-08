@@ -546,21 +546,23 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                 data-institute-image
               />
             </div>
-            <div className="institute-name-verified">
-              <h1>{instituteData?.name}</h1>
-              {instituteData?.isBrainaryVerified && (
-                <div className="verified-badge">
-                  <FaCheckCircle />
-                </div>
-              )}
-            </div>
-            <div className="institute-badges-grid">
-              {instituteData?.badges && instituteData.badges.map((badge, index) => (
-                <span key={index} className="badge-pill">{badge}</span>
-              ))}
-              {instituteData?.categories && instituteData.categories.map((category, index) => (
-                <span key={`cat-${index}`} className="badge-pill category">{category}</span>
-              ))}
+            <div className="institute-name-badges-container">
+              <div className="institute-name-verified">
+                <h1>{instituteData?.name}</h1>
+                {instituteData?.isBrainaryVerified && (
+                  <div className="verified-badge">
+                    <FaCheckCircle />
+                  </div>
+                )}
+              </div>
+              <div className="institute-badges-grid">
+                {instituteData?.badges && instituteData.badges.map((badge, index) => (
+                  <span key={index} className="badge-pill">{badge}</span>
+                ))}
+                {instituteData?.categories && instituteData.categories.map((category, index) => (
+                  <span key={`cat-${index}`} className="badge-pill category">{category}</span>
+                ))}
+              </div>
             </div>
           </div>
 

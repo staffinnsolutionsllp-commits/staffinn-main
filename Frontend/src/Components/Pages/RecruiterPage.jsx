@@ -38,15 +38,46 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
   const [heroImages, setHeroImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [heroImagesLoading, setHeroImagesLoading] = useState(true);
+  
+  // Campus request state
+  const [campusRequestSent, setCampusRequestSent] = useState(new Set());
+  
+  // Store hash for scrolling after jobs load
+  const [pendingScrollJobId, setPendingScrollJobId] = useState(null);
 
   // Load recruiters from backend on component mount
   useEffect(() => {
     loadRecruiters();
     loadHeroImages();
+    
+    // Check if there's a hash in URL for scrolling to job
+    if (window.location.hash) {
+      const jobId = window.location.hash.replace('#job-', '');
+      setPendingScrollJobId(jobId);
+      console.log('Stored pending scroll job ID:', jobId);
+    }
+    
     if (user) {
       loadUserProfile();
+      // Load existing campus requests for institutes
+      if (user.role === 'institute') {
+        loadExistingCampusRequests();
+      }
     }
   }, []);
+  
+  // Load existing campus requests to check which recruiters already have requests
+  const loadExistingCampusRequests = async () => {
+    try {
+      const response = await apiService.getInstituteCampusRequests();
+      if (response.success && response.data) {
+        const sentRecruiterIds = new Set(response.data.map(req => req.recruiterId));
+        setCampusRequestSent(sentRecruiterIds);
+      }
+    } catch (error) {
+      console.error('Error loading existing campus requests:', error);
+    }
+  };
   
   // Handle slideshow interval
   useEffect(() => {
@@ -126,12 +157,88 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
     }
   }, [recruiterId, recruiters]);
   
+  // Handle scroll to job and highlight when jobs are loaded and we have a pending scroll
+  useEffect(() => {
+    console.log('Scroll effect triggered');
+    console.log('Pending scroll job ID:', pendingScrollJobId);
+    console.log('Selected recruiter:', selectedRecruiter?.companyName);
+    console.log('Recruiter jobs count:', recruiterJobs.length);
+    
+    if (pendingScrollJobId && selectedRecruiter && recruiterJobs.length > 0) {
+      console.log('All conditions met, attempting to scroll to job:', pendingScrollJobId);
+      
+      // Wait for DOM to render - reduced timeout for faster response
+      const scrollTimeout = setTimeout(() => {
+        const jobElement = document.getElementById(`job-${pendingScrollJobId}`);
+        console.log('Looking for element with ID:', `job-${pendingScrollJobId}`);
+        console.log('Found job element:', jobElement);
+        
+        if (jobElement) {
+          // Scroll to job with smooth behavior
+          jobElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          console.log('Scrolled to job element');
+          
+          // Find the actual job card inside the wrapper
+          const jobCard = jobElement.querySelector('.modern-job-card');
+          console.log('Found job card:', jobCard);
+          
+          if (jobCard) {
+            // Add highlight class
+            jobCard.classList.add('highlight');
+            console.log('Added highlight class');
+            
+            // Remove highlight after 2 seconds
+            setTimeout(() => {
+              jobCard.classList.remove('highlight');
+              console.log('Removed highlight class');
+              // Clear hash from URL
+              window.history.replaceState(null, '', window.location.pathname);
+              // Clear pending scroll
+              setPendingScrollJobId(null);
+            }, 2000);
+          }
+        } else {
+          console.error('Job element not found with ID:', `job-${pendingScrollJobId}`);
+          console.log('All job elements:', document.querySelectorAll('[id^="job-"]'));
+        }
+      }, 500);
+      
+      return () => clearTimeout(scrollTimeout);
+    }
+  }, [pendingScrollJobId, selectedRecruiter, recruiterJobs]);
+  
   // Load follow status when recruiter is selected
   useEffect(() => {
     if (selectedRecruiter && user && user.role === 'staff') {
       loadFollowStatus();
     }
   }, [selectedRecruiter, user]);
+  
+  // Handle campus invite request
+  const handleCampusInvite = async (recruiterId) => {
+    if (!user) {
+      alert('Please login to send campus invite');
+      return;
+    }
+    
+    if (user.role !== 'institute') {
+      return;
+    }
+    
+    try {
+      const response = await apiService.sendCampusRequest(recruiterId);
+      
+      if (response.success) {
+        setCampusRequestSent(prev => new Set([...prev, recruiterId]));
+        alert('Campus invite request sent successfully!');
+      } else {
+        alert(response.message || 'Failed to send campus invite');
+      }
+    } catch (error) {
+      console.error('Error sending campus invite:', error);
+      alert('Failed to send campus invite');
+    }
+  };
   
   // Load user profile to check if they are active staff or institute
   const loadUserProfile = async () => {
@@ -330,23 +437,74 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
       const response = await apiWithLoading.getAllRecruiters();
       
       if (response.success && response.data) {
-        // Format recruiters data for display
+        // Format recruiters data for display with all profile information
         const formattedRecruiters = response.data.map(recruiter => {
-          // Handle profile photo URL properly
+          // Handle profile photo URL properly - check if it's already a full URL
           let logoUrl;
           if (recruiter.profilePhoto) {
-            logoUrl = recruiter.profilePhoto.startsWith('http') ? recruiter.profilePhoto : `http://localhost:4001${recruiter.profilePhoto}`;
+            // If it's already a full URL (S3 or any http/https URL), use it as-is
+            if (recruiter.profilePhoto.startsWith('http://') || recruiter.profilePhoto.startsWith('https://')) {
+              logoUrl = recruiter.profilePhoto;
+            } else {
+              // Otherwise, prepend backend URL for local files
+              logoUrl = `http://localhost:4001${recruiter.profilePhoto}`;
+            }
           } else {
             logoUrl = `https://via.placeholder.com/80?text=${recruiter.companyName ? recruiter.companyName.substring(0, 3).toUpperCase() : 'CO'}`;
           }
           
+          // Process office images to ensure full URLs
+          const rawOfficeImages = recruiter.officeImages || recruiter.officePhotos || [];
+          const processedOfficeImages = Array.isArray(rawOfficeImages) ? rawOfficeImages.map(img => {
+            if (!img || typeof img !== 'string') return null;
+            // If it's already a full URL (S3 or any http/https URL), use it as-is
+            if (img.startsWith('http://') || img.startsWith('https://')) {
+              return img;
+            }
+            // If it starts with /uploads, prepend the backend URL
+            if (img.startsWith('/uploads')) {
+              return `http://localhost:4001${img}`;
+            }
+            // Otherwise, assume it's a relative path and prepend backend URL
+            return `http://localhost:4001${img.startsWith('/') ? img : '/' + img}`;
+          }).filter(Boolean) : [];
+          
+          // Get first 3 office images for card display
+          const cardOfficeImages = processedOfficeImages.slice(0, 3);
+          
+          // Truncate company description for card display
+          const truncatedDescription = recruiter.companyDescription 
+            ? (recruiter.companyDescription.length > 120 
+                ? recruiter.companyDescription.substring(0, 120) + '...' 
+                : recruiter.companyDescription)
+            : 'No description available';
+          
+          // Format experience to include "+ years"
+          const formattedExperience = recruiter.experience 
+            ? (recruiter.experience.toString().includes('year') 
+                ? recruiter.experience 
+                : `${recruiter.experience}+ years`)
+            : 'N/A';
+          
           return {
             id: recruiter.id,
             name: recruiter.companyName || 'Company Name',
+            companyName: recruiter.companyName || 'Company Name',
             industry: recruiter.industry || 'Technology',
             openJobs: 0, // Will be updated when jobs are loaded
             logo: logoUrl,
-            profilePhoto: logoUrl
+            profilePhoto: logoUrl,
+            // Real recruiter profile data
+            recruiterName: recruiter.recruiterName || recruiter.name || 'HR Manager',
+            designation: recruiter.designation || 'Recruiter',
+            experience: formattedExperience,
+            address: recruiter.address || '',
+            location: recruiter.location || recruiter.address || 'Location not specified',
+            pincode: recruiter.pincode || '',
+            companyDescription: truncatedDescription,
+            officeImages: cardOfficeImages,
+            // Store full data for detail view
+            fullData: recruiter
           };
         });
         
@@ -590,25 +748,53 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
     const detailedData = await loadRecruiterDetails(recruiter.id);
     
     if (detailedData) {
-      // Handle profile photo URL properly for detailed data
+      // Handle profile photo URL properly for detailed data - check if it's already a full URL
       let profilePhotoUrl = recruiter.profilePhoto; // Use the already processed URL from the list
       if (detailedData.profilePhoto) {
-        profilePhotoUrl = detailedData.profilePhoto.startsWith('http') ? detailedData.profilePhoto : `http://localhost:4001${detailedData.profilePhoto}`;
+        if (detailedData.profilePhoto.startsWith('http://') || detailedData.profilePhoto.startsWith('https://')) {
+          profilePhotoUrl = detailedData.profilePhoto;
+        } else {
+          profilePhotoUrl = `http://localhost:4001${detailedData.profilePhoto}`;
+        }
       }
       
-      // Process office images to ensure full URLs
+      // Process office images to ensure full URLs (including S3 URLs)
       const rawOfficeImages = detailedData.officeImages || detailedData.officePhotos || [];
-      const processedOfficeImages = Array.isArray(rawOfficeImages) ? rawOfficeImages.map(img => 
-        (img && typeof img === 'string') ? (img.startsWith('http') ? img : `http://localhost:4001${img}`) : img
-      ).filter(Boolean) : [];
+      const processedOfficeImages = Array.isArray(rawOfficeImages) ? rawOfficeImages.map(img => {
+        if (!img || typeof img !== 'string') return null;
+        // If it's already a full URL (S3 or any http/https URL), use it as-is
+        if (img.startsWith('http://') || img.startsWith('https://')) {
+          return img;
+        }
+        // If it starts with /uploads, prepend the backend URL
+        if (img.startsWith('/uploads')) {
+          return `http://localhost:4001${img}`;
+        }
+        // Otherwise, assume it's a relative path and prepend backend URL
+        return `http://localhost:4001${img.startsWith('/') ? img : '/' + img}`;
+      }).filter(Boolean) : [];
+      
+      // Format experience to include "+ years"
+      const formattedExperience = (recruiter.experience || detailedData.experience)
+        ? ((recruiter.experience || detailedData.experience).toString().includes('year') 
+            ? (recruiter.experience || detailedData.experience) 
+            : `${recruiter.experience || detailedData.experience}+ years`)
+        : 'N/A';
       
       setSelectedRecruiter({
         ...recruiter,
         ...detailedData,
         profilePhoto: profilePhotoUrl,
         officeImages: processedOfficeImages,
-        // Also check for officePhotos as fallback
-        officePhotos: processedOfficeImages
+        officePhotos: processedOfficeImages,
+        // Use real data from recruiter object
+        companyName: recruiter.companyName || detailedData.companyName,
+        recruiterName: recruiter.recruiterName || detailedData.recruiterName || 'HR Manager',
+        designation: recruiter.designation || detailedData.designation || 'Recruiter',
+        experience: formattedExperience,
+        location: recruiter.location || detailedData.location || detailedData.address || 'Location not specified',
+        address: recruiter.address || detailedData.address || '',
+        pincode: recruiter.pincode || detailedData.pincode || ''
       });
       
       console.log('Raw office images from API:', rawOfficeImages);
@@ -624,11 +810,11 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
       setSelectedRecruiter({
         ...recruiter,
         companyName: recruiter.name,
-        recruiterName: 'HR Manager',
-        designation: 'HR Manager',
+        recruiterName: recruiter.recruiterName || 'HR Manager',
+        designation: recruiter.designation || 'HR Manager',
         industry: recruiter.industry,
-        location: 'India',
-        experience: '3+ years',
+        location: recruiter.location || 'India',
+        experience: recruiter.experience || '3+ years',
         verified: true,
         companyLogo: recruiter.logo,
         companyDescription: 'A leading technology company providing innovative solutions.',
@@ -894,13 +1080,14 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
                     }
                     
                     return (
-                      <JobCard
-                        key={job.id}
-                        job={job}
-                        onApply={() => handleApplyNow(job)}
-                        showApplyButton={showButton || (user && user.role === 'institute')}
-                        buttonText={buttonText}
-                      />
+                      <div key={job.id} id={`job-${job.id}`}>
+                        <JobCard
+                          job={job}
+                          onApply={() => handleApplyNow(job)}
+                          showApplyButton={showButton || (user && user.role === 'institute')}
+                          buttonText={buttonText}
+                        />
+                      </div>
                     );
                   })}
                 </div>
@@ -1257,56 +1444,129 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
       </div>
 
       <section className="recruiters-list-section">
-        <div className="real-time-notice">
-          <p>📡 <strong>Live Data:</strong> All recruiter information is updated in real-time from our database</p>
-        </div>
-        
         {filteredRecruiters.length > 0 ? (
           <div className="recruiters-grid">
-            {filteredRecruiters.map(recruiter => (
-              <div 
-                key={recruiter.id} 
-                className="recruiter-card"
-                onClick={() => {
-                  if (!isLoggedIn) {
-                    onShowLogin();
-                    return;
-                  }
-                  handleRecruiterSelect(recruiter);
-                }}
-              >
-                <div className="recruiter-card-header">
-                  <div className="recruiter-logo">
-                    <img src={recruiter.logo} alt={`${recruiter.name} logo`} />
+            {filteredRecruiters.map(recruiter => {
+              // Get first letter of recruiter name for avatar
+              const avatarLetter = recruiter.recruiterName ? recruiter.recruiterName.charAt(0).toUpperCase() : 'R';
+              
+              // Debug office images
+              console.log('Recruiter card office images:', {
+                recruiterId: recruiter.id,
+                recruiterName: recruiter.name,
+                officeImagesCount: recruiter.officeImages ? recruiter.officeImages.length : 0,
+                officeImages: recruiter.officeImages
+              });
+              
+              return (
+                <div 
+                  key={recruiter.id} 
+                  className="recruiter-card-new"
+                >
+                  {/* Top Section: Logo, Name, Industry Badge */}
+                  <div className="recruiter-card-top">
+                    <div className="recruiter-logo-new">
+                      <img src={recruiter.logo} alt={`${recruiter.name} logo`} />
+                    </div>
+                    <div className="recruiter-header-info">
+                      <div className="recruiter-name-row">
+                        <h3 className="recruiter-name-new">{recruiter.name}</h3>
+                        <span className="openings-badge">{recruiter.openJobs} Openings</span>
+                      </div>
+                      <span className="industry-badge">{recruiter.industry}</span>
+                    </div>
                   </div>
-                  <div className="recruiter-info">
-                    <h3 className="recruiter-name">
-                      {recruiter.name}
-                      <span className="verified-badge-small" title="Verified Recruiter">✓</span>
-                    </h3>
-                    <p className="recruiter-industry">{recruiter.industry}</p>
-                    <p className="recruiter-jobs">
-                      {recruiter.openJobs} {recruiter.openJobs === 1 ? 'open job' : 'open jobs'}
-                    </p>
+
+                  {/* Location - Real Data */}
+                  <div className="recruiter-location">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span>{recruiter.location}{recruiter.pincode ? ` ${recruiter.pincode}` : ''}</span>
+                  </div>
+
+                  {/* Contact Person Section - Real Data */}
+                  <div className="recruiter-contact-person">
+                    <div className="contact-avatar">{avatarLetter}</div>
+                    <div className="contact-info">
+                      <h4>{recruiter.recruiterName}</h4>
+                      <p>{recruiter.designation} • {recruiter.experience}</p>
+                    </div>
+                  </div>
+
+                  {/* Description - Real Data */}
+                  <p className="recruiter-description">
+                    {recruiter.companyDescription}
+                  </p>
+
+                  {/* Office Images - Real Data */}
+                  <div className="recruiter-office-images">
+                    {recruiter.officeImages && recruiter.officeImages.length > 0 ? (
+                      recruiter.officeImages.map((img, index) => (
+                        <div 
+                          key={index} 
+                          className="office-img-placeholder"
+                          style={{
+                            backgroundImage: `url(${img})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center'
+                          }}
+                        ></div>
+                      ))
+                    ) : (
+                      // Show placeholder if no images
+                      <>
+                        <div className="office-img-placeholder"></div>
+                        <div className="office-img-placeholder"></div>
+                        <div className="office-img-placeholder"></div>
+                      </>
+                    )}
+                    {/* Fill remaining slots with placeholders if less than 3 images */}
+                    {recruiter.officeImages && recruiter.officeImages.length > 0 && recruiter.officeImages.length < 3 && (
+                      Array.from({ length: 3 - recruiter.officeImages.length }).map((_, index) => (
+                        <div key={`placeholder-${index}`} className="office-img-placeholder"></div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="recruiter-card-actions" style={{
+                    display: 'flex',
+                    flexDirection: user && user.role === 'institute' ? 'row' : 'column',
+                    gap: '10px',
+                    justifyContent: user && user.role === 'institute' ? 'space-between' : 'center',
+                    alignItems: 'center'
+                  }}>
+                    <button 
+                      className="view-profile-btn"
+                      onClick={() => {
+                        if (!isLoggedIn) {
+                          onShowLogin();
+                          return;
+                        }
+                        handleRecruiterSelect(recruiter);
+                      }}
+                      style={{
+                        width: user && user.role === 'institute' ? 'auto' : '100%',
+                        textAlign: 'center'
+                      }}
+                    >
+                      View Profile
+                    </button>
+                    {user && user.role === 'institute' && (
+                      <button 
+                        className="campus-invite-btn"
+                        onClick={() => handleCampusInvite(recruiter.id)}
+                        disabled={campusRequestSent.has(recruiter.id)}
+                      >
+                        {campusRequestSent.has(recruiter.id) ? '✓ Request Sent' : 'Campus Invite'}
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div className="recruiter-card-footer">
-                  <button 
-                    className="view-recruiter-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!isLoggedIn) {
-                        onShowLogin();
-                        return;
-                      }
-                      handleRecruiterSelect(recruiter);
-                    }}
-                  >
-                    View Details
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="no-recruiters-found">

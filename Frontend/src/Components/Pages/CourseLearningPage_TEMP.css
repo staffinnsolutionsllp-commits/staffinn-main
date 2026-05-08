@@ -1,0 +1,48 @@
+/* Sidebar Course Banner */
+.sidebar-course-banner {
+  position: relative !important;
+  width: 100% !important;
+  height: 200px !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+  border-radius: 0 !important;
+  display: block !important;
+  visibility: visible !important;
+  background-color: #1e3a8a !important;
+}
+
+.banner-image-container {
+  position: relative !important;
+  width: 100% !important;
+  height: 200px !important;
+  display: block !important;
+}
+
+.course-sidebar {
+  background-color: #FFFFFF !important;
+  border: 1px solid #d1d7dc !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: sticky !important;
+  top: 1.5rem !important;
+  height: fit-content !important;
+  max-height: calc(100vh - 3rem) !important;
+  overflow-y: auto !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.08) !important;
+  margin-top: -12rem !important;
+  z-index: 10 !important;
+  padding: 0 !important;
+}
+
+.enrollment-section {
+  padding: 1.5rem;
+  border-bottom: 1px solid #d1d7dc;
+  background-color: #FFFFFF;
+}
+
+.sidebar-includes {
+  padding: 1.5rem;
+  border-bottom: 1px solid #d1d7dc;
+  border-top: none;
+}

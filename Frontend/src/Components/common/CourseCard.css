@@ -62,6 +62,9 @@
   min-height: 0;
   text-align: left;
   align-items: flex-start;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Course Title */
@@ -106,31 +109,55 @@
   width: 100%;
 }
 
-/* Rating Section */
+/* Rating Section - Force Single Line */
 .course-rating {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin: 0 0 6px 0;
-  justify-content: flex-start;
   width: 100%;
+  flex-wrap: nowrap !important;
+  overflow: visible;
 }
 
 .rating-value {
   font-size: 15px;
   font-weight: 700;
   color: #1f2937;
-  line-height: 1;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+}
+
+.rating-stars-wrapper {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .rating-stars {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .star-icon {
   font-size: 14px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .star-icon.filled {
@@ -145,7 +172,11 @@
   font-size: 13px;
   color: #6b7280;
   font-weight: 400;
-  line-height: 1;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
 }
 
 /* Price */

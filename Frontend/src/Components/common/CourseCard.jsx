@@ -42,7 +42,7 @@ const CourseCard = ({ course, onViewCourse, buttonText = "View Course" }) => {
     return text.substring(0, maxLength).trim() + '...';
   };
 
-  // Render star rating
+  // Render star rating - inline without wrapper
   const renderStars = (rating) => {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -51,28 +51,37 @@ const CourseCard = ({ course, onViewCourse, buttonText = "View Course" }) => {
 
     // Full stars
     for (let i = 0; i < fullStars; i++) {
-      stars.push(<FaStar key={`full-${i}`} className="star-icon filled" />);
+      stars.push(<FaStar key={`full-${i}`} className="star-icon filled" style={{ display: 'inline' }} />);
     }
 
     // Half star
     if (hasHalfStar) {
-      stars.push(<FaStarHalfAlt key="half" className="star-icon filled" />);
+      stars.push(<FaStarHalfAlt key="half" className="star-icon filled" style={{ display: 'inline' }} />);
     }
 
     // Empty stars
     for (let i = 0; i < emptyStars; i++) {
-      stars.push(<FaRegStar key={`empty-${i}`} className="star-icon empty" />);
+      stars.push(<FaRegStar key={`empty-${i}`} className="star-icon empty" style={{ display: 'inline' }} />);
     }
 
     return stars;
   };
 
-  // Mock rating data (you can replace with actual data from backend)
-  const rating = 4.1;
-  const reviewCount = 146;
+  // Get real rating data from course
+  const rating = course.averageRating || course.rating || 0;
+  const reviewCount = course.totalReviews || course.reviewCount || 0;
+
+  const handleCardClick = () => {
+    // Redirect to course learning page
+    if (course.coursesId) {
+      window.location.href = `/course-learning/${course.coursesId}`;
+    } else if (onViewCourse) {
+      onViewCourse(course);
+    }
+  };
 
   return (
-    <div className="course-card-new" onClick={handleViewClick}>
+    <div className="course-card-new" onClick={handleCardClick}>
       {/* Banner Image */}
       <div className="course-banner">
         {thumbnail ? (
@@ -116,12 +125,26 @@ const CourseCard = ({ course, onViewCourse, buttonText = "View Course" }) => {
         </p>
 
         {/* Rating Section */}
-        <div className="course-rating">
-          <span className="rating-value">{rating}</span>
-          <div className="rating-stars">
+        <div 
+          className="course-rating"
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: '4px',
+            flexWrap: 'nowrap',
+            margin: '0 0 6px 0'
+          }}
+        >
+          <span style={{ flexShrink: 0, fontSize: '15px', fontWeight: 700, color: '#1f2937' }}>
+            {rating > 0 ? rating.toFixed(1) : '0.0'}
+          </span>
+          <span style={{ display: 'inline-flex', gap: '1px', flexShrink: 0, alignItems: 'center' }}>
             {renderStars(rating)}
-          </div>
-          <span className="rating-count">({reviewCount})</span>
+          </span>
+          <span style={{ flexShrink: 0, whiteSpace: 'nowrap', fontSize: '13px', color: '#6b7280' }}>
+            ({reviewCount})
+          </span>
         </div>
 
         {/* Price */}

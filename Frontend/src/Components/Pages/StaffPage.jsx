@@ -1,13 +1,14 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { AuthContext } from "../../context/AuthContext";
 import apiWithLoading from "../../services/apiWithLoading";
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import './StaffPage.css';
 import Footer from '../Footer/Footer';
-import RegistrationPopup from '../Register/RegistrationPopup';
+// import RegistrationPopup from '../Register/RegistrationPopup'; // File does not exist
 import ChatButton from '../Messages/ChatButton';
+import { FaEnvelope, FaWhatsapp } from 'react-icons/fa';
 import StaffpageImage from '../../assets/Staffpage.jpg';
 
 function StaffPage({ isLoggedIn, onShowLogin }) {
@@ -45,6 +46,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
     // Hero images state
     const [heroImages, setHeroImages] = useState([]);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const heroSectionRef = useRef(null);
 
    const API_KEY = 'Rzk1SnVRU3NDTWpzb2ZiMERwU1RKTXRpT0R4Nmh0ZmhsZHlNM0pacw==';
     const sectors = getSectors();
@@ -120,13 +122,6 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
         };
         fetchStates();
         loadHeroImages();
-        
-        // Refresh hero images every 10 seconds
-        const heroImageInterval = setInterval(() => {
-            loadHeroImages();
-        }, 10000);
-        
-        return () => clearInterval(heroImageInterval);
     }, []);
 
     // Load hero images from API
@@ -161,36 +156,56 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
 
     // Slideshow effect for multiple images
     useEffect(() => {
+        let slideInterval;
+        
         if (heroImages.length > 1) {
-            console.log('Starting staff slideshow with', heroImages.length, 'images');
-            const interval = setInterval(() => {
+            console.log('🎬 Starting staff slideshow with', heroImages.length, 'images');
+            setCurrentImageIndex(0);
+            
+            slideInterval = setInterval(() => {
                 setCurrentImageIndex((prevIndex) => {
-                    const nextIndex = prevIndex === heroImages.length - 1 ? 0 : prevIndex + 1;
-                    console.log('Staff slideshow: changing from', prevIndex, 'to', nextIndex);
+                    const nextIndex = prevIndex >= heroImages.length - 1 ? 0 : prevIndex + 1;
+                    console.log('🔄 Staff slideshow:', prevIndex, '→', nextIndex);
                     return nextIndex;
                 });
             }, 5000);
-            
-            return () => {
-                console.log('Stopping staff slideshow');
-                clearInterval(interval);
-            };
         } else {
-            console.log('Single or no staff image, no slideshow needed');
+            console.log('🖼️ Single or no staff image, no slideshow needed');
             setCurrentImageIndex(0);
         }
+        
+        return () => {
+            if (slideInterval) {
+                console.log('⏹️ Stopping staff slideshow');
+                clearInterval(slideInterval);
+            }
+        };
     }, [heroImages]);
 
-    // Get current hero image
-    const getCurrentHeroImage = () => {
+    // Get current hero image (memoized)
+    const currentHeroImage = useMemo(() => {
         if (heroImages.length > 0) {
-            const currentImage = heroImages[currentImageIndex];
-            console.log('Current staff hero image:', currentImageIndex, 'of', heroImages.length, ':', currentImage?.url);
-            return currentImage?.url || StaffpageImage;
+            const validIndex = Math.max(0, Math.min(currentImageIndex, heroImages.length - 1));
+            const currentImage = heroImages[validIndex];
+            const imageUrl = currentImage?.url || StaffpageImage;
+            console.log('🖼️ Current staff hero image URL:', imageUrl);
+            return imageUrl;
         }
-        console.log('Using default staff image');
+        console.log('⚠️ No staff hero images, using default');
         return StaffpageImage;
-    };
+    }, [heroImages, currentImageIndex]);
+
+    // Update background image using ref
+    useEffect(() => {
+        if (heroSectionRef.current && currentHeroImage) {
+            console.log('🎨 Setting staff background image...');
+            heroSectionRef.current.style.setProperty('background-image', `url("${currentHeroImage}")`, 'important');
+            heroSectionRef.current.style.setProperty('background-size', 'cover', 'important');
+            heroSectionRef.current.style.setProperty('background-position', 'center', 'important');
+            heroSectionRef.current.style.setProperty('background-repeat', 'no-repeat', 'important');
+            console.log('✅ Staff background image applied');
+        }
+    }, [currentHeroImage]);
 
     // Fetch cities when state is selected
     useEffect(() => {
@@ -660,7 +675,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
     return (
         <div className="staff-page">
             {/* Hero Section with Search */}
-            <section className="staff-hero-section" style={{ backgroundImage: `url(${getCurrentHeroImage()})` }}>
+            <section ref={heroSectionRef} className="staff-hero-section">
                     {heroImages.length > 1 && (
                         <div className="slideshow-indicators">
                             {heroImages.map((_, index) => (
@@ -814,7 +829,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
             {/* Loading and Error States */}
             {loading && (
                 <div className="loading-section">
-                    <div className="loading-spinner">Loading staff profiles...</div>
+                    <div className="loading-spinner"></div>
                 </div>
             )}
 
@@ -1229,23 +1244,81 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                             <ChatButton 
                                                 recipientId={selectedStaff.userId}
                                                 recipientName={selectedStaff.name}
-                                                size="medium"
-                                                className="contact-option-btn chat-btn"
+                                                buttonClass="contact-option-btn chat-btn"
+                                                buttonText=""
                                             />
                                             <button 
                                                 className="contact-option-btn email-btn"
                                                 onClick={() => handleEmail(selectedStaff.email, selectedStaff.name, selectedStaff)}
+                                                title="Email"
+                                                style={{
+                                                    background: 'white',
+                                                    color: '#4863f7',
+                                                    border: '2px solid #e5e7eb',
+                                                    width: '60px',
+                                                    height: '60px',
+                                                    borderRadius: '50%',
+                                                    padding: '0',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.3s ease',
+                                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.background = '#4863f7';
+                                                    e.currentTarget.style.color = 'white';
+                                                    e.currentTarget.style.borderColor = '#4863f7';
+                                                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                                                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(72, 99, 247, 0.4)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.background = 'white';
+                                                    e.currentTarget.style.color = '#4863f7';
+                                                    e.currentTarget.style.borderColor = '#e5e7eb';
+                                                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                                                }}
                                             >
-                                                <span className="contact-icon">📧</span>
-                                                Email
+                                                <FaEnvelope style={{ fontSize: '30px' }} />
                                             </button>
                                             {user && user.role?.toLowerCase() === 'recruiter' && (
                                                 <button 
                                                     className="contact-option-btn whatsapp-btn"
                                                     onClick={() => handleWhatsApp(selectedStaff.phone, selectedStaff.name, selectedStaff)}
+                                                    title="WhatsApp"
+                                                    style={{
+                                                        background: 'white',
+                                                        color: '#4863f7',
+                                                        border: '2px solid #e5e7eb',
+                                                        width: '60px',
+                                                        height: '60px',
+                                                        borderRadius: '50%',
+                                                        padding: '0',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.3s ease',
+                                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = '#4863f7';
+                                                        e.currentTarget.style.color = 'white';
+                                                        e.currentTarget.style.borderColor = '#4863f7';
+                                                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)';
+                                                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(72, 99, 247, 0.4)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'white';
+                                                        e.currentTarget.style.color = '#4863f7';
+                                                        e.currentTarget.style.borderColor = '#e5e7eb';
+                                                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                                                    }}
                                                 >
-                                                    <span className="contact-icon">💬</span>
-                                                    WhatsApp
+                                                    <FaWhatsapp style={{ fontSize: '30px' }} />
                                                 </button>
                                             )}
                                         </div>
@@ -1415,6 +1488,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
             )}
 
             {/* Registration Popup */}
+            {/* Temporarily disabled - RegistrationPopup component missing
             {showRegistrationPopup && (
                 <RegistrationPopup
                     onClose={handleCloseRegistration}
@@ -1422,6 +1496,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                     initialRole={selectedRole}
                 />
             )}
+            */}
             
             {/* Rating Modal */}
             {showRatingModal && (

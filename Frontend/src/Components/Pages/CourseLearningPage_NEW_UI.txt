@@ -1,0 +1,30 @@
+Instructions for updating CourseLearningPage to modern UI:
+
+The CourseLearningPage needs to have the SAME modern UI as CourseDetailPage but with ALL existing functionality preserved.
+
+Key points:
+1. Replace old header with modern navbar (same as CourseDetailPage)
+2. Add hero banner with course info
+3. Add main grid with left/right columns
+4. Keep ALL enrollment, payment, quiz, video player functionality
+5. Use cdp- prefix for all CSS classes
+6. Use lucide-react icons instead of react-icons
+
+The structure should be:
+- Navbar (sticky)
+- Hero Banner (dark navy)
+- Main Grid:
+  - Left Column: What You'll Learn, Stats Bar, Course Content (if online), Tabs, Instructor
+  - Right Column: Sticky Sidebar with preview, pricing, enroll button, share buttons
+- Mobile Sticky Bottom Bar
+- All existing modals (Payment, Quiz, Enrollment)
+
+All existing functions must remain:
+- handleEnroll
+- handlePaymentSuccess
+- handleContentClick
+- handleVideoEnd
+- handleQuizSubmit
+- All other handlers
+
+This is just a reference file. The actual implementation needs to be done carefully in CourseLearningPage.jsx

@@ -11,7 +11,7 @@ import apiWithLoading from '../../services/apiWithLoading';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import { AuthContext } from '../../context/AuthContext';
 import ChatButton from '../Messages/ChatButton';
-import { FaComments, FaEnvelope, FaWhatsapp } from 'react-icons/fa';
+import { FaComments, FaEnvelope, FaWhatsapp, FaSearch, FaBriefcase, FaFileAlt, FaCheckCircle, FaRocket, FaShieldAlt } from 'react-icons/fa';
 
 function Home({ isLoggedIn, onShowLogin }) {
    const { user } = useContext(AuthContext);
@@ -49,6 +49,27 @@ function Home({ isLoggedIn, onShowLogin }) {
    const sectors = getSectors();
    const API_KEY = 'Rzk1SnVRU3NDTWpzb2ZiMERwU1RKTXRpT0R4Nmh0ZmhsZHlNM0pacw==';
 
+
+   const handleFindJobs = () => {
+       window.location.href = '/jobs';
+   };
+
+   const handlePostJob = () => {
+       // Check if user is logged in
+       if (!isLoggedIn) {
+           alert('Please login to post a job');
+           onShowLogin();
+           return;
+       }
+       
+       // Check if user is a recruiter
+       if (user && user.role?.toLowerCase() === 'recruiter') {
+           // Redirect to recruiter dashboard job management section
+           window.location.href = '/dashboard/recruiter#job-management';
+       } else {
+           alert('Only recruiters can post jobs. Please register as a recruiter to access this feature.');
+       }
+   };
 
    const getAvailabilityStatus = (availability) => {
       switch(availability) {
@@ -250,7 +271,59 @@ function Home({ isLoggedIn, onShowLogin }) {
            const response = await apiWithLoading.getTrendingJobs(8);
            
            if (response.success && response.data) {
-               setTrendingJobsData(response.data);
+               console.log('📋 Trending jobs raw data:', response.data);
+               
+               // Enhance job data with recruiter info including logo
+               const enhancedJobs = await Promise.all(response.data.map(async (job) => {
+                   console.log('🔍 Processing job:', job.title, 'Recruiter ID:', job.recruiterId);
+                   
+                   // Try to fetch recruiter details to get logo
+                   try {
+                       const recruiterResponse = await apiWithLoading.getRecruiterById(job.recruiterId);
+                       console.log('👤 Recruiter data for', job.title, ':', recruiterResponse);
+                       
+                       if (recruiterResponse.success && recruiterResponse.data) {
+                           const recruiter = recruiterResponse.data;
+                           
+                           // Process logo URL
+                           let logoUrl = null;
+                           if (recruiter.profilePhoto) {
+                               if (recruiter.profilePhoto.startsWith('http://') || recruiter.profilePhoto.startsWith('https://')) {
+                                   logoUrl = recruiter.profilePhoto;
+                               } else {
+                                   logoUrl = `http://localhost:4001${recruiter.profilePhoto}`;
+                               }
+                           }
+                           
+                           console.log('✅ Logo URL for', job.title, ':', logoUrl);
+                           
+                           return {
+                               ...job,
+                               recruiterInfo: {
+                                   companyName: recruiter.companyName || job.recruiterInfo?.companyName || 'Company',
+                                   companyLogo: logoUrl,
+                                   logo: logoUrl,
+                                   profilePhoto: logoUrl,
+                                   verified: true
+                               }
+                           };
+                       }
+                   } catch (error) {
+                       console.error('❌ Error fetching recruiter for job:', job.title, error);
+                   }
+                   
+                   // Fallback if recruiter fetch fails
+                   return {
+                       ...job,
+                       recruiterInfo: {
+                           companyName: job.recruiterInfo?.companyName || 'Company',
+                           verified: true
+                       }
+                   };
+               }));
+               
+               console.log('✅ Enhanced jobs with logos:', enhancedJobs);
+               setTrendingJobsData(enhancedJobs);
            } else {
                console.error('Failed to load trending jobs:', response.message);
                setTrendingJobsData([]);
@@ -463,9 +536,15 @@ function Home({ isLoggedIn, onShowLogin }) {
            return;
        }
        
-       if (job.recruiterId) {
-           // Redirect to recruiter page
-           window.location.href = `/recruiter/${job.recruiterId}`;
+       const recruiterId = job.recruiterId;
+       const jobId = job.jobId || job.id;
+       
+       if (recruiterId && jobId) {
+           // Redirect to recruiter page with job ID for scroll and highlight
+           window.location.href = `/recruiter/${recruiterId}#job-${jobId}`;
+       } else if (recruiterId) {
+           // Fallback: just go to recruiter page
+           window.location.href = `/recruiter/${recruiterId}`;
        }
    };
 
@@ -564,86 +643,152 @@ function Home({ isLoggedIn, onShowLogin }) {
 
    return (
        <div className="home-page">
-           <section className="hero-section">
+           <section className="hero-section" style={{ position: 'relative', overflow: 'hidden', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '5rem', paddingBottom: '5rem' }}>
+               {/* Background Layer with Image Slideshow */}
                <div 
                    className="hero-image" 
                    style={{ 
+                       position: 'absolute',
+                       top: 0,
+                       left: 0,
+                       width: '100%',
+                       height: '100%',
                        backgroundImage: `url("${getCurrentHeroImage()}")`,
                        backgroundSize: 'cover',
                        backgroundPosition: 'center',
-                       backgroundRepeat: 'no-repeat'
+                       backgroundRepeat: 'no-repeat',
+                       filter: 'brightness(0.85)',
+                       zIndex: 0
                    }}
-               >
-                   {/* Fallback img element for better loading */}
-                   <img 
-                       src={getCurrentHeroImage()} 
-                       alt="Hero Background" 
-                       style={{
-                           position: 'absolute',
-                           top: 0,
-                           left: 0,
-                           width: '100%',
-                           height: '100%',
-                           objectFit: 'cover',
-                           zIndex: -1,
-                           opacity: 0
-                       }}
-                       onLoad={(e) => {
-                           console.log('✅ Hero image loaded successfully:', e.target.src);
-                       }}
-                       onError={(e) => {
-                           console.error('❌ Hero image failed to load:', e.target.src);
-                       }}
-                   />
-                   {heroImages.length > 1 && (
-                       <div className="slideshow-indicators">
-                           {heroImages.map((_, index) => (
-                               <span 
-                                   key={index} 
-                                   className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
-                                   onClick={() => setCurrentImageIndex(index)}
-                               />
-                           ))}
+               />
+               
+               {/* Slideshow Indicators */}
+               {heroImages.length > 1 && (
+                   <div className="slideshow-indicators" style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px', zIndex: 10 }}>
+                       {heroImages.map((_, index) => (
+                           <span 
+                               key={index} 
+                               className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
+                               onClick={() => setCurrentImageIndex(index)}
+                               style={{ width: '12px', height: '12px', borderRadius: '50%', background: index === currentImageIndex ? 'rgba(37,99,235,1)' : 'rgba(255,255,255,0.5)', border: '2px solid rgba(255,255,255,0.8)', cursor: 'pointer', transition: 'all 0.3s ease' }}
+                           />
+                       ))}
+                   </div>
+               )}
+               
+               {/* Main Content */}
+               <div style={{ position: 'relative', zIndex: 4, width: '100%', maxWidth: '80rem', margin: '0 auto', padding: '0 2rem', textAlign: 'center' }}>
+                   {/* Badge */}
+                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '9999px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)', marginBottom: '2rem' }}>
+                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
+                       <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'white' }}>India's trusted talent & recruitment network</span>
+                   </div>
+                   
+                   {/* Headline */}
+                   <h1 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 800, color: 'white', marginBottom: '1.5rem', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+                       Hire Smarter. Connect Faster. <span style={{ color: '#2563EB' }}>Grow Stronger.</span>
+                   </h1>
+                   
+                   {/* Subheading */}
+                   <p style={{ fontSize: 'clamp(1rem, 1.5vw, 1.125rem)', color: '#cbd5e1', maxWidth: '42rem', margin: '0 auto 2rem', fontWeight: 500, lineHeight: 1.6 }}>
+                       Staffinn brings together verified professionals, recruiters, and institutes — so the right people meet the right opportunities, faster.
+                   </p>
+                   
+                   {/* Feature Pills */}
+                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '9999px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)' }}>
+                           <FaRocket style={{ color: '#10B981', fontSize: '1.25rem' }} />
+                           <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'white' }}>Smart Skill Matching</span>
                        </div>
-                   )}
-                   <div className="home-search-container">
-                       <select value={selectedState} onChange={(e) => setSelectedState(e.target.value)}>
-                           <option value="">Select State</option>
-                           {states.map((state) => (
-                               <option key={state.iso2} value={state.iso2}>{state.name}</option>
-                           ))}
-                       </select>
-
-                       <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
-                           <option value="">Select City</option>
-                           {cities.map((city) => (
-                               <option key={city.id} value={city.id}>{city.name}</option>
-                           ))}
-                       </select>
-
-                       <select value={selectedSector} onChange={(e) => setSelectedSector(e.target.value)}>
-                           <option value="">Select Sector</option>
-                           {sectors.map((sector, index) => (
-                               <option key={index} value={sector}>{sector}</option>
-                           ))}
-                       </select>
-
-                       <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} disabled={!selectedSector}>
-                           <option value="">Select Role</option>
-                           {availableRoles.map((role, index) => (
-                               <option key={index} value={role}>{role}</option>
-                           ))}
-                       </select>
-
-                       <button className="home-search-btn" onClick={handleSearch} disabled={isSearching}>
-                           {isSearching ? 'Searching...' : 'Search'}
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '9999px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)' }}>
+                           <FaShieldAlt style={{ color: '#10B981', fontSize: '1.25rem' }} />
+                           <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'white' }}>Verified Recruiters</span>
+                       </div>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '9999px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)' }}>
+                           <FaCheckCircle style={{ color: '#10B981', fontSize: '1.25rem' }} />
+                           <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'white' }}>Faster Hiring Process</span>
+                       </div>
+                   </div>
+                   
+                   {/* CTA Buttons */}
+                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1rem', marginBottom: '3rem' }}>
+                       <button 
+                           onClick={handleFindJobs}
+                           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.75rem', borderRadius: '9999px', background: '#2563EB', color: 'white', fontSize: '0.875rem', fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 10px 15px -3px rgba(37,99,235,0.3)', transition: 'all 0.3s ease' }} 
+                           onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#1d4ed8'; }} 
+                           onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#2563EB'; }}
+                       >
+                           <FaBriefcase style={{ fontSize: '1.1rem' }} />
+                           Find Jobs
                        </button>
-                       
-                       {showSearchResults && (
-                           <button className="home-clear-btn" onClick={clearSearch}>
-                               Clear
+                       <button 
+                           onClick={handlePostJob}
+                           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.75rem', borderRadius: '9999px', background: 'rgba(255,255,255,0.05)', color: 'white', fontSize: '0.875rem', fontWeight: 700, border: '2px solid rgba(255,255,255,0.4)', cursor: 'pointer', backdropFilter: 'blur(12px)', transition: 'all 0.3s ease' }} 
+                           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }} 
+                           onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                       >
+                           <FaFileAlt style={{ fontSize: '1.1rem' }} />
+                           Post a Job
+                       </button>
+                   </div>
+                   
+                   {/* Search Bar */}
+                   <div style={{ maxWidth: '72rem', margin: '0 auto 1rem', padding: '1.25rem', borderRadius: '1rem', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(24px)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', alignItems: 'center' }}>
+                           <select value={selectedState} onChange={(e) => setSelectedState(e.target.value)} style={{ height: '3rem', padding: '0 1rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.95)', fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', cursor: 'pointer', outline: 'none' }}>
+                               <option value="">Select State</option>
+                               {states.map((state) => (
+                                   <option key={state.iso2} value={state.iso2}>{state.name}</option>
+                               ))}
+                           </select>
+                           <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} style={{ height: '3rem', padding: '0 1rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.95)', fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', cursor: 'pointer', outline: 'none' }}>
+                               <option value="">Select City</option>
+                               {cities.map((city) => (
+                                   <option key={city.id} value={city.id}>{city.name}</option>
+                               ))}
+                           </select>
+                           <select value={selectedSector} onChange={(e) => setSelectedSector(e.target.value)} style={{ height: '3rem', padding: '0 1rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.95)', fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', cursor: 'pointer', outline: 'none' }}>
+                               <option value="">Select Sector</option>
+                               {sectors.map((sector, index) => (
+                                   <option key={index} value={sector}>{sector}</option>
+                               ))}
+                           </select>
+                           <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} disabled={!selectedSector} style={{ height: '3rem', padding: '0 1rem', borderRadius: '0.75rem', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.95)', fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', cursor: 'pointer', outline: 'none', opacity: !selectedSector ? 0.5 : 1 }}>
+                               <option value="">Select Role</option>
+                               {availableRoles.map((role, index) => (
+                                   <option key={index} value={role}>{role}</option>
+                               ))}
+                           </select>
+                           <button onClick={handleSearch} disabled={isSearching} style={{ height: '3rem', padding: '0 1.75rem', borderRadius: '0.75rem', background: '#2563EB', color: 'white', fontSize: '0.875rem', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.3s ease' }}>
+                               <FaSearch style={{ fontSize: '1rem' }} />
+                               {isSearching ? 'Searching...' : 'Search'}
                            </button>
-                       )}
+                       </div>
+                   </div>
+                   
+                   {/* Popular Searches */}
+                   <p style={{ fontSize: '0.875rem', color: '#cbd5e1', textAlign: 'center', marginBottom: '2.5rem' }}>
+                       Popular: <span style={{ color: 'white', cursor: 'pointer' }}>Software Developer</span> • <span style={{ color: 'white', cursor: 'pointer' }}>HR Manager</span> • <span style={{ color: 'white', cursor: 'pointer' }}>Data Analyst</span>
+                   </p>
+                   
+                   {/* Stats */}
+                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', maxWidth: '72rem', margin: '0 auto' }}>
+                       <div style={{ padding: '1.5rem 1rem', borderRadius: '1rem', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)', textAlign: 'center' }}>
+                           <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: 'white', marginBottom: '0.25rem', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>10,000+</div>
+                           <div style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Staff</div>
+                       </div>
+                       <div style={{ padding: '1.5rem 1rem', borderRadius: '1rem', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)', textAlign: 'center' }}>
+                           <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: 'white', marginBottom: '0.25rem', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>500+</div>
+                           <div style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recruiters</div>
+                       </div>
+                       <div style={{ padding: '1.5rem 1rem', borderRadius: '1rem', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)', textAlign: 'center' }}>
+                           <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: 'white', marginBottom: '0.25rem', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>200+</div>
+                           <div style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Institutes</div>
+                       </div>
+                       <div style={{ padding: '1.5rem 1rem', borderRadius: '1rem', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)', textAlign: 'center' }}>
+                           <div style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', fontWeight: 600, color: 'white', marginBottom: '0.25rem', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>95%</div>
+                           <div style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Placement Success</div>
+                       </div>
                    </div>
                </div>
            </section>

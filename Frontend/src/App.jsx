@@ -4,8 +4,6 @@ import { useState, useEffect, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from "./Components/Header/Header.jsx";
 import Home from "./Components/Home/Home.jsx";
-import RegistrationPopup from "./Components/Register/RegistrationPopup.jsx";
-import LoginPopup from "./Components/Login/LoginPopup.jsx";
 import StaffDashboard from "./Components/Dashboard/StaffDashboard.jsx";
 import RecruiterDashboard from "./Components/Dashboard/RecruiterDashboard.jsx";
 import InstituteDashboard from "./Components/Dashboard/InstituteDashboard.jsx";
@@ -32,8 +30,7 @@ import { showLoginWithMessage } from './utils/authGuard';
 import './App.css';
 
 function AppContent() {
-    const [showLoginPopup, setShowLoginPopup] = useState(false);
-    const [showRegistrationPopup, setShowRegistrationPopup] = useState(false);
+    const [showLoginModal, setShowLoginModal] = useState(false);
     const authContext = useContext(AuthContext);
     
     // Initialize Lenis smooth scrolling
@@ -70,12 +67,9 @@ function AppContent() {
         );
     }
 
-    const openLoginPopup = () => setShowLoginPopup(true);
     const openLoginPopupWithMessage = () => {
-        setShowLoginPopup(true);
-        showLoginWithMessage(setShowLoginPopup);
+        setShowLoginModal(true);
     };
-    const closeLoginPopup = () => setShowLoginPopup(false);
     
     const handleLoginClick = async (email, password) => {
         try {
@@ -89,40 +83,6 @@ function AppContent() {
         }
     };
 
-    const openRegistrationPopup = (loginRedirectCallback, isRequestForm = false) => {
-        setShowRegistrationPopup(true);
-        // Store the callback and form type for later use
-        window.loginRedirectCallback = loginRedirectCallback;
-        window.isRequestForm = isRequestForm;
-    };
-    
-    const closeRegistrationPopup = () => setShowRegistrationPopup(false);
-
-    const handleRegistration = async (userData, role) => {
-        try {
-            // Call backend API through the AuthContext
-            const result = await register(userData, role);
-            
-            if (result.success) {
-                // Close registration popup
-                closeRegistrationPopup();
-                
-                // Redirect to login if callback exists
-                if (window.loginRedirectCallback) {
-                    window.loginRedirectCallback(userData.email);
-                    window.loginRedirectCallback = null;
-                }
-                
-                return true;
-            } else {
-                return false;
-            }
-        } catch (error) {
-            console.error('Registration error:', error);
-            return false;
-        }
-    };
-
     const handleLogout = () => {
         logout();
     };
@@ -132,12 +92,11 @@ function AppContent() {
             {/* Header Section with Prop Drilling */}
             <Header 
                 onLoginClick={handleLoginClick} 
-                onRegisterClick={openRegistrationPopup}
                 isLoggedIn={isLoggedIn}
                 onLogout={handleLogout}
                 currentUser={currentUser}
-                showLoginModal={showLoginPopup}
-                setShowLoginModal={setShowLoginPopup}
+                showLoginModal={showLoginModal}
+                setShowLoginModal={setShowLoginModal}
             />
 
             {/* Main Content Section */}
@@ -205,18 +164,6 @@ function AppContent() {
                     />
                 </Routes>
             </main>
-
-            {/* Conditional Rendering for Popups */}
-            {showRegistrationPopup && 
-                <RegistrationPopup 
-                    onClose={closeRegistrationPopup} 
-                    onRegister={handleRegistration}
-                    onLoginRedirect={window.loginRedirectCallback}
-                    showRequestForm={window.isRequestForm || false}
-                />
-            }
-            
-
         </div>
     );
 }

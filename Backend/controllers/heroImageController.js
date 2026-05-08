@@ -123,6 +123,13 @@ const getPublicHeroImages = async (req, res) => {
     });
   } catch (error) {
     console.error('Get public hero images error:', error);
+    // Return empty array if DB connection fails
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(200).json({
+        success: true,
+        data: { images: [] }
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Failed to get hero images',

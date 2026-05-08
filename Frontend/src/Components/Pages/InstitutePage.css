@@ -466,7 +466,7 @@ button {
   z-index: 2;
 }
 
-/* Header Section - Vertical Left Layout */
+/* Header Section - Horizontal Layout with Logo, Name, Badges on Left and Contact Card on Right */
 .institute-header {
   background-color: #f8f9fa;
   border-radius: 16px;
@@ -477,18 +477,19 @@ button {
 .institute-header-row {
   display: flex;
   justify-content: space-between;
-  align-items: start;
-  gap: 2.5rem;
+  align-items: flex-start;
+  gap: 3rem;
+  width: 100%;
 }
 
-/* Left Section - Vertical Layout */
+/* Left Section - Logo + Name + Badges in Horizontal Layout */
 .institute-left-section {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  max-width: 200px;
-  flex-shrink: 0 !important;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex: 0 1 auto;
+  max-width: 50%;
 }
 
 .institute-logo {
@@ -501,6 +502,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .institute-logo img {
@@ -509,11 +511,18 @@ button {
   object-fit: contain;
 }
 
+/* Name and Badges Container */
+.institute-name-badges-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+}
+
 .institute-name-verified {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  text-align: center;
 }
 
 .institute-name-verified h1 {
@@ -537,12 +546,11 @@ button {
   flex-shrink: 0;
 }
 
-/* Badges in 2x2 Grid */
+/* Badges in Horizontal Flow */
 .institute-badges-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  width: 100%;
 }
 
 .badge-pill {
@@ -556,8 +564,6 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.3px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .badge-pill.category {
@@ -574,11 +580,11 @@ button {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  width: 600px;
+  width: 650px;
   min-height: 220px;
   max-height: 280px;
   flex-shrink: 0;
-  margin-left: auto !important;
+  margin-left: auto;
 }
 
 .contact-grid {
@@ -2529,17 +2535,18 @@ button {
 @media (max-width: 1200px) {
   .institute-header-row {
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: 2rem;
   }
 
   .institute-left-section {
     max-width: 100%;
+    flex-direction: row;
   }
 
   .institute-contact-card {
     width: 100%;
-    max-width: 600px;
+    max-width: 100%;
   }
 
   .contact-container {
@@ -2596,6 +2603,13 @@ button {
 
   .institute-header-row {
     gap: 1.25rem;
+    flex-direction: column;
+  }
+
+  .institute-left-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
 
   .institute-logo {
@@ -2603,7 +2617,7 @@ button {
     height: 90px;
   }
 
-  .institute-title-row h1 {
+  .institute-name-verified h1 {
     font-size: 1.5rem;
   }
 
@@ -2611,6 +2625,10 @@ button {
     width: 24px;
     height: 24px;
     font-size: 0.75rem;
+  }
+
+  .institute-badges-grid {
+    justify-content: center;
   }
 
   .badge-pill {
@@ -2621,6 +2639,7 @@ button {
   .institute-contact-card {
     padding: 1.25rem;
     min-width: auto;
+    width: 100%;
   }
 
   .contact-grid {

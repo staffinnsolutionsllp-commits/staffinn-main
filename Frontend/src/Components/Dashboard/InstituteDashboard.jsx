@@ -140,6 +140,9 @@ const InstituteDashboard = () => {
     });
     const [selectedAward, setSelectedAward] = useState(null);
     
+    // Campus Requests states
+    const [campusRequests, setCampusRequests] = useState([]);
+    
     // Modal states
     const [showEventNewsModal, setShowEventNewsModal] = useState(false);
 
@@ -155,6 +158,7 @@ const InstituteDashboard = () => {
         loadChartData();
         loadInstituteGovtSchemes();
         loadAwards();
+        loadCampusRequests();
         // MIS status will be loaded in loadProfileData for Staffinn Partners
     }, []);
     
@@ -525,6 +529,41 @@ const InstituteDashboard = () => {
         } catch (error) {
             console.error('Error loading awards:', error);
             setAwards([]);
+        }
+    };
+
+    const loadCampusRequests = async () => {
+        try {
+            const response = await apiService.getInstituteCampusRequests();
+            if (response.success && response.data) {
+                // Fetch recruiter details for each request
+                const requestsWithDetails = await Promise.all(
+                    response.data.map(async (request) => {
+                        try {
+                            const recruiterResponse = await apiService.getRecruiterById(request.recruiterId);
+                            if (recruiterResponse.success && recruiterResponse.data) {
+                                return {
+                                    ...request,
+                                    companyName: recruiterResponse.data.companyName || 'N/A',
+                                    email: recruiterResponse.data.email || 'N/A',
+                                    phone: recruiterResponse.data.phone || 'N/A',
+                                    location: recruiterResponse.data.location || 'N/A'
+                                };
+                            }
+                            return request;
+                        } catch (err) {
+                            console.error('Error fetching recruiter details:', err);
+                            return request;
+                        }
+                    })
+                );
+                setCampusRequests(requestsWithDetails);
+            } else {
+                setCampusRequests([]);
+            }
+        } catch (error) {
+            console.error('Error loading campus requests:', error);
+            setCampusRequests([]);
         }
     };
 
@@ -1932,6 +1971,29 @@ const InstituteDashboard = () => {
         }
     };
 
+    const handleDeleteCourse = async (courseId, courseName) => {
+        if (window.confirm(`Are you sure you want to permanently delete "${courseName}"? This action cannot be undone.`)) {
+            try {
+                setLoading(true);
+                const response = await apiService.deleteCourse(courseId);
+                if (response.success) {
+                    alert('Course deleted successfully!');
+                    await Promise.all([
+                        loadDashboardData(),
+                        loadCourses()
+                    ]);
+                } else {
+                    alert(response.message || 'Failed to delete course');
+                }
+            } catch (error) {
+                console.error('Error deleting course:', error);
+                alert('Failed to delete course. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
 
 
     const handleProfileUpdate = async (e) => {
@@ -2207,6 +2269,9 @@ const InstituteDashboard = () => {
                     </li>
                     <li className={activeTab === 'news-events' ? 'active' : ''} onClick={() => handleTabChange('news-events')}>
                         News & Events
+                    </li>
+                    <li className={activeTab === 'campus-requests' ? 'active' : ''} onClick={() => handleTabChange('campus-requests')}>
+                        Campus Requests
                     </li>
                     {profileData.instituteType === 'staffinn_partner' && (
                         <li className={`dropdown staffinn-partner-item ${staffinnPartnerDropdownOpen ? 'active' : ''}`}>
@@ -2790,6 +2855,49 @@ const InstituteDashboard = () => {
                     <PlacementTracking />
                 )}
 
+                {activeTab === 'campus-requests' && (
+                    <div className="institute-campus-requests-tab">
+                        <div className="institute-tab-header">
+                            <h1>Campus Requests</h1>
+                            <p>Manage campus invite requests sent to recruiters</p>
+                        </div>
+
+                        {campusRequests.length > 0 ? (
+                            <div className="campus-requests-grid">
+                                {campusRequests.map(request => (
+                                    <div className="campus-request-card" key={request.campusreq}>
+                                        <div className="request-header">
+                                            <h3>{request.companyName || 'Company Name'}</h3>
+                                            <span className={`status-badge ${request.status}`}>
+                                                {request.status === 'pending' ? 'Pending' : 
+                                                 request.status === 'accepted' ? 'Approved' : 'Rejected'}
+                                            </span>
+                                        </div>
+                                        <div className="request-details">
+                                            <p><strong>Email:</strong> {request.email || 'N/A'}</p>
+                                            <p><strong>Phone:</strong> {request.phone || 'N/A'}</p>
+                                            <p><strong>Location:</strong> {request.location || 'N/A'}</p>
+                                            <p><strong>Sent:</strong> {new Date(request.createdAt).toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="request-actions">
+                                            <button 
+                                                className="institute-action-button"
+                                                onClick={() => navigate(`/recruiter/${request.recruiterId}`)}
+                                            >
+                                                View Recruiter
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
+                                <p>No campus requests sent yet.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {activeTab === 'courses' && (
                     <div className="institute-courses-tab">
                         <div className="institute-tab-header">
@@ -2865,6 +2973,14 @@ const InstituteDashboard = () => {
                                                             onClick={() => handleEditCourse(course)}
                                                         >
                                                             Edit Course
+                                                        </button>
+                                                        <button 
+                                                            className="institute-table-action delete"
+                                                            onClick={() => handleDeleteCourse(courseId, course.courseName || course.name)}
+                                                            disabled={loading}
+                                                            style={{backgroundColor: '#dc3545', color: 'white'}}
+                                                        >
+                                                            Delete
                                                         </button>
                                                     </div>
                                                 </div>
@@ -2946,6 +3062,14 @@ const InstituteDashboard = () => {
                                                         onClick={() => handleEditCourse(course)}
                                                     >
                                                         Edit Course
+                                                    </button>
+                                                    <button 
+                                                        className="institute-table-action delete"
+                                                        onClick={() => handleDeleteCourse(courseId, course.courseName || course.name)}
+                                                        disabled={loading}
+                                                        style={{backgroundColor: '#dc3545', color: 'white'}}
+                                                    >
+                                                        Delete
                                                     </button>
                                                 </div>
                                             </div>

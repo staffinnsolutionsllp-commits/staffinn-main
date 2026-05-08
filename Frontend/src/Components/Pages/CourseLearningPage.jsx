@@ -8,7 +8,12 @@ import PaymentModal from '../Dashboard/PaymentModal';
 import PaymentOptionModal from '../Dashboard/PaymentOptionModal';
 import StudentEnrollmentModal from '../Modals/StudentEnrollmentModal';
 import './CourseLearningPage.css';
-import { FaPlay, FaLock, FaCheck, FaChevronDown, FaChevronUp, FaStar, FaUsers, FaClock, FaGlobe } from 'react-icons/fa';
+import { 
+  FaPlay, FaLock, FaCheck, FaChevronDown, FaChevronUp, FaStar, 
+  FaUsers, FaClock, FaGlobe, FaArrowLeft, FaCheckCircle, 
+  FaCircle, FaPause, FaVolumeUp, FaCog, FaExpand, FaFileAlt,
+  FaComments, FaDownload, FaBullhorn, FaBookOpen
+} from 'react-icons/fa';
 
 const CourseLearningPage = () => {
   const { courseId } = useParams();
@@ -36,6 +41,8 @@ const CourseLearningPage = () => {
   const [showPaymentOptionModal, setShowPaymentOptionModal] = useState(false);
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
+  const [currentLearningTab, setCurrentLearningTab] = useState('overview');
+  const [moduleExpanded, setModuleExpanded] = useState({});
 
   useEffect(() => {
     if (courseId) {
@@ -44,6 +51,13 @@ const CourseLearningPage = () => {
       fetchUserProfile();
     }
   }, [courseId]);
+
+  useEffect(() => {
+    // Auto-expand first module when enrolled
+    if (enrollmentStatus?.enrolled && course?.modules?.length > 0) {
+      setModuleExpanded({ 0: true });
+    }
+  }, [enrollmentStatus, course]);
 
   const fetchUserProfile = async () => {
     try {
@@ -117,7 +131,10 @@ const CourseLearningPage = () => {
       
       // Fallback: Get public course information
       const publicResponse = await apiService.getPublicCourseById(courseId);
+      console.log('📸 Public course response:', publicResponse);
       if (publicResponse.success) {
+        console.log('📸 Course thumbnail:', publicResponse.data.thumbnail);
+        console.log('📸 Full course data:', publicResponse.data);
         setCourse(publicResponse.data);
         // Auto-expand first section for preview
         if (publicResponse.data.modules && publicResponse.data.modules.length > 0) {
@@ -765,6 +782,36 @@ const CourseLearningPage = () => {
     return notes;
   };
 
+  // Helper function to calculate total video duration in minutes
+  const calculateTotalVideoDuration = () => {
+    if (!course?.modules) return 0;
+    let totalMinutes = 0;
+    
+    course.modules.forEach((module) => {
+      if (module.content) {
+        module.content.forEach((content) => {
+          // Only count video content duration
+          if (content.contentType === 'video') {
+            const duration = parseInt(content.durationMinutes) || 0;
+            totalMinutes += duration;
+          }
+        });
+      }
+    });
+    
+    return totalMinutes;
+  };
+
+  // Helper function to format duration as "Xh Ym"
+  const formatDuration = (totalMinutes) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, index) => (
       <FaStar 
@@ -795,23 +842,728 @@ const CourseLearningPage = () => {
     return <div className="course-error">Course not found</div>;
   }
 
+  // If user is enrolled, show the new learning UI
+  if (enrollmentStatus?.enrolled && course.mode === 'Online') {
+    const completedCount = Object.keys(userProgress?.completedContent || {}).length;
+    const totalLectures = course.modules?.reduce((acc, m) => acc + (m.content?.length || 0), 0) || 0;
+    const progressPercent = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+    const lecturesRemaining = totalLectures - completedCount;
+
+    return (
+      <div style={{ minHeight: '100vh', background: '#0F172A', color: 'white' }} data-testid="learning-page">
+        {/* TOP BAR */}
+        <header style={{ 
+          position: 'sticky', 
+          top: 0, 
+          zIndex: 30, 
+          background: '#0B1220', 
+          borderBottom: '1px solid rgba(255,255,255,0.1)'
+        }} data-testid="learning-navbar">
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '16px', 
+            padding: '0 16px', 
+            height: '64px'
+          }}>
+            {/* Back Button */}
+            <button
+              onClick={() => navigate(-1)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'rgba(255,255,255,0.7)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '13px'
+              }}
+              data-testid="back-btn"
+            >
+              <FaArrowLeft style={{ width: '16px', height: '16px' }} />
+              <span style={{ display: window.innerWidth < 640 ? 'none' : 'inline' }}>Back to course</span>
+            </button>
+
+            {/* Separator */}
+            <span style={{ color: 'rgba(255,255,255,0.3)', display: window.innerWidth < 768 ? 'none' : 'inline' }}>·</span>
+
+            {/* Mini Course Block */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '6px',
+                background: '#2563EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <FaBookOpen style={{ width: '16px', height: '16px', color: 'white' }} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {course.courseName || course.name}
+                </div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {course.instructor}
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Progress Tracker */}
+            <div style={{ 
+              display: window.innerWidth < 1024 ? 'none' : 'flex', 
+              alignItems: 'center', 
+              gap: '16px' 
+            }} data-testid="progress-tracker">
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  YOUR PROGRESS
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
+                  {completedCount} / {totalLectures} lectures · {progressPercent}%
+                </div>
+              </div>
+              <div style={{ width: '160px', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: '#2563EB', transition: 'width 0.3s', width: `${progressPercent}%` }}></div>
+              </div>
+            </div>
+
+            {/* State Pill */}
+            {progressPercent < 100 ? (
+              <div style={{
+                display: window.innerWidth < 640 ? 'none' : 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 12px',
+                borderRadius: '9999px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <FaStar style={{ width: '12px', height: '12px', color: '#F59E0B' }} />
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>{lecturesRemaining} to go</span>
+              </div>
+            ) : (
+              <button
+                style={{
+                  borderRadius: '9999px',
+                  background: '#10B981',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  padding: '8px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                data-testid="view-certificate-btn"
+              >
+                <FaCheck style={{ width: '16px', height: '16px' }} />
+                Certificate
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Progress Strip */}
+          <div style={{ 
+            display: window.innerWidth >= 1024 ? 'none' : 'block', 
+            padding: '0 16px 12px' 
+          }} data-testid="mobile-progress">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)' }}>Progress</span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{progressPercent}%</span>
+            </div>
+            <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', background: '#2563EB', transition: 'width 0.3s', width: `${progressPercent}%` }}></div>
+            </div>
+          </div>
+        </header>
+
+        {/* MAIN CONTENT */}
+        <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth >= 1024 ? '1fr 380px' : '1fr' }}>
+          {/* LEFT: PLAYER AREA */}
+          <main>
+            {/* Video Player */}
+            <div style={{ 
+              position: 'relative', 
+              width: '100%', 
+              paddingBottom: '56.25%', 
+              background: 'black', 
+              maxHeight: '70vh' 
+            }} data-testid="player-area">
+              {selectedContent && selectedContent.contentType === 'video' && selectedContent.contentUrl ? (
+                <video 
+                  controls 
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%'
+                  }}
+                  poster={selectedContent.thumbnailUrl}
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    try {
+                      logVideoError(e, selectedContent.contentUrl, {
+                        contentId: selectedContent.contentId,
+                        contentTitle: selectedContent.contentTitle || selectedContent.title,
+                        contentType: selectedContent.contentType
+                      });
+                    } catch (error) {
+                      console.warn('Video error handler failed:', error);
+                    }
+                  }}
+                  onLoadStart={() => console.log('Video loading started:', selectedContent.contentUrl)}
+                  onEnded={() => handleVideoEnd(selectedContent.contentId)}
+                >
+                  <source src={selectedContent.contentUrl} type="video/mp4" />
+                  <source src={selectedContent.contentUrl} type="video/webm" />
+                  <source src={selectedContent.contentUrl} type="video/ogg" />
+                  Your browser does not support the video tag.
+                </video>
+              ) : (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'linear-gradient(to bottom right, #1E293B, #0F172A, #000)',
+                  color: 'rgba(255,255,255,0.5)'
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <FaPlay style={{ width: '64px', height: '64px', margin: '0 auto 16px', opacity: 0.3 }} />
+                    <p style={{ fontSize: '18px' }}>Select a lecture to start learning</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Lecture Meta Bar */}
+            <div style={{
+              padding: '20px 40px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              background: '#0F172A'
+            }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+                alignItems: window.innerWidth < 768 ? 'flex-start' : 'center',
+                justifyContent: 'space-between',
+                gap: '12px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                    {selectedContent ? `Module ${course.modules?.findIndex(m => m.content?.some(c => c.contentId === selectedContent.contentId)) + 1 || 1}` : 'Module'}
+                  </div>
+                  <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '4px 0', letterSpacing: '-0.025em' }}>
+                    {selectedContent ? (selectedContent.contentTitle || selectedContent.title) : 'Select a lecture'}
+                  </h1>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                    Lecture {selectedContent ? (course.modules?.reduce((acc, m, idx) => {
+                      const contentIdx = m.content?.findIndex(c => c.contentId === selectedContent.contentId);
+                      if (contentIdx !== -1) return acc + contentIdx + 1;
+                      return acc + (m.content?.length || 0);
+                    }, 0) || 1) : 1} of {totalLectures}{selectedContent?.durationMinutes > 0 ? ` · ${selectedContent.durationMinutes}min` : ''}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <button 
+                    style={{
+                      borderRadius: '9999px',
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      padding: '8px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: selectedContent ? 'pointer' : 'not-allowed',
+                      opacity: selectedContent ? 1 : 0.3
+                    }}
+                    disabled={!selectedContent}
+                    data-testid="prev-btn"
+                  >
+                    <FaArrowLeft style={{ width: '12px', height: '12px' }} />
+                    <span style={{ display: window.innerWidth < 640 ? 'none' : 'inline' }}>Prev</span>
+                  </button>
+                  <button 
+                    style={{
+                      borderRadius: '9999px',
+                      background: '#10B981',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      padding: '8px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      border: 'none',
+                      cursor: selectedContent ? 'pointer' : 'not-allowed',
+                      opacity: selectedContent ? 1 : 0.5
+                    }}
+                    disabled={!selectedContent}
+                    data-testid="mark-complete-btn"
+                    onClick={() => {
+                      if (selectedContent) {
+                        handleVideoEnd(selectedContent.contentId);
+                      }
+                    }}
+                  >
+                    <FaCheckCircle style={{ width: '16px', height: '16px' }} />
+                    <span style={{ display: window.innerWidth < 640 ? 'none' : 'inline' }}>Mark as complete</span>
+                  </button>
+                  <button 
+                    style={{
+                      borderRadius: '9999px',
+                      background: '#2563EB',
+                      color: 'white',
+                      padding: '8px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      border: 'none',
+                      cursor: selectedContent ? 'pointer' : 'not-allowed',
+                      opacity: selectedContent ? 1 : 0.3
+                    }}
+                    disabled={!selectedContent}
+                    data-testid="next-btn"
+                  >
+                    <span style={{ display: window.innerWidth < 640 ? 'none' : 'inline' }}>Next</span>
+                    <FaPlay style={{ width: '12px', height: '12px' }} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ background: 'white', color: '#0F172A', padding: '24px 40px' }}>
+              <div style={{ borderBottom: '1px solid #E2E8F0', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', gap: '24px', overflowX: 'auto' }}>
+                  <button 
+                    onClick={() => setCurrentLearningTab('overview')}
+                    style={{
+                      paddingBottom: '12px',
+                      paddingLeft: '4px',
+                      paddingRight: '4px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: currentLearningTab === 'overview' ? '#0F172A' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: currentLearningTab === 'overview' ? '2px solid #2563EB' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    data-testid="learn-tab-overview"
+                  >
+                    <FaBookOpen style={{ width: '16px', height: '16px' }} />
+                    Overview
+                  </button>
+                  <button 
+                    onClick={() => setCurrentLearningTab('notes')}
+                    style={{
+                      paddingBottom: '12px',
+                      paddingLeft: '4px',
+                      paddingRight: '4px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: currentLearningTab === 'notes' ? '#0F172A' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: currentLearningTab === 'notes' ? '2px solid #2563EB' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    data-testid="learn-tab-notes"
+                  >
+                    <FaFileAlt style={{ width: '16px', height: '16px' }} />
+                    My Notes
+                  </button>
+                  <button 
+                    onClick={() => setCurrentLearningTab('qa')}
+                    style={{
+                      paddingBottom: '12px',
+                      paddingLeft: '4px',
+                      paddingRight: '4px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: currentLearningTab === 'qa' ? '#0F172A' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: currentLearningTab === 'qa' ? '2px solid #2563EB' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    data-testid="learn-tab-qa"
+                  >
+                    <FaComments style={{ width: '16px', height: '16px' }} />
+                    Q & A
+                  </button>
+                  <button 
+                    onClick={() => setCurrentLearningTab('resources')}
+                    style={{
+                      paddingBottom: '12px',
+                      paddingLeft: '4px',
+                      paddingRight: '4px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: currentLearningTab === 'resources' ? '#0F172A' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: currentLearningTab === 'resources' ? '2px solid #2563EB' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    data-testid="learn-tab-resources"
+                  >
+                    <FaDownload style={{ width: '16px', height: '16px' }} />
+                    Resources
+                  </button>
+                  <button 
+                    onClick={() => setCurrentLearningTab('announcements')}
+                    style={{
+                      paddingBottom: '12px',
+                      paddingLeft: '4px',
+                      paddingRight: '4px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: currentLearningTab === 'announcements' ? '#0F172A' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: currentLearningTab === 'announcements' ? '2px solid #2563EB' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    data-testid="learn-tab-announcements"
+                  >
+                    <FaBullhorn style={{ width: '16px', height: '16px' }} />
+                    Announcements
+                  </button>
+                </div>
+              </div>
+              
+              {/* Tab Content - Overview */}
+              {currentLearningTab === 'overview' && (
+                <div>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: window.innerWidth >= 768 ? 'repeat(3, 1fr)' : '1fr', 
+                    gap: '16px', 
+                    marginBottom: '24px' 
+                  }}>
+                    <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
+                        <FaStar style={{ width: '12px', height: '12px' }} />
+                        COURSE RATING
+                      </div>
+                      <div style={{ fontSize: '22px', fontWeight: '800' }}>{(courseRatingStats?.averageRating || 0).toFixed(1)}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>{courseRatingStats?.totalReviews || 0} ratings</div>
+                    </div>
+                    <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
+                        <FaUsers style={{ width: '12px', height: '12px' }} />
+                        STUDENTS ENROLLED
+                      </div>
+                      <div style={{ fontSize: '22px', fontWeight: '800' }}>{enrollmentCount}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>Learners</div>
+                    </div>
+                    <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
+                        <FaBookOpen style={{ width: '12px', height: '12px' }} />
+                        LAST UPDATED
+                      </div>
+                      <div style={{ fontSize: '22px', fontWeight: '800' }}>March 2025</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>Hindi, English</div>
+                    </div>
+                  </div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>By the numbers</h3>
+                  <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.7', marginBottom: '24px' }}>{course.description}</p>
+                  <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>Instructor</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                      {course.instructor?.charAt(0) || 'I'}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{course.instructor}</div>
+                      <div style={{ fontSize: '13px', color: '#64748b' }}>Course Instructor</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab Content - My Notes */}
+              {currentLearningTab === 'notes' && (
+                <div data-testid="mynotes-tab">
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+                    <label style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', display: 'block' }}>
+                      Note for: {selectedContent ? (selectedContent.contentTitle || selectedContent.title) : 'Select a lecture'}
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Type your note here... (e.g., '3NF removes transitive dependencies')"
+                      style={{ width: '100%', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '12px', fontSize: '14px', resize: 'none', outline: 'none' }}
+                      data-testid="note-input"
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                      <button 
+                        style={{ borderRadius: '9999px', background: '#2563EB', color: 'white', padding: '8px 16px', fontSize: '14px', fontWeight: '600', border: 'none', cursor: 'pointer' }}
+                        data-testid="save-note-btn"
+                      >
+                        Save note
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '48px 0', fontSize: '13px', color: '#64748b' }}>
+                    You haven't taken any notes yet.
+                  </div>
+                </div>
+              )}
+
+              {/* Tab Content - Q & A */}
+              {currentLearningTab === 'qa' && (
+                <div style={{ textAlign: 'center', padding: '48px', border: '2px dashed #E2E8F0', borderRadius: '16px' }}>
+                  <FaComments style={{ width: '28px', height: '28px', color: '#cbd5e1', margin: '0 auto 12px' }} />
+                  <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#0F172A', marginBottom: '8px' }}>No questions yet</div>
+                  <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px', maxWidth: '28rem', margin: '0 auto 16px' }}>
+                    Be the first to ask a question about this lecture. Other students and the instructor will help out.
+                  </p>
+                  <button style={{ borderRadius: '9999px', background: '#2563EB', color: 'white', padding: '8px 24px', fontSize: '14px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>
+                    Ask a question
+                  </button>
+                </div>
+              )}
+
+              {/* Tab Content - Resources */}
+              {currentLearningTab === 'resources' && (
+                <div>
+                  {getCourseNotes().length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {getCourseNotes().map(note => (
+                        <div key={note.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '1px solid #E2E8F0', borderRadius: '12px', transition: 'border-color 0.2s' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <FaFileAlt style={{ width: '20px', height: '20px', color: '#2563EB' }} />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{note.title}</div>
+                              <div style={{ fontSize: '12px', color: '#64748b' }}>{note.moduleTitle}</div>
+                            </div>
+                          </div>
+                          <button style={{ borderRadius: '9999px', border: '1px solid #cbd5e1', background: 'transparent', padding: '8px 16px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                            <FaDownload style={{ width: '12px', height: '12px' }} />
+                            Download
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '48px 0', fontSize: '13px', color: '#64748b' }}>
+                      No downloadable resources available.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tab Content - Announcements */}
+              {currentLearningTab === 'announcements' && (
+                <div style={{ border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                      {course.instructor?.charAt(0) || 'I'}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{course.instructor}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>Posted 2 days ago</div>
+                    </div>
+                  </div>
+                  <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Welcome to the course!</h4>
+                  <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.7' }}>
+                    Welcome to {course.courseName || course.name}! I'm excited to have you here. 
+                    Make sure to complete all lectures and quizzes to get the most out of this course.
+                  </p>
+                </div>
+              )}
+            </div>
+          </main>
+
+          {/* RIGHT: CURRICULUM SIDEBAR */}
+          <aside style={{
+            background: 'white',
+            color: '#0F172A',
+            borderLeft: '1px solid #E2E8F0',
+            position: window.innerWidth >= 1024 ? 'sticky' : 'relative',
+            top: window.innerWidth >= 1024 ? '64px' : 'auto',
+            height: window.innerWidth >= 1024 ? 'calc(100vh - 64px)' : 'auto',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }} data-testid="curriculum-sidebar">
+            {/* Header */}
+            <div style={{ padding: '16px', borderBottom: '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '15px' }}>Course content</span>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>{completedCount}/{totalLectures} done</span>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <FaGlobe style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="Search lectures..."
+                  style={{ width: '100%', height: '36px', paddingLeft: '36px', paddingRight: '12px', borderRadius: '8px', border: '1px solid #E2E8F0', fontSize: '13px', outline: 'none' }}
+                  data-testid="lecture-search"
+                />
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {course.modules?.map((module, moduleIndex) => {
+                const isExpanded = moduleExpanded[moduleIndex];
+                const moduleCompletedCount = module.content?.filter(c => isContentCompleted(c.contentId, c.contentType)).length || 0;
+                
+                return (
+                  <div key={module.moduleId} data-testid={`sb-module-${moduleIndex}`}>
+                    {/* Module Header */}
+                    <button 
+                      onClick={() => setModuleExpanded(prev => ({ ...prev, [moduleIndex]: !prev[moduleIndex] }))}
+                      style={{ width: '100%', background: 'transparent', border: 'none', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left', cursor: 'pointer', transition: 'background 0.2s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#0F172A' }}>Section {moduleIndex + 1}: {module.moduleTitle || module.title}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>{moduleCompletedCount} / {module.content?.length || 0} · {module.content?.length || 0} lectures</div>
+                      </div>
+                      <FaChevronDown style={{ width: '16px', height: '16px', color: '#94a3b8', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                    </button>
+
+                    {/* Lecture List */}
+                    {isExpanded && (
+                      <div style={{ background: '#F8FAFC' }}>
+                        {module.content?.map((content, contentIndex) => {
+                          const isCompleted = isContentCompleted(content.contentId, content.contentType);
+                          const isCurrent = selectedContent?.contentId === content.contentId;
+                          return (
+                            <button
+                              key={content.contentId}
+                              onClick={() => handleContentClick(content, moduleIndex, contentIndex)}
+                              style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '12px',
+                                padding: '12px 16px',
+                                textAlign: 'left',
+                                background: isCurrent ? '#EFF6FF' : 'transparent',
+                                borderLeft: isCurrent ? '4px solid #2563EB' : '4px solid transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'background 0.2s'
+                              }}
+                              onMouseEnter={(e) => !isCurrent && (e.currentTarget.style.background = '#e2e8f0')}
+                              onMouseLeave={(e) => !isCurrent && (e.currentTarget.style.background = 'transparent')}
+                              data-testid={`sb-lec-${content.contentId}`}
+                            >
+                              {isCompleted ? (
+                                <FaCheckCircle style={{ width: '16px', height: '16px', color: '#10B981', marginTop: '2px', flexShrink: 0 }} />
+                              ) : (
+                                <FaCircle style={{ width: '16px', height: '16px', color: '#94a3b8', marginTop: '2px', flexShrink: 0, fontSize: '10px' }} />
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '13px', fontWeight: isCurrent ? 'bold' : 'normal', color: isCurrent ? '#0F172A' : '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {content.contentTitle || content.title}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#64748b' }}>
+                                  <FaPlay style={{ width: '12px', height: '12px' }} />
+                                  <span style={{ textTransform: 'capitalize' }}>{content.contentType}</span>
+                                  {content.contentType === 'video' && content.durationMinutes > 0 && (
+                                    <>
+                                      <span>·</span>
+                                      <span>{content.durationMinutes}min</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              {isCurrent && (
+                                <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.05em' }}>NOW</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+        </div>
+      </div>
+    );
+  }
+
+  // Otherwise show the existing marketing/preview UI
   return (
     <div className="course-learning-page">
-      {/* Header */}
+      {/* Hero Header */}
       <div className="course-header">
         <div className="course-header-content">
-          <button className="back-button" onClick={() => navigate(-1)}>
-            ← Back
-          </button>
-          <div className="course-title-section">
-            <h1>{course.courseName || course.name}</h1>
-            <div className="course-meta">
-              <span className="rating">
-                <FaStar /> {(courseRatingStats?.averageRating || 0).toFixed(1)} ({courseRatingStats?.totalReviews || 0} ratings)
-              </span>
-              <span className="students">
-                <FaUsers /> {enrollmentCount} students
-              </span>
+          <div className="hero-left-content">
+            <span className="category-badge">{course.category || 'INFORMATION TECHNOLOGY'}</span>
+            <h1 className="clp-hero-course-title">{course.courseName || course.name}</h1>
+            <p className="course-desc-single">
+              {course.description && course.description.length > 120 
+                ? course.description.substring(0, 120) + '...' 
+                : course.description}
+            </p>
+            
+            <div className="hero-badges-row">
+              <span className="new-course-badge">NEW COURSE</span>
+              <span className="students-count">• {enrollmentCount} students</span>
+            </div>
+            
+            <div className="creator-row">
+              <span>Created by </span>
+              <a href="#instructor" className="creator-name">{course.instructor}</a>
+            </div>
+            
+            <div className="meta-info-row">
+              <div className="meta-box">
+                <FaClock />
+                <span>Duration: {course.duration}</span>
+              </div>
+              <div className="meta-box">
+                <FaGlobe />
+                <span>Mode: {course.mode}</span>
+              </div>
+              {course.certification && (
+                <div className="meta-box">
+                  <FaCheck />
+                  <span>{course.certification}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -820,6 +1572,167 @@ const CourseLearningPage = () => {
       <div className="course-main-content">
         {/* Left Content Area */}
         <div className="course-content-area">
+          {/* What You'll Learn Section */}
+          <div className="what-you-learn">
+            <h3>What You'll Learn</h3>
+            <div className="learning-points">
+              <div className="point">Master the fundamentals of {course.category || 'Database Management'}</div>
+              <div className="point">Build real-world projects</div>
+              <div className="point">Get hands-on experience</div>
+              <div className="point">Earn a certificate of completion</div>
+            </div>
+          </div>
+
+          {/* Stats Bar */}
+          <div className="clp-course-stats">
+            <div className="clp-stat-item">
+              <FaClock className="clp-stat-icon" />
+              <span className="clp-stat-number">{course.duration}</span>
+              <span className="clp-stat-label">Duration</span>
+            </div>
+            <div className="clp-stat-item">
+              <svg className="clp-stat-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 7H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M3 17H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <span className="clp-stat-number">{course.modules?.length || 0}</span>
+              <span className="clp-stat-label">Modules</span>
+            </div>
+            <div className="clp-stat-item">
+              <svg className="clp-stat-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 3L19 12L5 21V3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className="clp-stat-number">{course.modules?.reduce((acc, m) => acc + (m.content?.length || 0), 0) || 0}</span>
+              <span className="clp-stat-label">Lectures</span>
+            </div>
+            <div className="clp-stat-item">
+              <FaUsers className="clp-stat-icon" />
+              <span className="clp-stat-number">{enrollmentCount}</span>
+              <span className="clp-stat-label">Students</span>
+            </div>
+          </div>
+
+          {/* Course Content Section */}
+          <div className="course-content-section">
+            <div className="content-section-header">
+              <h2>Course Content</h2>
+              <div className="content-meta">
+                <span>{course.modules?.length || 0} sections</span>
+                <span> • </span>
+                <span>{course.modules?.reduce((acc, m) => acc + (m.content?.length || 0), 0) || 0} lectures</span>
+                <span> • </span>
+                <span>{formatDuration(calculateTotalVideoDuration())} total length</span>
+              </div>
+              {Object.keys(expandedSections).some(key => expandedSections[key]) ? (
+                <button className="expand-all-btn" onClick={() => setExpandedSections({})}>
+                  Collapse All
+                </button>
+              ) : (
+                <button className="expand-all-btn" onClick={() => {
+                  const allExpanded = {};
+                  course.modules?.forEach((_, index) => {
+                    allExpanded[index] = true;
+                  });
+                  setExpandedSections(allExpanded);
+                }}>
+                  Expand All Sections
+                </button>
+              )}
+            </div>
+
+            <div className="course-sections">
+              {(course.mode === 'On Campus' || course.mode === 'Offline') ? (
+                <div className="course-section">
+                  <div className="section-header">
+                    <div className="section-info">
+                      <h4>Course Information</h4>
+                      <span className="section-meta">On-Campus Learning</span>
+                    </div>
+                  </div>
+                  <div className="section-content">
+                    {enrollmentStatus?.enrolled ? (
+                      <div className="enrollment-success-message">
+                        <div className="success-icon">✅</div>
+                        <div className="success-text">
+                          <h4>You are successfully enrolled.</h4>
+                          <p>Please visit the campus for further instructions and class schedules.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="enrollment-info">
+                        <div className="info-icon">ℹ️</div>
+                        <div className="info-text">
+                          <h4>On-Campus Course</h4>
+                          <p>This is an on-campus course. After enrollment, you will receive further instructions about class schedules and campus visits.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                course.modules?.map((module, moduleIndex) => (
+                  <div key={module.moduleId} className="course-section">
+                    <div className="section-header" onClick={() => toggleSection(moduleIndex)}>
+                      <div className="section-info">
+                        <h4>Section {moduleIndex + 1}: {module.moduleTitle || module.title}</h4>
+                        <span className="section-meta">
+                          {module.content?.length || 0} lectures • {module.content?.reduce((acc, c) => {
+                            // Only count video duration
+                            if (c.contentType === 'video' && c.durationMinutes) {
+                              return acc + (parseInt(c.durationMinutes) || 0);
+                            }
+                            return acc;
+                          }, 0) || 0}min
+                        </span>
+                      </div>
+                      {expandedSections[moduleIndex] ? <FaChevronUp /> : <FaChevronDown />}
+                    </div>
+                    {expandedSections[moduleIndex] && (
+                      <div className="section-content">
+                        {module.content?.map((content, contentIndex) => {
+                          const isCompleted = isContentCompleted(content.contentId, content.contentType);
+                          const isQuizLocked = content.contentType === 'quiz' && isCompleted;
+                          return (
+                            <div key={content.contentId} className={`content-item ${selectedContent?.contentId === content.contentId ? 'active' : ''} ${!enrollmentStatus?.enrolled ? 'locked' : ''} ${isQuizLocked ? 'quiz-locked' : ''}`} onClick={() => !isQuizLocked && handleContentClick(content, moduleIndex, contentIndex)}>
+                              <div className={`content-icon ${content.contentType === 'quiz' ? 'quiz-icon' : ''} ${isCompleted ? 'completed' : ''}`}>
+                                {!enrollmentStatus?.enrolled ? <FaLock /> : isCompleted ? <FaCheck className="completed" /> : content.contentType === 'video' ? <FaPlay /> : content.contentType === 'quiz' ? <span>Q</span> : content.contentType === 'assignment' ? <span>📄</span> : <FaPlay />}
+                              </div>
+                              <div className="content-info">
+                                <span className="content-title">{content.contentTitle || content.title}</span>
+                                {content.contentType === 'video' && content.durationMinutes > 0 && (
+                                  <span className="content-duration">{content.durationMinutes}min</span>
+                                )}
+                                {isQuizLocked && <span className="quiz-status">✅ Completed</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {module.quiz && (() => {
+                          const isCompleted = isContentCompleted(module.quiz.quizId, 'quiz');
+                          const isQuizLocked = isCompleted;
+                          return (
+                            <div className={`content-item quiz-item ${selectedContent?.contentId === `module-quiz-${module.quiz.quizId}` ? 'active' : ''} ${!enrollmentStatus?.enrolled ? 'locked' : ''} ${isQuizLocked ? 'quiz-locked' : ''}`} onClick={() => enrollmentStatus?.enrolled && !isQuizLocked && handleTakeQuiz(module.quiz)}>
+                              <div className={`content-icon ${isCompleted ? 'completed' : ''}`}>
+                                {!enrollmentStatus?.enrolled ? <FaLock /> : isCompleted ? <FaCheck className="completed" /> : <span>Q</span>}
+                              </div>
+                              <div className="content-info">
+                                <span className="content-title">Quiz: {module.quiz.title}</span>
+                                <span className="content-duration">{module.quiz.questions?.length} questions</span>
+                                {isQuizLocked && <span className="quiz-status">✅ Completed</span>}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Video Player or Content Display */}
           {selectedContent && selectedContent.contentType === 'video' ? (
             <div className="video-player-section">
               <div className="video-container">
@@ -1091,114 +2004,7 @@ const CourseLearningPage = () => {
                 <p>{getCourseNotes().length} notes available</p>
               </div>
             </div>
-          ) : (
-            <div className="course-overview">
-              <div className="overview-content">
-                <h2>About This Course</h2>
-                <p>{course.description}</p>
-                
-                <div className="course-stats">
-                  <div className="stat-item">
-                    <FaClock />
-                    <span>{course.duration}</span>
-                  </div>
-                  <div className="stat-item">
-                    <FaUsers />
-                    <span>{course.instructor}</span>
-                  </div>
-                  <div className="stat-item">
-                    <FaGlobe />
-                    <span>{course.mode}</span>
-                  </div>
-                </div>
-
-                <div className="what-you-learn">
-                  <h3>What you'll learn</h3>
-                  <div className="learning-points">
-                    <div className="point">✓ Master the fundamentals of {course.category}</div>
-                    <div className="point">✓ Build real-world projects</div>
-                    <div className="point">✓ Get hands-on experience</div>
-                    <div className="point">✓ Earn a certificate of completion</div>
-                  </div>
-                </div>
-                
-                {course.prerequisites && (
-                  <div className="course-prerequisites">
-                    <h3>Prerequisites</h3>
-                    <p>{course.prerequisites}</p>
-                  </div>
-                )}
-                
-                {course.syllabusOverview && (
-                  <div className="course-syllabus">
-                    <h3>Syllabus Overview</h3>
-                    <p>{course.syllabusOverview}</p>
-                  </div>
-                )}
-
-                {/* Campus View Section for On Campus Courses */}
-                {(course.mode === 'On Campus' || course.mode === 'Offline') && course.onCampusFiles && course.onCampusFiles.length > 0 && (
-                  <div className="campus-view-section">
-                    <h3>Campus View</h3>
-                    <p>Explore our campus facilities and course materials</p>
-                    <div className="campus-view-grid">
-                      {course.onCampusFiles.map((file, index) => (
-                        <div key={file.fileId || index} className="campus-view-item">
-                          {file.fileType === 'image' ? (
-                            <div className="campus-image">
-                              <img 
-                                src={file.fileUrl} 
-                                alt={file.fileName || `Campus Image ${index + 1}`}
-                                className="campus-photo"
-                                onError={(e) => {
-                                  console.error('Image load error:', e.target.src);
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                              <div className="campus-file-info">
-                                <p className="campus-file-name">{file.fileName || `Campus Image ${index + 1}`}</p>
-                                <p className="campus-file-type">Campus Photo</p>
-                              </div>
-                            </div>
-                          ) : file.fileType === 'video' ? (
-                            <div className="campus-video">
-                              <video 
-                                controls 
-                                className="campus-video-player"
-                                poster={course.thumbnailUrl}
-                                onError={(e) => {
-                                  console.error('Video load error:', e.target.src);
-                                }}
-                              >
-                                <source src={file.fileUrl} type="video/mp4" />
-                                <source src={file.fileUrl} type="video/webm" />
-                                <source src={file.fileUrl} type="video/ogg" />
-                                Your browser does not support the video tag.
-                              </video>
-                              <div className="campus-file-info">
-                                <p className="campus-file-name">{file.fileName || `Campus Video ${index + 1}`}</p>
-                                <p className="campus-file-type">Campus Video</p>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="campus-unknown-file">
-                              <div className="campus-file-placeholder">
-                                <span>📄</span>
-                              </div>
-                              <div className="campus-file-info">
-                                <p className="campus-file-name">{file.fileName || `File ${index + 1}`}</p>
-                                <p className="campus-file-type">{file.fileType || 'Unknown'}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          ) : null}
 
           {/* Tab Navigation */}
           <div className="course-tabs">
@@ -1225,24 +2031,32 @@ const CourseLearningPage = () => {
           <div className="tab-content">
             {activeTab === 'overview' && (
               <div className="overview-tab">
-                <h3>Course Description</h3>
-                <p>{course.description}</p>
-                {course.prerequisites && (
-                  <div>
-                    <h4>Prerequisites</h4>
-                    <p>{course.prerequisites}</p>
-                  </div>
+                <h3>Requirements</h3>
+                {course.prerequisites ? (
+                  <p>{course.prerequisites}</p>
+                ) : (
+                  <ul>
+                    <li>No prior experience needed — beginners welcome.</li>
+                  </ul>
                 )}
+                
+                <h4>About This Course</h4>
+                <p>{course.description}</p>
+                
                 {course.syllabusOverview && (
                   <div>
                     <h4>Syllabus Overview</h4>
                     <p>{course.syllabusOverview}</p>
                   </div>
                 )}
+                
                 {course.certification && (
                   <div>
                     <h4>Certification</h4>
-                    <p>{course.certification}</p>
+                    <div className="certification-badge">
+                      <FaCheck />
+                      <span>{course.certification}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1375,146 +2189,74 @@ const CourseLearningPage = () => {
 
         {/* Right Sidebar */}
         <div className="course-sidebar">
-          <div className="sidebar-header">
-            <h3>Course content</h3>
-            {enrollmentStatus?.enrolled && (course.mode !== 'On Campus' && course.mode !== 'Offline') && (
-              <div className="progress-info">
-                {calculateProgress()}% complete
-              </div>
-            )}
-          </div>
-
-          {!enrollmentStatus?.enrolled && (
-            <div className="enrollment-section">
-              <div className="price-section">
-                <span className="current-price">₹{course.fees}</span>
-              </div>
-              <button className="enroll-btn" onClick={handleEnroll}>
-                Enroll Now
-              </button>
-              <p className="enrollment-note">
-                Enroll to access all course content
-              </p>
-            </div>
-          )}
-
-          <div className="course-sections">
-            {(course.mode === 'On Campus' || course.mode === 'Offline') ? (
-              /* On Campus Course - Show enrollment message only */
-              <div className="course-section">
-                <div className="section-header">
-                  <div className="section-info">
-                    <h4>Course Information</h4>
-                    <span className="section-meta">
-                      On-Campus Learning
-                    </span>
-                  </div>
+          {/* Course Banner Preview at Top - Always Visible */}
+          <div className="sidebar-course-banner">
+            <div className="banner-image-container">
+              <img 
+                src={course.thumbnail || course.thumbnailUrl || 'https://via.placeholder.com/400x225/1e3a8a/ffffff?text=Course+Preview'} 
+                alt={course.courseName || course.name}
+                className="banner-thumbnail"
+                onLoad={() => console.log('✅ Banner image loaded:', course.thumbnail || course.thumbnailUrl)}
+                onError={(e) => {
+                  console.log('❌ Banner image error, using fallback');
+                  console.log('Tried URL:', course.thumbnail || course.thumbnailUrl);
+                  e.target.src = 'https://via.placeholder.com/400x225/1e3a8a/ffffff?text=Course+Preview';
+                }}
+              />
+              <div className="banner-overlay">
+                <div className="banner-play-button">
+                  <FaPlay />
                 </div>
-                <div className="section-content">
-                  {enrollmentStatus?.enrolled ? (
-                    <div className="enrollment-success-message">
-                      <div className="success-icon">✅</div>
-                      <div className="success-text">
-                        <h4>You are successfully enrolled.</h4>
-                        <p>Please visit the campus for further instructions and class schedules.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="enrollment-info">
-                      <div className="info-icon">ℹ️</div>
-                      <div className="info-text">
-                        <h4>On-Campus Course</h4>
-                        <p>This is an on-campus course. After enrollment, you will receive further instructions about class schedules and campus visits.</p>
-                      </div>
-                    </div>
+                <span className="banner-preview-text">Preview this course</span>
+              </div>
+            </div>
+          </div>
+          
+          {!enrollmentStatus?.enrolled ? (
+            <>
+              <div className="enrollment-section">
+                <div className="price-section">
+                  <span className="current-price">₹{course.fees}</span>
+                  {course.originalFees && (
+                    <>
+                      <span className="original-price">₹{course.originalFees}</span>
+                      <span className="discount-badge">83% off</span>
+                    </>
                   )}
                 </div>
+                <button className="enroll-btn" onClick={handleEnroll}>
+                  Enroll Now
+                </button>
+                <button className="buy-now-btn" onClick={handleEnroll}>
+                  Buy Now - ₹{course.fees}
+                </button>
               </div>
-            ) : (
-              /* Online Course - Show Modules */
-              course.modules?.map((module, moduleIndex) => (
-              <div key={module.moduleId} className="course-section">
-                <div 
-                  className="section-header"
-                  onClick={() => toggleSection(moduleIndex)}
-                >
-                  <div className="section-info">
-                    <h4>Section {moduleIndex + 1}: {module.moduleTitle || module.title}</h4>
-                    <span className="section-meta">
-                      {module.content?.length || 0} lectures • {module.content?.reduce((acc, c) => acc + (c.durationMinutes || 0), 0)}min
-                    </span>
+              
+              <div className="sidebar-separator"></div>
+              
+              <div className="sidebar-includes">
+                <h4>This course includes:</h4>
+                <div className="includes-list">
+                  <div className="include-item">
+                    <FaPlay /> {course.modules?.reduce((acc, m) => acc + (m.content?.filter(c => c.contentType === 'video').length || 0), 0) || 0} lectures
                   </div>
-                  {expandedSections[moduleIndex] ? <FaChevronUp /> : <FaChevronDown />}
+                  <div className="include-item">
+                    <FaPlay /> Downloadable notes & resources
+                  </div>
+                  <div className="include-item">
+                    <FaGlobe /> Access on mobile & desktop
+                  </div>
+                  <div className="include-item">
+                    <FaClock /> Full lifetime access
+                  </div>
+                  <div className="include-item">
+                    <FaCheck /> Certificate on completion
+                  </div>
                 </div>
-
-                {expandedSections[moduleIndex] && (
-                  <div className="section-content">
-                    {module.content?.map((content, contentIndex) => {
-                      const isCompleted = isContentCompleted(content.contentId, content.contentType);
-                      const isQuizLocked = content.contentType === 'quiz' && isCompleted;
-                      
-                      return (
-                        <div 
-                          key={content.contentId} 
-                          className={`content-item ${selectedContent?.contentId === content.contentId ? 'active' : ''} ${!enrollmentStatus?.enrolled ? 'locked' : ''} ${isQuizLocked ? 'quiz-locked' : ''}`}
-                          onClick={() => !isQuizLocked && handleContentClick(content, moduleIndex, contentIndex)}
-                        >
-                          <div className={`content-icon ${content.contentType === 'quiz' ? 'quiz-icon' : ''} ${isCompleted ? 'completed' : ''}`}>
-                            {!enrollmentStatus?.enrolled ? (
-                              <FaLock />
-                            ) : isCompleted ? (
-                              <FaCheck className="completed" />
-                            ) : content.contentType === 'video' ? (
-                              <FaPlay />
-                            ) : content.contentType === 'quiz' ? (
-                              <span>Q</span>
-                            ) : content.contentType === 'assignment' ? (
-                              <span>📄</span>
-                            ) : (
-                              <FaPlay />
-                            )}
-                          </div>
-                          <div className="content-info">
-                            <span className="content-title">{content.contentTitle || content.title}</span>
-                            <span className="content-duration">{content.durationMinutes}min</span>
-                            {isQuizLocked && <span className="quiz-status">✅ Completed</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {module.quiz && (() => {
-                      const isCompleted = isContentCompleted(module.quiz.quizId, 'quiz');
-                      const isQuizLocked = isCompleted;
-                      
-                      return (
-                        <div 
-                          className={`content-item quiz-item ${selectedContent?.contentId === `module-quiz-${module.quiz.quizId}` ? 'active' : ''} ${!enrollmentStatus?.enrolled ? 'locked' : ''} ${isQuizLocked ? 'quiz-locked' : ''}`}
-                          onClick={() => enrollmentStatus?.enrolled && !isQuizLocked && handleTakeQuiz(module.quiz)}
-                        >
-                          <div className={`content-icon ${isCompleted ? 'completed' : ''}`}>
-                            {!enrollmentStatus?.enrolled ? (
-                              <FaLock />
-                            ) : isCompleted ? (
-                              <FaCheck className="completed" />
-                            ) : (
-                              <span>Q</span>
-                            )}
-                          </div>
-                          <div className="content-info">
-                            <span className="content-title">Quiz: {module.quiz.title}</span>
-                            <span className="content-duration">{module.quiz.questions?.length} questions</span>
-                            {isQuizLocked && <span className="quiz-status">✅ Completed</span>}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
               </div>
-              ))
-            )}
-          </div>
+              
+            </>
+          ) : null}
         </div>
       </div>
 
