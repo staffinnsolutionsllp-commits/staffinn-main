@@ -45,6 +45,13 @@ const {
 
 const { authenticateEmployee, checkPermission } = require('../../middleware/employeeAuth');
 
+// Forgot-password routes (public — no auth required)
+const hrmsPasswordReset = require('../../controllers/hrms/hrmsPasswordResetController');
+router.post('/auth/forgot-password/send-otp',  hrmsPasswordReset.sendOTP);
+router.post('/auth/forgot-password/verify-otp', hrmsPasswordReset.verifyOTP);
+router.post('/auth/forgot-password/reset',      hrmsPasswordReset.resetPassword);
+router.post('/auth/forgot-password/resend-otp', hrmsPasswordReset.resendOTP);
+
 // Auth routes
 router.post('/auth/login', login);
 router.post('/auth/change-password', authenticateEmployee, changePassword);
@@ -57,18 +64,18 @@ router.get('/dashboard/stats', authenticateEmployee, getDashboardStats);
 router.put('/profile', authenticateEmployee, updateProfile);
 
 // Attendance routes
-router.get('/attendance', authenticateEmployee, checkPermission('mark_attendance'), getMyAttendance);
+router.get('/attendance', authenticateEmployee, getMyAttendance);
 router.post('/attendance/mark', authenticateEmployee, checkPermission('mark_attendance'), markAttendance);
 
 // Leave routes
-router.get('/leaves', authenticateEmployee, checkPermission('apply_leave'), getMyLeaves);
-router.get('/leaves/balance', authenticateEmployee, checkPermission('apply_leave'), getLeaveBalance);
-router.get('/leaves/types', authenticateEmployee, checkPermission('apply_leave'), getLeaveTypes);
-router.post('/leaves/apply', authenticateEmployee, checkPermission('apply_leave'), applyLeave);
-router.delete('/leaves/:id', authenticateEmployee, checkPermission('apply_leave'), cancelLeave);
+router.get('/leaves', authenticateEmployee, getMyLeaves);
+router.get('/leaves/balance', authenticateEmployee, getLeaveBalance);
+router.get('/leaves/types', authenticateEmployee, getLeaveTypes);
+router.post('/leaves/apply', authenticateEmployee, applyLeave);
+router.delete('/leaves/:id', authenticateEmployee, cancelLeave);
 
 // Payroll routes
-router.get('/payslips', authenticateEmployee, checkPermission('view_payslip'), getMyPayslips);
+router.get('/payslips', authenticateEmployee, getMyPayslips);
 
 // Claim routes
 router.get('/claims', authenticateEmployee, getMyClaims);

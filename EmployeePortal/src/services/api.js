@@ -18,7 +18,12 @@ api.interceptors.request.use((config) => {
 export const authAPI = {
   login: (email, password) => api.post('/employee/auth/login', { email, password }),
   changePassword: (currentPassword, newPassword) => api.post('/employee/auth/change-password', { currentPassword, newPassword }),
-  getProfile: () => api.get('/employee/auth/profile')
+  getProfile: () => api.get('/employee/auth/profile'),
+  // Forgot password
+  forgotPasswordSendOTP: (email) => api.post('/employee/auth/forgot-password/send-otp', { email }),
+  forgotPasswordVerifyOTP: (email, otp) => api.post('/employee/auth/forgot-password/verify-otp', { email, otp }),
+  forgotPasswordReset: (email, resetToken, newPassword) => api.post('/employee/auth/forgot-password/reset', { email, resetToken, newPassword }),
+  forgotPasswordResendOTP: (email) => api.post('/employee/auth/forgot-password/resend-otp', { email })
 };
 
 export const dashboardAPI = {
