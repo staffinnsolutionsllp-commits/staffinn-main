@@ -8,33 +8,42 @@ class ProgressSocketService {
 
   connect() {
     try {
+      // Only connect if user is logged in
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return; // Don't connect if not logged in
+      }
+
       if (!this.socket) {
         const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001';
         const socketUrl = API_URL.includes('localhost') ? API_URL.replace('/api/v1', '') : API_URL.replace('/api/v1', '');
         
+        console.log('🔌 Connecting to socket server:', socketUrl);
+        
         this.socket = io(socketUrl, {
           transports: ['websocket', 'polling'],
           timeout: 20000,
-          forceNew: true
+          forceNew: true,
+          auth: { token }
         });
 
         this.socket.on('connect', () => {
-          console.log('Progress socket connected');
           this.isConnected = true;
+          console.log('✅ Progress socket connected:', this.socket.id);
         });
 
         this.socket.on('disconnect', () => {
-          console.log('Progress socket disconnected');
           this.isConnected = false;
+          console.log('❌ Progress socket disconnected');
         });
 
         this.socket.on('connect_error', (error) => {
-          console.error('Progress socket connection error:', error);
           this.isConnected = false;
+          console.error('❌ Progress socket error:', error.message);
         });
       }
     } catch (error) {
-      console.error('Error connecting to progress socket:', error);
+      console.error('❌ Progress socket setup error:', error);
     }
   }
 
@@ -57,15 +66,19 @@ class ProgressSocketService {
           courseId,
           ...progressData
         });
+        console.log('📤 Progress update emitted:', courseId);
       } catch (error) {
-        console.error('Error emitting progress update:', error);
+        console.error('❌ Progress emit error:', error);
       }
     }
   }
 
   onProgressUpdate(callback) {
     if (this.socket) {
-      this.socket.on('progress-updated', callback);
+      this.socket.on('progress-updated', (data) => {
+        console.log('📡 Progress update received:', data);
+        callback(data);
+      });
     }
   }
 

@@ -63,6 +63,10 @@ const HRMS_GRIEVANCES_TABLE = process.env.HRMS_GRIEVANCES_TABLE || 'staffinn-hrm
 const HRMS_GRIEVANCE_COMMENTS_TABLE = process.env.HRMS_GRIEVANCE_COMMENTS_TABLE || 'staffinn-hrms-grievance-comments';
 const HRMS_ORGANIZATION_CHART_TABLE = process.env.HRMS_ORGANIZATION_CHART_TABLE || 'staffinn-hrms-organization-chart';
 const HRMS_PAYROLL_TABLE = process.env.HRMS_PAYROLL_TABLE || 'staffinn-hrms-payroll';
+const HRMS_HOLIDAYS_TABLE = process.env.HRMS_HOLIDAYS_TABLE || 'staffinn-hrms-holidays';
+const HRMS_PAYROLL_RUNS_TABLE = process.env.HRMS_PAYROLL_RUNS_TABLE || 'staffinn-hrms-payroll-runs';
+const HRMS_SEPARATION_TABLE = process.env.HRMS_SEPARATION_TABLE || 'HRMS-seperation-table'; // existing table (typo preserved for compatibility)
+const HRMS_NDC_TABLE = process.env.HRMS_NDC_TABLE || 'staffinn-hrms-no-dues-clearance'; // new NDC table
 
 const createTablesIfNotExist = async () => {
   try {
@@ -114,5 +118,9 @@ module.exports = {
   HRMS_GRIEVANCE_COMMENTS_TABLE,
   HRMS_ORGANIZATION_CHART_TABLE,
   HRMS_PAYROLL_TABLE,
+  HRMS_HOLIDAYS_TABLE,
+  HRMS_PAYROLL_RUNS_TABLE,
+  HRMS_SEPARATION_TABLE,
+  HRMS_NDC_TABLE,
   createTablesIfNotExist
 };

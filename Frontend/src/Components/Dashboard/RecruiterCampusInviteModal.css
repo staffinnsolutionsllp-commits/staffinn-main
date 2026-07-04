@@ -1,0 +1,642 @@
+/* Recruiter Campus Invite Modal */
+.rcim-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.rcim-modal {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Header */
+.rcim-header {
+  padding: 24px 32px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rcim-header-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rcim-institute-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rcim-institute-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rcim-institute-avatar span {
+  font-size: 20px;
+  font-weight: 700;
+  color: #059669;
+}
+
+.rcim-header-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0 0 4px 0;
+}
+
+.rcim-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.rcim-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: #f3f4f6;
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+
+.rcim-close:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+/* Steps */
+.rcim-steps {
+  padding: 24px 32px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rcim-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.rcim-step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: 2px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition: all 0.3s;
+}
+
+.rcim-step.active .rcim-step-circle {
+  background: #059669;
+  border-color: #059669;
+  color: white;
+}
+
+.rcim-step.done .rcim-step-circle {
+  background: #d1fae5;
+  border-color: #059669;
+  color: #059669;
+}
+
+.rcim-step-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  font-weight: 500;
+}
+
+.rcim-step.active .rcim-step-label {
+  color: #059669;
+  font-weight: 600;
+}
+
+.rcim-step-line {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: #e5e7eb;
+  z-index: -1;
+}
+
+.rcim-step.done .rcim-step-line {
+  background: #059669;
+}
+
+/* Body */
+.rcim-body {
+  flex: 1;
+  padding: 32px;
+  overflow-y: auto;
+}
+
+.rcim-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+
+.rcim-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #059669;
+  border-radius: 50%;
+  animation: rcim-spin 0.8s linear infinite;
+}
+
+@keyframes rcim-spin {
+  to { transform: rotate(360deg); }
+}
+
+.rcim-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.rcim-step-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.rcim-step-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.rcim-step-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.rcim-step-desc {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.rcim-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.rcim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rcim-field-full {
+  grid-column: span 2;
+}
+
+.rcim-field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rcim-req {
+  color: #dc2626;
+}
+
+.rcim-field-hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: -4px 0 4px 0;
+}
+
+.rcim-field input,
+.rcim-field textarea {
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.rcim-field input:focus,
+.rcim-field textarea:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+}
+
+.rcim-courses-grid,
+.rcim-dates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.rcim-course-chip {
+  padding: 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rcim-course-chip:hover {
+  border-color: #059669;
+  background: #f0fdf4;
+}
+
+.rcim-course-chip.selected {
+  border-color: #059669;
+  background: #d1fae5;
+}
+
+.rcim-course-check {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #059669;
+}
+
+.rcim-course-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.rcim-date-card {
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.rcim-date-card:hover {
+  border-color: #059669;
+  background: #f0fdf4;
+}
+
+.rcim-date-card.selected {
+  border-color: #059669;
+  background: #d1fae5;
+}
+
+.rcim-date-day {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.rcim-date-num {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 4px 0;
+}
+
+.rcim-date-month {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.rcim-date-year {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.rcim-date-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background: #059669;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.rcim-timeslots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.rcim-timeslot-chip {
+  padding: 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  justify-content: space-between;
+}
+
+.rcim-timeslot-chip:hover:not(:disabled) {
+  border-color: #059669;
+  background: #f0fdf4;
+}
+
+.rcim-timeslot-chip.selected {
+  border-color: #059669;
+  background: #d1fae5;
+}
+
+.rcim-timeslot-chip.booked {
+  border-color: #fca5a5;
+  background: #fee2e2;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.rcim-timeslot-chip.tentative {
+  border-color: #fbbf24;
+  background: #fef3c7;
+}
+
+.rcim-slot-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.rcim-selection-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rcim-selection-chip {
+  padding: 10px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.rcim-selection-chip:hover {
+  border-color: #059669;
+  background: #f0fdf4;
+}
+
+.rcim-selection-chip.on {
+  border-color: #059669;
+  background: #d1fae5;
+  color: #047857;
+}
+
+.rcim-no-data {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.rcim-review-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rcim-review-section {
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.rcim-review-section h4 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #374151;
+  margin: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rcim-review-section p {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 6px 0;
+}
+
+.rcim-review-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rcim-review-chip {
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.rcim-error {
+  padding: 14px 16px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Footer */
+.rcim-footer {
+  padding: 20px 32px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rcim-footer-right {
+  display: flex;
+  gap: 12px;
+}
+
+.rcim-btn-back,
+.rcim-btn-cancel,
+.rcim-btn-next,
+.rcim-btn-send {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rcim-btn-back {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.rcim-btn-back:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.rcim-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.rcim-btn-cancel:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.rcim-btn-next {
+  background: #059669;
+  color: white;
+}
+
+.rcim-btn-next:hover:not(:disabled) {
+  background: #047857;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.rcim-btn-send {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+}
+
+.rcim-btn-send:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+  transform: translateY(-1px);
+}
+
+.rcim-btn-back:disabled,
+.rcim-btn-cancel:disabled,
+.rcim-btn-next:disabled,
+.rcim-btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .rcim-modal {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .rcim-header,
+  .rcim-body,
+  .rcim-footer {
+    padding: 20px;
+  }
+
+  .rcim-steps {
+    padding: 16px 20px;
+  }
+
+  .rcim-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rcim-field-full {
+    grid-column: span 1;
+  }
+
+  .rcim-courses-grid,
+  .rcim-dates-grid,
+  .rcim-timeslots-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rcim-step-label {
+    display: none;
+  }
+}

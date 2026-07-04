@@ -31,7 +31,7 @@ const upload = multer({
 // Create new hero section
 const createHeroSection = async (req, res) => {
   try {
-    const { title, content, tags } = req.body;
+    const { title, content, excerpt, author, authorAvatar, category, readTime, tags, status } = req.body;
     
     if (!title || !content) {
       return res.status(400).json({
@@ -56,7 +56,13 @@ const createHeroSection = async (req, res) => {
     const heroData = {
       title,
       content,
+      excerpt: excerpt || null,
+      author: author || null,
+      authorAvatar: authorAvatar || null,
+      category: category || 'Editorial',
+      readTime: readTime || null,
       tags: tags || '',
+      status: status || 'Published',
       bannerImageUrl
     };
 
@@ -125,7 +131,7 @@ const getAllHeroSections = async (req, res) => {
 const updateHeroSection = async (req, res) => {
   try {
     const { heroId } = req.params;
-    const { title, content, tags } = req.body;
+    const { title, content, excerpt, author, authorAvatar, category, readTime, tags, status } = req.body;
     
     if (!title || !content) {
       return res.status(400).json({
@@ -149,7 +155,13 @@ const updateHeroSection = async (req, res) => {
     const updateData = {
       title,
       content,
+      excerpt: excerpt || null,
+      author: author || null,
+      authorAvatar: authorAvatar || null,
+      category: category || 'Editorial',
+      readTime: readTime || null,
       tags: tags || '',
+      status: status || 'Published',
       bannerImageUrl
     };
 
@@ -238,7 +250,7 @@ const deleteHeroSection = async (req, res) => {
 // Create new trending topic
 const createTrendingTopic = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, tags, status } = req.body;
     
     if (!title || !description) {
       return res.status(400).json({
@@ -263,6 +275,8 @@ const createTrendingTopic = async (req, res) => {
     const topicData = {
       title,
       description,
+      tags: tags || '',
+      status: status || 'Published',
       imageUrl
     };
 
@@ -331,7 +345,7 @@ const getVisibleTrendingTopics = async (req, res) => {
 const updateTrendingTopic = async (req, res) => {
   try {
     const { topicId } = req.params;
-    const { title, description } = req.body;
+    const { title, description, tags, status } = req.body;
     
     if (!title || !description) {
       return res.status(400).json({
@@ -355,6 +369,8 @@ const updateTrendingTopic = async (req, res) => {
     const updateData = {
       title,
       description,
+      tags: tags || '',
+      status: status || 'Published',
       imageUrl
     };
 
@@ -443,7 +459,7 @@ const deleteTrendingTopic = async (req, res) => {
 // Create new expert insight
 const createExpertInsight = async (req, res) => {
   try {
-    const { title, name, designation } = req.body;
+    const { title, name, designation, company, avatarUrl, youtubeUrl, duration, views, status } = req.body;
     
     if (!title || !name || !designation) {
       return res.status(400).json({
@@ -485,6 +501,12 @@ const createExpertInsight = async (req, res) => {
       title,
       name,
       designation,
+      company: company || null,
+      avatarUrl: avatarUrl || null,
+      youtubeUrl: youtubeUrl || null,
+      duration: duration || null,
+      views: views || null,
+      status: status || 'Published',
       videoUrl,
       thumbnailUrl
     };
@@ -554,7 +576,7 @@ const getVisibleExpertInsights = async (req, res) => {
 const updateExpertInsight = async (req, res) => {
   try {
     const { insightId } = req.params;
-    const { title, name, designation } = req.body;
+    const { title, name, designation, company, avatarUrl, youtubeUrl, duration, views, status } = req.body;
     
     if (!title || !name || !designation) {
       return res.status(400).json({
@@ -595,6 +617,12 @@ const updateExpertInsight = async (req, res) => {
       title,
       name,
       designation,
+      company: company || null,
+      avatarUrl: avatarUrl || null,
+      youtubeUrl: youtubeUrl || null,
+      duration: duration || null,
+      views: views || null,
+      status: status || 'Published',
       videoUrl,
       thumbnailUrl
     };
@@ -684,7 +712,7 @@ const deleteExpertInsight = async (req, res) => {
 // Create new posted news
 const createPostedNews = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, excerpt, content, category, author, readTime, date, status } = req.body;
     
     if (!title || !description) {
       return res.status(400).json({
@@ -707,6 +735,13 @@ const createPostedNews = async (req, res) => {
     const newsData = {
       title,
       description,
+      excerpt: excerpt || null,
+      content: content || null,
+      category: category || 'Editorial',
+      author: author || null,
+      readTime: readTime || null,
+      date: date || null,
+      status: status || 'Published',
       bannerImageUrl
     };
 
@@ -774,7 +809,7 @@ const getVisiblePostedNews = async (req, res) => {
 const updatePostedNews = async (req, res) => {
   try {
     const { newsId } = req.params;
-    const { title, description } = req.body;
+    const { title, description, excerpt, content, category, author, readTime, date, status } = req.body;
     
     if (!title || !description) {
       return res.status(400).json({
@@ -797,6 +832,12 @@ const updatePostedNews = async (req, res) => {
     const updateData = {
       title,
       description,
+      excerpt: excerpt || null,
+      content: content || null,
+      category: category || 'Editorial',
+      author: author || null,
+      readTime: readTime || null,
+      status: status || 'Published',
       bannerImageUrl
     };
 

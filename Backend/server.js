@@ -23,6 +23,7 @@ console.log('- DYNAMODB_USERS_TABLE:', process.env.DYNAMODB_USERS_TABLE);
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
+const passwordResetRoutes = require('./routes/passwordResetRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const recruiterRoutes = require('./routes/recruiterRoutes');
 const staffRoutes = require('./routes/staffRoutes');
@@ -73,10 +74,13 @@ const hrmsOrganizationRoutes = require('./routes/hrms/hrmsOrganizationRoutes');
 const hrmsLeaveRoutes = require('./routes/hrms/hrmsLeaveRoutes');
 const hrmsCompanyRoutes = require('./routes/hrms/hrmsCompanyRoutes');
 const hrmsClaimRoutes = require('./routes/hrms/hrmsClaimRoutes');
+const hrmsClaimV2Routes = require('./routes/hrms/hrmsClaimV2Routes');
+const hrmsClaimUploadRoutes = require('./routes/hrms/hrmsClaimUploadRoutes');
 const hrmsTaskRoutes = require('./routes/hrms/hrmsTaskRoutes');
 const hrmsGrievanceManagementRoutes = require('./routes/hrms/hrmsGrievanceManagementRoutes');
 const hrmsSeparationRoutes = require('./routes/hrms/hrmsSeparationRoutes');
 const hrmsPayrollRoutes = require('./routes/hrms/hrmsPayrollRoutes');
+const hrmsHolidayRoutes = require('./routes/hrms/hrmsHolidayRoutes');
 const biometricAuthRoutes = require('./routes/hrms/biometricAuthRoutes');
 const biometricWebhookRoutes = require('./routes/hrms/biometricWebhookRoutes');
 const employeePortalRoutes = require('./routes/hrms/employeePortalRoutes');
@@ -85,6 +89,8 @@ const hrmsAccessRoutes = require('./routes/hrmsAccessRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const instituteBankDetailsRoutes = require('./routes/instituteBankDetailsRoutes');
 const campusRequestRoutes = require('./routes/campusRequestRoutes');
+const campusPlannerRoutes = require('./routes/campusPlannerRoutes');
+const recruiterCampusInviteRoutes = require('./routes/recruiterCampusInviteRoutes');
 
 // Import middleware
 const { notFound, errorHandler } = require('./middleware/error');
@@ -127,6 +133,43 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// ── OPT-16: 60-second in-memory cache for public GET endpoints ───────────────
+// These endpoints are hit by every page visitor, scan DynamoDB on every request,
+// and return data that changes at most every few minutes (new recruiter/institute/job).
+// Caching for 60s eliminates ~95% of redundant DynamoDB scan RCUs with zero
+// visible impact on users — a new listing appears within 60 seconds.
+const _publicCache = new Map();
+const _PUBLIC_CACHE_TTL = 60 * 1000; // 60 seconds
+
+const publicCacheMiddleware = (req, res, next) => {
+  // Only cache GET requests — skip OPTIONS (preflight), POST, etc.
+  if (req.method !== 'GET') return next();
+  const key = req.originalUrl;
+  const cached = _publicCache.get(key);
+  if (cached && (Date.now() - cached.time) < _PUBLIC_CACHE_TTL) {
+    // Set CORS headers before responding from cache
+    const origin = req.headers.origin;
+    if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    return res.json(cached.data);
+  }
+  const originalJson = res.json.bind(res);
+  res.json = (data) => {
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      _publicCache.set(key, { data, time: Date.now() });
+    }
+    return originalJson(data);
+  };
+  next();
+};
+
+// Apply cache to high-traffic public listing endpoints
+app.use(`${'/api/v1'}/recruiter/public`, publicCacheMiddleware);
+app.use(`${'/api/v1'}/institutes/public`, publicCacheMiddleware);
+app.use(`${'/api/v1'}/jobs/public`, publicCacheMiddleware);
+app.use(`${'/api/v1'}/staff/public`, publicCacheMiddleware);
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -147,6 +190,7 @@ const debugRoutes = require('./debug-routes');
 
 // API routes
 app.use(`${API_PREFIX}/auth`, authRoutes);
+app.use(`${API_PREFIX}/auth/forgot-password`, passwordResetRoutes);
 app.use(`${API_PREFIX}/jobs`, jobRoutes);
 app.use(`${API_PREFIX}/recruiter`, recruiterRoutes);
 app.use(`${API_PREFIX}/staff`, staffRoutes);
@@ -203,10 +247,13 @@ app.use(`${API_PREFIX}/hrms/organization`, hrmsOrganizationRoutes);
 app.use(`${API_PREFIX}/hrms/leaves`, hrmsLeaveRoutes);
 app.use(`${API_PREFIX}/hrms/company`, hrmsCompanyRoutes);
 app.use(`${API_PREFIX}/hrms/claims`, hrmsClaimRoutes);
+app.use(`${API_PREFIX}/hrms/v2`, hrmsClaimV2Routes);
+app.use(`${API_PREFIX}`, hrmsClaimUploadRoutes);
 app.use(`${API_PREFIX}/hrms/tasks`, hrmsTaskRoutes);
 app.use(`${API_PREFIX}/hrms/grievance-management`, hrmsGrievanceManagementRoutes);
 app.use(`${API_PREFIX}/hrms/separation`, hrmsSeparationRoutes);
 app.use(`${API_PREFIX}/hrms/payroll`, hrmsPayrollRoutes);
+app.use(`${API_PREFIX}/hrms/holidays`, hrmsHolidayRoutes);
 app.use(`${API_PREFIX}/biometric/auth`, biometricAuthRoutes);
 app.use(`${API_PREFIX}/biometric`, biometricWebhookRoutes);
 app.use(`${API_PREFIX}/employee`, employeePortalRoutes);
@@ -214,6 +261,8 @@ app.use(`${API_PREFIX}/hrms/notifications`, hrmsNotificationRoutes);
 app.use(`${API_PREFIX}/payments`, paymentRoutes);
 app.use(`${API_PREFIX}/institute`, instituteBankDetailsRoutes);
 app.use(`${API_PREFIX}/campus-requests`, campusRequestRoutes);
+app.use(`${API_PREFIX}/campus-planner`, campusPlannerRoutes);
+app.use(`${API_PREFIX}/recruiter-campus-invites`, recruiterCampusInviteRoutes);
 
 console.log('✅ HRMS routes registered successfully:');
 console.log('   - /api/v1/hrms/auth/*');

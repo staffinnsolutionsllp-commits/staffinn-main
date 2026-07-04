@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { LogIn, Lock, Mail, AlertCircle } from 'lucide-react'
+import { LogIn, Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { validateEmail } from '../../utils/auth'
 
 interface LoginFormProps {
   onToggleForm: () => void
-  onForgotPassword: () => void
+  onForgotPassword: (email: string) => void
 }
 
 export default function LoginForm({ onToggleForm, onForgotPassword }: LoginFormProps) {
@@ -16,6 +16,7 @@ export default function LoginForm({ onToggleForm, onForgotPassword }: LoginFormP
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [recruiterId, setRecruiterId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -101,13 +102,21 @@ export default function LoginForm({ onToggleForm, onForgotPassword }: LoginFormP
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter your password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
         </div>
@@ -116,7 +125,7 @@ export default function LoginForm({ onToggleForm, onForgotPassword }: LoginFormP
           <div className="text-sm">
             <button
               type="button"
-              onClick={onForgotPassword}
+              onClick={() => onForgotPassword(formData.email)}
               className="font-medium text-blue-600 hover:text-blue-500"
             >
               Forgot your password?

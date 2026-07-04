@@ -1,4 +1,4 @@
-import  { Users, Clock, CreditCard, TrendingUp, Calendar, CheckCircle } from 'lucide-react'
+﻿import  { Users, Clock, CreditCard, TrendingUp, Calendar, CheckCircle } from 'lucide-react'
 import { database } from '../store/database'
 import { apiService } from '../services/api'
 import { useState, useEffect } from 'react'
@@ -48,7 +48,7 @@ export default function Dashboard() {
           avgHours: parseFloat(attendanceStats.avgHours)
         }
         const activities = [
-          `${attendanceStats.totalEmployees} total candidates in system`,
+          `${stats.totalEmployees} total candidates in system`,
           `${attendanceStats.presentToday} employees marked present today`,
           `${currentStats.pendingLeaves} leave requests pending approval`,
           `${currentStats.activeCandidates} candidates in recruitment pipeline`,
@@ -79,13 +79,13 @@ export default function Dashboard() {
   const statCards = [
     { 
       label: 'Total Candidates', 
-      value: attendanceStats.totalEmployees.toString(), 
+      value: stats.totalEmployees.toString(), 
       icon: Users, 
       color: 'bg-blue-500' 
     },
     { 
       label: 'Present Today', 
-      value: `${attendanceStats.presentToday}/${attendanceStats.totalEmployees}`, 
+      value: `${attendanceStats.presentToday}/${stats.totalEmployees}`, 
       icon: CheckCircle, 
       color: 'bg-green-500' 
     },

@@ -7,6 +7,12 @@ type FormType = 'login' | 'register' | 'forgot'
 
 export default function AuthPage() {
   const [currentForm, setCurrentForm] = useState<FormType>('login')
+  const [prefillEmail, setPrefillEmail] = useState('')
+
+  const handleForgotPassword = (email: string) => {
+    setPrefillEmail(email)
+    setCurrentForm('forgot')
+  }
 
   const renderForm = () => {
     switch (currentForm) {
@@ -14,13 +20,18 @@ export default function AuthPage() {
         return (
           <LoginForm
             onToggleForm={() => setCurrentForm('register')}
-            onForgotPassword={() => setCurrentForm('forgot')}
+            onForgotPassword={handleForgotPassword}
           />
         )
       case 'register':
         return <RegisterForm onToggleForm={() => setCurrentForm('login')} />
       case 'forgot':
-        return <ForgotPasswordForm onBackToLogin={() => setCurrentForm('login')} />
+        return (
+          <ForgotPasswordForm
+            prefillEmail={prefillEmail}
+            onBackToLogin={() => setCurrentForm('login')}
+          />
+        )
     }
   }
 
@@ -29,12 +40,6 @@ export default function AuthPage() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {renderForm()}
-        </div>
-        
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600">
-            Demo Credentials: admin@staffinn.com / Admin@123
-          </p>
         </div>
       </div>
     </div>

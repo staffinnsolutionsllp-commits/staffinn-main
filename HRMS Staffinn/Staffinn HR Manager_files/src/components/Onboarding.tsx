@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Plus, X, AlertCircle, Upload, User, Briefcase, Building2, DollarSign, FileText, Shield, Trash2, Edit2, Eye } from 'lucide-react'
+﻿import { useState, useEffect } from 'react'
+import { Plus, X, AlertCircle, Upload, User, Briefcase, Building2, IndianRupee, FileText, Shield, Trash2, Edit2, Eye } from 'lucide-react'
 import { apiService } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useAttendance } from '../contexts/AttendanceContext'
 
 interface Employee {
   employeeId: string
@@ -18,6 +19,7 @@ interface Employee {
 
 export default function Onboarding() {
   const { user } = useAuth()
+  const { refreshStats: refreshAttendanceStats } = useAttendance()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [managers, setManagers] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,6 +77,7 @@ export default function Onboarding() {
     shiftTiming: 'Fixed',
     checkInTime: '09:00',
     checkOutTime: '18:00',
+    workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as any,
     reportingManagerId: '',
     
     // Organogram
@@ -90,10 +93,9 @@ export default function Onboarding() {
     paymentCycle: 'Monthly',
     hra: '',
     pfApplicable: 'Yes',
-    bonus: '',
     overtimeRate: '',
     
-    // System Access
+    // System Access (kept for DB backward compat — hidden from UI)
     hrmsAccess: 'Yes',
     roleBasedAccess: 'Employee',
     
@@ -112,6 +114,8 @@ export default function Onboarding() {
   const [deductions, setDeductions] = useState<Array<{name: string, amount: string, type: string}>>([])
   const [documentFiles, setDocumentFiles] = useState<{[key: string]: File | null}>({})
   const [uploadingDocs, setUploadingDocs] = useState(false)
+  // Custom documents: { name, file, url }
+  const [customDocuments, setCustomDocuments] = useState<Array<{name: string, file: File | null, url: string}>>([])
 
   useEffect(() => {
     loadEmployees()
@@ -149,6 +153,8 @@ export default function Onboarding() {
       }
       
       await loadEmployees()
+      // Refresh dashboard stats immediately so Total Candidates updates in real-time
+      await refreshAttendanceStats()
     } catch (error) {
       console.error('Error deleting employee:', error)
       alert('Failed to delete employee')
@@ -198,6 +204,7 @@ export default function Onboarding() {
           shiftTiming: fullData.shiftTiming || 'Fixed',
           checkInTime: fullData.checkInTime || '09:00',
           checkOutTime: fullData.checkOutTime || '18:00',
+          workingDays: fullData.workingDays || ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
           reportingManagerId: fullData.reportingManagerId || fullData.managerId || '',
           roleLevel: fullData.roleLevel || 'Manager',
           isPeopleManager: fullData.isPeopleManager || 'No',
@@ -237,6 +244,17 @@ export default function Onboarding() {
           })))
         } else {
           setDeductions([])
+        }
+
+        // Load custom documents
+        if (fullData.customDocuments && Array.isArray(fullData.customDocuments)) {
+          setCustomDocuments(fullData.customDocuments.map((cd: any) => ({
+            name: cd.name || '',
+            file: null,
+            url: cd.url || ''
+          })))
+        } else {
+          setCustomDocuments([])
         }
         
         // Load document URLs
@@ -318,7 +336,12 @@ export default function Onboarding() {
         uploadFormData.append('file', profilePicture)
         uploadFormData.append('folder', `hrms/${user?.userId}/employees/${formData.employeeId}/profile`)
         
-        const uploadResponse = await fetch('https://api.staffinn.com/api/upload', {
+        // Use environment-based API URL
+        const API_BASE_URL = import.meta.env.PROD 
+          ? 'https://api.staffinn.com'
+          : 'http://localhost:4001'
+        
+        const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, {
           method: 'POST',
           body: uploadFormData
         })
@@ -341,7 +364,12 @@ export default function Onboarding() {
           uploadFormData.append('file', file)
           uploadFormData.append('folder', `hrms/${user?.userId}/employees/${formData.employeeId}/documents`)
           
-          const uploadResponse = await fetch('https://api.staffinn.com/api/upload', {
+          // Use environment-based API URL
+          const API_BASE_URL = import.meta.env.PROD 
+            ? 'https://api.staffinn.com'
+            : 'http://localhost:4001'
+          
+          const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, {
             method: 'POST',
             body: uploadFormData
           })
@@ -353,6 +381,25 @@ export default function Onboarding() {
         }
       }
       setUploadingDocs(false)
+
+      // Upload custom documents
+      const uploadedCustomDocs = []
+      for (const cd of customDocuments) {
+        if (!cd.name.trim()) continue
+        let url = cd.url
+        if (cd.file) {
+          const uploadFormData = new FormData()
+          uploadFormData.append('file', cd.file)
+          uploadFormData.append('folder', `hrms/${user?.userId}/employees/${formData.employeeId}/documents/custom`)
+          const API_BASE_URL = import.meta.env.PROD ? 'https://api.staffinn.com' : 'http://localhost:4001'
+          const uploadResponse = await fetch(`${API_BASE_URL}/api/upload`, { method: 'POST', body: uploadFormData })
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json()
+            url = uploadData.url
+          }
+        }
+        uploadedCustomDocs.push({ name: cd.name.trim(), url })
+      }
 
       const employeeData = {
         employeeId: formData.employeeId,
@@ -370,7 +417,7 @@ export default function Onboarding() {
         basicPay: formData.basicSalary,
         salaryType: formData.salaryType,
         paymentCycle: formData.paymentCycle,
-        bonus: parseFloat(formData.bonus) || 0,
+        bonus: 0,
         overtimeRate: parseFloat(formData.overtimeRate) || 0,
         allowances: allowances.map(a => ({
           name: a.name,
@@ -416,10 +463,12 @@ export default function Onboarding() {
         shiftTiming: formData.shiftTiming,
         checkInTime: formData.checkInTime,
         checkOutTime: formData.checkOutTime,
+        workingDays: (formData as any).workingDays || ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
         hra: formData.hra,
         pfApplicable: formData.pfApplicable,
         hrmsAccess: formData.hrmsAccess,
         roleBasedAccess: formData.roleBasedAccess,
+        customDocuments: uploadedCustomDocs,
         ...documentUrls
       }
 
@@ -447,7 +496,7 @@ export default function Onboarding() {
           const orgNodeData = {
             employeeId: newEmployeeId,
             parentId: parentNodeId,
-            level: !parentNodeId ? 0 : (formData.roleLevel === 'Head' ? 1 : formData.roleLevel === 'Manager' ? 2 : formData.roleLevel === 'Team Lead' ? 3 : 4),
+            level: !parentNodeId ? 0 : (formData.roleLevel === 'RM' ? 1 : formData.roleLevel === 'Manager' ? 2 : formData.roleLevel === 'Team Lead' ? 3 : 4),
             position: formData.designation
           }
           
@@ -468,13 +517,15 @@ export default function Onboarding() {
           employmentType: 'Full-Time', department: '', designation: '', gradeLevel: '',
           dateOfJoining: '', probationPeriod: '3', workLocation: '', shiftTiming: 'Fixed',
           checkInTime: '09:00', checkOutTime: '18:00',
-          reportingManagerId: '', roleLevel: 'Manager', isPeopleManager: 'No',
+          workingDays: ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] as any,
+          reportingManagerId: '', roleLevel: 'Employee', isPeopleManager: 'No',
           teamName: '', annualCTC: '', basicPay: '', basicSalary: '', salaryType: 'Monthly',
-          paymentCycle: 'Monthly', hra: '', pfApplicable: 'Yes', bonus: '', overtimeRate: '',
+          paymentCycle: 'Monthly', hra: '', pfApplicable: 'Yes', overtimeRate: '',
           hrmsAccess: 'Yes', roleBasedAccess: 'Employee', profilePictureUrl: ''
         })
         setAllowances([])
         setDeductions([])
+        setCustomDocuments([])
         setProfilePicture(null)
         setProfilePicturePreview('')
       } else {
@@ -687,6 +738,58 @@ export default function Onboarding() {
               </div>
             </div>
 
+            <h3 className="font-semibold text-gray-900 mt-6">Working Days Configuration</h3>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-amber-700">
+                📅 Select which days are <strong>working days</strong> for this employee. Unselected days are treated as weekly off — no salary deduction and no attendance expected.
+                Default: Monday to Saturday (Sunday weekly off) per company policy.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                const workingDays: string[] = (formData as any).workingDays ||
+                  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                const isWorking = workingDays.includes(day)
+                const isWeekend = day === 'Saturday' || day === 'Sunday'
+                return (
+                  <label key={day}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 cursor-pointer transition-all select-none
+                      ${isWorking
+                        ? 'border-blue-500 bg-blue-50 text-blue-800'
+                        : 'border-gray-200 bg-gray-50 text-gray-500'}`}>
+                    <div>
+                      <p className="font-medium text-sm">{day}</p>
+                      {isWeekend && !isWorking && (
+                        <p className="text-xs text-gray-400">Weekly Off</p>
+                      )}
+                    </div>
+                    <input type="checkbox" checked={isWorking}
+                      onChange={() => {
+                        const current: string[] = (formData as any).workingDays ||
+                          ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+                        const updated = isWorking
+                          ? current.filter((d: string) => d !== day)
+                          : [...current, day]
+                        handleInputChange('workingDays', updated as any)
+                      }}
+                      className="w-5 h-5 text-blue-600 rounded" />
+                  </label>
+                )
+              })}
+            </div>
+            {(() => {
+              const wd: string[] = (formData as any).workingDays ||
+                ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+              const offs = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+                .filter(d => !wd.includes(d))
+              return (
+                <div className="mt-2 flex gap-4 text-xs text-gray-600">
+                  <span>✅ Working: <strong>{wd.join(', ') || '—'}</strong></span>
+                  <span>🔴 Weekly Off: <strong>{offs.join(', ') || '—'}</strong></span>
+                </div>
+              )
+            })()}
+
             <h3 className="font-semibold text-gray-900 mt-6 flex items-center gap-2">
               <Building2 size={18} />
               Organogram & Hierarchy
@@ -709,7 +812,7 @@ export default function Onboarding() {
                     ✓ This is your first employee - no manager needed
                   </p>
                 )}
-                {formData.roleLevel === 'Head' && (
+                {formData.roleLevel === 'RM' && (
                   <p className="text-sm text-blue-600 mt-2 flex items-center gap-1">
                     💡 Top-level positions typically don't have a reporting manager
                   </p>
@@ -719,7 +822,8 @@ export default function Onboarding() {
                 className="p-3 border rounded-lg">
                 <option value="Team Lead">Team Lead</option>
                 <option value="Manager">Manager</option>
-                <option value="Head">Head</option>
+                <option value="RM">RM (Reporting Manager)</option>
+                <option value="Employee">Employee</option>
               </select>
               <select value={formData.isPeopleManager} onChange={(e) => handleInputChange('isPeopleManager', e.target.value)}
                 className="p-3 border rounded-lg">
@@ -739,39 +843,75 @@ export default function Onboarding() {
         return (
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <DollarSign size={18} />
+              <IndianRupee size={18} />
               Compensation & Payroll Structure
             </h3>
             
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-700">
-                💡 Define complete salary structure for automated payroll processing
+                💡 Define complete salary structure for automated payroll processing.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <input type="number" placeholder="Annual CTC *" value={formData.annualCTC}
-                onChange={(e) => handleInputChange('annualCTC', e.target.value)}
-                className="p-3 border rounded-lg" required />
-              <input type="number" placeholder="Basic Salary (Monthly) *" value={formData.basicSalary}
-                onChange={(e) => handleInputChange('basicSalary', e.target.value)}
-                className="p-3 border rounded-lg" required />
+              {/* Annual CTC — drives auto-calc */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Annual CTC (₹) *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">₹</span>
+                  <input
+                    type="number"
+                    placeholder="e.g. 600000"
+                    value={formData.annualCTC}
+                    onChange={(e) => {
+                      const ctc = e.target.value
+                      handleInputChange('annualCTC', ctc)
+                      // Auto-calc: Monthly Basic = Annual CTC ÷ 12
+                      const monthly = ctc ? Math.round(parseFloat(ctc) / 12) : ''
+                      handleInputChange('basicSalary', monthly ? String(monthly) : '')
+                    }}
+                    className="w-full pl-8 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Monthly Basic Salary — auto-filled, still editable */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Monthly Basic Salary (₹) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">₹</span>
+                  <input
+                    type="number"
+                    placeholder="Auto-calculated"
+                    value={formData.basicSalary}
+                    onChange={(e) => handleInputChange('basicSalary', e.target.value)}
+                    className="w-full pl-8 pr-3 py-3 border rounded-lg bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                {formData.annualCTC && formData.basicSalary && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Annual CTC ÷ 12 = ₹{Number(formData.basicSalary).toLocaleString('en-IN')}/month
+                  </p>
+                )}
+              </div>
+
               <select value={formData.salaryType} onChange={(e) => handleInputChange('salaryType', e.target.value)}
-                className="p-3 border rounded-lg">
+                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="Monthly">Salary Type - Monthly</option>
                 <option value="Daily">Salary Type - Daily</option>
                 <option value="Hourly">Salary Type - Hourly</option>
               </select>
               <select value={formData.paymentCycle} onChange={(e) => handleInputChange('paymentCycle', e.target.value)}
-                className="p-3 border rounded-lg">
+                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="Monthly">Payment Cycle - Monthly</option>
               </select>
-              <input type="number" placeholder="Bonus (Monthly)" value={formData.bonus}
-                onChange={(e) => handleInputChange('bonus', e.target.value)}
-                className="p-3 border rounded-lg" />
-              <input type="number" placeholder="Overtime Rate (Per Hour)" value={formData.overtimeRate}
+              <input type="number" placeholder="Overtime Rate (Per Hour) ₹" value={formData.overtimeRate}
                 onChange={(e) => handleInputChange('overtimeRate', e.target.value)}
-                className="p-3 border rounded-lg" />
+                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
             <div className="mt-6">
@@ -888,17 +1028,6 @@ export default function Onboarding() {
                   </button>
                 </div>
               ))}
-            </div>
-
-            <h3 className="font-semibold text-gray-900 mt-6">System Access</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <select value={formData.roleBasedAccess} onChange={(e) => handleInputChange('roleBasedAccess', e.target.value)}
-                className="col-span-2 p-3 border rounded-lg">
-                <option value="Employee">Role: Employee</option>
-                <option value="Manager">Role: Manager</option>
-                <option value="HR">Role: HR</option>
-                <option value="Admin">Role: Admin</option>
-              </select>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
@@ -1044,21 +1173,84 @@ export default function Onboarding() {
                 />
               </div>
 
-              <div className="border rounded-lg p-4">
-                <label className="block text-sm font-medium mb-2">Other Document (Optional)</label>
-                {formData.otherDocumentUrl ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600 text-sm">✓ Already uploaded</span>
-                    <a href={formData.otherDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline">View</a>
-                    <button type="button" onClick={() => handleInputChange('otherDocumentUrl', '')} className="text-red-600 text-sm hover:underline">Remove</button>
+              {/* ── Custom / Additional Documents ── */}
+              <div className="border-2 border-dashed border-blue-200 rounded-xl p-5 bg-blue-50/40">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-semibold text-gray-800 text-sm">Additional Documents</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">Add any extra documents with a custom name (e.g. NOC, Offer Letter, Salary Slip)</p>
                   </div>
-                ) : null}
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => handleDocumentChange('otherDocument', e.target.files?.[0] || null)}
-                  className="w-full p-2 border rounded mt-2"
-                />
+                  <button
+                    type="button"
+                    onClick={() => setCustomDocuments([...customDocuments, { name: '', file: null, url: '' }])}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  >
+                    <Plus size={14} /> Add Document
+                  </button>
+                </div>
+
+                {customDocuments.length === 0 && (
+                  <p className="text-center text-xs text-gray-400 py-3">No additional documents added. Click "Add Document" to add one.</p>
+                )}
+
+                {customDocuments.map((cd, idx) => (
+                  <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-3 last:mb-0">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">Document Name *</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. NOC Certificate, Previous Salary Slip..."
+                          value={cd.name}
+                          onChange={(e) => {
+                            const updated = [...customDocuments]
+                            updated[idx] = { ...updated[idx], name: e.target.value }
+                            setCustomDocuments(updated)
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCustomDocuments(customDocuments.filter((_, i) => i !== idx))}
+                        className="mt-5 p-2 text-red-400 hover:bg-red-50 rounded-lg flex-shrink-0"
+                        title="Remove"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                    {cd.url && !cd.file && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-green-600 text-xs font-medium">✓ Already uploaded</span>
+                        <a href={cd.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs hover:underline">View</a>
+                        <button type="button"
+                          onClick={() => {
+                            const updated = [...customDocuments]
+                            updated[idx] = { ...updated[idx], url: '' }
+                            setCustomDocuments(updated)
+                          }}
+                          className="text-red-500 text-xs hover:underline">Replace</button>
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">Upload File (PDF, JPG, PNG)</label>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null
+                          const updated = [...customDocuments]
+                          updated[idx] = { ...updated[idx], file }
+                          setCustomDocuments(updated)
+                        }}
+                        className="w-full text-sm border border-gray-200 rounded-lg p-2 focus:outline-none"
+                      />
+                      {cd.file && (
+                        <p className="text-xs text-green-600 mt-1">✓ {cd.file.name} selected</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1348,18 +1540,21 @@ export default function Onboarding() {
                       </a>
                     </div>
                   )}
-                  {viewingEmployee.otherDocumentUrl && (
-                    <div className="border rounded-lg p-3">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Other Document</div>
-                      <a href={viewingEmployee.otherDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
-                        <FileText size={14} /> View Document
-                      </a>
-                    </div>
-                  )}
+                  {/* Custom / Additional Documents */}
+                  {Array.isArray(viewingEmployee.customDocuments) && viewingEmployee.customDocuments.map((cd: any, i: number) => (
+                    cd.url ? (
+                      <div key={i} className="border rounded-lg p-3 border-blue-100 bg-blue-50/30">
+                        <div className="text-sm font-medium text-gray-700 mb-1">{cd.name || `Document ${i + 1}`}</div>
+                        <a href={cd.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm hover:underline flex items-center gap-1">
+                          <FileText size={14} /> View Document
+                        </a>
+                      </div>
+                    ) : null
+                  ))}
                 </div>
-                {!viewingEmployee.aadhaarCardUrl && !viewingEmployee.panCardUrl && !viewingEmployee.educationCertificateUrl && 
-                 !viewingEmployee.experienceLetterUrl && !viewingEmployee.relievingLetterUrl && !viewingEmployee.passportPhotoUrl && 
-                 !viewingEmployee.bankStatementUrl && !viewingEmployee.otherDocumentUrl && (
+                {!viewingEmployee.aadhaarCardUrl && !viewingEmployee.panCardUrl && !viewingEmployee.educationCertificateUrl &&
+                 !viewingEmployee.experienceLetterUrl && !viewingEmployee.relievingLetterUrl && !viewingEmployee.passportPhotoUrl &&
+                 !viewingEmployee.bankStatementUrl && !(viewingEmployee.customDocuments?.length > 0) && (
                   <div className="text-center py-4 text-gray-500 text-sm">
                     No documents uploaded yet
                   </div>

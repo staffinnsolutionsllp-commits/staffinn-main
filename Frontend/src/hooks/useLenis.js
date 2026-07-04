@@ -28,19 +28,33 @@ export const useLenis = () => {
       '.registration-popup-overlay',
       '.login-modal',
       '.popup-overlay',
-      '.popup-content'
+      '.popup-content',
+      '.cie-modal-panel',
+      '.cie-modal-body',
+      '.cie-modal-overlay',
+      '.cim-modal',
+      '.cim-body',
+      '.cim-overlay',
+      '.sam-overlay',
+      '.sam-modal',
+      '.modal-overlay',
+      '.student-selection-modal',
+      '.pom-overlay',
+      '.pom-box'
     ];
 
     const handleWheel = (e) => {
       const target = e.target.closest(preventLenisElements.join(','));
       const isModalOpen = document.body.classList.contains('modal-open');
+      // Also respect data-lenis-prevent attribute
+      const lenisPrevent = e.target.closest('[data-lenis-prevent]');
       
-      if (target || isModalOpen) {
+      if (target || isModalOpen || lenisPrevent) {
         e.stopPropagation();
         lenis.stop();
         
         // Only restart Lenis if no modal is open
-        if (!isModalOpen) {
+        if (!isModalOpen && !lenisPrevent) {
           setTimeout(() => lenis.start(), 100);
         }
       }
@@ -49,13 +63,14 @@ export const useLenis = () => {
     const handleTouchMove = (e) => {
       const target = e.target.closest(preventLenisElements.join(','));
       const isModalOpen = document.body.classList.contains('modal-open');
+      const lenisPrevent = e.target.closest('[data-lenis-prevent]');
       
-      if (target || isModalOpen) {
+      if (target || isModalOpen || lenisPrevent) {
         e.stopPropagation();
         lenis.stop();
         
         // Only restart Lenis if no modal is open
-        if (!isModalOpen) {
+        if (!isModalOpen && !lenisPrevent) {
           setTimeout(() => lenis.start(), 100);
         }
       }

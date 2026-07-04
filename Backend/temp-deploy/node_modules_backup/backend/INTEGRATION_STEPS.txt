@@ -1,0 +1,10 @@
+// Add this to your main server.js or app.js file
+
+// Import attendance routes
+const attendanceRoutes = require('./routes/attendance');
+
+// Add this line with your other routes
+app.use('/api/attendance', attendanceRoutes);
+
+// Add to .env.production
+// DYNAMODB_ATTENDANCE_TABLE=staffinn-attendance

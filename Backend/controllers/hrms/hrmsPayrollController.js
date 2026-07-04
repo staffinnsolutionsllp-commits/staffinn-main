@@ -1,481 +1,483 @@
-const { dynamoClient, isUsingMockDB, mockDB, HRMS_EMPLOYEES_TABLE, HRMS_ATTENDANCE_TABLE, HRMS_LEAVES_TABLE, HRMS_PAYROLL_TABLE } = require('../../config/dynamodb-wrapper');
-const { PutCommand, ScanCommand, GetCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+/**
+ * HRMS Payroll Controller — Production Grade
+ * Leave Policy: Mon–Sat workweek, Sunday weekly off (default)
+ * CL: 1/month, ML: 1/month, CO: 5h=full, 2.5h=half
+ * Late arrival → auto half-day deduction
+ * Payroll snapshot: frozen on generation
+ */
+const {
+  dynamoClient, isUsingMockDB, mockDB,
+  HRMS_EMPLOYEES_TABLE, HRMS_ATTENDANCE_TABLE,
+  HRMS_LEAVES_TABLE, HRMS_PAYROLL_TABLE,
+  HRMS_HOLIDAYS_TABLE, HRMS_PAYROLL_RUNS_TABLE
+} = require('../../config/dynamodb-wrapper');
+const { PutCommand, ScanCommand, GetCommand, QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { generateId, getCurrentTimestamp, handleError, successResponse, errorResponse } = require('../../utils/hrmsHelpers');
 
-// Run payroll for a specific month
-const runPayroll = async (req, res) => {
+/* ─── Helpers ─────────────────────────────────────────────────── */
+
+/** Get all holidays for a recruiter, optionally filtered to a month range */
+const getHolidaysForPeriod = async (recruiterId, startDate, endDate) => {
   try {
-    const recruiterId = req.user?.recruiterId;
-    if (!recruiterId) {
-      return res.status(400).json(errorResponse('Recruiter ID not found'));
-    }
-
-    const { month } = req.body; // Format: YYYY-MM
-    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
-      return res.status(400).json(errorResponse('Valid month required (format: YYYY-MM)'));
-    }
-
-    console.log(`🚀 Running payroll for ${month}, recruiterId: ${recruiterId}`);
-
-    // Get all active employees
-    let employees;
-    if (isUsingMockDB()) {
-      const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
-      employees = allEmployees.filter(e => e.recruiterId === recruiterId && !e.isDeleted);
-    } else {
-      const scanCommand = new ScanCommand({
-        TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: 'recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
-        ExpressionAttributeValues: {
-          ':recruiterId': recruiterId,
-          ':false': false
-        }
-      });
-      const result = await dynamoClient.send(scanCommand);
-      employees = result.Items || [];
-    }
-
-    if (employees.length === 0) {
-      return res.status(400).json(errorResponse('No active employees found'));
-    }
-
-    console.log(`📊 Processing payroll for ${employees.length} employees`);
-
-    const payrollRecords = [];
-    let totalGrossSalary = 0;
-    let totalDeductions = 0;
-    let totalNetSalary = 0;
-
-    // Calculate payroll for each employee
-    for (const employee of employees) {
-      const payrollData = await calculateEmployeePayroll(employee, month, recruiterId, req.user?.email || 'system');
-      payrollRecords.push(payrollData);
-      
-      totalGrossSalary += payrollData.totalEarnings;
-      totalDeductions += payrollData.totalDeductions;
-      totalNetSalary += payrollData.netSalary;
-    }
-
-    // Save all payroll records
-    for (const record of payrollRecords) {
-      if (isUsingMockDB()) {
-        mockDB().put(HRMS_PAYROLL_TABLE, record);
-      } else {
-        const putCommand = new PutCommand({
-          TableName: HRMS_PAYROLL_TABLE,
-          Item: record
-        });
-        await dynamoClient.send(putCommand);
-      }
-    }
-
-    console.log(`✅ Payroll completed: ${payrollRecords.length} records created`);
-
-    res.json(successResponse({
-      month,
-      totalEmployees: payrollRecords.length,
-      totalGrossSalary: parseFloat(totalGrossSalary.toFixed(2)),
-      totalDeductions: parseFloat(totalDeductions.toFixed(2)),
-      totalNetSalary: parseFloat(totalNetSalary.toFixed(2)),
-      records: payrollRecords
-    }, 'Payroll processed successfully'));
-
-  } catch (error) {
-    console.error('Run payroll error:', error);
-    handleError(error, res);
-  }
+    const scan = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_HOLIDAYS_TABLE,
+      FilterExpression: 'recruiterId = :rid AND #date BETWEEN :start AND :end',
+      ExpressionAttributeNames: { '#date': 'date' },
+      ExpressionAttributeValues: { ':rid': recruiterId, ':start': startDate, ':end': endDate }
+    }));
+    return (scan.Items || []).map(h => h.date); // array of 'YYYY-MM-DD'
+  } catch { return []; }
 };
 
-// Calculate payroll for a single employee
-const calculateEmployeePayroll = async (employee, month, recruiterId, userEmail) => {
-  const [year, monthNum] = month.split('-');
-  const startDate = `${year}-${monthNum}-01`;
-  const endDate = new Date(year, monthNum, 0).toISOString().split('T')[0]; // Last day of month
+/** Employee's working days array from employee record — fallback to Mon–Sat */
+const getEmployeeWorkingDays = (employee) => {
+  if (employee.workingDays && Array.isArray(employee.workingDays)) return employee.workingDays;
+  // Default company policy: Monday–Saturday
+  return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+};
 
-  // Get attendance data
-  const attendanceData = await getEmployeeAttendance(employee.employeeId, startDate, endDate);
-  
-  // Get leave data
-  const leaveData = await getEmployeeLeaves(employee.employeeId, startDate, endDate);
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-  // Calculate working days in month
-  const totalWorkingDays = getWorkingDaysInMonth(year, monthNum);
+/** Count actual working days in a date range for a specific employee
+ *  Excludes: employee's weekly-off days + declared holidays */
+const countWorkingDays = (startDate, endDate, employeeWorkingDays, holidays = []) => {
+  const holidaySet = new Set(holidays);
+  let count = 0;
+  const cur = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+  while (cur <= end) {
+    const dayName = DAY_NAMES[cur.getDay()];
+    const dateStr = cur.toISOString().split('T')[0];
+    if (employeeWorkingDays.includes(dayName) && !holidaySet.has(dateStr)) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+};
 
-  // Basic salary calculation
+/** Get all dates in range that are weekly-off for this employee */
+const getWeeklyOffDates = (startDate, endDate, employeeWorkingDays) => {
+  const offs = [];
+  const cur = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+  while (cur <= end) {
+    const dayName = DAY_NAMES[cur.getDay()];
+    if (!employeeWorkingDays.includes(dayName)) offs.push(cur.toISOString().split('T')[0]);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return offs;
+};
+
+/** Fetch attendance records for employee within date range */
+const fetchAttendance = async (employeeId, startDate, endDate) => {
+  const result = await dynamoClient.send(new ScanCommand({
+    TableName: HRMS_ATTENDANCE_TABLE,
+    FilterExpression: 'employeeId = :eid AND #date BETWEEN :start AND :end',
+    ExpressionAttributeNames: { '#date': 'date' },
+    ExpressionAttributeValues: { ':eid': employeeId, ':start': startDate, ':end': endDate }
+  }));
+  return result.Items || [];
+};
+
+/** Fetch approved leaves overlapping date range */
+const fetchApprovedLeaves = async (employeeId, startDate, endDate) => {
+  const result = await dynamoClient.send(new ScanCommand({
+    TableName: HRMS_LEAVES_TABLE,
+    FilterExpression: 'entityType = :type AND employeeId = :eid AND #status = :approved',
+    ExpressionAttributeNames: { '#status': 'status' },
+    ExpressionAttributeValues: { ':type': 'LEAVE', ':eid': employeeId, ':approved': 'Approved' }
+  }));
+  return (result.Items || []).filter(l => l.startDate <= endDate && l.endDate >= startDate);
+};
+
+/* ─── Core Payroll Engine ─────────────────────────────────────── */
+
+const computePayroll = async (employee, startDate, endDate, recruiterId, runId) => {
+  const workingDays = getEmployeeWorkingDays(employee);
+  const holidays = await getHolidaysForPeriod(recruiterId, startDate, endDate);
+  const holidaySet = new Set(holidays);
+  const weeklyOffDates = getWeeklyOffDates(startDate, endDate, workingDays);
+  const weeklyOffSet = new Set(weeklyOffDates);
+  const totalScheduledDays = countWorkingDays(startDate, endDate, workingDays, holidays);
+
+  const attendanceRecords = await fetchAttendance(employee.employeeId, startDate, endDate);
+  const approvedLeaves = await fetchApprovedLeaves(employee.employeeId, startDate, endDate);
+
+  // Build a date-keyed attendance map
+  const attMap = {};
+  for (const r of attendanceRecords) attMap[r.date] = r;
+
+  // Build a date-keyed leave map (approved leaves that fall within period)
+  const leaveMap = {}; // date → { leaveType, isPaid }
+  for (const leave of approvedLeaves) {
+    const s = new Date(leave.startDate + 'T00:00:00');
+    const e = new Date(leave.endDate + 'T00:00:00');
+    const pEnd = new Date(endDate + 'T00:00:00');
+    const pStart = new Date(startDate + 'T00:00:00');
+    const cur = new Date(Math.max(s, pStart));
+    while (cur <= Math.min(e, pEnd)) {
+      const ds = cur.toISOString().split('T')[0];
+      const lt = leave.leaveType || '';
+      const isPaid = !['LWP', 'Leave Without Pay', 'Unpaid Leave'].includes(lt);
+      leaveMap[ds] = { leaveType: lt, isPaid, days: parseFloat(leave.numberOfDays || 1) };
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+
+  // Per-day breakdown
+  let daysPresent = 0;
+  let halfDays = 0;      // from late attendance
+  let fullAbsent = 0;    // absent without any leave
+  let paidLeaves = 0;
+  let unpaidLeaves = 0;
+  let weeklyOffs = weeklyOffDates.length;
+  let holidayCount = holidays.length;
+  let compOffs = 0;
+  let overtimeHours = 0;
+
+  // Iterate only over scheduled working days
+  const cur = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+  while (cur <= end) {
+    const ds = cur.toISOString().split('T')[0];
+    const dayName = DAY_NAMES[cur.getDay()];
+    cur.setDate(cur.getDate() + 1);
+
+    if (weeklyOffSet.has(ds)) continue;   // weekly off — skip
+    if (holidaySet.has(ds)) continue;     // declared holiday — skip
+
+    const att = attMap[ds];
+    const leaveEntry = leaveMap[ds];
+
+    if (att) {
+      const status = att.status || 'present';
+      if (status === 'half-day') {
+        halfDays++;
+        daysPresent += 0.5;
+      } else {
+        daysPresent++;
+      }
+      // Overtime: hours beyond expected shift
+      const expectedH = employee.checkOutTime && employee.checkInTime
+        ? (() => {
+            const [oh, om] = (employee.checkOutTime || '18:00').split(':').map(Number);
+            const [ih, im] = (employee.checkInTime || '09:00').split(':').map(Number);
+            return ((oh * 60 + om) - (ih * 60 + im)) / 60;
+          })()
+        : 9; // default 9h shift
+      const worked = parseFloat(att.hours || 0);
+      if (worked > expectedH) overtimeHours += (worked - expectedH);
+    } else if (leaveEntry) {
+      // Approved leave on this scheduled working day
+      const lt = leaveEntry.leaveType;
+      if (['CO', 'Comp Off', 'Compensatory Off'].includes(lt)) {
+        compOffs += 0.5; // simplify — could be half or full
+      } else if (leaveEntry.isPaid) {
+        paidLeaves++;
+      } else {
+        unpaidLeaves++;
+      }
+    } else {
+      // No attendance + no approved leave → absent
+      fullAbsent++;
+    }
+  }
+
+  // Late arrival half-day — attendance records with status 'late' AND hours < 50% of expected
+  const expectedHours = employee.checkOutTime && employee.checkInTime
+    ? (() => {
+        const [oh, om] = (employee.checkOutTime || '18:00').split(':').map(Number);
+        const [ih, im] = (employee.checkInTime || '09:00').split(':').map(Number);
+        return ((oh * 60 + om) - (ih * 60 + im)) / 60;
+      })()
+    : 9;
+  let lateHalfDayDeductionDays = 0;
+  for (const r of attendanceRecords) {
+    if (r.status === 'late') {
+      // Already counted as present above, but we deduct 0.5 day for late per policy
+      const worked = parseFloat(r.hours || 0);
+      if (worked < expectedHours * 0.5) {
+        // already marked half-day by attendance — no double count
+      } else {
+        // Late arrival: deduct half-day per policy
+        lateHalfDayDeductionDays += 0.5;
+      }
+    }
+  }
+
+  // Salary math
   const basicSalary = parseFloat(employee.basicSalary || employee.basicPay || 0);
-  const salaryType = employee.salaryType || 'Monthly';
-  
-  let calculatedBasicSalary = basicSalary;
-  
-  // Calculate per day salary
-  const perDaySalary = basicSalary / totalWorkingDays;
+  const perDaySalary = totalScheduledDays > 0 ? basicSalary / totalScheduledDays : 0;
 
-  // Calculate attendance-based deductions
-  const unpaidAbsences = attendanceData.daysAbsent - leaveData.paidLeaves;
-  const lwpDeduction = Math.max(0, unpaidAbsences + leaveData.unpaidLeaves) * perDaySalary;
+  // Deductions from LWP:
+  // absent days + unpaid leaves + half-days (×0.5) + late-half-day adjustments
+  const lwpDays = fullAbsent + unpaidLeaves + (halfDays * 0.5) + lateHalfDayDeductionDays;
+  const lwpAmount = parseFloat((lwpDays * perDaySalary).toFixed(2));
 
-  // Earnings calculation
-  const allowances = employee.allowances || [];
+  // Allowances
+  const allowancesArr = employee.allowances || [];
   let totalAllowances = 0;
-  const allowanceBreakdown = allowances.map(a => {
-    const amount = parseFloat(a.amount || 0);
-    totalAllowances += amount;
-    return {
-      name: a.name,
-      amount,
-      type: a.type,
-      taxable: a.taxable
-    };
+  const allowanceBreakdown = allowancesArr.map(a => {
+    const amt = parseFloat(a.amount || 0);
+    totalAllowances += amt;
+    return { name: a.name, amount: amt, type: a.type || 'Fixed', taxable: a.taxable || false };
   });
 
   const bonus = parseFloat(employee.bonus || 0);
-  const overtime = attendanceData.overtimeHours * parseFloat(employee.overtimeRate || 0);
+  const overtimePay = parseFloat((overtimeHours * parseFloat(employee.overtimeRate || 0)).toFixed(2));
+  const totalEarnings = basicSalary + totalAllowances + bonus + overtimePay;
 
-  const totalEarnings = calculatedBasicSalary + totalAllowances + bonus + overtime;
-
-  // Deductions calculation
-  const deductions = employee.deductions || [];
-  let totalStatutoryDeductions = 0;
+  // Configured deductions
+  const deductionsArr = employee.deductions || [];
+  let totalConfiguredDeductions = 0;
   const deductionBreakdown = [];
+  for (const d of deductionsArr) {
+    const amt = parseFloat(d.amount || 0);
+    totalConfiguredDeductions += amt;
+    deductionBreakdown.push({ name: d.name, amount: amt, type: d.type || 'Fixed' });
+  }
 
-  // Add configured deductions
-  deductions.forEach(d => {
-    const amount = parseFloat(d.amount || 0);
-    totalStatutoryDeductions += amount;
+  // LWP deduction line
+  if (lwpAmount > 0) {
     deductionBreakdown.push({
-      name: d.name,
-      amount,
-      type: d.type || 'Fixed'
-    });
-  });
-
-  // Add LWP deduction
-  if (lwpDeduction > 0) {
-    deductionBreakdown.push({
-      name: 'Leave Without Pay',
-      amount: parseFloat(lwpDeduction.toFixed(2)),
-      type: 'Calculated'
+      name: 'Loss of Pay (LWP)',
+      amount: lwpAmount,
+      type: 'Calculated',
+      breakdown: `${lwpDays.toFixed(1)} days × ₹${perDaySalary.toFixed(2)}/day`
     });
   }
 
-  const totalDeductions = totalStatutoryDeductions + lwpDeduction;
-  const netSalary = totalEarnings - totalDeductions;
+  const totalDeductions = totalConfiguredDeductions + lwpAmount;
+  const netSalary = Math.max(0, parseFloat((totalEarnings - totalDeductions).toFixed(2)));
 
-  // Create payroll record
-  const payrollRecordId = `PRE-${month}-${employee.employeeId}`;
-  
   return {
-    payrollRecordId,
-    month,
+    payrollRecordId: `PAY-${runId}-${employee.employeeId}`,
+    runId,
+    startDate,
+    endDate,
+    month: startDate.substring(0, 7),
     recruiterId,
     employeeId: employee.employeeId,
-    employeeName: employee.fullName,
-    department: employee.department,
-    designation: employee.designation,
-    
-    // Salary structure
+    employeeName: employee.fullName || employee.name || '',
+    department: employee.department || '',
+    designation: employee.designation || '',
+    // Salary structure snapshot (frozen at generation time)
     basicSalary: parseFloat(basicSalary.toFixed(2)),
-    salaryType,
-    
-    // Attendance
-    totalWorkingDays,
-    daysPresent: attendanceData.daysPresent,
-    daysAbsent: attendanceData.daysAbsent,
-    halfDays: attendanceData.halfDays,
-    paidLeaves: leaveData.paidLeaves,
-    unpaidLeaves: leaveData.unpaidLeaves,
-    overtimeHours: attendanceData.overtimeHours,
-    
+    salaryType: employee.salaryType || 'Monthly',
+    // Attendance summary
+    totalScheduledDays,
+    daysPresent: parseFloat(daysPresent.toFixed(1)),
+    halfDays,
+    fullAbsent,
+    paidLeaves,
+    unpaidLeaves,
+    weeklyOffs,
+    holidays: holidayCount,
+    compOffs,
+    overtimeHours: parseFloat(overtimeHours.toFixed(2)),
+    lateHalfDayDeductions: lateHalfDayDeductionDays,
+    lwpDays: parseFloat(lwpDays.toFixed(2)),
+    perDaySalary: parseFloat(perDaySalary.toFixed(2)),
     // Earnings
     allowances: allowanceBreakdown,
     bonus: parseFloat(bonus.toFixed(2)),
-    overtime: parseFloat(overtime.toFixed(2)),
+    overtimePay,
     totalEarnings: parseFloat(totalEarnings.toFixed(2)),
-    
     // Deductions
     deductions: deductionBreakdown,
     totalDeductions: parseFloat(totalDeductions.toFixed(2)),
-    
-    // Net salary
-    netSalary: parseFloat(netSalary.toFixed(2)),
-    
-    // Status
+    // Net
+    netSalary,
     paymentStatus: 'pending',
     paymentDate: null,
-    
-    createdAt: getCurrentTimestamp(),
-    createdBy: userEmail
+    isFrozen: true,  // snapshot — cannot be changed
+    createdAt: getCurrentTimestamp()
   };
 };
 
-// Get employee attendance for date range
-const getEmployeeAttendance = async (employeeId, startDate, endDate) => {
-  let attendanceRecords;
-  
-  if (isUsingMockDB()) {
-    const allAttendance = mockDB().scan(HRMS_ATTENDANCE_TABLE);
-    attendanceRecords = allAttendance.filter(a => 
-      a.employeeId === employeeId && 
-      a.date >= startDate && 
-      a.date <= endDate
-    );
-  } else {
-    const scanCommand = new ScanCommand({
-      TableName: HRMS_ATTENDANCE_TABLE,
-      FilterExpression: 'employeeId = :employeeId AND #date BETWEEN :startDate AND :endDate',
-      ExpressionAttributeNames: { '#date': 'date' },
-      ExpressionAttributeValues: {
-        ':employeeId': employeeId,
-        ':startDate': startDate,
-        ':endDate': endDate
-      }
-    });
-    const result = await dynamoClient.send(scanCommand);
-    attendanceRecords = result.Items || [];
-  }
+/* ─── API Handlers ────────────────────────────────────────────── */
 
-  const daysPresent = attendanceRecords.length;
-  const totalWorkingDays = getWorkingDaysInMonth(startDate.split('-')[0], startDate.split('-')[1]);
-  const daysAbsent = totalWorkingDays - daysPresent;
-  const halfDays = attendanceRecords.filter(a => a.status === 'half-day').length;
-  const overtimeHours = attendanceRecords.reduce((sum, a) => {
-    const hours = parseFloat(a.hours || 0);
-    return sum + Math.max(0, hours - 8); // Overtime after 8 hours
-  }, 0);
+/** POST /payroll/run */
+const runPayroll = async (req, res) => {
+  try {
+    const recruiterId = req.user?.recruiterId;
+    if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
 
-  return {
-    daysPresent,
-    daysAbsent,
-    halfDays,
-    overtimeHours: parseFloat(overtimeHours.toFixed(2))
-  };
-};
+    const { startDate, endDate, employeeId: filterEmployeeId } = req.body;
 
-// Get employee leaves for date range
-const getEmployeeLeaves = async (employeeId, startDate, endDate) => {
-  let leaveRecords;
-  
-  if (isUsingMockDB()) {
-    const allLeaves = mockDB().scan(HRMS_LEAVES_TABLE);
-    leaveRecords = allLeaves.filter(l => 
-      l.entityType === 'LEAVE' &&
-      l.employeeId === employeeId && 
-      l.status === 'Approved' &&
-      l.startDate <= endDate &&
-      l.endDate >= startDate
-    );
-  } else {
-    const scanCommand = new ScanCommand({
-      TableName: HRMS_LEAVES_TABLE,
-      FilterExpression: 'entityType = :type AND employeeId = :employeeId AND #status = :status',
-      ExpressionAttributeNames: { '#status': 'status' },
-      ExpressionAttributeValues: {
-        ':type': 'LEAVE',
-        ':employeeId': employeeId,
-        ':status': 'Approved'
-      }
-    });
-    const result = await dynamoClient.send(scanCommand);
-    leaveRecords = (result.Items || []).filter(l => 
-      l.startDate <= endDate && l.endDate >= startDate
-    );
-  }
-
-  let paidLeaves = 0;
-  let unpaidLeaves = 0;
-
-  leaveRecords.forEach(leave => {
-    const days = parseFloat(leave.days || 0);
-    if (leave.leaveType === 'Leave Without Pay' || leave.leaveType === 'LWP') {
-      unpaidLeaves += days;
-    } else {
-      paidLeaves += days;
+    if (!startDate || !endDate) {
+      return res.status(400).json(errorResponse('startDate and endDate are required (YYYY-MM-DD)'));
     }
-  });
+    if (startDate > endDate) return res.status(400).json(errorResponse('startDate must be before endDate'));
 
-  return { paidLeaves, unpaidLeaves };
-};
+    // Get employees
+    const empScan = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_EMPLOYEES_TABLE,
+      FilterExpression: 'recruiterId = :rid AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
+      ExpressionAttributeValues: { ':rid': recruiterId, ':false': false }
+    }));
+    let employees = empScan.Items || [];
+    if (filterEmployeeId) employees = employees.filter(e => e.employeeId === filterEmployeeId);
+    if (employees.length === 0) return res.status(400).json(errorResponse('No matching active employees'));
 
-// Get working days in month (excluding Sundays)
-const getWorkingDaysInMonth = (year, month) => {
-  const date = new Date(year, month - 1, 1);
-  const lastDay = new Date(year, month, 0).getDate();
-  let workingDays = 0;
+    const runId = generateId();
+    const records = [];
+    let totalGross = 0, totalDed = 0, totalNet = 0;
 
-  for (let day = 1; day <= lastDay; day++) {
-    date.setDate(day);
-    if (date.getDay() !== 0) { // Exclude Sundays
-      workingDays++;
+    for (const emp of employees) {
+      const rec = await computePayroll(emp, startDate, endDate, recruiterId, runId);
+      records.push(rec);
+      totalGross += rec.totalEarnings;
+      totalDed   += rec.totalDeductions;
+      totalNet   += rec.netSalary;
+
+      await dynamoClient.send(new PutCommand({ TableName: HRMS_PAYROLL_TABLE, Item: rec }));
     }
-  }
 
-  return workingDays;
+    // Save payroll run metadata
+    const runMeta = {
+      runId,
+      recruiterId,
+      startDate,
+      endDate,
+      month: startDate.substring(0, 7),
+      totalEmployees: records.length,
+      totalGrossSalary: parseFloat(totalGross.toFixed(2)),
+      totalDeductions: parseFloat(totalDed.toFixed(2)),
+      totalNetSalary: parseFloat(totalNet.toFixed(2)),
+      generatedBy: req.user?.email || req.user?.name || 'system',
+      generatedAt: getCurrentTimestamp(),
+      isFrozen: true
+    };
+    await dynamoClient.send(new PutCommand({ TableName: HRMS_PAYROLL_RUNS_TABLE, Item: runMeta }));
+
+    return res.json(successResponse({
+      runId,
+      startDate,
+      endDate,
+      totalEmployees: records.length,
+      totalGrossSalary: runMeta.totalGrossSalary,
+      totalDeductions: runMeta.totalDeductions,
+      totalNetSalary: runMeta.totalNetSalary,
+      records
+    }, `Payroll generated for ${records.length} employees (${startDate} → ${endDate})`));
+
+  } catch (error) {
+    console.error('runPayroll error:', error);
+    handleError(error, res);
+  }
 };
 
-// Get payroll records for a month
+/** GET /payroll/runs — list all payroll runs for this recruiter */
+const getPayrollRuns = async (req, res) => {
+  try {
+    const recruiterId = req.user?.recruiterId;
+    if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
+
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_PAYROLL_RUNS_TABLE,
+      FilterExpression: 'recruiterId = :rid',
+      ExpressionAttributeValues: { ':rid': recruiterId }
+    }));
+    const runs = (result.Items || []).sort((a, b) => b.generatedAt.localeCompare(a.generatedAt));
+    return res.json(successResponse(runs, 'Payroll runs retrieved'));
+  } catch (error) { handleError(error, res); }
+};
+
+/** GET /payroll/run/:runId — records for a specific run (frozen snapshot) */
+const getPayrollByRun = async (req, res) => {
+  try {
+    const recruiterId = req.user?.recruiterId;
+    const { runId } = req.params;
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_PAYROLL_TABLE,
+      FilterExpression: 'runId = :rid AND recruiterId = :recId',
+      ExpressionAttributeValues: { ':rid': runId, ':recId': recruiterId }
+    }));
+    return res.json(successResponse(result.Items || [], 'Payroll records retrieved'));
+  } catch (error) { handleError(error, res); }
+};
+
+/** GET /payroll/month/:month — all records for month YYYY-MM (latest run) */
 const getPayrollByMonth = async (req, res) => {
   try {
     const recruiterId = req.user?.recruiterId;
-    if (!recruiterId) {
-      return res.status(400).json(errorResponse('Recruiter ID not found'));
-    }
-
+    if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
     const { month } = req.params;
 
-    let payrollRecords;
-    if (isUsingMockDB()) {
-      const allRecords = mockDB().scan(HRMS_PAYROLL_TABLE);
-      payrollRecords = allRecords.filter(r => r.recruiterId === recruiterId && r.month === month);
-    } else {
-      const queryCommand = new QueryCommand({
-        TableName: HRMS_PAYROLL_TABLE,
-        IndexName: 'recruiterId-month-index',
-        KeyConditionExpression: 'recruiterId = :recruiterId AND #month = :month',
-        ExpressionAttributeNames: { '#month': 'month' },
-        ExpressionAttributeValues: {
-          ':recruiterId': recruiterId,
-          ':month': month
-        }
-      });
-      const result = await dynamoClient.send(queryCommand);
-      payrollRecords = result.Items || [];
-    }
-
-    res.json(successResponse(payrollRecords, 'Payroll records retrieved successfully'));
-
-  } catch (error) {
-    console.error('Get payroll by month error:', error);
-    handleError(error, res);
-  }
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_PAYROLL_TABLE,
+      FilterExpression: 'recruiterId = :rid AND #month = :month',
+      ExpressionAttributeNames: { '#month': 'month' },
+      ExpressionAttributeValues: { ':rid': recruiterId, ':month': month }
+    }));
+    return res.json(successResponse(result.Items || [], 'Payroll retrieved'));
+  } catch (error) { handleError(error, res); }
 };
 
-// Get payroll history for an employee
+/** GET /payroll/employee/:employeeId — history for one employee */
 const getEmployeePayrollHistory = async (req, res) => {
   try {
     const { employeeId } = req.params;
-
-    let payrollRecords;
-    if (isUsingMockDB()) {
-      const allRecords = mockDB().scan(HRMS_PAYROLL_TABLE);
-      payrollRecords = allRecords.filter(r => r.employeeId === employeeId);
-    } else {
-      const queryCommand = new QueryCommand({
-        TableName: HRMS_PAYROLL_TABLE,
-        IndexName: 'employeeId-month-index',
-        KeyConditionExpression: 'employeeId = :employeeId',
-        ExpressionAttributeValues: {
-          ':employeeId': employeeId
-        },
-        ScanIndexForward: false // Sort by month descending
-      });
-      const result = await dynamoClient.send(queryCommand);
-      payrollRecords = result.Items || [];
-    }
-
-    res.json(successResponse(payrollRecords, 'Employee payroll history retrieved successfully'));
-
-  } catch (error) {
-    console.error('Get employee payroll history error:', error);
-    handleError(error, res);
-  }
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_PAYROLL_TABLE,
+      FilterExpression: 'employeeId = :eid',
+      ExpressionAttributeValues: { ':eid': employeeId }
+    }));
+    const sorted = (result.Items || []).sort((a, b) => b.startDate.localeCompare(a.startDate));
+    return res.json(successResponse(sorted, 'Employee payroll history'));
+  } catch (error) { handleError(error, res); }
 };
 
-// Get single payroll record
-const getPayrollRecord = async (req, res) => {
-  try {
-    const { payrollRecordId, month } = req.params;
-
-    let payrollRecord;
-    if (isUsingMockDB()) {
-      const allRecords = mockDB().scan(HRMS_PAYROLL_TABLE);
-      payrollRecord = allRecords.find(r => r.payrollRecordId === payrollRecordId && r.month === month);
-    } else {
-      const getCommand = new GetCommand({
-        TableName: HRMS_PAYROLL_TABLE,
-        Key: { payrollRecordId, month }
-      });
-      const result = await dynamoClient.send(getCommand);
-      payrollRecord = result.Item;
-    }
-
-    if (!payrollRecord) {
-      return res.status(404).json(errorResponse('Payroll record not found'));
-    }
-
-    res.json(successResponse(payrollRecord, 'Payroll record retrieved successfully'));
-
-  } catch (error) {
-    console.error('Get payroll record error:', error);
-    handleError(error, res);
-  }
-};
-
-// Get payroll summary
+/** GET /payroll/summary?month=YYYY-MM */
 const getPayrollSummary = async (req, res) => {
   try {
     const recruiterId = req.user?.recruiterId;
-    if (!recruiterId) {
-      return res.status(400).json(errorResponse('Recruiter ID not found'));
-    }
-
+    if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
     const { month } = req.query;
 
-    let payrollRecords;
-    if (isUsingMockDB()) {
-      const allRecords = mockDB().scan(HRMS_PAYROLL_TABLE);
-      payrollRecords = allRecords.filter(r => {
-        if (r.recruiterId !== recruiterId) return false;
-        if (month && r.month !== month) return false;
-        return true;
-      });
-    } else {
-      if (month) {
-        const queryCommand = new QueryCommand({
-          TableName: HRMS_PAYROLL_TABLE,
-          IndexName: 'recruiterId-month-index',
-          KeyConditionExpression: 'recruiterId = :recruiterId AND #month = :month',
-          ExpressionAttributeNames: { '#month': 'month' },
-          ExpressionAttributeValues: {
-            ':recruiterId': recruiterId,
-            ':month': month
-          }
-        });
-        const result = await dynamoClient.send(queryCommand);
-        payrollRecords = result.Items || [];
-      } else {
-        const scanCommand = new ScanCommand({
-          TableName: HRMS_PAYROLL_TABLE,
-          FilterExpression: 'recruiterId = :recruiterId',
-          ExpressionAttributeValues: {
-            ':recruiterId': recruiterId
-          }
-        });
-        const result = await dynamoClient.send(scanCommand);
-        payrollRecords = result.Items || [];
-      }
-    }
-
+    const scan = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_PAYROLL_TABLE,
+      FilterExpression: month
+        ? 'recruiterId = :rid AND #month = :month'
+        : 'recruiterId = :rid',
+      ExpressionAttributeNames: month ? { '#month': 'month' } : undefined,
+      ExpressionAttributeValues: month
+        ? { ':rid': recruiterId, ':month': month }
+        : { ':rid': recruiterId }
+    }));
+    const records = scan.Items || [];
     const summary = {
-      totalRecords: payrollRecords.length,
-      totalGrossSalary: payrollRecords.reduce((sum, r) => sum + r.totalEarnings, 0),
-      totalDeductions: payrollRecords.reduce((sum, r) => sum + r.totalDeductions, 0),
-      totalNetSalary: payrollRecords.reduce((sum, r) => sum + r.netSalary, 0),
-      pendingPayments: payrollRecords.filter(r => r.paymentStatus === 'pending').length,
-      paidPayments: payrollRecords.filter(r => r.paymentStatus === 'paid').length
+      totalRecords: records.length,
+      totalGrossSalary: records.reduce((s, r) => s + (r.totalEarnings || 0), 0),
+      totalDeductions: records.reduce((s, r) => s + (r.totalDeductions || 0), 0),
+      totalNetSalary: records.reduce((s, r) => s + (r.netSalary || 0), 0),
+      pendingPayments: records.filter(r => r.paymentStatus === 'pending').length,
+      paidPayments: records.filter(r => r.paymentStatus === 'paid').length
     };
+    return res.json(successResponse(summary, 'Summary retrieved'));
+  } catch (error) { handleError(error, res); }
+};
 
-    res.json(successResponse(summary, 'Payroll summary retrieved successfully'));
-
-  } catch (error) {
-    console.error('Get payroll summary error:', error);
-    handleError(error, res);
-  }
+/** GET /payroll/:payrollRecordId/:month */
+const getPayrollRecord = async (req, res) => {
+  try {
+    const { payrollRecordId, month } = req.params;
+    const result = await dynamoClient.send(new GetCommand({
+      TableName: HRMS_PAYROLL_TABLE,
+      Key: { payrollRecordId, month }
+    }));
+    if (!result.Item) return res.status(404).json(errorResponse('Record not found'));
+    return res.json(successResponse(result.Item, 'Payroll record retrieved'));
+  } catch (error) { handleError(error, res); }
 };
 
 module.exports = {
   runPayroll,
+  getPayrollRuns,
+  getPayrollByRun,
   getPayrollByMonth,
   getEmployeePayrollHistory,
+  getPayrollSummary,
   getPayrollRecord,
-  getPayrollSummary
+  computePayroll  // exported for testing
 };

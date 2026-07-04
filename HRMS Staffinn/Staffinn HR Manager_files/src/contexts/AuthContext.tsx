@@ -95,12 +95,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (response.success && response.data) {
         const userData = response.data.user
         
-        if (userData.recruiterId !== targetRecruiterId) {
-          console.error('Session mismatch: login recruiterId does not match')
-          return false
+        // Only check recruiterId if user has one assigned
+        if (userData.recruiterId && userData.recruiterId !== targetRecruiterId) {
+          console.warn('RecruiterId mismatch - using user\'s recruiterId:', userData.recruiterId)
+          // Update current recruiterId to match user's recruiterId
+          setCurrentRecruiterId(userData.recruiterId)
+        } else {
+          setCurrentRecruiterId(targetRecruiterId)
         }
-        
-        setCurrentRecruiterId(targetRecruiterId)
         
         if (userData.role === 'admin' && !userData.companyId) {
           setNeedsCompanySetup(true)
@@ -131,16 +133,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const userData = response.data.user
         const token = response.data.token
         
-        if (userData.recruiterId !== recruiterId) {
-          console.error('Session mismatch: registration recruiterId does not match')
-          return false
+        // Only check recruiterId if user has one assigned
+        if (userData.recruiterId && userData.recruiterId !== recruiterId) {
+          console.warn('RecruiterId mismatch - using user\'s recruiterId:', userData.recruiterId)
+          // Update current recruiterId to match user's recruiterId
+          setCurrentRecruiterId(userData.recruiterId)
+        } else {
+          setCurrentRecruiterId(recruiterId)
         }
         
         if (token) {
-          apiService.setToken(token, recruiterId)
+          apiService.setToken(token, userData.recruiterId || recruiterId)
         }
         
-        setCurrentRecruiterId(recruiterId)
         setUser(userData)
         
         if (userData.role === 'admin' && !userData.companyId) {
@@ -176,8 +181,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = async (email: string): Promise<boolean> => {
     try {
-      alert(`Password reset functionality would be implemented here for ${email}`)
-      return true
+      const response = await apiService.forgotPasswordSendOTP(email)
+      return response.success === true
     } catch (error) {
       console.error('Password reset error:', error)
       return false

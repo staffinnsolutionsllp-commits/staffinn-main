@@ -40,6 +40,51 @@ const StudentApplicationModal = ({
     }
   }, [isOpen, userProfile, isStaffinnPartner]);
 
+  // Lock body scroll and stop Lenis while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Save previous overflow
+    const prevOverflow = document.body.style.overflow;
+    const prevPaddingRight = document.body.style.paddingRight;
+
+    // Calculate scrollbar width to prevent layout shift
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    // Lock body scroll
+    document.body.style.overflow = 'hidden';
+    document.body.style.paddingRight = scrollbarWidth + 'px';
+    document.body.classList.add('modal-open');
+
+    // Stop wheel events from bubbling to Lenis when inside the modal
+    const handleWheel = (e) => {
+      const overlay = document.querySelector('.sam-overlay');
+      if (overlay && overlay.contains(e.target)) {
+        e.stopPropagation();
+      }
+    };
+
+    // Stop touch scroll from bubbling to Lenis (but allow inside modal)
+    const handleTouchMove = (e) => {
+      const modalContent = document.querySelector('.sam-modal');
+      if (!modalContent || !modalContent.contains(e.target)) {
+        e.preventDefault(); // block background scroll
+      }
+    };
+
+    document.addEventListener('wheel', handleWheel, { capture: true });
+    document.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false });
+
+    return () => {
+      // Restore body scroll
+      document.body.style.overflow = prevOverflow;
+      document.body.style.paddingRight = prevPaddingRight;
+      document.body.classList.remove('modal-open');
+      document.removeEventListener('wheel', handleWheel, { capture: true });
+      document.removeEventListener('touchmove', handleTouchMove, { capture: true });
+    };
+  }, [isOpen]);
+
   const handleOptionSelect = async (type) => {
     console.log('Selected student type:', type);
     setSelectedType(type);
@@ -141,8 +186,8 @@ const StudentApplicationModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="student-selection-modal">
+    <div className="modal-overlay sam-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="student-selection-modal sam-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Apply Students to Job</h2>
           <button className="close-btn" onClick={onClose}>×</button>

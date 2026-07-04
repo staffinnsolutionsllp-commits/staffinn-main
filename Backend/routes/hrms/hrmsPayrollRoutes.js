@@ -1,21 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const payrollController = require('../../controllers/hrms/hrmsPayrollController');
+const c = require('../../controllers/hrms/hrmsPayrollController');
 const { authenticateToken } = require('../../middleware/hrmsAuth');
 
-// Run payroll for a month
-router.post('/run', authenticateToken, payrollController.runPayroll);
+router.use(authenticateToken);
 
-// Get payroll records for a specific month
-router.get('/month/:month', authenticateToken, payrollController.getPayrollByMonth);
-
-// Get payroll summary
-router.get('/summary', authenticateToken, payrollController.getPayrollSummary);
-
-// Get employee payroll history
-router.get('/employee/:employeeId', authenticateToken, payrollController.getEmployeePayrollHistory);
-
-// Get single payroll record
-router.get('/:payrollRecordId/:month', authenticateToken, payrollController.getPayrollRecord);
+router.post('/run',                          c.runPayroll);
+router.get('/runs',                          c.getPayrollRuns);
+router.get('/run/:runId',                    c.getPayrollByRun);
+router.get('/summary',                       c.getPayrollSummary);
+router.get('/month/:month',                  c.getPayrollByMonth);
+router.get('/employee/:employeeId',          c.getEmployeePayrollHistory);
+router.get('/:payrollRecordId/:month',       c.getPayrollRecord);
 
 module.exports = router;

@@ -8,6 +8,7 @@ import apiService from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
 import StudentApplicationModal from '../common/StudentApplicationModal';
 import JobCard from '../common/JobCard';
+import CampusInviteModal from '../Dashboard/CampusInviteModal';
 import { FaSearch } from 'react-icons/fa';
 
 const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
@@ -41,9 +42,17 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
   
   // Campus request state
   const [campusRequestSent, setCampusRequestSent] = useState(new Set());
+  const [showCampusInviteModal, setShowCampusInviteModal] = useState(false);
+  const [campusInviteRecruiter, setCampusInviteRecruiter] = useState(null);
   
   // Store hash for scrolling after jobs load
   const [pendingScrollJobId, setPendingScrollJobId] = useState(null);
+
+  // Perk detail modal state
+  const [selectedPerk, setSelectedPerk] = useState(null);
+
+  // Award detail modal state
+  const [selectedAward, setSelectedAward] = useState(null);
 
   // Load recruiters from backend on component mount
   useEffect(() => {
@@ -214,30 +223,22 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
     }
   }, [selectedRecruiter, user]);
   
-  // Handle campus invite request
-  const handleCampusInvite = async (recruiterId) => {
+  // Handle campus invite — open the new multi-step modal
+  const handleCampusInvite = (recruiter) => {
     if (!user) {
       alert('Please login to send campus invite');
       return;
     }
-    
-    if (user.role !== 'institute') {
-      return;
-    }
-    
-    try {
-      const response = await apiService.sendCampusRequest(recruiterId);
-      
-      if (response.success) {
-        setCampusRequestSent(prev => new Set([...prev, recruiterId]));
-        alert('Campus invite request sent successfully!');
-      } else {
-        alert(response.message || 'Failed to send campus invite');
-      }
-    } catch (error) {
-      console.error('Error sending campus invite:', error);
-      alert('Failed to send campus invite');
-    }
+    if (user.role !== 'institute') return;
+    setCampusInviteRecruiter(recruiter);
+    setShowCampusInviteModal(true);
+  };
+
+  const handleCampusInviteSuccess = (recruiterId) => {
+    setCampusRequestSent(prev => new Set([...prev, recruiterId]));
+    setShowCampusInviteModal(false);
+    setCampusInviteRecruiter(null);
+    alert('🎉 Campus invite sent successfully!');
   };
   
   // Load user profile to check if they are active staff or institute
@@ -447,10 +448,12 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
               logoUrl = recruiter.profilePhoto;
             } else {
               // Otherwise, prepend backend URL for local files
-              logoUrl = `http://localhost:4001${recruiter.profilePhoto}`;
+              const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:4001';
+              logoUrl = `${backendUrl}${recruiter.profilePhoto}`;
             }
           } else {
-            logoUrl = `https://via.placeholder.com/80?text=${recruiter.companyName ? recruiter.companyName.substring(0, 3).toUpperCase() : 'CO'}`;
+            // Use a simple data URI or local placeholder instead of external service
+            logoUrl = null; // Will show company initials in UI
           }
           
           // Process office images to ensure full URLs
@@ -462,11 +465,12 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
               return img;
             }
             // If it starts with /uploads, prepend the backend URL
+            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:4001';
             if (img.startsWith('/uploads')) {
-              return `http://localhost:4001${img}`;
+              return `${backendUrl}${img}`;
             }
             // Otherwise, assume it's a relative path and prepend backend URL
-            return `http://localhost:4001${img.startsWith('/') ? img : '/' + img}`;
+            return `${backendUrl}${img.startsWith('/') ? img : '/' + img}`;
           }).filter(Boolean) : [];
           
           // Get first 3 office images for card display
@@ -488,8 +492,8 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
           
           return {
             id: recruiter.id,
-            name: recruiter.companyName || 'Company Name',
-            companyName: recruiter.companyName || 'Company Name',
+            name: recruiter.companyName || recruiter.name || recruiter.recruiterName || 'Recruiter',
+            companyName: recruiter.companyName || recruiter.name || recruiter.recruiterName || 'Recruiter',
             industry: recruiter.industry || 'Technology',
             openJobs: 0, // Will be updated when jobs are loaded
             logo: logoUrl,
@@ -503,6 +507,7 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
             pincode: recruiter.pincode || '',
             companyDescription: truncatedDescription,
             officeImages: cardOfficeImages,
+            officeLocations: recruiter.officeLocations || [],
             // Store full data for detail view
             fullData: recruiter
           };
@@ -524,18 +529,33 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
   const loadHeroImages = async () => {
     try {
       setHeroImagesLoading(true);
-      console.log('🖼️ Loading hero images for recruiter section...');
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime();
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1'}/hero-images/recruiter/public?t=${timestamp}`,
+        {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
       
-      const response = await apiService.getHeroImages('recruiter');
-      console.log('🖼️ Hero images response:', response);
+      const data = await response.json();
       
-      if (response.success && response.data && response.data.images) {
-        const images = response.data.images;
-        console.log('🖼️ Setting hero images:', images.length, 'images');
+      if (data.success && data.data && data.data.images && data.data.images.length > 0) {
+        const images = data.data.images;
+        
+        // Test if images are accessible
+        images.forEach((image, index) => {
+          const testImg = new Image();
+          testImg.onerror = () => console.error(`❌ Image ${index + 1} failed to load:`, image.url);
+          testImg.src = image.url;
+        });
+        
         setHeroImages(images);
         setCurrentImageIndex(0);
       } else {
-        console.log('🖼️ No hero images found, using default');
         setHeroImages([]);
       }
     } catch (error) {
@@ -632,6 +652,13 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
       const response = await apiWithLoading.getRecruiterById(recruiterId);
       
       if (response.success && response.data) {
+        console.log('🏢 Recruiter detail data received:', {
+          officeLocations: response.data.officeLocations,
+          officeLocationsCount: response.data.officeLocations?.length || 0,
+          address: response.data.address,
+          pincode: response.data.pincode,
+          fullKeys: Object.keys(response.data)
+        });
         return response.data;
       }
       
@@ -754,7 +781,8 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
         if (detailedData.profilePhoto.startsWith('http://') || detailedData.profilePhoto.startsWith('https://')) {
           profilePhotoUrl = detailedData.profilePhoto;
         } else {
-          profilePhotoUrl = `http://localhost:4001${detailedData.profilePhoto}`;
+          const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+          profilePhotoUrl = `${backendUrl}${detailedData.profilePhoto}`;
         }
       }
       
@@ -767,11 +795,12 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
           return img;
         }
         // If it starts with /uploads, prepend the backend URL
+        const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
         if (img.startsWith('/uploads')) {
-          return `http://localhost:4001${img}`;
+          return `${backendUrl}${img}`;
         }
         // Otherwise, assume it's a relative path and prepend backend URL
-        return `http://localhost:4001${img.startsWith('/') ? img : '/' + img}`;
+        return `${backendUrl}${img.startsWith('/') ? img : '/' + img}`;
       }).filter(Boolean) : [];
       
       // Format experience to include "+ years"
@@ -781,12 +810,26 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
             : `${recruiter.experience || detailedData.experience}+ years`)
         : 'N/A';
       
+      // Process office locations to ensure full image URLs
+      const processedOfficeLocations = Array.isArray(detailedData.officeLocations)
+        ? detailedData.officeLocations.map(loc => ({
+            ...loc,
+            images: (loc.images || []).map(img => {
+              if (!img || typeof img !== 'string') return null;
+              if (img.startsWith('http://') || img.startsWith('https://')) return img;
+              const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+              return `${backendUrl}${img.startsWith('/') ? img : '/' + img}`;
+            }).filter(Boolean)
+          }))
+        : [];
+
       setSelectedRecruiter({
         ...recruiter,
         ...detailedData,
         profilePhoto: profilePhotoUrl,
         officeImages: processedOfficeImages,
         officePhotos: processedOfficeImages,
+        officeLocations: processedOfficeLocations.length > 0 ? processedOfficeLocations : (detailedData.officeLocations || []),
         // Use real data from recruiter object
         companyName: recruiter.companyName || detailedData.companyName,
         recruiterName: recruiter.recruiterName || detailedData.recruiterName || 'HR Manager',
@@ -797,14 +840,7 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
         pincode: recruiter.pincode || detailedData.pincode || ''
       });
       
-      console.log('Raw office images from API:', rawOfficeImages);
-      console.log('Processed office images:', processedOfficeImages);
-      console.log('Final selectedRecruiter officeImages:', processedOfficeImages);
-      
-      console.log('Loaded recruiter with office images:', detailedData.officeImages || 'No office images');
-      console.log('Office images array length:', detailedData.officeImages ? detailedData.officeImages.length : 0);
-      console.log('Full recruiter data keys:', Object.keys(detailedData));
-      console.log('Setting selectedRecruiter with officeImages:', detailedData.officeImages || []);
+
     } else {
       // Use basic data if detailed data not available
       setSelectedRecruiter({
@@ -985,6 +1021,66 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
                     </a>
                   </p>
                 )}
+
+                {/* Social Links */}
+                {(() => {
+                  const socialLinks = [
+                    {
+                      key: 'linkedin', label: 'LinkedIn', color: '#0A66C2',
+                      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    },
+                    {
+                      key: 'twitter', label: 'X (Twitter)', color: '#000000',
+                      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="#000000"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    },
+                    {
+                      key: 'instagram', label: 'Instagram', color: '#E1306C',
+                      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="url(#ig-pub-grad)">
+                        <defs>
+                          <linearGradient id="ig-pub-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#f09433"/>
+                            <stop offset="25%" stopColor="#e6683c"/>
+                            <stop offset="50%" stopColor="#dc2743"/>
+                            <stop offset="75%" stopColor="#cc2366"/>
+                            <stop offset="100%" stopColor="#bc1888"/>
+                          </linearGradient>
+                        </defs>
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                      </svg>
+                    },
+                    {
+                      key: 'facebook', label: 'Facebook', color: '#1877F2',
+                      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    },
+                    {
+                      key: 'youtube', label: 'YouTube', color: '#FF0000',
+                      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    },
+                    {
+                      key: 'github', label: 'GitHub', color: '#181717',
+                      icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="#181717"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                    },
+                  ];
+                  const activeSocials = socialLinks.filter(s => selectedRecruiter[s.key] && selectedRecruiter[s.key].trim() !== '');
+                  if (activeSocials.length === 0) return null;
+                  return (
+                    <div className="recruiter-social-links">
+                      {activeSocials.map(s => (
+                        <a
+                          key={s.key}
+                          href={selectedRecruiter[s.key]}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="recruiter-social-link"
+                          title={s.label}
+                          aria-label={`${selectedRecruiter.companyName} on ${s.label}`}
+                        >
+                          {s.icon}
+                        </a>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <div className="profile-actions">
@@ -1114,16 +1210,74 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
 
               <div className="perks-benefits">
                 <h3>Perks & Benefits</h3>
-                <div className="benefits-list">
-                  <ul>
-                    {selectedRecruiter.perks.map((perk, index) => (
-                      <li key={index} className="benefit-item">
-                        <span className="benefit-text">{perk.text}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="benefits-list-enhanced">
+                  {selectedRecruiter.perks.map((perk, index) => {
+                    const title = perk.title || perk.text || '';
+                    const description = perk.description || '';
+                    const isLong = description.length > 120;
+                    const previewText = isLong ? description.slice(0, 120).trimEnd() + '…' : description;
+                    return (
+                      <div key={index} className="benefit-item-enhanced">
+                        {perk.image && (
+                          <div className="benefit-image">
+                            <img src={perk.image} alt={title} />
+                          </div>
+                        )}
+                        <div className="benefit-content">
+                          <h4 className="benefit-title">{title}</h4>
+                          {description && (
+                            <p className="benefit-description benefit-description-preview">
+                              {previewText}
+                            </p>
+                          )}
+                          {isLong && (
+                            <button
+                              className="perk-read-more-btn"
+                              onClick={() => setSelectedPerk(perk)}
+                              aria-label={`Read more about ${title}`}
+                            >
+                              Read More
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Perk Detail Modal */}
+              {selectedPerk && (
+                <div
+                  className="perk-modal-overlay"
+                  onClick={() => setSelectedPerk(null)}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={`Perk details: ${selectedPerk.title || selectedPerk.text}`}
+                >
+                  <div
+                    className="perk-modal"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      className="perk-modal-close"
+                      onClick={() => setSelectedPerk(null)}
+                      aria-label="Close"
+                    >
+                      ✕
+                    </button>
+                    {selectedPerk.image && (
+                      <div className="perk-modal-image">
+                        <img src={selectedPerk.image} alt={selectedPerk.title || selectedPerk.text} />
+                      </div>
+                    )}
+                    <div className="perk-modal-body">
+                      <h3 className="perk-modal-title">{selectedPerk.title || selectedPerk.text}</h3>
+                      <p className="perk-modal-description">{selectedPerk.description}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="hiring-process">
                 <h3>Hiring Process</h3>
@@ -1140,46 +1294,278 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
                 </div>
               </div>
 
-              {/* Office Images Section - Real-time from recruiter dashboard */}
+              {/* Office Locations & Units — Unified Premium Section */}
               {(() => {
-                const officeImages = selectedRecruiter.officeImages || [];
-                console.log('Rendering office images section, images count:', officeImages.length);
-                console.log('Office images to render:', officeImages);
-                
-                return officeImages.length > 0 ? (
-                  <div className="office-images">
-                    <h3>Office Images</h3>
-                    <div className="office-images-grid">
-                      {officeImages.map((photo, index) => (
-                        <div className="office-image-item" key={index}>
-                          <img 
-                            src={photo} 
-                            alt={`${selectedRecruiter.companyName} office ${index + 1}`}
-                            onError={(e) => {
-                              console.error('Failed to load office image:', photo);
-                              e.target.style.display = 'none';
-                            }}
-                            onLoad={() => console.log('Office image loaded successfully:', photo)}
-                          />
-                        </div>
-                      ))}
+                // Build locations array — prefer saved officeLocations, fallback to officeImages
+                // Filter only truly invalid entries (null/undefined), allow empty locationName
+                let locations = (selectedRecruiter.officeLocations || []).filter(l => l && typeof l === 'object');
+
+                // Backward compat fallback: no officeLocations saved yet
+                if (locations.length === 0) {
+                  const oldImages = selectedRecruiter.officeImages || [];
+                  const fallbackAddr = selectedRecruiter.address || selectedRecruiter.location || '';
+                  const validAddr = fallbackAddr && fallbackAddr !== 'Location not specified' && fallbackAddr !== 'India';
+                  if (validAddr || oldImages.length > 0) {
+                    locations = [{
+                      id: 'fallback',
+                      locationName: validAddr
+                        ? (fallbackAddr + (selectedRecruiter.pincode ? ' - ' + selectedRecruiter.pincode : ''))
+                        : (selectedRecruiter.companyName || 'Head Office'),
+                      unitCount: 1,
+                      images: oldImages
+                    }];
+                  }
+                }
+
+                if (locations.length === 0) return null;
+
+                const totalUnits = locations.reduce((sum, l) => sum + (parseInt(l.unitCount) || 1), 0);
+
+                return (
+                  <div style={{ marginTop: '40px', marginBottom: '8px' }}>
+
+                    {/* ── Section Header ── */}
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#0F172A', margin: '0 0 4px 0', letterSpacing: '-0.4px' }}>
+                          Office Locations &amp; Units
+                        </h3>
+                        <p style={{ fontSize: '13px', color: '#64748B', margin: 0 }}>
+                          {locations.length} {locations.length === 1 ? 'Location' : 'Locations'}&nbsp;&nbsp;·&nbsp;&nbsp;{totalUnits} Total Office {totalUnits === 1 ? 'Unit' : 'Units'}
+                        </p>
+                      </div>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        background: '#EFF6FF', border: '1px solid #BFDBFE',
+                        borderRadius: '9999px', padding: '6px 16px',
+                        fontSize: '12px', fontWeight: '700', color: '#1D4ED8', whiteSpace: 'nowrap'
+                      }}>
+                        🏢 {totalUnits} Office {totalUnits === 1 ? 'Unit' : 'Units'}
+                      </span>
                     </div>
-                  </div>
-                ) : (
-                  <div style={{display: 'none'}}>
-                    {/* Hidden placeholder - no office images to display */}
+
+                    {/* ── Location Cards ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {locations.map((loc, idx) => {
+                        const imgs = (loc.images || []).filter(Boolean);
+                        const units = parseInt(loc.unitCount) || 1;
+                        return (
+                          <div key={loc.id || idx} style={{
+                            borderRadius: '16px',
+                            overflow: 'hidden',
+                            border: '1px solid #E2E8F0',
+                            background: '#FFFFFF',
+                            boxShadow: '0 2px 12px rgba(15,23,42,0.06)'
+                          }}>
+
+                            {/* Card Header */}
+                            <div style={{
+                              padding: '16px 20px',
+                              background: 'linear-gradient(135deg, #F8FAFF 0%, #EFF6FF 100%)',
+                              borderBottom: '1px solid #E2E8F0',
+                              display: 'flex', alignItems: 'center',
+                              justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                                <div style={{
+                                  width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
+                                  background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px'
+                                }}>📍</div>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{
+                                    fontWeight: '700', fontSize: '15px', color: '#0F172A',
+                                    lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                                  }}>
+                                    {loc.locationName}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                                    Office Location #{idx + 1}
+                                  </div>
+                                </div>
+                              </div>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '5px', flexShrink: 0,
+                                background: '#FFFFFF', border: '1px solid #BFDBFE',
+                                borderRadius: '9999px', padding: '5px 14px',
+                                fontSize: '12px', fontWeight: '700', color: '#1D4ED8',
+                                boxShadow: '0 1px 4px rgba(59,130,246,0.12)'
+                              }}>
+                                🏢 {units} Office {units === 1 ? 'Unit' : 'Units'}
+                              </span>
+                            </div>
+
+                            {/* Image Gallery */}
+                            {imgs.length > 0 ? (
+                              <div style={{ padding: '16px 20px 20px' }}>
+                                {imgs.length === 1 && (
+                                  <div style={{ borderRadius: '12px', overflow: 'hidden', height: '240px', background: '#F1F5F9' }}>
+                                    <img src={imgs[0]} alt={loc.locationName}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                      onError={(e) => { e.target.parentElement.style.display = 'none'; }} />
+                                  </div>
+                                )}
+                                {imgs.length === 2 && (
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                    {imgs.map((img, i) => (
+                                      <div key={i} style={{ borderRadius: '12px', overflow: 'hidden', height: '200px', background: '#F1F5F9' }}>
+                                        <img src={img} alt={`${loc.locationName} ${i + 1}`}
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                          onError={(e) => { e.target.parentElement.style.display = 'none'; }} />
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {imgs.length === 3 && (
+                                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                                    {imgs.map((img, i) => (
+                                      <div key={i} style={{ borderRadius: '12px', overflow: 'hidden', height: '180px', background: '#F1F5F9' }}>
+                                        <img src={img} alt={`${loc.locationName} ${i + 1}`}
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                          onError={(e) => { e.target.parentElement.style.display = 'none'; }} />
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {imgs.length >= 4 && (
+                                  <div>
+                                    {/* Hero image */}
+                                    <div style={{ borderRadius: '12px', overflow: 'hidden', height: '240px', background: '#F1F5F9', marginBottom: '10px' }}>
+                                      <img src={imgs[0]} alt={`${loc.locationName} main`}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                        onError={(e) => { e.target.parentElement.style.display = 'none'; }} />
+                                    </div>
+                                    {/* Thumbnail row */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(imgs.length - 1, 4)}, 1fr)`, gap: '10px' }}>
+                                      {imgs.slice(1, 5).map((img, i) => (
+                                        <div key={i} style={{
+                                          borderRadius: '10px', overflow: 'hidden', height: '90px',
+                                          background: '#F1F5F9', position: 'relative'
+                                        }}>
+                                          <img src={img} alt={`${loc.locationName} ${i + 2}`}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                            onError={(e) => { e.target.parentElement.style.display = 'none'; }} />
+                                          {i === 3 && imgs.length > 5 && (
+                                            <div style={{
+                                              position: 'absolute', inset: 0,
+                                              background: 'rgba(15,23,42,0.65)',
+                                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                              color: '#fff', fontWeight: '800', fontSize: '18px', letterSpacing: '-0.5px'
+                                            }}>+{imgs.length - 5}</div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div style={{
+                                padding: '36px 20px',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                background: 'linear-gradient(135deg, #F8FAFF 0%, #EFF6FF 100%)', gap: '10px'
+                              }}>
+                                <div style={{ fontSize: '44px', opacity: 0.35 }}>🏢</div>
+                                <p style={{ fontSize: '13px', color: '#94A3B8', margin: 0 }}>No office images uploaded yet</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })()}
               
               <div className="interview-questions">
-                <h3>Common Interview Questions</h3>
+                <h3>Expectations from Candidates</h3>
                 <ul className="question-list">
                   {selectedRecruiter.interviewQuestions.map((question, index) => (
                     <li key={index}>{question}</li>
                   ))}
                 </ul>
               </div>
+
+              {/* Awards & Achievements */}
+              {selectedRecruiter.awards && selectedRecruiter.awards.length > 0 && (
+                <div className="awards-achievements">
+                  <h3 className="awards-heading">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+                    Awards & Achievements
+                  </h3>
+                  <div className="awards-grid">
+                    {selectedRecruiter.awards.map((award, index) => {
+                      const description = award.description || '';
+                      const isLong = description.length > 120;
+                      const previewText = isLong ? description.slice(0, 120).trimEnd() + '…' : description;
+                      return (
+                        <div key={index} className="award-card">
+                          {award.image && (
+                            <div className="award-card-image">
+                              <img src={award.image} alt={award.title} />
+                            </div>
+                          )}
+                          <div className="award-card-content">
+                            <div className="award-badge">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+                            </div>
+                            <h4 className="award-card-title">{award.title}</h4>
+                            {description && (
+                              <p className="award-card-description">{previewText}</p>
+                            )}
+                            {isLong && (
+                              <button
+                                className="award-read-more-btn"
+                                onClick={() => setSelectedAward(award)}
+                                aria-label={`Read more about ${award.title}`}
+                              >
+                                Read More
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Award Detail Modal */}
+              {selectedAward && (
+                <div
+                  className="award-modal-overlay"
+                  onClick={() => setSelectedAward(null)}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={`Award details: ${selectedAward.title}`}
+                >
+                  <div
+                    className="award-modal"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      className="award-modal-close"
+                      onClick={() => setSelectedAward(null)}
+                      aria-label="Close"
+                    >
+                      ✕
+                    </button>
+                    {selectedAward.image && (
+                      <div className="award-modal-image">
+                        <img src={selectedAward.image} alt={selectedAward.title} />
+                      </div>
+                    )}
+                    <div className="award-modal-body">
+                      <div className="award-modal-badge">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+                        Achievement
+                      </div>
+                      <h3 className="award-modal-title">{selectedAward.title}</h3>
+                      <p className="award-modal-description">{selectedAward.description}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
 
 
@@ -1304,14 +1690,15 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
       {/* Hero Section with Background Image */}
       <div className="recruiter-search-section" style={{ 
         backgroundImage: heroImages.length > 0 
-          ? `url(${heroImages[currentImageIndex]?.url})` 
-          : 'url(/recruiterbanner.jpg)', 
+          ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${encodeURI(heroImages[currentImageIndex]?.url)})` 
+          : 'linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(/recruiterbanner.jpg)', 
         height: '500px',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         position: 'relative',
-        transition: 'background-image 1s ease-in-out'
+        transition: 'background-image 1s ease-in-out',
+        backgroundColor: '#1a202c'
       }}>
         <div className="hero-content" style={{
           display: 'flex',
@@ -1450,14 +1837,6 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
               // Get first letter of recruiter name for avatar
               const avatarLetter = recruiter.recruiterName ? recruiter.recruiterName.charAt(0).toUpperCase() : 'R';
               
-              // Debug office images
-              console.log('Recruiter card office images:', {
-                recruiterId: recruiter.id,
-                recruiterName: recruiter.name,
-                officeImagesCount: recruiter.officeImages ? recruiter.officeImages.length : 0,
-                officeImages: recruiter.officeImages
-              });
-              
               return (
                 <div 
                   key={recruiter.id} 
@@ -1557,7 +1936,7 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
                     {user && user.role === 'institute' && (
                       <button 
                         className="campus-invite-btn"
-                        onClick={() => handleCampusInvite(recruiter.id)}
+                        onClick={() => handleCampusInvite(recruiter)}
                         disabled={campusRequestSent.has(recruiter.id)}
                       >
                         {campusRequestSent.has(recruiter.id) ? '✓ Request Sent' : 'Campus Invite'}
@@ -1575,6 +1954,15 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
           </div>
         )}
       </section>
+
+      {/* Campus Invite Modal */}
+      {showCampusInviteModal && campusInviteRecruiter && (
+        <CampusInviteModal
+          recruiter={campusInviteRecruiter}
+          onClose={() => { setShowCampusInviteModal(false); setCampusInviteRecruiter(null); }}
+          onSuccess={() => handleCampusInviteSuccess(campusInviteRecruiter.id)}
+        />
+      )}
     </div>
   );
 };

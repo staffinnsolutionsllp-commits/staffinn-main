@@ -1,9 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root {
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+  
+  /* News Page Editorial Design System */
+  --background: #FAFAF8;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --border: #E8E5DF;
+  --muted: #F4F2ED;
+  --secondary: #F1EFEA;
+  --primary: #0F172A;
+  --primary-foreground: #FFFFFF;
+  --editorial-red: #D72638;
+  --tag-bg: #F1EFEA;
+  --tag-fg: #3D3D3D;
+  --text-secondary: #6B6B6B;
   
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -19,9 +34,23 @@
 
 html {
   scroll-behavior: auto;
+  overflow-x: hidden;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
+}
+
+/* Typography utilities for News */
+.font-display {
+  font-family: 'Playfair Display', serif;
+}
+
+.font-sans {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.font-mono {
+  font-family: monospace;
 }

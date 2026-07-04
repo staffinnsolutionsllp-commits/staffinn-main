@@ -1,0 +1,1800 @@
+const { v4: uuidv4 } = require('uuid');
+const dynamoService = require('../services/dynamoService');
+const s3Service = require('../services/s3Service');
+const pendingPaymentModel = require('../models/pendingInstitutePaymentModel');
+const ffmpeg = require('fluent-ffmpeg');
+const https = require('https');
+const http = require('http');
+
+const COURSES_TABLE = 'staffinn-courses';
+const COURSE_ENROLLMENTS_TABLE = 'course-enrolled-user';
+
+// Helper function to get video duration from URL
+const getVideoDurationFromUrl = (videoUrl) => {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log('🎬 Calculating video duration for:', videoUrl);
+      
+      ffmpeg.ffprobe(videoUrl, (err, metadata) => {
+        if (err) {
+          console.error('❌ FFprobe error:', err.message);
+          resolve(0); // Return 0 instead of rejecting
+          return;
+        }
+        
+        if (metadata && metadata.format && metadata.format.duration) {
+          const durationSeconds = metadata.format.duration;
+          const durationMinutes = Math.ceil(durationSeconds / 60);
+          console.log(`✅ Video duration: ${durationMinutes} minutes (${durationSeconds} seconds)`);
+          resolve(durationMinutes);
+        } else {
+          console.log('⚠️ No duration metadata found');
+          resolve(0);
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error in getVideoDurationFromUrl:', error.message);
+      resolve(0); // Return 0 instead of rejecting
+    }
+  });
+};
+
+// Create course with modules and content
+const createCourse = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    const courseData = req.body;
+    const files = req.files || [];
+
+    console.log('Creating course with data:', {
+      name: courseData.name,
+      filesCount: files.length,
+      instituteId
+    });
+
+    // Validation
+    if (!courseData.name || courseData.name.length > 200) {
+      return res.status(400).json({
+        success: false,
+        message: 'Course name is required and must be less than 200 characters'
+      });
+    }
+
+    const courseId = uuidv4();
+    const timestamp = new Date().toISOString();
+
+    // Upload course thumbnail first
+    let thumbnailUrl = null;
+    const thumbnailFile = files.find(file => file.fieldname === 'thumbnail');
+    if (thumbnailFile && thumbnailFile.mimetype.startsWith('image/')) {
+      const ext = thumbnailFile.originalname.split('.').pop();
+      const thumbnailKey = `staffinn-files/staffinn-courses-content/courses/thumbnails/${courseId}.${ext}`;
+      try {
+        const uploadResult = await s3Service.uploadFile(thumbnailFile, thumbnailKey);
+        thumbnailUrl = uploadResult.Location || uploadResult.url;
+        console.log('Thumbnail uploaded:', thumbnailUrl);
+      } catch (error) {
+        console.error('Thumbnail upload failed:', error);
+      }
+    }
+
+    // Upload syllabus file (PDF or DOC/DOCX)
+    let syllabusFileUrl = null;
+    let syllabusFileName = null;
+    const syllabusFile = files.find(file => file.fieldname === 'syllabus');
+    if (syllabusFile) {
+      const ext = syllabusFile.originalname.split('.').pop().toLowerCase();
+      const syllabusKey = `staffinn-files/staffinn-courses-content/courses/syllabus/${courseId}.${ext}`;
+      try {
+        const uploadResult = await s3Service.uploadFile(syllabusFile, syllabusKey);
+        syllabusFileUrl = uploadResult.Location || uploadResult.url;
+        syllabusFileName = syllabusFile.originalname;
+        console.log('Syllabus uploaded:', syllabusFileUrl);
+      } catch (error) {
+        console.error('Syllabus upload failed:', error);
+      }
+    }
+
+    // Handle On Campus files (images and videos)
+    let onCampusFiles = [];
+    if (courseData.mode === 'On Campus') {
+      const onCampusFilesCount = parseInt(courseData.onCampusFilesCount) || 0;
+      
+      for (let i = 0; i < onCampusFilesCount; i++) {
+        const onCampusFile = files.find(file => file.fieldname === `onCampusFile_${i}`);
+        if (onCampusFile) {
+          const ext = onCampusFile.originalname.split('.').pop();
+          let s3Key;
+          
+          if (onCampusFile.mimetype.startsWith('image/')) {
+            s3Key = `staffinn-files/staffinn-courses-content/courses/on-campus-images/${courseId}_${i}.${ext}`;
+          } else if (onCampusFile.mimetype.startsWith('video/')) {
+            s3Key = `staffinn-files/staffinn-courses-content/courses/on-campus-videos/${courseId}_${i}.${ext}`;
+          } else {
+            continue; // Skip unsupported file types
+          }
+          
+          try {
+            const uploadResult = await s3Service.uploadFile(onCampusFile, s3Key);
+            const fileUrl = uploadResult.Location || uploadResult.url;
+            onCampusFiles.push({
+              fileId: uuidv4(),
+              fileName: onCampusFile.originalname,
+              fileType: onCampusFile.mimetype.startsWith('image/') ? 'image' : 'video',
+              fileUrl: fileUrl,
+              uploadedAt: timestamp
+            });
+            console.log('On Campus file uploaded:', { fileName: onCampusFile.originalname, fileUrl });
+          } catch (error) {
+            console.error('On Campus file upload failed:', error);
+          }
+        }
+      }
+    }
+
+    // Process modules and content
+    const processedModules = [];
+    if (courseData.modules) {
+      const modules = typeof courseData.modules === 'string' 
+        ? JSON.parse(courseData.modules) 
+        : courseData.modules;
+      
+      for (let i = 0; i < modules.length; i++) {
+        const moduleData = modules[i];
+        const moduleId = uuidv4();
+        
+        const processedModule = {
+          moduleId,
+          moduleTitle: moduleData.title || `Module ${i + 1}`,
+          moduleDescription: moduleData.description || '',
+          order: i + 1,
+          content: []
+        };
+
+        // Process module content
+        if (moduleData.content && Array.isArray(moduleData.content)) {
+          for (let j = 0; j < moduleData.content.length; j++) {
+            const contentData = moduleData.content[j];
+            const contentId = uuidv4();
+            
+            let contentUrl = null;
+            
+            // Look for uploaded file with various possible field names
+            const possibleFieldNames = [
+              `content_${i}_${j}`,
+              `module_${i}_content_${j}`,
+              `contentFileKey_${i}_${j}`,
+              `moduleContent_${i}_${j}`
+            ];
+            
+            let uploadedFile = null;
+            for (const fieldName of possibleFieldNames) {
+              uploadedFile = files.find(file => file.fieldname === fieldName);
+              if (uploadedFile) break;
+            }
+            
+            if (uploadedFile) {
+              const ext = uploadedFile.originalname.split('.').pop();
+              let s3Key;
+              
+              // Determine S3 path based on content type
+              if (contentData.type === 'video' && uploadedFile.mimetype.startsWith('video/')) {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/videos/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else if (contentData.type === 'assignment') {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/assignments/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else if (contentData.type === 'notes') {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/notes/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/content/${courseId}_${moduleId}_${contentId}.${ext}`;
+              }
+              
+              try {
+                const uploadResult = await s3Service.uploadFile(uploadedFile, s3Key);
+                contentUrl = uploadResult.Location || uploadResult.url;
+                console.log('Content file uploaded:', { contentId, contentUrl, type: contentData.type });
+              } catch (uploadError) {
+                console.error('Content file upload failed:', uploadError);
+              }
+            }
+
+            // Calculate video duration if content is video
+            let durationMinutes = 0;
+            if (contentData.type === 'video' && contentUrl) {
+              try {
+                durationMinutes = await getVideoDurationFromUrl(contentUrl);
+              } catch (durationError) {
+                console.error('Duration calculation failed:', durationError);
+                durationMinutes = 0;
+              }
+            }
+
+            const processedContent = {
+              contentId,
+              contentTitle: contentData.title || `Content ${j + 1}`,
+              contentType: contentData.type || 'video',
+              contentUrl: contentUrl,
+              order: j + 1,
+              durationMinutes: durationMinutes,
+              mandatory: contentData.mandatory !== false
+            };
+
+            processedModule.content.push(processedContent);
+          }
+        }
+
+        // Process quiz if exists
+        if (moduleData.quiz && moduleData.quiz.questions && moduleData.quiz.questions.length > 0) {
+          processedModule.quiz = {
+            quizId: uuidv4(),
+            title: moduleData.quiz.title || `${moduleData.title} Quiz`,
+            description: moduleData.quiz.description || '',
+            passingScore: moduleData.quiz.passingScore || 70,
+            timeLimit: moduleData.quiz.timeLimit || 30,
+            maxAttempts: moduleData.quiz.maxAttempts || 3,
+            questions: moduleData.quiz.questions.map(q => ({
+              questionId: uuidv4(),
+              question: q.question,
+              type: q.type || 'multiple_choice',
+              options: q.options || [],
+              correctAnswer: q.correctAnswer,
+              points: q.points || 1
+            }))
+          };
+        }
+
+        processedModules.push(processedModule);
+      }
+    }
+
+    // Create course record
+    const course = {
+      coursesId: courseId,
+      instituteId,
+      courseName: courseData.name,
+      duration: courseData.duration,
+      fees: parseFloat(courseData.fees) || 0,
+      instructor: courseData.instructor,
+      category: courseData.category || 'General',
+      mode: courseData.mode || 'Online',
+      thumbnailUrl: thumbnailUrl,
+      description: courseData.description || '',
+      prerequisites: courseData.prerequisites || '',
+      syllabusOverview: courseData.syllabus || '',
+      syllabusFileUrl: syllabusFileUrl || null,
+      syllabusFileName: syllabusFileName || null,
+      learningObjectives: courseData.learningObjectives
+        ? (Array.isArray(courseData.learningObjectives)
+            ? courseData.learningObjectives
+            : courseData.learningObjectives.split('\n').map(s => s.trim()).filter(Boolean))
+        : [],
+      certification: courseData.certification || 'Basic',
+      modules: processedModules,
+      onCampusFiles: onCampusFiles,
+      isActive: true,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+
+    console.log('Saving course to DynamoDB:', {
+      courseId,
+      courseName: course.courseName,
+      modulesCount: processedModules.length,
+      thumbnailUrl
+    });
+
+    await dynamoService.putItem(COURSES_TABLE, course);
+
+    res.status(201).json({
+      success: true,
+      message: 'Course created successfully',
+      data: course
+    });
+  } catch (error) {
+    console.error('Error creating course:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to create course'
+    });
+  }
+};
+
+// Get courses for institute
+const getCourses = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    
+    const params = {
+      FilterExpression: 'instituteId = :instituteId AND isActive = :isActive',
+      ExpressionAttributeValues: {
+        ':instituteId': instituteId,
+        ':isActive': true
+      }
+    };
+    
+    const courses = await dynamoService.scanItems(COURSES_TABLE, params);
+    
+    // Transform courses to match frontend expectations
+    const transformedCourses = courses.map(course => ({
+      instituteCourseID: course.coursesId, // Map for compatibility
+      coursesId: course.coursesId,
+      name: course.courseName,
+      courseName: course.courseName,
+      duration: course.duration,
+      fees: course.fees,
+      instructor: course.instructor,
+      category: course.category,
+      mode: course.mode,
+      thumbnailUrl: course.thumbnailUrl,
+      description: course.description,
+      prerequisites: course.prerequisites,
+      syllabusOverview: course.syllabusOverview,
+      certification: course.certification,
+      modules: course.modules || [],
+      onCampusFiles: course.onCampusFiles || [],
+      isActive: course.isActive,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt
+    }));
+    
+    console.log('Returning courses:', transformedCourses.length);
+    
+    res.status(200).json({
+      success: true,
+      data: transformedCourses
+    });
+  } catch (error) {
+    console.error('Error getting courses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get courses'
+    });
+  }
+};
+
+// Get public courses for institute
+const getPublicCourses = async (req, res) => {
+  try {
+    const { instituteId } = req.params;
+    
+    const params = {
+      FilterExpression: 'instituteId = :instituteId AND isActive = :isActive',
+      ExpressionAttributeValues: {
+        ':instituteId': instituteId,
+        ':isActive': true
+      }
+    };
+    
+    const courses = await dynamoService.scanItems(COURSES_TABLE, params);
+    
+    res.status(200).json({
+      success: true,
+      data: courses
+    });
+  } catch (error) {
+    console.error('Error getting public courses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get courses'
+    });
+  }
+};
+
+// Get public course by ID
+const getPublicCourseById = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    console.log('Getting public course by ID:', courseId);
+    
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course || !course.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+    
+    // Transform course data to match frontend expectations
+    const transformedCourse = {
+      coursesId: course.coursesId,
+      name: course.courseName, // Map courseName to name for frontend
+      courseName: course.courseName,
+      duration: course.duration,
+      fees: course.fees,
+      instructor: course.instructor,
+      category: course.category,
+      mode: course.mode,
+      thumbnailUrl: course.thumbnailUrl,
+      description: course.description,
+      prerequisites: course.prerequisites,
+      syllabusOverview: course.syllabusOverview,
+      syllabusFileUrl: course.syllabusFileUrl || null,
+      syllabusFileName: course.syllabusFileName || null,
+      learningObjectives: course.learningObjectives || [],
+      certification: course.certification,
+      modules: course.modules || [],
+      onCampusFiles: course.onCampusFiles || [],
+      isActive: course.isActive,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt
+    };
+    
+    console.log('Returning transformed course:', {
+      courseName: transformedCourse.courseName,
+      modulesCount: transformedCourse.modules.length
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: transformedCourse
+    });
+  } catch (error) {
+    console.error('Error getting public course by ID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get course'
+    });
+  }
+};
+
+// Check enrollment status
+const checkEnrollmentStatus = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { courseId } = req.params;
+    
+    const params = {
+      FilterExpression: 'userId = :userId AND courseId = :courseId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+        ':courseId': courseId
+      }
+    };
+    
+    const enrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, params);
+    const enrollment = enrollments && enrollments.length > 0 ? enrollments[0] : null;
+    
+    if (enrollment) {
+      const hasProgress = enrollment.progressPercentage > 0;
+      
+      res.status(200).json({
+        success: true,
+        enrolled: true,
+        hasStarted: hasProgress,
+        progressPercentage: enrollment.progressPercentage,
+        enrollmentDate: enrollment.enrollmentDate
+      });
+    } else {
+      res.status(200).json({
+        success: true,
+        enrolled: false,
+        hasStarted: false,
+        progressPercentage: 0
+      });
+    }
+  } catch (error) {
+    console.error('Error checking enrollment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check enrollment status'
+    });
+  }
+};
+
+// Enroll user in course
+const enrollInCourse = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { courseId } = req.params;
+    
+    console.log('🚀 Enrolling user in course:', { userId, courseId });
+    
+    // Validate courseId
+    if (!courseId) {
+      console.log('❌ Course ID missing');
+      return res.status(400).json({
+        success: false,
+        message: 'Course ID is required'
+      });
+    }
+    
+    // Check if course exists
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course) {
+      console.log('❌ Course not found:', courseId);
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+    
+    console.log('✅ Course found:', { courseName: course.courseName, mode: course.mode, fees: course.fees });
+    
+    // ✅ Check if course is Online and has fees
+    if (course.mode === 'Online' && parseFloat(course.fees) > 0) {
+      console.log('💰 Paid course detected, checking payment status...');
+      try {
+        const paymentTransactionModel = require('../models/paymentTransactionModel');
+        const hasPaid = await paymentTransactionModel.hasUserPaidForCourse(userId, courseId);
+        
+        console.log('💳 Payment status:', hasPaid);
+        
+        if (!hasPaid) {
+          console.log('❌ Payment not found, enrollment blocked');
+          return res.status(402).json({
+            success: false,
+            message: 'Payment required. Please complete payment to enroll in this course.',
+            requiresPayment: true,
+            courseDetails: {
+              courseId: course.coursesId,
+              courseName: course.courseName,
+              fees: course.fees
+            }
+          });
+        }
+        console.log('✅ Payment verified, proceeding with enrollment');
+      } catch (paymentError) {
+        console.error('❌ Payment check error:', paymentError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to verify payment status: ' + paymentError.message
+        });
+      }
+    } else {
+      console.log('🆓 Free course or On Campus mode, skipping payment check');
+    }
+    
+    // Check if already enrolled
+    const params = {
+      FilterExpression: 'userId = :userId AND courseId = :courseId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+        ':courseId': courseId
+      }
+    };
+    
+    const existingEnrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, params);
+    
+    if (existingEnrollments && existingEnrollments.length > 0) {
+      console.log('⚠️ User already enrolled');
+      return res.status(400).json({
+        success: false,
+        message: 'Already enrolled in this course'
+      });
+    }
+    
+    const enrollmentId = uuidv4();
+    const enrollment = {
+      enrolledID: enrollmentId,
+      userId: userId,
+      courseId: courseId,
+      courseName: course.courseName,
+      instituteId: course.instituteId,
+      enrollmentDate: new Date().toISOString(),
+      progressPercentage: 0,
+      status: 'active',
+      paymentStatus: course.mode === 'Online' && parseFloat(course.fees) > 0 ? 'paid' : 'free'
+    };
+    
+    console.log('📝 Creating enrollment record:', enrollment);
+    
+    await dynamoService.putItem(COURSE_ENROLLMENTS_TABLE, enrollment);
+    
+    console.log('✅ Enrollment successful!');
+    
+    res.status(201).json({
+      success: true,
+      message: 'Successfully enrolled in course',
+      data: enrollment
+    });
+  } catch (error) {
+    console.error('❌ Error enrolling in course:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to enroll in course: ' + error.message
+    });
+  }
+};
+
+// Get user enrollments
+const getUserEnrollments = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    const params = {
+      FilterExpression: 'userId = :userId',
+      ExpressionAttributeValues: {
+        ':userId': userId
+      }
+    };
+    
+    const enrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, params);
+    
+    // Get course details for each enrollment
+    const enrollmentsWithCourses = await Promise.all(
+      enrollments.map(async (enrollment) => {
+        const course = await dynamoService.getItem(COURSES_TABLE, {
+          coursesId: enrollment.courseId
+        });
+        
+        const courseData = course || {
+          coursesId: enrollment.courseId,
+          courseName: 'Course Unavailable',
+          duration: 'Unknown',
+          instructor: 'Unknown',
+          isPlaceholder: true
+        };
+        
+        return { ...enrollment, course: courseData };
+      })
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: enrollmentsWithCourses
+    });
+  } catch (error) {
+    console.error('Error getting user enrollments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get enrollments'
+    });
+  }
+};
+
+// Get course content for enrolled user
+const getCourseContent = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { courseId } = req.params;
+    
+    console.log('Getting course content for:', { userId, courseId });
+    
+    // Check if user is enrolled
+    const params = {
+      FilterExpression: 'userId = :userId AND courseId = :courseId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+        ':courseId': courseId
+      }
+    };
+    
+    const enrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, params);
+    const enrollment = enrollments && enrollments.length > 0 ? enrollments[0] : null;
+    
+    console.log('Enrollment found:', !!enrollment);
+    
+    if (!enrollment) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not enrolled in this course. Please enroll first.'
+      });
+    }
+    
+    // Get course
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    console.log('Course found:', !!course);
+    console.log('Course data:', course ? {
+      courseName: course.courseName,
+      modulesCount: course.modules?.length || 0
+    } : 'No course data');
+    
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+    
+    // ✅ NEW: Check payment for online paid courses
+    if (course.mode === 'Online' && parseFloat(course.fees) > 0) {
+      const paymentTransactionModel = require('../models/paymentTransactionModel');
+      const hasPaid = await paymentTransactionModel.hasUserPaidForCourse(userId, courseId);
+      
+      if (!hasPaid) {
+        return res.status(402).json({
+          success: false,
+          message: 'Payment required to access course content',
+          requiresPayment: true
+        });
+      }
+    }
+    
+    // Transform course data to match frontend expectations
+    const transformedCourse = {
+      coursesId: course.coursesId,
+      name: course.courseName, // Map courseName to name for frontend
+      courseName: course.courseName,
+      duration: course.duration,
+      fees: course.fees,
+      instructor: course.instructor,
+      category: course.category,
+      mode: course.mode,
+      thumbnailUrl: course.thumbnailUrl,
+      description: course.description,
+      prerequisites: course.prerequisites,
+      syllabusOverview: course.syllabusOverview,
+      syllabusFileUrl: course.syllabusFileUrl || null,
+      syllabusFileName: course.syllabusFileName || null,
+      learningObjectives: course.learningObjectives || [],
+      certification: course.certification,
+      modules: course.modules || [],
+      onCampusFiles: course.onCampusFiles || [],
+      isActive: course.isActive,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt,
+      enrollment
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: transformedCourse
+    });
+  } catch (error) {
+    console.error('Error getting course content:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get course content: ' + error.message
+    });
+  }
+};
+
+// Update user progress
+const updateProgress = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { contentId } = req.params;
+    const { courseId, contentType, completed } = req.body;
+    
+    if (!courseId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Course ID is required'
+      });
+    }
+    
+    if (completed) {
+      // Use progress controller to mark content as complete
+      const progressController = require('./progressController');
+      const mockReq = {
+        user: { userId },
+        params: { courseId, contentId },
+        body: { contentType: contentType || 'video' }
+      };
+      
+      const mockRes = {
+        status: (code) => ({
+          json: (data) => {
+            if (code === 200) {
+              res.status(200).json({
+                success: true,
+                message: 'Progress updated successfully',
+                data: {
+                  userId,
+                  contentId,
+                  courseId,
+                  completed: true,
+                  progressPercentage: data.data?.progressPercentage || 0
+                }
+              });
+            } else {
+              res.status(code).json(data);
+            }
+          }
+        })
+      };
+      
+      await progressController.markContentComplete(mockReq, mockRes);
+    } else {
+      res.status(200).json({
+        success: true,
+        message: 'Progress noted',
+        data: {
+          userId,
+          contentId,
+          courseId,
+          completed: false
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error updating progress:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update progress'
+    });
+  }
+};
+
+// Update existing course
+const updateCourse = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    const { courseId } = req.params;
+    const courseData = req.body;
+    const files = req.files || [];
+
+    console.log('Updating course:', {
+      courseId,
+      name: courseData.name,
+      filesCount: files.length,
+      instituteId
+    });
+
+    // Get existing course
+    const existingCourse = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+
+    if (!existingCourse || existingCourse.instituteId !== instituteId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found or access denied'
+      });
+    }
+
+    const timestamp = new Date().toISOString();
+
+    // Handle thumbnail update
+    let thumbnailUrl = existingCourse.thumbnailUrl;
+    const thumbnailFile = files.find(file => file.fieldname === 'thumbnail');
+    if (thumbnailFile && thumbnailFile.mimetype.startsWith('image/')) {
+      const ext = thumbnailFile.originalname.split('.').pop();
+      const thumbnailKey = `staffinn-files/staffinn-courses-content/courses/thumbnails/${courseId}.${ext}`;
+      try {
+        const uploadResult = await s3Service.uploadFile(thumbnailFile, thumbnailKey);
+        thumbnailUrl = uploadResult.Location || uploadResult.url;
+        console.log('Thumbnail updated:', thumbnailUrl);
+      } catch (error) {
+        console.error('Thumbnail update failed:', error);
+      }
+    }
+
+    // Upload new syllabus file if provided (PDF or DOC/DOCX)
+    let syllabusFileUrl = existingCourse.syllabusFileUrl || null;
+    let syllabusFileName = existingCourse.syllabusFileName || null;
+    const syllabusFile = files.find(file => file.fieldname === 'syllabus');
+    if (syllabusFile) {
+      const ext = syllabusFile.originalname.split('.').pop().toLowerCase();
+      const syllabusKey = `staffinn-files/staffinn-courses-content/courses/syllabus/${courseId}.${ext}`;
+      try {
+        const uploadResult = await s3Service.uploadFile(syllabusFile, syllabusKey);
+        syllabusFileUrl = uploadResult.Location || uploadResult.url;
+        syllabusFileName = syllabusFile.originalname;
+        console.log('Syllabus updated:', syllabusFileUrl);
+      } catch (error) {
+        console.error('Syllabus update failed:', error);
+      }
+    }
+
+    // Handle On Campus files update
+    let onCampusFiles = existingCourse.onCampusFiles || [];
+    if (courseData.mode === 'On Campus') {
+      const onCampusFilesCount = parseInt(courseData.onCampusFilesCount) || 0;
+      
+      // Add new files to existing ones
+      for (let i = 0; i < onCampusFilesCount; i++) {
+        const onCampusFile = files.find(file => file.fieldname === `onCampusFile_${i}`);
+        if (onCampusFile) {
+          const ext = onCampusFile.originalname.split('.').pop();
+          let s3Key;
+          
+          if (onCampusFile.mimetype.startsWith('image/')) {
+            s3Key = `staffinn-files/staffinn-courses-content/courses/on-campus-images/${courseId}_${Date.now()}_${i}.${ext}`;
+          } else if (onCampusFile.mimetype.startsWith('video/')) {
+            s3Key = `staffinn-files/staffinn-courses-content/courses/on-campus-videos/${courseId}_${Date.now()}_${i}.${ext}`;
+          } else {
+            continue;
+          }
+          
+          try {
+            const uploadResult = await s3Service.uploadFile(onCampusFile, s3Key);
+            const fileUrl = uploadResult.Location || uploadResult.url;
+            onCampusFiles.push({
+              fileId: uuidv4(),
+              fileName: onCampusFile.originalname,
+              fileType: onCampusFile.mimetype.startsWith('image/') ? 'image' : 'video',
+              fileUrl: fileUrl,
+              uploadedAt: timestamp
+            });
+            console.log('On Campus file updated:', { fileName: onCampusFile.originalname, fileUrl });
+          } catch (error) {
+            console.error('On Campus file update failed:', error);
+          }
+        }
+      }
+    } else {
+      // If mode changed from On Campus to Online, clear on-campus files
+      onCampusFiles = [];
+    }
+
+    // Process modules update (only for Online mode)
+    let processedModules = existingCourse.modules || [];
+    if (courseData.mode === 'Online' && courseData.modules) {
+      const modules = typeof courseData.modules === 'string' 
+        ? JSON.parse(courseData.modules) 
+        : courseData.modules;
+
+      // Build a lookup map of existing modules by moduleId for fast access
+      const existingModuleMap = {};
+      (existingCourse.modules || []).forEach(m => {
+        if (m.moduleId) existingModuleMap[m.moduleId] = m;
+      });
+      
+      processedModules = [];
+      for (let i = 0; i < modules.length; i++) {
+        const moduleData = modules[i];
+
+        // Preserve existing moduleId if provided, otherwise generate new one
+        const moduleId = moduleData.moduleId || uuidv4();
+        const existingModule = existingModuleMap[moduleId] || null;
+        
+        const processedModule = {
+          moduleId,
+          moduleTitle: moduleData.title || `Module ${i + 1}`,
+          moduleDescription: moduleData.description || '',
+          order: i + 1,
+          content: []
+        };
+
+        // Process module content
+        if (moduleData.content && Array.isArray(moduleData.content)) {
+          // Build lookup of existing content by contentId
+          const existingContentMap = {};
+          (existingModule?.content || []).forEach(c => {
+            if (c.contentId) existingContentMap[c.contentId] = c;
+          });
+
+          for (let j = 0; j < moduleData.content.length; j++) {
+            const contentData = moduleData.content[j];
+
+            // Preserve existing contentId if provided, otherwise generate new one
+            const contentId = contentData.contentId || uuidv4();
+            const existingContent = existingContentMap[contentId] || null;
+            
+            // Start with existing URL — only replace if a new file is uploaded
+            let contentUrl = contentData.existingUrl || existingContent?.contentUrl || null;
+            
+            const possibleFieldNames = [
+              `content_${i}_${j}`,
+              `module_${i}_content_${j}`,
+              `contentFileKey_${i}_${j}`,
+              `moduleContent_${i}_${j}`
+            ];
+            
+            let uploadedFile = null;
+            for (const fieldName of possibleFieldNames) {
+              uploadedFile = files.find(file => file.fieldname === fieldName);
+              if (uploadedFile) break;
+            }
+            
+            if (uploadedFile) {
+              // New file uploaded — replace the existing one
+              const ext = uploadedFile.originalname.split('.').pop();
+              let s3Key;
+              
+              if (contentData.type === 'video' && uploadedFile.mimetype.startsWith('video/')) {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/videos/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else if (contentData.type === 'assignment') {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/assignments/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else if (contentData.type === 'notes') {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/notes/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/content/${courseId}_${moduleId}_${contentId}.${ext}`;
+              }
+              
+              try {
+                const uploadResult = await s3Service.uploadFile(uploadedFile, s3Key);
+                contentUrl = uploadResult.Location || uploadResult.url;
+                console.log('Content file replaced:', { contentId, contentUrl, type: contentData.type });
+              } catch (uploadError) {
+                console.error('Content file upload failed, keeping existing URL:', uploadError);
+                // Keep existing URL on upload failure
+              }
+            }
+
+            // Calculate video duration — preserve existing if no new upload
+            let durationMinutes = existingContent?.durationMinutes || 0;
+            if (contentData.type === 'video' && uploadedFile && contentUrl) {
+              try {
+                durationMinutes = await getVideoDurationFromUrl(contentUrl);
+              } catch (durationError) {
+                console.error('Duration calculation failed:', durationError);
+              }
+            }
+
+            const processedContent = {
+              contentId,
+              contentTitle: contentData.title || `Content ${j + 1}`,
+              contentType: contentData.type || 'video',
+              contentUrl: contentUrl,
+              order: j + 1,
+              durationMinutes: durationMinutes,
+              mandatory: contentData.mandatory !== false
+            };
+
+            processedModule.content.push(processedContent);
+          }
+        }
+
+        // Process quiz — preserve existing quizId and question IDs to maintain progress tracking
+        if (moduleData.quiz && moduleData.quiz.questions && moduleData.quiz.questions.length > 0) {
+          const existingQuiz = existingModule?.quiz || null;
+          processedModule.quiz = {
+            quizId: moduleData.quiz.quizId || existingQuiz?.quizId || uuidv4(),
+            title: moduleData.quiz.title || `${moduleData.title} Quiz`,
+            description: moduleData.quiz.description || '',
+            passingScore: moduleData.quiz.passingScore || existingQuiz?.passingScore || 70,
+            timeLimit: moduleData.quiz.timeLimit || existingQuiz?.timeLimit || 30,
+            maxAttempts: moduleData.quiz.maxAttempts || existingQuiz?.maxAttempts || 3,
+            questions: moduleData.quiz.questions.map((q, qIdx) => {
+              const existingQuestion = existingQuiz?.questions?.[qIdx];
+              return {
+                questionId: q.questionId || existingQuestion?.questionId || uuidv4(),
+                question: q.question,
+                type: q.type || 'multiple_choice',
+                options: q.options || [],
+                correctAnswer: q.correctAnswer,
+                points: q.points || 1
+              };
+            })
+          };
+        } else if (existingModule?.quiz && !moduleData.quiz) {
+          // Quiz not included in update payload — preserve existing quiz
+          processedModule.quiz = existingModule.quiz;
+        }
+
+        processedModules.push(processedModule);
+      }
+    } else if (courseData.mode === 'On Campus') {
+      // Clear modules for On Campus mode
+      processedModules = [];
+    }
+
+    // Update course record
+    const updatedCourse = {
+      ...existingCourse,
+      courseName: courseData.name || existingCourse.courseName,
+      duration: courseData.duration || existingCourse.duration,
+      fees: parseFloat(courseData.fees) || existingCourse.fees,
+      instructor: courseData.instructor || existingCourse.instructor,
+      category: courseData.category || existingCourse.category,
+      mode: courseData.mode || existingCourse.mode,
+      thumbnailUrl: thumbnailUrl,
+      description: courseData.description || existingCourse.description,
+      prerequisites: courseData.prerequisites || existingCourse.prerequisites,
+      syllabusOverview: courseData.syllabus || existingCourse.syllabusOverview,
+      syllabusFileUrl: syllabusFileUrl,
+      syllabusFileName: syllabusFileName,
+      learningObjectives: courseData.learningObjectives
+        ? (Array.isArray(courseData.learningObjectives)
+            ? courseData.learningObjectives
+            : courseData.learningObjectives.split('\n').map(s => s.trim()).filter(Boolean))
+        : (existingCourse.learningObjectives || []),
+      certification: courseData.certification || existingCourse.certification,
+      modules: processedModules,
+      onCampusFiles: onCampusFiles,
+      updatedAt: timestamp
+    };
+
+    console.log('Updating course in DynamoDB:', {
+      courseId,
+      courseName: updatedCourse.courseName,
+      mode: updatedCourse.mode,
+      modulesCount: processedModules.length,
+      onCampusFilesCount: onCampusFiles.length
+    });
+
+    await dynamoService.putItem(COURSES_TABLE, updatedCourse);
+
+    res.status(200).json({
+      success: true,
+      message: 'Course updated successfully',
+      data: updatedCourse
+    });
+  } catch (error) {
+    console.error('Error updating course:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update course'
+    });
+  }
+};
+
+// Get course by ID for editing
+const getCourseById = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    const { courseId } = req.params;
+    
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course || course.instituteId !== instituteId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found or access denied'
+      });
+    }
+    
+    // Transform course data to match frontend expectations
+    const transformedCourse = {
+      coursesId: course.coursesId,
+      name: course.courseName,
+      courseName: course.courseName,
+      duration: course.duration,
+      fees: course.fees,
+      instructor: course.instructor,
+      category: course.category,
+      mode: course.mode,
+      thumbnailUrl: course.thumbnailUrl,
+      description: course.description,
+      prerequisites: course.prerequisites,
+      syllabusOverview: course.syllabusOverview,
+      syllabusFileUrl: course.syllabusFileUrl || null,
+      syllabusFileName: course.syllabusFileName || null,
+      learningObjectives: course.learningObjectives || [],
+      certification: course.certification,
+      modules: course.modules || [],
+      onCampusFiles: course.onCampusFiles || [],
+      isActive: course.isActive,
+      createdAt: course.createdAt,
+      updatedAt: course.updatedAt
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: transformedCourse
+    });
+  } catch (error) {
+    console.error('Error getting course by ID:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get course'
+    });
+  }
+};
+
+// Get active course count
+const getActiveCourseCount = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    
+    const params = {
+      FilterExpression: 'instituteId = :instituteId AND isActive = :isActive',
+      ExpressionAttributeValues: {
+        ':instituteId': instituteId,
+        ':isActive': true
+      }
+    };
+    
+    const courses = await dynamoService.scanItems(COURSES_TABLE, params);
+    
+    res.status(200).json({
+      success: true,
+      data: { activeCourses: courses.length }
+    });
+  } catch (error) {
+    console.error('Error getting active course count:', error);
+    res.status(500).json({
+      success: false,
+      data: { activeCourses: 0 }
+    });
+  }
+};
+
+// Helper functions (simplified for single table approach)
+const getCourseModules = async (courseId) => {
+  // This is now handled within the course document itself
+  return [];
+};
+
+const getModuleContent = async (moduleId) => {
+  // This is now handled within the course document itself
+  return [];
+};
+
+const getModuleAssignments = async (moduleId) => {
+  // This is now handled within the course document itself
+  return [];
+};
+
+// Debug endpoint to check course content URLs
+const debugCourseContent = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+    
+    const debugInfo = {
+      courseId,
+      courseName: course.courseName,
+      totalModules: course.modules?.length || 0,
+      s3Config: {
+        bucketName: process.env.S3_BUCKET_NAME,
+        region: process.env.AWS_REGION,
+        hasCredentials: !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
+      },
+      modules: course.modules?.map(module => ({
+        moduleId: module.moduleId,
+        title: module.title,
+        contentCount: module.content?.length || 0,
+        content: module.content?.map(content => ({
+          contentId: content.contentId,
+          title: content.title,
+          type: content.type,
+          fileUrl: content.fileUrl,
+          hasUrl: !!content.fileUrl,
+          urlValid: content.fileUrl ? content.fileUrl.startsWith('http') : false
+        })) || []
+      })) || []
+    };
+    
+    res.status(200).json({
+      success: true,
+      data: debugInfo
+    });
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Debug failed',
+      error: error.message
+    });
+  }
+};
+
+// Fix content URLs endpoint
+const fixContentUrls = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    res.status(200).json({
+      success: true,
+      message: 'URL fixing not needed with new single table structure',
+      data: []
+    });
+  } catch (error) {
+    console.error('Fix content URLs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fix content URLs',
+      error: error.message
+    });
+  }
+};
+
+// Get trending courses sorted by enrollment count
+const getTrendingCourses = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 6;
+    
+    // Get all active courses
+    const params = {
+      FilterExpression: 'isActive = :isActive',
+      ExpressionAttributeValues: {
+        ':isActive': true
+      }
+    };
+    
+    const courses = await dynamoService.scanItems(COURSES_TABLE, params);
+    
+    if (!courses || courses.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+    
+    // Get enrollment counts and rating stats for each course
+    const coursesWithEnrollments = await Promise.all(
+      courses.map(async (course) => {
+        try {
+          // Get enrollments for this course
+          const enrollmentParams = {
+            FilterExpression: 'courseId = :courseId',
+            ExpressionAttributeValues: {
+              ':courseId': course.coursesId
+            }
+          };
+          
+          const enrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, enrollmentParams);
+          const enrollmentCount = enrollments ? enrollments.length : 0;
+          
+          // Get rating stats for this course
+          const COURSE_REVIEW_TABLE = 'course-review';
+          const reviewParams = {
+            FilterExpression: 'courseId = :courseId',
+            ExpressionAttributeValues: {
+              ':courseId': course.coursesId
+            }
+          };
+          
+          const reviews = await dynamoService.scanItems(COURSE_REVIEW_TABLE, reviewParams);
+          let averageRating = 0;
+          let totalReviews = 0;
+          
+          if (reviews && reviews.length > 0) {
+            const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+            averageRating = Math.round((totalRating / reviews.length) * 10) / 10;
+            totalReviews = reviews.length;
+          }
+          
+          // Get institute info
+          const userModel = require('../models/userModel');
+          const institute = await userModel.findUserById(course.instituteId);
+          
+          return {
+            ...course,
+            enrollmentCount,
+            averageRating,
+            totalReviews,
+            rating: averageRating, // For compatibility
+            reviewCount: totalReviews, // For compatibility
+            instituteInfo: institute ? {
+              instituteName: institute.name || institute.instituteName,
+              profileImage: institute.profileImage
+            } : null
+          };
+        } catch (error) {
+          console.error('Error getting enrollment count for course:', course.coursesId, error);
+          return {
+            ...course,
+            enrollmentCount: 0,
+            averageRating: 0,
+            totalReviews: 0,
+            rating: 0,
+            reviewCount: 0,
+            instituteInfo: null
+          };
+        }
+      })
+    );
+    
+    // Sort by enrollment count (descending) and then by creation date (newest first)
+    const sortedCourses = coursesWithEnrollments.sort((a, b) => {
+      if (b.enrollmentCount !== a.enrollmentCount) {
+        return b.enrollmentCount - a.enrollmentCount;
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+    
+    // Return limited results
+    const trendingCourses = sortedCourses.slice(0, limit);
+    
+    res.status(200).json({
+      success: true,
+      data: trendingCourses
+    });
+  } catch (error) {
+    console.error('Error getting trending courses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get trending courses'
+    });
+  }
+};
+
+// Get ALL public courses from ALL institutes
+const getAllPublicCourses = async (req, res) => {
+  try {
+    console.log('🔍 Getting all public courses from all institutes...');
+    
+    // Get all active courses from all institutes
+    const params = {
+      FilterExpression: 'isActive = :isActive',
+      ExpressionAttributeValues: {
+        ':isActive': true
+      }
+    };
+    
+    const courses = await dynamoService.scanItems(COURSES_TABLE, params);
+    console.log('📊 Found courses:', courses ? courses.length : 0);
+    
+    if (!courses || courses.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        message: 'No courses available'
+      });
+    }
+    
+    // Get institute info for each course
+    const coursesWithInstituteInfo = await Promise.all(
+      courses.map(async (course) => {
+        try {
+          const userModel = require('../models/userModel');
+          const institute = await userModel.findUserById(course.instituteId);
+          
+          return {
+            coursesId: course.coursesId,
+            instituteCourseID: course.coursesId, // For compatibility
+            courseName: course.courseName,
+            name: course.courseName, // For compatibility
+            duration: course.duration,
+            fees: course.fees,
+            instructor: course.instructor,
+            category: course.category,
+            mode: course.mode,
+            thumbnailUrl: course.thumbnailUrl,
+            thumbnail: course.thumbnailUrl, // For compatibility
+            description: course.description,
+            prerequisites: course.prerequisites,
+            syllabusOverview: course.syllabusOverview,
+            certification: course.certification,
+            isActive: course.isActive,
+            createdAt: course.createdAt,
+            updatedAt: course.updatedAt,
+            instituteId: course.instituteId,
+            instituteName: institute ? (institute.name || institute.instituteName) : 'Unknown Institute',
+            instituteProfileImage: institute ? institute.profileImage : null
+          };
+        } catch (error) {
+          console.error('Error getting institute info for course:', course.coursesId, error);
+          return {
+            coursesId: course.coursesId,
+            instituteCourseID: course.coursesId,
+            courseName: course.courseName,
+            name: course.courseName,
+            duration: course.duration,
+            fees: course.fees,
+            instructor: course.instructor,
+            category: course.category,
+            mode: course.mode,
+            thumbnailUrl: course.thumbnailUrl,
+            thumbnail: course.thumbnailUrl,
+            description: course.description,
+            prerequisites: course.prerequisites,
+            syllabusOverview: course.syllabusOverview,
+            certification: course.certification,
+            isActive: course.isActive,
+            createdAt: course.createdAt,
+            updatedAt: course.updatedAt,
+            instituteId: course.instituteId,
+            instituteName: 'Unknown Institute',
+            instituteProfileImage: null
+          };
+        }
+      })
+    );
+    
+    console.log('✅ Returning courses with institute info:', coursesWithInstituteInfo.length);
+    
+    res.status(200).json({
+      success: true,
+      data: coursesWithInstituteInfo
+    });
+  } catch (error) {
+    console.error('❌ Error getting all public courses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get all courses',
+      data: []
+    });
+  }
+};
+
+// Enroll in course with "Pay at Institute" option
+const enrollInCoursePayAtInstitute = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { courseId } = req.params;
+    
+    console.log('🏢 Pay at Institute enrollment:', { userId, courseId });
+    
+    // Validate courseId
+    if (!courseId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Course ID is required'
+      });
+    }
+    
+    // Get course details
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+    
+    console.log('✅ Course found:', { courseName: course.courseName, mode: course.mode, fees: course.fees });
+    
+    // Validate course is On Campus
+    if (course.mode !== 'On Campus') {
+      return res.status(400).json({
+        success: false,
+        message: 'Pay at Institute option is only available for On Campus courses'
+      });
+    }
+    
+    // Validate course has fees
+    if (!course.fees || parseFloat(course.fees) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'This course is free, no payment required'
+      });
+    }
+    
+    // Check if already enrolled
+    const existingEnrollmentParams = {
+      FilterExpression: 'userId = :userId AND courseId = :courseId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+        ':courseId': courseId
+      }
+    };
+    
+    const existingEnrollments = await dynamoService.scanItems(COURSE_ENROLLMENTS_TABLE, existingEnrollmentParams);
+    
+    if (existingEnrollments && existingEnrollments.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Already enrolled in this course'
+      });
+    }
+    
+    // Check if already has pending payment
+    const hasPending = await pendingPaymentModel.hasPendingPayment(courseId, userId);
+    
+    if (hasPending) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have a pending payment for this course. Please contact the institute.'
+      });
+    }
+    
+    // Get user details
+    const userModel = require('../models/userModel');
+    const user = await userModel.findUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Get institute details
+    const institute = await userModel.findUserById(course.instituteId);
+    const instituteName = institute ? (institute.name || institute.instituteName || 'Institute') : 'Institute';
+    
+    // Create pending payment record
+    const paymentData = {
+      userId: userId,
+      userName: user.name || user.fullName || 'Student',
+      userEmail: user.email,
+      courseId: courseId,
+      courseName: course.courseName,
+      instituteId: course.instituteId,
+      instituteName: instituteName,
+      amount: parseFloat(course.fees)
+    };
+    
+    const pendingPayment = await pendingPaymentModel.createPendingPayment(paymentData);
+    
+    console.log('✅ Pending payment created:', pendingPayment.pendingPaymentId);
+    
+    // Create enrollment record with pending status
+    const enrollmentId = uuidv4();
+    const enrollment = {
+      enrolledID: enrollmentId,
+      userId: userId,
+      courseId: courseId,
+      courseName: course.courseName,
+      instituteId: course.instituteId,
+      enrollmentDate: new Date().toISOString(),
+      progressPercentage: 0,
+      status: 'pending_payment',
+      paymentStatus: 'pending_at_institute',
+      paymentMode: 'PAY_AT_INSTITUTE',
+      pendingPaymentId: pendingPayment.pendingPaymentId
+    };
+    
+    await dynamoService.putItem(COURSE_ENROLLMENTS_TABLE, enrollment);
+    
+    console.log('✅ Enrollment created with pending payment status');
+    
+    // Send notification to institute
+    console.log('📬 Attempting to send notification to institute:', course.instituteId);
+    try {
+      const notificationController = require('./notificationController');
+      const notificationMessage = `${user.name || user.fullName || 'A student'} has enrolled in ${course.courseName} with "Pay at Institute" option. Amount: ₹${course.fees}`;
+      
+      console.log('📝 Creating notification with data:', {
+        instituteId: course.instituteId,
+        type: 'pending_payment',
+        title: 'New Pending Payment',
+        message: notificationMessage
+      });
+      
+      const notification = await notificationController.createNotification(
+        course.instituteId,
+        'pending_payment',
+        'New Pending Payment',
+        notificationMessage,
+        {
+          userId: userId,
+          userName: user.name || user.fullName || 'Student',
+          userEmail: user.email,
+          courseId: courseId,
+          courseName: course.courseName,
+          amount: parseFloat(course.fees),
+          pendingPaymentId: pendingPayment.pendingPaymentId,
+          enrollmentId: enrollmentId
+        },
+        true
+      );
+      
+      console.log('✅ Notification created successfully:', notification.notificationId);
+      console.log('✅ Notification sent to institute');
+    } catch (notificationError) {
+      console.error('❌ Failed to send notification - Full error:', notificationError);
+      console.error('❌ Error stack:', notificationError.stack);
+      // Don't fail the enrollment if notification fails
+    }
+    
+    res.status(201).json({
+      success: true,
+      message: 'Enrollment request submitted successfully. Please pay at the institute to activate your enrollment.',
+      data: {
+        enrollment,
+        pendingPayment: {
+          pendingPaymentId: pendingPayment.pendingPaymentId,
+          amount: pendingPayment.amount,
+          status: pendingPayment.paymentStatus
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error in pay at institute enrollment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process enrollment: ' + error.message
+    });
+  }
+};
+
+// Get institute student enrollment count for a course
+const getInstituteStudentEnrollmentCount = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const instituteId = req.user.userId;
+    
+    console.log('📊 Getting institute enrollment count:', { courseId, instituteId });
+    
+    // Get enrollments from staffinn-institute-course-enrollments table
+    const INSTITUTE_ENROLLMENTS_TABLE = 'staffinn-institute-course-enrollments';
+    
+    const params = {
+      FilterExpression: 'courseId = :courseId AND enrollingInstituteId = :instituteId',
+      ExpressionAttributeValues: {
+        ':courseId': courseId,
+        ':instituteId': instituteId
+      }
+    };
+    
+    const enrollments = await dynamoService.scanItems(INSTITUTE_ENROLLMENTS_TABLE, params);
+    
+    // Count total students from all enrollment batches
+    let totalStudents = 0;
+    if (enrollments && enrollments.length > 0) {
+      enrollments.forEach(enrollment => {
+        totalStudents += enrollment.totalStudentsEnrolled || 0;
+      });
+    }
+    
+    console.log('✅ Institute enrollment count:', totalStudents);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        enrollmentCount: totalStudents
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error getting institute enrollment count:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get enrollment count',
+      data: { enrollmentCount: 0 }
+    });
+  }
+};
+
+// Delete course permanently
+const deleteCourse = async (req, res) => {
+  try {
+    const instituteId = req.user.userId;
+    const { courseId } = req.params;
+    
+    console.log('Deleting course:', { courseId, instituteId });
+    
+    // Get course to verify ownership
+    const course = await dynamoService.getItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: 'Course not found'
+      });
+    }
+    
+    // Verify ownership
+    if (course.instituteId !== instituteId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only delete your own courses.'
+      });
+    }
+    
+    // Delete course from database
+    await dynamoService.deleteItem(COURSES_TABLE, {
+      coursesId: courseId
+    });
+    
+    console.log('Course deleted successfully:', courseId);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Course deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting course:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete course: ' + error.message
+    });
+  }
+};
+
+module.exports = {
+  createCourse,
+  updateCourse,
+  getCourseById,
+  getCourses,
+  getPublicCourses,
+  getAllPublicCourses,
+  getPublicCourseById,
+  getCourseModules,
+  getModuleContent,
+  getModuleAssignments,
+  checkEnrollmentStatus,
+  enrollInCourse,
+  enrollInCoursePayAtInstitute,
+  getUserEnrollments,
+  getCourseContent,
+  updateProgress,
+  getActiveCourseCount,
+  debugCourseContent,
+  fixContentUrls,
+  getTrendingCourses,
+  getInstituteStudentEnrollmentCount,
+  deleteCourse
+};

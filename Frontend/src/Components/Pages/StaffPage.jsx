@@ -9,6 +9,7 @@ import Footer from '../Footer/Footer';
 // import RegistrationPopup from '../Register/RegistrationPopup'; // File does not exist
 import ChatButton from '../Messages/ChatButton';
 import { FaEnvelope, FaWhatsapp } from 'react-icons/fa';
+import { FaLinkedin, FaXTwitter, FaInstagram, FaFacebook, FaYoutube, FaGithub, FaGlobe } from 'react-icons/fa6';
 import StaffpageImage from '../../assets/Staffpage.jpg';
 
 function StaffPage({ isLoggedIn, onShowLogin }) {
@@ -139,11 +140,9 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
             );
             
             if (response.data.success && response.data.data.images && response.data.data.images.length > 0) {
-                console.log('Staff hero images loaded:', response.data.data.images.length);
                 setHeroImages(response.data.data.images);
                 setCurrentImageIndex(0);
             } else {
-                console.log('No staff hero images found, using default');
                 setHeroImages([]);
                 setCurrentImageIndex(0);
             }
@@ -159,24 +158,20 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
         let slideInterval;
         
         if (heroImages.length > 1) {
-            console.log('🎬 Starting staff slideshow with', heroImages.length, 'images');
             setCurrentImageIndex(0);
             
             slideInterval = setInterval(() => {
                 setCurrentImageIndex((prevIndex) => {
                     const nextIndex = prevIndex >= heroImages.length - 1 ? 0 : prevIndex + 1;
-                    console.log('🔄 Staff slideshow:', prevIndex, '→', nextIndex);
                     return nextIndex;
                 });
             }, 5000);
         } else {
-            console.log('🖼️ Single or no staff image, no slideshow needed');
             setCurrentImageIndex(0);
         }
         
         return () => {
             if (slideInterval) {
-                console.log('⏹️ Stopping staff slideshow');
                 clearInterval(slideInterval);
             }
         };
@@ -188,22 +183,18 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
             const validIndex = Math.max(0, Math.min(currentImageIndex, heroImages.length - 1));
             const currentImage = heroImages[validIndex];
             const imageUrl = currentImage?.url || StaffpageImage;
-            console.log('🖼️ Current staff hero image URL:', imageUrl);
             return imageUrl;
         }
-        console.log('⚠️ No staff hero images, using default');
         return StaffpageImage;
     }, [heroImages, currentImageIndex]);
 
     // Update background image using ref
     useEffect(() => {
         if (heroSectionRef.current && currentHeroImage) {
-            console.log('🎨 Setting staff background image...');
             heroSectionRef.current.style.setProperty('background-image', `url("${currentHeroImage}")`, 'important');
             heroSectionRef.current.style.setProperty('background-size', 'cover', 'important');
             heroSectionRef.current.style.setProperty('background-position', 'center', 'important');
             heroSectionRef.current.style.setProperty('background-repeat', 'no-repeat', 'important');
-            console.log('✅ Staff background image applied');
         }
     }, [currentHeroImage]);
 
@@ -254,7 +245,6 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                 }
             } catch (error) {
                 // If error (like 404), user doesn't have staff profile
-                console.log('User does not have staff profile');
             } finally {
                 setCheckingStaffProfile(false);
             }
@@ -583,23 +573,17 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
     // Record contact interaction
     const recordContact = async (staffData, contactType) => {
         if (!user) {
-            console.log('User not logged in, skipping contact recording');
             return;
         }
         
         try {
-            console.log('Recording contact interaction:', { staffData, contactType });
-            
             const response = await apiWithLoading.recordContact({
                 staffId: staffData.userId,
                 contactMethod: contactType
             });
             
             if (response.success) {
-                console.log('Contact recorded successfully:', response.data);
                 setContactedStaff(prev => new Set([...prev, staffData.userId]));
-            } else {
-                console.error('Failed to record contact:', response.message);
             }
         } catch (error) {
             console.error('Error recording contact:', error);
@@ -646,7 +630,6 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
 
     // Handle registration completion
     const handleRegistration = (userData, role) => {
-        console.log('Registration data:', userData, 'Role:', role);
         alert(`Successfully registered as ${role}!`);
         setShowRegistrationPopup(false);
         setSelectedRole(null);
@@ -658,13 +641,6 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
     const handleSearch = () => {
         // The filtering is already handled by useEffect, so this just triggers a re-render
         // You can add additional search logic here if needed
-        console.log('Searching with filters:', {
-            selectedState,
-            selectedCity,
-            selectedSector,
-            selectedRole,
-            skillsInput
-        });
     };
 
     // Get trending staff (staff with high ratings and recent activity)
@@ -930,6 +906,18 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                     </div>
                                     
                                     <div className="clean-actions">
+                                        {/* Social icons on card — only if links exist */}
+                                        {staff.socialLinks && Object.values(staff.socialLinks).some(v => v) && (
+                                            <div className="card-social-icons">
+                                                {staff.socialLinks.linkedin && <a href={staff.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" title="LinkedIn" className="card-social-link"><FaLinkedin style={{color:'#0A66C2'}}/></a>}
+                                                {staff.socialLinks.twitter && <a href={staff.socialLinks.twitter} target="_blank" rel="noopener noreferrer" title="X (Twitter)" className="card-social-link"><FaXTwitter style={{color:'#000'}}/></a>}
+                                                {staff.socialLinks.instagram && <a href={staff.socialLinks.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="card-social-link"><FaInstagram style={{color:'#E1306C'}}/></a>}
+                                                {staff.socialLinks.facebook && <a href={staff.socialLinks.facebook} target="_blank" rel="noopener noreferrer" title="Facebook" className="card-social-link"><FaFacebook style={{color:'#1877F2'}}/></a>}
+                                                {staff.socialLinks.youtube && <a href={staff.socialLinks.youtube} target="_blank" rel="noopener noreferrer" title="YouTube" className="card-social-link"><FaYoutube style={{color:'#FF0000'}}/></a>}
+                                                {staff.socialLinks.github && <a href={staff.socialLinks.github} target="_blank" rel="noopener noreferrer" title="GitHub" className="card-social-link"><FaGithub style={{color:'#24292e'}}/></a>}
+                                                {staff.socialLinks.portfolio && <a href={staff.socialLinks.portfolio} target="_blank" rel="noopener noreferrer" title="Portfolio" className="card-social-link"><FaGlobe style={{color:'#4863f7'}}/></a>}
+                                            </div>
+                                        )}
                                         <button 
                                             className="clean-view-btn"
                                             onClick={() => handleViewProfile(staff)}
@@ -1235,6 +1223,50 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                                     <p>Year: {selectedStaff.education.tenth.year}</p>
                                                 </div>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* Social Media Links in modal */}
+                                    {selectedStaff.socialLinks && Object.values(selectedStaff.socialLinks).some(v => v) && (
+                                        <div className="clean-profile-section">
+                                            <h4>Social Media</h4>
+                                            <div className="modal-social-links">
+                                                {selectedStaff.socialLinks.linkedin && (
+                                                    <a href={selectedStaff.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="modal-social-link linkedin" title="LinkedIn">
+                                                        <FaLinkedin /> <span>LinkedIn</span>
+                                                    </a>
+                                                )}
+                                                {selectedStaff.socialLinks.twitter && (
+                                                    <a href={selectedStaff.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="modal-social-link twitter" title="X (Twitter)">
+                                                        <FaXTwitter /> <span>X (Twitter)</span>
+                                                    </a>
+                                                )}
+                                                {selectedStaff.socialLinks.instagram && (
+                                                    <a href={selectedStaff.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="modal-social-link instagram" title="Instagram">
+                                                        <FaInstagram /> <span>Instagram</span>
+                                                    </a>
+                                                )}
+                                                {selectedStaff.socialLinks.facebook && (
+                                                    <a href={selectedStaff.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="modal-social-link facebook" title="Facebook">
+                                                        <FaFacebook /> <span>Facebook</span>
+                                                    </a>
+                                                )}
+                                                {selectedStaff.socialLinks.youtube && (
+                                                    <a href={selectedStaff.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="modal-social-link youtube" title="YouTube">
+                                                        <FaYoutube /> <span>YouTube</span>
+                                                    </a>
+                                                )}
+                                                {selectedStaff.socialLinks.github && (
+                                                    <a href={selectedStaff.socialLinks.github} target="_blank" rel="noopener noreferrer" className="modal-social-link github" title="GitHub">
+                                                        <FaGithub /> <span>GitHub</span>
+                                                    </a>
+                                                )}
+                                                {selectedStaff.socialLinks.portfolio && (
+                                                    <a href={selectedStaff.socialLinks.portfolio} target="_blank" rel="noopener noreferrer" className="modal-social-link portfolio" title="Portfolio">
+                                                        <FaGlobe /> <span>Portfolio</span>
+                                                    </a>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 

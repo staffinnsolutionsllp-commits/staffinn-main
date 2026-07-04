@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --mode production",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vite build --mode production",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -13,6 +13,7 @@
   "dependencies": {
     "@studio-freight/lenis": "^1.0.42",
     "axios": "^1.7.9",
+    "framer-motion": "^12.42.0",
     "frontend": "file:",
     "lucide-react": "^1.14.0",
     "react": "^18.3.1",
@@ -21,6 +22,7 @@
     "react-router-dom": "^7.4.0",
     "recharts": "^2.15.4",
     "socket.io-client": "^4.8.1",
+    "sonner": "^2.0.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -29,6 +31,7 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
+    "cross-env": "^10.1.0",
     "eslint": "^9.17.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",

@@ -2,29 +2,21 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import apiWithLoading from '../../services/apiWithLoading';
+import apiService from '../../services/api';
 import NewsDisplayAPI from '../../services/newsDisplayApi';
 import io from 'socket.io-client';
-import './NewsPage.css';
+import { Toaster } from 'sonner';
 
-import { 
-  FaPlay, 
-  FaBookmark, 
-  FaRegBookmark, 
-  FaShareAlt, 
-  FaThumbsUp, 
-  FaComment, 
-  FaBell, 
-  FaClock, 
-  FaExternalLinkAlt, 
-  FaChevronLeft, 
-  FaChevronRight, 
-  FaPodcast, 
-  FaVideo,
-  FaChevronDown,
-  FaUsers,
-  FaUniversity,
-  FaBuilding
-} from 'react-icons/fa';
+// Import new components
+import NewsHero from '../news/NewsHero';
+import TrendingSection from '../news/TrendingSection';
+import ExpertInsights from '../news/ExpertInsights';
+import PostedNews from '../news/PostedNews';
+import RecruiterNews from '../news/RecruiterNews';
+import InstituteNews from '../news/InstituteNews';
+import ReaderModal from '../news/ReaderModal';
+import NewsletterFooter from '../news/NewsletterFooter';
+import Footer from '../Footer/Footer';
 
 const NewsPage = ({ isLoggedIn, onShowLogin }) => {
   const location = useLocation();
@@ -61,32 +53,6 @@ const NewsPage = ({ isLoggedIn, onShowLogin }) => {
     }
   }, [location]);
   
-  // News categories for the top section
-  const newsCategories = [
-    { 
-      id: 'staff', 
-      name: 'Staff', 
-      icon: FaUsers, 
-      description: 'News and updates related to staff members, career opportunities, and professional development.',
-      color: '#3b82f6'
-    },
-    { 
-      id: 'institute', 
-      name: 'Institute', 
-      icon: FaUniversity, 
-      description: 'Institute announcements, events, academic updates, and institutional news.',
-      color: '#10b981'
-    },
-    { 
-      id: 'recruiter', 
-      name: 'Recruiter', 
-      icon: FaBuilding, 
-      description: 'Recruiter announcements, job openings, company news, and hiring updates.',
-      color: '#f59e0b'
-    },
-
-  ];
-
   // Featured news - use real-time hero section or selected news item only
   const featuredNews = featuredHeroSection ? {
     id: featuredHeroSection.newsherosection,
@@ -502,7 +468,7 @@ const NewsPage = ({ isLoggedIn, onShowLogin }) => {
       setJobAlertsLoading(true);
       console.log('Loading today\'s jobs for Job Alerts...');
       
-      const response = await apiWithLoading.getTodaysJobs(5); // Limit to 5 jobs
+      const response = await apiService.getTodaysJobs(5); // silent — no loading overlay
       
       if (response.success && response.data) {
         const formattedJobs = response.data.map(job => ({
@@ -709,519 +675,164 @@ const NewsPage = ({ isLoggedIn, onShowLogin }) => {
   };
 
   return (
-    <div className="news-page">
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--background)' }}>
+      <Toaster position="top-right" richColors />
 
-      {/* Top Section: Featured & Trending News */}
-      <section className="top-news-section">
-        {/* Featured News Banner */}
-        <div className="featured-news">
-          {selectedNewsItem ? (
-            <>
-              <div className="featured-news-image">
-                <img 
-                  src={selectedNewsItem.bannerImage || selectedNewsItem.originalData?.bannerImage || "/api/placeholder/1200/600"} 
-                  alt={selectedNewsItem.title}
-                  onError={(e) => {
-                    e.target.src = "/api/placeholder/1200/600";
-                  }}
-                />
-              </div>
-              <div className="featured-news-content">
-                <div className="featured-tag">
-                  {selectedNewsItem.verified ? 'Verified News' : 'News Update'}
-                </div>
-                <h1>{selectedNewsItem.title}</h1>
-                <p>{selectedNewsItem.details}</p>
-                <div className="featured-news-meta">
-                  <span className="meta-date">
-                    <FaClock /> {new Date(selectedNewsItem.date).toLocaleDateString()}
-                  </span>
-                  <span className="meta-source">{selectedNewsItem.company}</span>
-                  <span className="meta-category">{selectedNewsItem.type}</span>
-                  {selectedNewsItem.expectedParticipants && (
-                    <span className="meta-participants">
-                      Expected Participants: {selectedNewsItem.expectedParticipants}
-                    </span>
-                  )}
-                </div>
-                <div className="news-actions">
-                  <button className="back-btn" onClick={() => window.history.back()}>
-                    ← Back to Institute
-                  </button>
-                  <button className="share-btn">
-                    <FaShareAlt /> Share News
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : featuredNews ? (
-            <>
-              <div className="featured-news-image">
-                <img src={featuredNews.image} alt={featuredNews.title} />
-              </div>
-              <div className="featured-news-content">
-                <div className="featured-tag">Top News of the Day</div>
-                <h1>{featuredNews.title}</h1>
-                <p>{featuredNews.description && featuredNews.description.length > 200 ? 
-                  `${featuredNews.description.substring(0, 200)}...` : 
-                  featuredNews.description
-                }</p>
-                <div className="featured-news-meta">
-                  <span className="meta-date"><FaClock /> {featuredNews.date}</span>
-                  <span className="meta-source">{featuredNews.source}</span>
-                  <span className="meta-category">{featuredNews.category}</span>
-                  {featuredNews.tags && (
-                    <div className="featured-tags">
-                      {featuredNews.tags.split(',').map((tag, index) => (
-                        <span key={index} className="featured-tag">
-                          {tag.trim()}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button 
-                  className="read-more-btn"
-                  onClick={() => {
-                    // Check authentication first
-                    if (!isLoggedIn) {
-                      onShowLogin();
-                      return;
-                    }
-                    setModalContent(featuredNews);
-                    setShowModal(true);
-                  }}
-                >
-                  Read Full Article
-                </button>
-              </div>
-            </>
-          ) : null}
-        </div>
-        
-        {/* Trending Topics Carousel */}
-        {trendingTopics.length > 0 && (
-          <div className="trending-topics">
-            <h2>Trending Topics</h2>
-            <div className="topics-carousel">
-              <button className="carousel-nav prev" onClick={prevSlide}><FaChevronLeft /></button>
-              <div className="carousel-container">
-                <div 
-                  className="carousel-track" 
-                  style={{ transform: `translateX(-${currentSlide * 33.33}%)` }}
-                >
-                  {trendingTopics.map((topic, index) => (
-                    <div 
-                      key={topic.id} 
-                      className={`carousel-item ${index === currentSlide ? 'active' : ''}`}
-                    >
-                      <div 
-                        className="topic-card"
-                        onClick={() => {
-                          // Check authentication first
-                          if (!isLoggedIn) {
-                            onShowLogin();
-                            return;
-                          }
-                          setModalContent({
-                            title: topic.title,
-                            description: topic.description,
-                            image: topic.image,
-                            date: new Date().toLocaleDateString(),
-                            source: "Trending Topics",
-                            category: "Trending"
-                          });
-                          setShowModal(true);
-                        }}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <img src={topic.image} alt={topic.title} />
-                        <h3>{topic.title}</h3>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button className="carousel-nav next" onClick={nextSlide}><FaChevronRight /></button>
-            </div>
-            <div className="carousel-indicators">
-              {trendingTopics.map((_, index) => (
-                <span 
-                  key={index} 
-                  className={`indicator ${index === currentSlide ? 'active' : ''}`}
-                  onClick={() => setCurrentSlide(index)}
-                ></span>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-
-
-      {/* Popular Tags Section - Above News Feed */}
-      {popularTags.length > 0 && (
-        <section className="popular-tags-main">
-          <h2>Popular Tags</h2>
-          <div className="tags-cloud-main">
-            {popularTags.slice(0, 10).map((tag, index) => (
-              <button 
-                key={index} 
-                className="tag-main"
-                onClick={() => handleTagClick(tag.name)}
-                title={`${tag.count} mentions`}
-              >
-                {tag.name}
-                <span className="tag-count-main">{tag.count}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+      {/* Hero Section */}
+      {featuredHeroSection && (
+        <NewsHero
+          hero={{
+            id: featuredHeroSection.newsherosection,
+            category: featuredHeroSection.category || 'Featured Today',
+            title: featuredHeroSection.title,
+            description: featuredHeroSection.content,
+            excerpt: featuredHeroSection.excerpt || featuredHeroSection.content,
+            author: featuredHeroSection.author || 'Staffinn Editorial',
+            authorAvatar: featuredHeroSection.authorAvatar,
+            date: new Date(featuredHeroSection.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
+            readTime: featuredHeroSection.readTime || '5 min read',
+            image: featuredHeroSection.bannerImageUrl,
+            bannerImage: featuredHeroSection.bannerImageUrl,
+            tags: featuredHeroSection.tags
+          }}
+          onReadMore={(item) => {
+            setModalContent(item);
+            setShowModal(true);
+          }}
+        />
       )}
 
-      <div className="content-container">
-        {/* Main Column */}
-        <div className="main-column">
+      {/* Trending Topics */}
+      {realTimeTrendingTopics.length > 0 && (
+        <TrendingSection
+          topics={realTimeTrendingTopics.map(topic => ({
+            id: topic.newstrendingtopics,
+            title: topic.title,
+            description: topic.description,
+            image: topic.imageUrl,
+            tags: topic.tags || '#Trending'
+          }))}
+          onTopicClick={(topic) => {
+            setModalContent({
+              title: topic.title,
+              description: topic.description,
+              content: topic.description,
+              image: topic.image,
+              bannerImage: topic.image,
+              tags: topic.tags
+            });
+            setShowModal(true);
+          }}
+        />
+      )}
 
+      {/* Expert Insights */}
+      {realTimeExpertInsights.length > 0 && (
+        <ExpertInsights
+          insights={realTimeExpertInsights.map(insight => ({
+            id: insight.newsexpertinsights,
+            expertName: insight.expertName,
+            designation: insight.designation,
+            company: insight.company,
+            avatar: insight.avatarUrl,
+            title: insight.title,
+            videoUrl: insight.youtubeUrl || insight.videoUrl,
+            youtubeUrl: insight.youtubeUrl,
+            thumbnail: insight.thumbnailUrl,
+            duration: insight.duration,
+            views: insight.views
+          }))}
+        />
+      )}
 
-          {/* Main News Feed */}
-          <section className="news-feed">
-            <div className="section-header">
-              <h2>News & Updates</h2>
-              <div className="news-controls">
-                <div className="news-filters">
-                  <button 
-                    className={`filter-btn ${newsFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setNewsFilter('all')}
-                  >
-                    All News ({categoryStats.all})
-                  </button>
-                  <button 
-                    className={`filter-btn ${newsFilter === 'staff' ? 'active' : ''}`}
-                    onClick={() => setNewsFilter('staff')}
-                  >
-                    Staffinn News ({categoryStats.staff})
-                  </button>
-                  <button 
-                    className={`filter-btn ${newsFilter === 'institute' ? 'active' : ''}`}
-                    onClick={() => setNewsFilter('institute')}
-                  >
-                    Institute News ({categoryStats.institute})
-                  </button>
-                  <button 
-                    className={`filter-btn ${newsFilter === 'recruiter' ? 'active' : ''}`}
-                    onClick={() => setNewsFilter('recruiter')}
-                  >
-                    Recruiter News ({categoryStats.recruiter || 0})
-                  </button>
+      {/* Posted News */}
+      {postedNews.length > 0 && (
+        <PostedNews
+          news={postedNews.map(news => ({
+            id: news.staffinnpostednews,
+            title: news.title,
+            excerpt: news.excerpt || news.description,
+            content: news.content || news.description,
+            category: news.category || 'Editorial',
+            author: news.author,
+            date: new Date(news.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
+            readTime: news.readTime || '3 min read',
+            image: news.bannerImageUrl,
+            bannerImage: news.bannerImageUrl
+          }))}
+          onReadMore={(item) => {
+            if (!isLoggedIn) {
+              onShowLogin();
+              return;
+            }
+            setModalContent(item);
+            setShowModal(true);
+          }}
+        />
+      )}
 
-                </div>
-                <button 
-                  className="refresh-btn"
-                  onClick={loadAllNews}
-                  disabled={newsLoading}
-                  style={{
-                    marginLeft: '10px',
-                    padding: '8px 16px',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: newsLoading ? 'not-allowed' : 'pointer',
-                    opacity: newsLoading ? 0.6 : 1
-                  }}
-                >
-                  {newsLoading ? 'Refreshing...' : 'Refresh News'}
-                </button>
-              </div>
-            </div>
-            
-            <div className="articles-list">
-              {newsLoading ? (
-                <div className="loading-articles">
-                  <p>Loading news...</p>
-                  <div style={{marginTop: '10px', fontSize: '0.9rem', color: '#6b7280'}}>
-                    Fetching latest updates from all sources...
-                  </div>
-                </div>
-              ) : (() => {
-                console.log('Filtered articles:', filteredArticles);
-                console.log('Filtered articles length:', filteredArticles.length);
-                return filteredArticles.length > 0;
-              })() ? (
-                filteredArticles.map(article => (
-                  <div key={article.id || article.eventNewsId || article.newsId} className="article-card">
-                    <div className="article-image">
-                      <img 
-                        src={article.bannerImage || article.image || article.originalData?.bannerImage || "/api/placeholder/300/200"} 
-                        alt={article.title}
-                        onError={(e) => {
-                          e.target.src = "/api/placeholder/300/200";
-                        }}
-                      />
-                      <div className="article-category">{article.category || article.type || 'News'}</div>
-                    </div>
-                    <div className="article-content">
-                      <h3>{article.title}</h3>
-                      <p>{(article.description || article.details) && (article.description || article.details).length > 150 ? 
-                        `${(article.description || article.details).substring(0, 150)}...` : 
-                        (article.description || article.details)
-                      }</p>
-                      <div className="article-meta">
-                        <span className="meta-date">
-                          <FaClock /> {article.date || new Date(article.createdAt || Date.now()).toLocaleDateString()}
-                        </span>
-                        <span className="meta-source">{article.source || article.company || 'Staffinn'}</span>
-                        {(article.verified || article.status === 'verified') && (
-                          <span className="meta-verified" style={{color: '#10b981', fontWeight: 'bold'}}>
-                            ✓ Verified
-                          </span>
-                        )}
-                      </div>
-                      <div className="article-actions">
-                        <button className="action-btn">
-                          <FaThumbsUp /> <span>{article.likes || 0}</span>
-                        </button>
-                        <button className="action-btn">
-                          <FaComment /> <span>{article.comments || 0}</span>
-                        </button>
-                        <button 
-                          className="action-btn"
-                          onClick={() => toggleSave(article.id || article.eventNewsId || article.newsId)}
-                        >
-                          {saveStates[article.id || article.eventNewsId || article.newsId] || article.saved ? 
-                            <FaBookmark className="saved" /> : 
-                            <FaRegBookmark />
-                          }
-                        </button>
-                        <button className="action-btn">
-                          <FaShareAlt />
-                        </button>
-                        <button 
-                          className="read-more-btn"
-                          onClick={() => {
-                            // Check authentication first
-                            if (!isLoggedIn) {
-                              onShowLogin();
-                              return;
-                            }
-                            setModalContent({
-                              title: article.title,
-                              description: article.description || article.details,
-                              image: article.bannerImage || article.image || article.originalData?.bannerImage,
-                              date: article.date || new Date(article.createdAt || Date.now()).toLocaleDateString(),
-                              source: article.source || article.company || 'Staffinn',
-                              category: article.category || article.type || 'News'
-                            });
-                            setShowModal(true);
-                          }}
-                        >
-                          Read More
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="no-articles">
-                  No articles found in this category.
-                  <div style={{fontSize: '12px', marginTop: '10px', color: '#666'}}>
-                    Debug: Total articles: {newsArticles.length}, Filtered: {filteredArticles.length}, Filter: {newsFilter}
-                  </div>
-                </div>
-              )}
-            </div>
+      {/* Recruiter News */}
+      {newsArticles.filter(n => n.category === 'recruiter').length > 0 && (
+        <RecruiterNews
+          news={newsArticles
+            .filter(n => n.category === 'recruiter')
+            .map(news => ({
+              id: news.id || news.recruiternews,
+              companyName: news.company || news.source,
+              companyLogo: news.companyLogo,
+              title: news.title,
+              description: news.description || news.details,
+              eventType: news.eventType || 'Company Update',
+              location: news.location,
+              date: news.date || new Date(news.createdAt).toLocaleDateString(),
+              bannerImage: news.bannerImage || news.image,
+              expectedHires: news.expectedHires
+            }))}
+        />
+      )}
 
-            <div className="load-more">
-              <button className="load-more-btn">Load More <FaChevronDown /></button>
-            </div>
-          </section>
+      {/* Institute News */}
+      {newsArticles.filter(n => n.category === 'institute').length > 0 && (
+        <InstituteNews
+          news={newsArticles
+            .filter(n => n.category === 'institute')
+            .map(news => ({
+              id: news.id || news.eventNewsId,
+              instituteName: news.company || news.source || 'Institute',
+              instituteLogo: news.instituteLogo,
+              title: news.title,
+              description: news.description || news.details,
+              type: news.type || 'Event',
+              date: news.date || new Date(news.createdAt).toLocaleDateString(),
+              venue: news.venue,
+              bannerImage: news.bannerImage || news.image
+            }))}
+          onReadMore={(item) => {
+            setModalContent({
+              title: item.title,
+              description: item.description,
+              content: item.description,
+              bannerImage: item.bannerImage,
+              author: item.instituteName,
+              date: item.date,
+              category: item.type
+            });
+            setShowModal(true);
+          }}
+        />
+      )}
 
-          {/* Featured Interviews & Expert Insights */}
-          {expertInsights.length > 0 && (
-            <section className="expert-insights">
-              <div className="section-header">
-                <h2>Expert Insights & Interviews</h2>
-                <a href="#" className="view-all">View All</a>
-              </div>
-              
-              <div className="insights-grid">
-                {expertInsights.map(insight => (
-                  <div key={insight.id} className="insight-card">
-                    <div className="expert-image">
-                      {playingVideo === insight.id && insight.videoUrl && insight.videoUrl !== "#" ? (
-                        <video 
-                          controls 
-                          autoPlay 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onEnded={() => setPlayingVideo(null)}
-                        >
-                          <source src={insight.videoUrl} type="video/mp4" />
-                          Your browser does not support the video tag.
-                        </video>
-                      ) : (
-                        <>
-                          <img src={insight.image} alt={insight.expertName} />
-                          {insight.videoUrl && insight.videoUrl !== "#" && (
-                            <div 
-                              className="play-button" 
-                              onClick={() => setPlayingVideo(insight.id)}
-                              style={{ cursor: 'pointer' }}
-                            >
-                              <FaPlay />
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div className="expert-info">
-                      <h3>{insight.topic}</h3>
-                      <div className="expert-name">{insight.expertName}</div>
-                      <div className="expert-title">{insight.title}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+      {/* Footer */}
+      <Footer />
 
-
-
-
-        </div>
-
-        {/* Sidebar */}
-        <div className="sidebar">
-          {/* Job Alerts Section */}
-          <section className="job-alerts">
-            <div className="section-header">
-              <h2>Job Alerts</h2>
-              <button className="notification-btn" onClick={() => setShowNotification(!showNotification)}>
-                <FaBell /> 
-                {showNotification ? 'Notifications On' : 'Get Alerts'}
-              </button>
-            </div>
-            
-            <div className="alerts-list">
-              {jobAlertsLoading ? (
-                <div className="loading-job-alerts">
-                  <p>Loading today's job alerts...</p>
-                </div>
-              ) : jobAlerts.length > 0 ? (
-                jobAlerts.map(job => (
-                  <div key={job.id} className="job-alert-card">
-                    <h3>{job.role}</h3>
-                    <div className="job-company">{job.company}</div>
-                    <div className="job-meta">
-                      <span className="job-location">📍 {job.location}</span>
-                      <span className="job-time">🕒 {job.posted}</span>
-                    </div>
-                    {job.salary && (
-                      <div className="job-salary">💰 {job.salary}</div>
-                    )}
-                    {job.experience && (
-                      <div className="job-experience">⏱ {job.experience}</div>
-                    )}
-                    <button 
-                      className="view-job-btn"
-                      onClick={() => handleViewJob(job)}
-                    >
-                      View Job <FaExternalLinkAlt />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="no-job-alerts">
-                  <p>No new jobs posted today.</p>
-                  <p style={{fontSize: '0.9rem', color: '#666', marginTop: '5px'}}>
-                    Check back later for fresh opportunities!
-                  </p>
-                </div>
-              )}
-            </div>
-            {jobAlerts.length > 0 && (
-              <button 
-                className="more-jobs-btn"
-                onClick={() => window.open('/recruiter', '_blank')}
-              >
-                View All Jobs
-              </button>
-            )}
-          </section>
-
-
-
-
-
-          {/* Popular Tags */}
-          <section className="popular-tags">
-            <h2>Popular Tags</h2>
-            <div className="tags-cloud">
-              {popularTags.length > 0 ? (
-                popularTags.map((tag, index) => (
-                  <button 
-                    key={index} 
-                    className="tag"
-                    onClick={() => handleTagClick(tag.name)}
-                    title={`${tag.count} mentions`}
-                  >
-                    {tag.name}
-                    <span className="tag-count">{tag.count}</span>
-                  </button>
-                ))
-              ) : (
-                <div className="no-tags">
-                  <p>Loading popular tags...</p>
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-      </div>
-      
-      {/* Modal for full article */}
+      {/* Reader Modal */}
       {showModal && modalContent && (
-        <div className="news-modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="news-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="news-modal-header">
-              <h2>{modalContent.title}</h2>
-              <button 
-                className="news-modal-close"
-                onClick={() => setShowModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            <div className="news-modal-body">
-              {modalContent.image && (
-                <img 
-                  src={modalContent.image} 
-                  alt={modalContent.title}
-                  className="news-modal-image"
-                />
-              )}
-              <div className="news-modal-meta">
-                <span className="meta-date">
-                  <FaClock /> {modalContent.date}
-                </span>
-                <span className="meta-source">{modalContent.source}</span>
-                <span className="meta-category">{modalContent.category}</span>
-              </div>
-              <div className="news-modal-content-text">
-                <p>{modalContent.description || modalContent.content}</p>
-              </div>
-              {modalContent.tags && (
-                <div className="news-modal-tags">
-                  {modalContent.tags.split(',').map((tag, index) => (
-                    <span key={index} className="news-modal-tag">
-                      {tag.trim()}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <ReaderModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          article={modalContent}
+          newsItem={modalContent}
+        />
       )}
     </div>
   );

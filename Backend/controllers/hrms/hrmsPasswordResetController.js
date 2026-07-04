@@ -1,12 +1,12 @@
 /**
  * HRMS Password Reset Controller
- * Handles forgot-password for staffinn-hrms-employee-users table only.
- * Reuses the same passwordResetService (OTP + token flow) but looks up
- * the user in the HRMS table instead of the main staffinn-users table.
+ * Handles forgot-password for both:
+ *   - staffinn-hrms-users (HRMS admin/recruiter accounts)
+ *   - staffinn-hrms-employee-users (employee accounts)
  */
 
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { DynamoDBDocumentClient, QueryCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const bcrypt = require('bcryptjs');
 const passwordResetService = require('../../services/passwordResetService');
 const emailService = require('../../services/emailService');
@@ -14,25 +14,59 @@ const emailService = require('../../services/emailService');
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-south-1' });
 const docClient = DynamoDBDocumentClient.from(client);
 
-const HRMS_USERS_TABLE = 'staffinn-hrms-employee-users';
+const HRMS_ADMIN_TABLE    = 'staffinn-hrms-users';           // admin/recruiter accounts
+const HRMS_EMPLOYEE_TABLE = 'staffinn-hrms-employee-users';  // employee accounts
 
 /**
- * Look up an HRMS user by email via the email-index GSI.
- * Returns the user item or null.
+ * Look up a user by email in both HRMS tables.
+ * Returns { user, table } or null.
  */
 const findHrmsUserByEmail = async (email) => {
+  const normalized = email.toLowerCase().trim();
+
+  // 1. Check admin table first (staffinn-hrms-users) via scan
   try {
-    const result = await docClient.send(new QueryCommand({
-      TableName: HRMS_USERS_TABLE,
-      IndexName: 'email-index',
-      KeyConditionExpression: 'email = :email',
-      ExpressionAttributeValues: { ':email': email.toLowerCase().trim() }
+    const r1 = await docClient.send(new ScanCommand({
+      TableName: HRMS_ADMIN_TABLE,
+      FilterExpression: 'email = :e',
+      ExpressionAttributeValues: { ':e': normalized }
     }));
-    return (result.Items && result.Items.length > 0) ? result.Items[0] : null;
+    if (r1.Items && r1.Items.length > 0) {
+      return { user: r1.Items[0], table: HRMS_ADMIN_TABLE };
+    }
   } catch (err) {
-    console.error('findHrmsUserByEmail error:', err);
-    return null;
+    console.error('findHrmsUserByEmail (admin table) error:', err.message);
   }
+
+  // 2. Check employee table (staffinn-hrms-employee-users)
+  try {
+    // Try GSI first
+    const r2 = await docClient.send(new QueryCommand({
+      TableName: HRMS_EMPLOYEE_TABLE,
+      IndexName: 'email-index',
+      KeyConditionExpression: 'email = :e',
+      ExpressionAttributeValues: { ':e': normalized }
+    }));
+    if (r2.Items && r2.Items.length > 0) {
+      return { user: r2.Items[0], table: HRMS_EMPLOYEE_TABLE };
+    }
+  } catch (err) {
+    // GSI not available — fallback to scan
+    try {
+      const r3 = await docClient.send(new ScanCommand({
+        TableName: HRMS_EMPLOYEE_TABLE,
+        FilterExpression: 'email = :e',
+        ExpressionAttributeValues: { ':e': normalized }
+      }));
+      if (r3.Items && r3.Items.length > 0) {
+        return { user: r3.Items[0], table: HRMS_EMPLOYEE_TABLE };
+      }
+    } catch (err2) {
+      console.error('findHrmsUserByEmail (employee table) error:', err2.message);
+    }
+  }
+
+  return null;
 };
 
 /**
@@ -56,10 +90,12 @@ const sendOTP = async (req, res) => {
       expiresIn: 600
     });
 
-    const user = await findHrmsUserByEmail(normalizedEmail);
-    if (!user) return genericOk();
+    const found = await findHrmsUserByEmail(normalizedEmail);
+    if (!found) return genericOk();
 
-    if (!user.isActive) {
+    const { user } = found;
+
+    if (user.isActive === false) {
       // Still return generic — don't leak account status
       return genericOk();
     }
@@ -120,8 +156,8 @@ const verifyOTP = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Confirm the user exists in HRMS table (extra safety)
-    const user = await findHrmsUserByEmail(normalizedEmail);
-    if (!user) {
+    const found = await findHrmsUserByEmail(normalizedEmail);
+    if (!found) {
       return res.status(400).json({ success: false, message: 'No account found with this email.' });
     }
 
@@ -166,24 +202,52 @@ const resetPassword = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Confirm HRMS user exists
-    const user = await findHrmsUserByEmail(normalizedEmail);
-    if (!user) {
+    const found = await findHrmsUserByEmail(normalizedEmail);
+    if (!found) {
       return res.status(400).json({ success: false, message: 'No account found with this email.' });
     }
+    const { user, table: userTable } = found;
 
-    // Verify reset token and get the validated reset request
-    const result = await passwordResetService.resetPasswordWithToken(normalizedEmail, resetToken, newPassword);
+    // Manually verify reset token directly (bypass passwordResetService which checks staffinn-users)
+    const { findLatestResetRequest } = require('../../services/passwordResetService');
+    const resetRequest = await findLatestResetRequest(normalizedEmail);
 
-    if (!result.success) {
-      return res.status(400).json(result);
+    if (!resetRequest) {
+      return res.status(400).json({ success: false, message: 'Invalid reset request. Please start over.' });
+    }
+    if (!resetRequest.verified) {
+      return res.status(400).json({ success: false, message: 'OTP not verified. Please verify OTP first.' });
+    }
+    if (resetRequest.used) {
+      return res.status(400).json({ success: false, message: 'Reset token already used. Please request a new one.' });
     }
 
-    // The passwordResetService.resetPasswordWithToken writes to DYNAMODB_USERS_TABLE (staffinn-users).
-    // For HRMS users we need to update staffinn-hrms-employee-users instead.
+    const now = new Date();
+    if (now > new Date(resetRequest.resetTokenExpiresAt)) {
+      return res.status(400).json({ success: false, message: 'Reset token has expired. Please start over.' });
+    }
+
+    const isValidToken = await bcrypt.compare(resetToken, resetRequest.resetToken);
+    if (!isValidToken) {
+      return res.status(400).json({ success: false, message: 'Invalid reset token. Please start over.' });
+    }
+
+    // Mark reset request as used
+    const dynamoService = require('../../services/dynamoService');
+    await dynamoService.updateItem(
+      'staffinn-password-reset-tokens',
+      { resetId: resetRequest.resetId },
+      {
+        UpdateExpression: 'SET used = :used',
+        ExpressionAttributeValues: { ':used': true }
+      }
+    );
+
+    // Update password in the correct HRMS table
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await docClient.send(new UpdateCommand({
-      TableName: HRMS_USERS_TABLE,
+      TableName: userTable,
       Key: { userId: user.userId },
       UpdateExpression: 'SET password = :pwd, isFirstLogin = :false, updatedAt = :now',
       ExpressionAttributeValues: {

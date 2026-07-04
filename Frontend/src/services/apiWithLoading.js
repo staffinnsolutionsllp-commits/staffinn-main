@@ -16,7 +16,7 @@ const createLoadingWrapper = (service) => {
   const loadingMethods = [
     'login', 'register', 'getProfile', 'updateStaffProfile', 'updateRecruiterProfile',
     'updateInstituteProfile', 'getAllInstitutes', 'getInstituteById', 'getAllRecruiters',
-    'getRecruiterById', 'getAllActiveJobs', 'getTrendingJobs', 'getTodaysJobs', 'getTrendingCourses',
+    'getRecruiterById', 'getAllActiveJobs', 'getTrendingJobs', 'getTrendingCourses',
     'applyForJob', 'followRecruiter', 'unfollowRecruiter', 'addReview', 'getReviews',
     'uploadFiles', 'addStudent', 'getStudents', 'addCourse', 'getCourses',
     'enrollInCourse', 'getCourseContent', 'submitQuiz', 'updateProgress',

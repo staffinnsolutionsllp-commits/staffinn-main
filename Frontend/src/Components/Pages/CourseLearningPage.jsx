@@ -299,11 +299,14 @@ const CourseLearningPage = () => {
       
       if (response.success) {
         setShowPaymentOptionModal(false);
+        const receiptNumber = response.data?.receiptNumber;
+        const receiptMsg = receiptNumber
+          ? `\n\n📄 Receipt Number: ${receiptNumber}\n\nPlease keep this receipt number safe. You will need to show it at the institute during payment verification.`
+          : '';
         alert(
-          'Enrollment request submitted successfully!\n\n' +
-          'The institute has been notified about your enrollment.\n' +
-          'Please visit the institute to complete the payment.\n\n' +
-          'You will receive further instructions from the institute.'
+          'Enrollment request submitted successfully!' +
+          receiptMsg +
+          '\n\nThe institute has been notified about your enrollment.\nPlease visit the institute to complete the payment.'
         );
         // Refresh enrollment status
         await checkEnrollmentStatus();
@@ -338,7 +341,8 @@ const CourseLearningPage = () => {
       handleTakeInlineQuiz(content);
     } else if (content.contentType === 'assignment') {
       setSelectedContent(content);
-      setActiveTab('notes');
+      setCurrentLearningTab('assignments'); // Switch to Assignments tab in enrolled UI
+      setActiveTab('notes');                // Also set for legacy UI
       setSelectedQuiz(null);
       setQuizAnswers({});
       setQuizResults(null);
@@ -349,7 +353,6 @@ const CourseLearningPage = () => {
         console.log('✅ Assignment marked complete:', markResponse);
         
         if (markResponse.success) {
-          // Update progress immediately from response
           setUserProgress(prev => ({
             ...prev,
             completedContent: {
@@ -357,13 +360,17 @@ const CourseLearningPage = () => {
               [content.contentId]: { completedAt: new Date().toISOString(), contentType: 'assignment' }
             }
           }));
-          
-          // Refresh progress from backend
           await fetchUserProgress();
         }
       } catch (error) {
         console.error('Error marking assignment complete:', error);
       }
+    } else if (content.contentType === 'notes') {
+      setSelectedContent(content);
+      setCurrentLearningTab('notes'); // Switch to My Notes tab to show study materials
+      setSelectedQuiz(null);
+      setQuizAnswers({});
+      setQuizResults(null);
     }
   };
 
@@ -498,11 +505,13 @@ const CourseLearningPage = () => {
       
       selectedQuiz.questions?.forEach((question, index) => {
         const userAnswer = quizAnswers[question.questionId];
-        // Use stored correct answer (index) to get the actual correct option text
-        const correctAnswer = typeof question.correctAnswer === 'number' 
-          ? question.options?.[question.correctAnswer] 
-          : question.correctAnswer;
-        const isCorrect = userAnswer === correctAnswer;
+        // Normalize correctAnswer: handle index-stored or string-stored values
+        const storedCorrect = question.correctAnswer;
+        const correctAnswer = typeof storedCorrect === 'number'
+          ? (question.options?.[storedCorrect] || String(storedCorrect))
+          : String(storedCorrect || '').trim();
+        const normalizedUser = String(userAnswer || '').trim();
+        const isCorrect = normalizedUser.length > 0 && normalizedUser === correctAnswer;
         
         if (isCorrect) {
           correctAnswers++;
@@ -604,11 +613,13 @@ const CourseLearningPage = () => {
       
       selectedQuiz.questions?.forEach((question) => {
         const userAnswer = quizAnswers[question.questionId];
-        // Use stored correct answer (index) to get the actual correct option text
-        const correctAnswer = typeof question.correctAnswer === 'number' 
-          ? question.options?.[question.correctAnswer] 
-          : question.correctAnswer;
-        const isCorrect = userAnswer === correctAnswer;
+        // Normalize correctAnswer: handle index-stored or string-stored values
+        const storedCorrect = question.correctAnswer;
+        const correctAnswer = typeof storedCorrect === 'number'
+          ? (question.options?.[storedCorrect] || String(storedCorrect))
+          : String(storedCorrect || '').trim();
+        const normalizedUser = String(userAnswer || '').trim();
+        const isCorrect = normalizedUser.length > 0 && normalizedUser === correctAnswer;
         
         if (isCorrect) {
           correctAnswers++;
@@ -768,11 +779,12 @@ const CourseLearningPage = () => {
     course.modules.forEach(module => {
       if (module.content) {
         module.content.forEach(content => {
-          if (content.contentType === 'assignment' && content.contentUrl) {
+          if ((content.contentType === 'assignment' || content.contentType === 'notes') && content.contentUrl) {
             notes.push({
               id: content.contentId,
               title: content.contentTitle || content.title,
               url: content.contentUrl,
+              type: content.contentType,
               moduleTitle: module.moduleTitle || module.title
             });
           }
@@ -780,6 +792,39 @@ const CourseLearningPage = () => {
       }
     });
     return notes;
+  };
+
+  // Get notes grouped by module for My Notes tab
+  const getCourseNotesByModule = () => {
+    if (!course?.modules) return [];
+    return course.modules
+      .map(module => {
+        const items = (module.content || []).filter(
+          c => (c.contentType === 'notes' || c.contentType === 'assignment') && c.contentUrl
+        ).map(c => ({
+          id: c.contentId,
+          title: c.contentTitle || c.title || 'Untitled',
+          url: c.contentUrl,
+          type: c.contentType,
+        }));
+        return { moduleTitle: module.moduleTitle || module.title || 'Module', items };
+      })
+      .filter(m => m.items.length > 0);
+  };
+
+  // Get file icon and label based on URL/type
+  const getFileIcon = (url, type) => {
+    if (!url) return { icon: '📄', label: 'File' };
+    const lower = url.toLowerCase();
+    if (lower.includes('.pdf')) return { icon: '📕', label: 'PDF' };
+    if (lower.includes('.doc')) return { icon: '📘', label: 'DOC' };
+    if (lower.includes('.ppt')) return { icon: '📙', label: 'PPT' };
+    if (lower.includes('.xls')) return { icon: '📗', label: 'XLS' };
+    if (lower.includes('.zip') || lower.includes('.rar')) return { icon: '🗜️', label: 'Archive' };
+    if (lower.includes('.mp4') || lower.includes('.mov')) return { icon: '🎬', label: 'Video' };
+    if (type === 'notes') return { icon: '📝', label: 'Notes' };
+    if (type === 'assignment') return { icon: '📋', label: 'Assignment' };
+    return { icon: '📄', label: 'File' };
   };
 
   // Helper function to calculate total video duration in minutes
@@ -991,7 +1036,7 @@ const CourseLearningPage = () => {
               position: 'relative', 
               width: '100%', 
               paddingBottom: '56.25%', 
-              background: 'black', 
+              background: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment')) ? '#F8FAFC' : 'black', 
               maxHeight: '70vh' 
             }} data-testid="player-area">
               {selectedContent && selectedContent.contentType === 'video' && selectedContent.contentUrl ? (
@@ -1035,13 +1080,204 @@ const CourseLearningPage = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: 'linear-gradient(to bottom right, #1E293B, #0F172A, #000)',
-                  color: 'rgba(255,255,255,0.5)'
+                  background: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment'))
+                    ? '#F8FAFC'
+                    : 'linear-gradient(to bottom right, #1E293B, #0F172A, #000)',
+                  color: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment'))
+                    ? '#334155'
+                    : 'rgba(255,255,255,0.5)'
                 }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <FaPlay style={{ width: '64px', height: '64px', margin: '0 auto 16px', opacity: 0.3 }} />
-                    <p style={{ fontSize: '18px' }}>Select a lecture to start learning</p>
-                  </div>
+                  {selectedContent && selectedContent.contentType === 'quiz' ? (
+                    /* ── INLINE QUIZ PLAYER ── */
+                    <div style={{ width: '100%', height: '100%', overflowY: 'auto', padding: '32px 40px', background: '#0F172A' }}>
+                      {!quizResults ? (
+                        <div>
+                          <h2 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '8px' }}>{selectedQuiz?.title}</h2>
+                          {selectedQuiz?.description && <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '16px', fontSize: '14px' }}>{selectedQuiz.description}</p>}
+                          <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                            <span style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '9999px', fontSize: '12px' }}>
+                              {selectedQuiz?.questions?.length} Questions
+                            </span>
+                            <span style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '9999px', fontSize: '12px' }}>
+                              Pass: {selectedQuiz?.passingScore}%
+                            </span>
+                            <span style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '9999px', fontSize: '12px' }}>
+                              {selectedQuiz?.timeLimit} min
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            {selectedQuiz?.questions?.map((question, qIdx) => (
+                              <div key={question.questionId || qIdx} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '20px' }}>
+                                <p style={{ fontWeight: '600', marginBottom: '14px', fontSize: '15px' }}>
+                                  Q{qIdx + 1}. {question.question}
+                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                  {question.options?.map((option, oIdx) => {
+                                    const isSelected = quizAnswers[question.questionId] === option;
+                                    return (
+                                      <div
+                                        key={oIdx}
+                                        onClick={() => setQuizAnswers(prev => ({ ...prev, [question.questionId]: option }))}
+                                        style={{
+                                          display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px',
+                                          borderRadius: '8px', cursor: 'pointer',
+                                          background: isSelected ? 'rgba(37,99,235,0.25)' : 'rgba(255,255,255,0.05)',
+                                          border: isSelected ? '2px solid #2563EB' : '2px solid rgba(255,255,255,0.1)',
+                                          transition: 'all 0.15s',
+                                          userSelect: 'none'
+                                        }}
+                                      >
+                                        <div style={{
+                                          width: '20px', height: '20px', borderRadius: '50%', flexShrink: 0,
+                                          border: isSelected ? '2px solid #2563EB' : '2px solid rgba(255,255,255,0.4)',
+                                          background: isSelected ? '#2563EB' : 'transparent',
+                                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        }}>
+                                          {isSelected && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white' }} />}
+                                        </div>
+                                        <span style={{ fontSize: '14px', color: isSelected ? 'white' : 'rgba(255,255,255,0.85)' }}>{option}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ marginTop: '28px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={handleQuizSubmit}
+                              disabled={Object.keys(quizAnswers).length < (selectedQuiz?.questions?.length || 0) || quizSubmitting}
+                              style={{
+                                background: '#2563EB', color: 'white', fontWeight: 'bold',
+                                padding: '12px 28px', borderRadius: '9999px', border: 'none',
+                                cursor: Object.keys(quizAnswers).length < (selectedQuiz?.questions?.length || 0) ? 'not-allowed' : 'pointer',
+                                opacity: Object.keys(quizAnswers).length < (selectedQuiz?.questions?.length || 0) ? 0.5 : 1,
+                                fontSize: '15px'
+                              }}
+                            >
+                              {quizSubmitting ? 'Submitting...' : 'Submit Quiz'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', paddingTop: '40px' }}>
+                          <div style={{ fontSize: '64px', marginBottom: '16px' }}>{quizResults.passed ? '🎉' : '😔'}</div>
+                          <h2 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px' }}>
+                            {quizResults.passed ? 'Quiz Passed!' : 'Quiz Failed'}
+                          </h2>
+                          <div style={{ fontSize: '48px', fontWeight: '900', color: quizResults.passed ? '#10B981' : '#EF4444', marginBottom: '8px' }}>
+                            {quizResults.score}%
+                          </div>
+                          <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: '24px' }}>
+                            {quizResults.correctAnswers} / {quizResults.totalQuestions} correct
+                          </p>
+                          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {!quizResults.passed && (
+                              <button
+                                onClick={() => { setQuizResults(null); setQuizAnswers({}); }}
+                                style={{ background: '#2563EB', color: 'white', padding: '10px 24px', borderRadius: '9999px', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+                              >
+                                Retry Quiz
+                              </button>
+                            )}
+                            <button
+                              onClick={() => { setSelectedContent(null); setSelectedQuiz(null); setQuizAnswers({}); setQuizResults(null); }}
+                              style={{ background: 'rgba(255,255,255,0.1)', color: 'white', padding: '10px 24px', borderRadius: '9999px', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontWeight: '600' }}
+                            >
+                              Continue
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : selectedContent && selectedContent.contentType === 'assignment' ? (
+                    /* ── ASSIGNMENT VIEWER (light bg) ── */
+                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '20px', background: '#F8FAFC' }}>
+                      <div style={{ fontSize: '64px' }}>📄</div>
+                      <h2 style={{ fontSize: '22px', fontWeight: '800', textAlign: 'center', color: '#0F172A' }}>
+                        {selectedContent.contentTitle || selectedContent.title}
+                      </h2>
+                      <p style={{ color: '#64748b', fontSize: '14px', textAlign: 'center' }}>Assignment</p>
+                      {selectedContent.contentUrl ? (
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                          <a
+                            href={selectedContent.contentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              background: '#2563EB', color: 'white', padding: '12px 28px',
+                              borderRadius: '9999px', textDecoration: 'none', fontWeight: '600', fontSize: '15px',
+                              display: 'flex', alignItems: 'center', gap: '8px'
+                            }}
+                          >
+                            <FaFileAlt style={{ width: '16px', height: '16px' }} />
+                            View Assignment
+                          </a>
+                          <a
+                            href={selectedContent.contentUrl}
+                            download
+                            style={{
+                              background: 'white', color: '#0F172A', padding: '12px 28px',
+                              borderRadius: '9999px', textDecoration: 'none', fontWeight: '600', fontSize: '15px',
+                              border: '1px solid #E2E8F0',
+                              display: 'flex', alignItems: 'center', gap: '8px'
+                            }}
+                          >
+                            <FaDownload style={{ width: '16px', height: '16px' }} />
+                            Download
+                          </a>
+                        </div>
+                      ) : (
+                        <p style={{ color: '#94a3b8', fontSize: '14px' }}>No file attached to this assignment.</p>
+                      )}
+                    </div>
+                  ) : selectedContent && selectedContent.contentType === 'notes' ? (
+                    /* ── NOTES VIEWER (light bg) ── */
+                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', gap: '20px', background: '#F8FAFC' }}>
+                      <div style={{ fontSize: '64px' }}>📝</div>
+                      <h2 style={{ fontSize: '22px', fontWeight: '800', textAlign: 'center', color: '#0F172A' }}>
+                        {selectedContent.contentTitle || selectedContent.title}
+                      </h2>
+                      <p style={{ color: '#64748b', fontSize: '14px', textAlign: 'center' }}>Study Material / Notes</p>
+                      {selectedContent.contentUrl ? (
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                          <a
+                            href={selectedContent.contentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              background: '#2563EB', color: 'white', padding: '12px 28px',
+                              borderRadius: '9999px', textDecoration: 'none', fontWeight: '600', fontSize: '15px',
+                              display: 'flex', alignItems: 'center', gap: '8px'
+                            }}
+                          >
+                            <FaFileAlt style={{ width: '16px', height: '16px' }} />
+                            View Notes
+                          </a>
+                          <a
+                            href={selectedContent.contentUrl}
+                            download
+                            style={{
+                              background: 'white', color: '#0F172A', padding: '12px 28px',
+                              borderRadius: '9999px', textDecoration: 'none', fontWeight: '600', fontSize: '15px',
+                              border: '1px solid #E2E8F0',
+                              display: 'flex', alignItems: 'center', gap: '8px'
+                            }}
+                          >
+                            <FaDownload style={{ width: '16px', height: '16px' }} />
+                            Download
+                          </a>
+                        </div>
+                      ) : (
+                        <p style={{ color: '#94a3b8', fontSize: '14px' }}>No file attached to this notes item.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center' }}>
+                      <FaPlay style={{ width: '64px', height: '64px', margin: '0 auto 16px', opacity: 0.3 }} />
+                      <p style={{ fontSize: '18px' }}>Select a lecture to start learning</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1049,8 +1285,8 @@ const CourseLearningPage = () => {
             {/* Lecture Meta Bar */}
             <div style={{
               padding: '20px 40px',
-              borderBottom: '1px solid rgba(255,255,255,0.1)',
-              background: '#0F172A'
+              borderBottom: '1px solid #E2E8F0',
+              background: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment')) ? '#FFFFFF' : '#0F172A'
             }}>
               <div style={{
                 display: 'flex',
@@ -1060,13 +1296,13 @@ const CourseLearningPage = () => {
                 gap: '12px'
               }}>
                 <div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                  <div style={{ fontSize: '12px', color: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment')) ? '#64748b' : 'rgba(255,255,255,0.5)' }}>
                     {selectedContent ? `Module ${course.modules?.findIndex(m => m.content?.some(c => c.contentId === selectedContent.contentId)) + 1 || 1}` : 'Module'}
                   </div>
-                  <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '4px 0', letterSpacing: '-0.025em' }}>
+                  <h1 style={{ fontSize: '22px', fontWeight: '800', margin: '4px 0', letterSpacing: '-0.025em', color: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment')) ? '#0F172A' : 'white' }}>
                     {selectedContent ? (selectedContent.contentTitle || selectedContent.title) : 'Select a lecture'}
                   </h1>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                  <div style={{ fontSize: '12px', color: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment')) ? '#64748b' : 'rgba(255,255,255,0.5)' }}>
                     Lecture {selectedContent ? (course.modules?.reduce((acc, m, idx) => {
                       const contentIdx = m.content?.findIndex(c => c.contentId === selectedContent.contentId);
                       if (contentIdx !== -1) return acc + contentIdx + 1;
@@ -1079,8 +1315,8 @@ const CourseLearningPage = () => {
                     style={{
                       borderRadius: '9999px',
                       background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
+                      border: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment')) ? '1px solid #CBD5E1' : '1px solid rgba(255,255,255,0.2)',
+                      color: (selectedContent && (selectedContent.contentType === 'notes' || selectedContent.contentType === 'assignment')) ? '#334155' : 'white',
                       padding: '8px 16px',
                       display: 'flex',
                       alignItems: 'center',
@@ -1090,6 +1326,12 @@ const CourseLearningPage = () => {
                     }}
                     disabled={!selectedContent}
                     data-testid="prev-btn"
+                    onClick={() => {
+                      if (!selectedContent || !course.modules) return;
+                      const allContent = course.modules.flatMap(m => m.content || []);
+                      const idx = allContent.findIndex(c => c.contentId === selectedContent.contentId);
+                      if (idx > 0) handleContentClick(allContent[idx - 1], 0, 0);
+                    }}
                   >
                     <FaArrowLeft style={{ width: '12px', height: '12px' }} />
                     <span style={{ display: window.innerWidth < 640 ? 'none' : 'inline' }}>Prev</span>
@@ -1134,6 +1376,12 @@ const CourseLearningPage = () => {
                     }}
                     disabled={!selectedContent}
                     data-testid="next-btn"
+                    onClick={() => {
+                      if (!selectedContent || !course.modules) return;
+                      const allContent = course.modules.flatMap(m => m.content || []);
+                      const idx = allContent.findIndex(c => c.contentId === selectedContent.contentId);
+                      if (idx >= 0 && idx < allContent.length - 1) handleContentClick(allContent[idx + 1], 0, 0);
+                    }}
                   >
                     <span style={{ display: window.innerWidth < 640 ? 'none' : 'inline' }}>Next</span>
                     <FaPlay style={{ width: '12px', height: '12px' }} />
@@ -1191,6 +1439,30 @@ const CourseLearningPage = () => {
                   >
                     <FaFileAlt style={{ width: '16px', height: '16px' }} />
                     My Notes
+                  </button>
+                  <button 
+                    onClick={() => setCurrentLearningTab('assignments')}
+                    style={{
+                      paddingBottom: '12px',
+                      paddingLeft: '4px',
+                      paddingRight: '4px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: currentLearningTab === 'assignments' ? '#0F172A' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: currentLearningTab === 'assignments' ? '2px solid #2563EB' : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap'
+                    }}
+                    data-testid="learn-tab-assignments"
+                  >
+                    <span style={{ fontSize: '14px' }}>📋</span>
+                    Assignments
                   </button>
                   <button 
                     onClick={() => setCurrentLearningTab('qa')}
@@ -1267,12 +1539,8 @@ const CourseLearningPage = () => {
               {/* Tab Content - Overview */}
               {currentLearningTab === 'overview' && (
                 <div>
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: window.innerWidth >= 768 ? 'repeat(3, 1fr)' : '1fr', 
-                    gap: '16px', 
-                    marginBottom: '24px' 
-                  }}>
+                  {/* Stats row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth >= 768 ? 'repeat(3, 1fr)' : '1fr', gap: '16px', marginBottom: '28px' }}>
                     <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
                         <FaStar style={{ width: '12px', height: '12px' }} />
@@ -1292,22 +1560,84 @@ const CourseLearningPage = () => {
                     <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
                         <FaBookOpen style={{ width: '12px', height: '12px' }} />
-                        LAST UPDATED
+                        CERTIFICATION
                       </div>
-                      <div style={{ fontSize: '22px', fontWeight: '800' }}>March 2025</div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>Hindi, English</div>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>{course.certification || 'Certificate'}</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>Upon completion</div>
                     </div>
                   </div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>By the numbers</h3>
-                  <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.7', marginBottom: '24px' }}>{course.description}</p>
-                  <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>Instructor</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
-                      {course.instructor?.charAt(0) || 'I'}
+
+                  {/* What You'll Learn */}
+                  {course.learningObjectives && course.learningObjectives.length > 0 && (
+                    <div style={{ marginBottom: '28px', background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: '12px', padding: '20px' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '14px', color: '#15803D', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        ✅ What You'll Learn
+                      </h3>
+                      <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth >= 640 ? '1fr 1fr' : '1fr', gap: '8px' }}>
+                        {course.learningObjectives.map((point, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '14px', color: '#166534' }}>
+                            <span style={{ marginTop: '2px', flexShrink: 0 }}>•</span>
+                            <span>{point}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 'bold' }}>{course.instructor}</div>
-                      <div style={{ fontSize: '13px', color: '#64748b' }}>Course Instructor</div>
+                  )}
+
+                  {/* Description */}
+                  {course.description && (
+                    <div style={{ marginBottom: '24px' }}>
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '10px', color: '#0F172A' }}>About This Course</h3>
+                      <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.8' }}>{course.description}</p>
+                    </div>
+                  )}
+
+                  {/* Prerequisites */}
+                  {course.prerequisites && (
+                    <div style={{ marginBottom: '24px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '12px', padding: '16px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '10px', color: '#C2410C' }}>📋 Prerequisites</h3>
+                      <p style={{ fontSize: '14px', color: '#7C2D12', lineHeight: '1.7' }}>{course.prerequisites}</p>
+                    </div>
+                  )}
+
+                  {/* Syllabus */}
+                  {course.syllabusFileUrl && (
+                    <div style={{ marginBottom: '24px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '10px', color: '#0F172A' }}>📄 Syllabus</h3>
+                      <a
+                        href={course.syllabusFileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '8px',
+                          padding: '10px 18px', background: '#EFF6FF', border: '1px solid #93C5FD',
+                          borderRadius: '8px', color: '#1D4ED8', fontWeight: '600', fontSize: '14px',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        <FaDownload style={{ width: '14px', height: '14px' }} />
+                        {course.syllabusFileName || 'Download Syllabus'}
+                      </a>
+                    </div>
+                  )}
+                  {!course.syllabusFileUrl && course.syllabusOverview && (
+                    <div style={{ marginBottom: '24px' }}>
+                      <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '10px', color: '#0F172A' }}>📄 Syllabus Overview</h3>
+                      <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.7' }}>{course.syllabusOverview}</p>
+                    </div>
+                  )}
+
+                  {/* Instructor */}
+                  <div style={{ marginBottom: '8px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '12px', color: '#0F172A' }}>Instructor</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '18px', flexShrink: 0 }}>
+                        {course.instructor?.charAt(0)?.toUpperCase() || 'I'}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '700', fontSize: '15px' }}>{course.instructor}</div>
+                        <div style={{ fontSize: '13px', color: '#64748b' }}>{course.category} · {course.duration}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1316,28 +1646,150 @@ const CourseLearningPage = () => {
               {/* Tab Content - My Notes */}
               {currentLearningTab === 'notes' && (
                 <div data-testid="mynotes-tab">
-                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                    <label style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', display: 'block' }}>
-                      Note for: {selectedContent ? (selectedContent.contentTitle || selectedContent.title) : 'Select a lecture'}
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="Type your note here... (e.g., '3NF removes transitive dependencies')"
-                      style={{ width: '100%', borderRadius: '8px', border: '1px solid #E2E8F0', padding: '12px', fontSize: '14px', resize: 'none', outline: 'none' }}
-                      data-testid="note-input"
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                      <button 
-                        style={{ borderRadius: '9999px', background: '#2563EB', color: 'white', padding: '8px 16px', fontSize: '14px', fontWeight: '600', border: 'none', cursor: 'pointer' }}
-                        data-testid="save-note-btn"
-                      >
-                        Save note
-                      </button>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '48px 0', fontSize: '13px', color: '#64748b' }}>
-                    You haven't taken any notes yet.
-                  </div>
+                  {(() => {
+                    const notesByModule = getCourseNotesByModule();
+                    if (notesByModule.length === 0) {
+                      return (
+                        <div style={{ textAlign: 'center', padding: '48px 16px' }}>
+                          <div style={{ fontSize: '40px', marginBottom: '12px' }}>📂</div>
+                          <div style={{ fontWeight: '700', fontSize: '15px', color: '#0F172A', marginBottom: '6px' }}>No study materials yet</div>
+                          <p style={{ fontSize: '13px', color: '#64748b' }}>
+                            Notes and resources uploaded by the instructor will appear here, organized by module.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return notesByModule.map((moduleGroup, mIdx) => (
+                      <div key={mIdx} style={{ marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                          <div style={{ width: '4px', height: '18px', background: '#2563EB', borderRadius: '2px' }} />
+                          <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                            {moduleGroup.moduleTitle}
+                          </h4>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {moduleGroup.items.map((item) => {
+                            const { icon, label } = getFileIcon(item.url, item.type);
+                            const fileName = item.url ? item.url.split('/').pop().split('?')[0] : item.title;
+                            return (
+                              <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '10px', background: '#FAFBFF' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                                    {icon}
+                                  </div>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: '600', fontSize: '13px', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
+                                      {item.title}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{label}</div>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                  <a
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', padding: '6px 12px', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', textDecoration: 'none', color: '#0F172A' }}
+                                  >
+                                    View
+                                  </a>
+                                  <a
+                                    href={item.url}
+                                    download={fileName}
+                                    style={{ borderRadius: '8px', background: '#2563EB', color: 'white', padding: '6px 12px', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', textDecoration: 'none' }}
+                                  >
+                                    ↓
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
+
+              {/* Tab Content - Assignments */}
+              {currentLearningTab === 'assignments' && (
+                <div data-testid="assignments-tab">
+                  {(() => {
+                    // Group assignments by module
+                    const assignmentsByModule = (course?.modules || [])
+                      .map(module => {
+                        const items = (module.content || []).filter(
+                          c => c.contentType === 'assignment' && c.contentUrl
+                        ).map(c => ({
+                          id: c.contentId,
+                          title: c.contentTitle || c.title || 'Assignment',
+                          url: c.contentUrl,
+                        }));
+                        return { moduleTitle: module.moduleTitle || module.title || 'Module', items };
+                      })
+                      .filter(m => m.items.length > 0);
+
+                    if (assignmentsByModule.length === 0) {
+                      return (
+                        <div style={{ textAlign: 'center', padding: '48px 16px' }}>
+                          <div style={{ fontSize: '40px', marginBottom: '12px' }}>📋</div>
+                          <div style={{ fontWeight: '700', fontSize: '15px', color: '#0F172A', marginBottom: '6px' }}>No assignments yet</div>
+                          <p style={{ fontSize: '13px', color: '#64748b' }}>
+                            Assignments uploaded by the instructor will appear here, organized by module.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return assignmentsByModule.map((moduleGroup, mIdx) => (
+                      <div key={mIdx} style={{ marginBottom: '28px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                          <div style={{ width: '4px', height: '18px', background: '#2563EB', borderRadius: '2px' }} />
+                          <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                            {moduleGroup.moduleTitle}
+                          </h4>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {moduleGroup.items.map((item) => {
+                            const { icon, label } = getFileIcon(item.url, 'assignment');
+                            const fileName = item.url ? item.url.split('/').pop().split('?')[0] : item.title;
+                            return (
+                              <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#FAFBFF' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
+                                    {icon}
+                                  </div>
+                                  <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontWeight: '600', fontSize: '14px', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
+                                      {item.title}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>{label} • Assignment</div>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                  <a
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', padding: '8px 14px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', textDecoration: 'none', color: '#0F172A' }}
+                                  >
+                                    View
+                                  </a>
+                                  <a
+                                    href={item.url}
+                                    download={fileName}
+                                    style={{ borderRadius: '8px', background: '#2563EB', color: 'white', padding: '8px 14px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', textDecoration: 'none' }}
+                                  >
+                                    ↓ Download
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()}
                 </div>
               )}
 
@@ -1358,29 +1810,89 @@ const CourseLearningPage = () => {
               {/* Tab Content - Resources */}
               {currentLearningTab === 'resources' && (
                 <div>
-                  {getCourseNotes().length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {getCourseNotes().map(note => (
-                        <div key={note.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '1px solid #E2E8F0', borderRadius: '12px', transition: 'border-color 0.2s' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <FaFileAlt style={{ width: '20px', height: '20px', color: '#2563EB' }} />
-                            </div>
-                            <div>
-                              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{note.title}</div>
-                              <div style={{ fontSize: '12px', color: '#64748b' }}>{note.moduleTitle}</div>
-                            </div>
+                  {/* Syllabus file */}
+                  {course.syllabusFileUrl && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                        Syllabus
+                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '1px solid #E2E8F0', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <FaFileAlt style={{ width: '20px', height: '20px', color: '#2563EB' }} />
                           </div>
-                          <button style={{ borderRadius: '9999px', border: '1px solid #cbd5e1', background: 'transparent', padding: '8px 16px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                          <div>
+                            <div style={{ fontWeight: '600', fontSize: '14px' }}>{course.syllabusFileName || 'Course Syllabus'}</div>
+                            <div style={{ fontSize: '12px', color: '#64748b' }}>Syllabus document</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <a
+                            href={course.syllabusFileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ borderRadius: '9999px', border: '1px solid #cbd5e1', background: 'transparent', padding: '8px 14px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', textDecoration: 'none', color: '#0F172A' }}
+                          >
+                            View
+                          </a>
+                          <a
+                            href={course.syllabusFileUrl}
+                            download={course.syllabusFileName || 'syllabus'}
+                            style={{ borderRadius: '9999px', border: '1px solid #cbd5e1', background: 'transparent', padding: '8px 14px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', textDecoration: 'none', color: '#0F172A' }}
+                          >
                             <FaDownload style={{ width: '12px', height: '12px' }} />
                             Download
-                          </button>
+                          </a>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  ) : (
+                  )}
+
+                  {/* Assignment files */}
+                  {getCourseNotes().length > 0 && (
+                    <div>
+                      <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                        Assignments & Files
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {getCourseNotes().map(note => (
+                          <div key={note.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '1px solid #E2E8F0', borderRadius: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(37,99,235,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FaFileAlt style={{ width: '20px', height: '20px', color: '#2563EB' }} />
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: '600', fontSize: '14px' }}>{note.title}</div>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>{note.moduleTitle}</div>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <a
+                                href={note.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ borderRadius: '9999px', border: '1px solid #cbd5e1', background: 'transparent', padding: '8px 14px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', textDecoration: 'none', color: '#0F172A' }}
+                              >
+                                View
+                              </a>
+                              <a
+                                href={note.url}
+                                download
+                                style={{ borderRadius: '9999px', border: '1px solid #cbd5e1', background: 'transparent', padding: '8px 14px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', textDecoration: 'none', color: '#0F172A' }}
+                              >
+                                <FaDownload style={{ width: '12px', height: '12px' }} />
+                                Download
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!course.syllabusFileUrl && getCourseNotes().length === 0 && (
                     <div style={{ textAlign: 'center', padding: '48px 0', fontSize: '13px', color: '#64748b' }}>
-                      No downloadable resources available.
+                      No downloadable resources available for this course.
                     </div>
                   )}
                 </div>
@@ -1391,17 +1903,16 @@ const CourseLearningPage = () => {
                 <div style={{ border: '1px solid #E2E8F0', borderRadius: '12px', padding: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
-                      {course.instructor?.charAt(0) || 'I'}
+                      {course.instructor?.charAt(0)?.toUpperCase() || 'I'}
                     </div>
                     <div>
                       <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{course.instructor}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>Posted 2 days ago</div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>Course Instructor</div>
                     </div>
                   </div>
-                  <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Welcome to the course!</h4>
+                  <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>Welcome to {course.courseName || course.name}!</h4>
                   <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.7' }}>
-                    Welcome to {course.courseName || course.name}! I'm excited to have you here. 
-                    Make sure to complete all lectures and quizzes to get the most out of this course.
+                    Thank you for enrolling in this course. Work through each module in order, complete all lectures and quizzes, and reach out if you have any questions. Good luck!
                   </p>
                 </div>
               )}
@@ -1496,7 +2007,15 @@ const CourseLearningPage = () => {
                                   {content.contentTitle || content.title}
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#64748b' }}>
-                                  <FaPlay style={{ width: '12px', height: '12px' }} />
+                                  {content.contentType === 'assignment' ? (
+                                    <FaFileAlt style={{ width: '12px', height: '12px' }} />
+                                  ) : content.contentType === 'notes' ? (
+                                    <span style={{ fontSize: '12px', lineHeight: 1 }}>📝</span>
+                                  ) : content.contentType === 'quiz' ? (
+                                    <span style={{ fontSize: '12px', lineHeight: 1 }}>❓</span>
+                                  ) : (
+                                    <FaPlay style={{ width: '12px', height: '12px' }} />
+                                  )}
                                   <span style={{ textTransform: 'capitalize' }}>{content.contentType}</span>
                                   {content.contentType === 'video' && content.durationMinutes > 0 && (
                                     <>
@@ -1512,6 +2031,53 @@ const CourseLearningPage = () => {
                             </button>
                           );
                         })}
+
+                        {/* Module-level Quiz in sidebar */}
+                        {module.quiz && (() => {
+                          const quizContentId = `module-quiz-${module.quiz.quizId}`;
+                          const isCompleted = isContentCompleted(module.quiz.quizId, 'quiz');
+                          const isCurrent = selectedContent?.contentId === quizContentId;
+                          return (
+                            <button
+                              key={quizContentId}
+                              onClick={() => !isCompleted && handleTakeQuiz(module.quiz)}
+                              style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '12px',
+                                padding: '12px 16px',
+                                textAlign: 'left',
+                                background: isCurrent ? '#F5F3FF' : 'transparent',
+                                borderLeft: isCurrent ? '4px solid #7C3AED' : '4px solid transparent',
+                                border: 'none',
+                                cursor: isCompleted ? 'default' : 'pointer',
+                                transition: 'background 0.2s',
+                                opacity: isCompleted ? 0.7 : 1
+                              }}
+                              onMouseEnter={(e) => !isCurrent && !isCompleted && (e.currentTarget.style.background = '#EDE9FE')}
+                              onMouseLeave={(e) => !isCurrent && (e.currentTarget.style.background = 'transparent')}
+                              data-testid={`sb-quiz-${module.quiz.quizId}`}
+                            >
+                              {isCompleted ? (
+                                <FaCheckCircle style={{ width: '16px', height: '16px', color: '#10B981', marginTop: '2px', flexShrink: 0 }} />
+                              ) : (
+                                <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#7C3AED', color: 'white', fontSize: '9px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px', flexShrink: 0 }}>Q</span>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '13px', fontWeight: isCurrent ? 'bold' : 'normal', color: isCurrent ? '#0F172A' : '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {module.quiz.title || `Module ${moduleIndex + 1} Quiz`}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#7C3AED' }}>
+                                  <span>Quiz</span>
+                                  <span>·</span>
+                                  <span>{module.quiz.questions?.length || 0} questions</span>
+                                  {isCompleted && <span style={{ color: '#10B981' }}>· ✓ Passed</span>}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -1576,10 +2142,18 @@ const CourseLearningPage = () => {
           <div className="what-you-learn">
             <h3>What You'll Learn</h3>
             <div className="learning-points">
-              <div className="point">Master the fundamentals of {course.category || 'Database Management'}</div>
-              <div className="point">Build real-world projects</div>
-              <div className="point">Get hands-on experience</div>
-              <div className="point">Earn a certificate of completion</div>
+              {course.learningObjectives && course.learningObjectives.length > 0 ? (
+                course.learningObjectives.map((point, index) => (
+                  <div key={index} className="point">{point}</div>
+                ))
+              ) : (
+                <>
+                  <div className="point">Master the fundamentals of {course.category || 'this subject'}</div>
+                  <div className="point">Build real-world projects</div>
+                  <div className="point">Get hands-on experience</div>
+                  <div className="point">Earn a certificate of completion</div>
+                </>
+              )}
             </div>
           </div>
 
@@ -1696,7 +2270,7 @@ const CourseLearningPage = () => {
                           return (
                             <div key={content.contentId} className={`content-item ${selectedContent?.contentId === content.contentId ? 'active' : ''} ${!enrollmentStatus?.enrolled ? 'locked' : ''} ${isQuizLocked ? 'quiz-locked' : ''}`} onClick={() => !isQuizLocked && handleContentClick(content, moduleIndex, contentIndex)}>
                               <div className={`content-icon ${content.contentType === 'quiz' ? 'quiz-icon' : ''} ${isCompleted ? 'completed' : ''}`}>
-                                {!enrollmentStatus?.enrolled ? <FaLock /> : isCompleted ? <FaCheck className="completed" /> : content.contentType === 'video' ? <FaPlay /> : content.contentType === 'quiz' ? <span>Q</span> : content.contentType === 'assignment' ? <span>📄</span> : <FaPlay />}
+                                {!enrollmentStatus?.enrolled ? <FaLock /> : isCompleted ? <FaCheck className="completed" /> : content.contentType === 'video' ? <FaPlay /> : content.contentType === 'quiz' ? <span>Q</span> : content.contentType === 'assignment' ? <span>📄</span> : content.contentType === 'notes' ? <span>📝</span> : <FaPlay />}
                               </div>
                               <div className="content-info">
                                 <span className="content-title">{content.contentTitle || content.title}</span>
@@ -1843,20 +2417,20 @@ const CourseLearningPage = () => {
                             <h4>Question {index + 1}</h4>
                             <p>{question.question}</p>
                             <div className="question-options-inline">
-                              {question.options?.map((option, optionIndex) => (
-                                <label key={optionIndex} className="option-label-inline">
-                                  <input
-                                    type="radio"
-                                    name={question.questionId}
-                                    value={option}
-                                    onChange={(e) => setQuizAnswers(prev => ({
-                                      ...prev,
-                                      [question.questionId]: e.target.value
-                                    }))}
-                                  />
-                                  <span>{option}</span>
-                                </label>
-                              ))}
+                              {question.options?.map((option, optionIndex) => {
+                                const isSelected = quizAnswers[question.questionId] === option;
+                                return (
+                                  <div
+                                    key={optionIndex}
+                                    className={`option-label-inline${isSelected ? ' selected' : ''}`}
+                                    onClick={() => setQuizAnswers(prev => ({ ...prev, [question.questionId]: option }))}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <span className="option-indicator">{isSelected ? '●' : '○'}</span>
+                                    <span>{option}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         ))}
@@ -1963,45 +2537,69 @@ const CourseLearningPage = () => {
               <div className="video-container">
                 <div className="notes-container">
                   <div className="notes-header">
-                    <h2>Course Notes</h2>
-                    <p>Download and view course materials</p>
+                    <h2>Course Study Materials</h2>
+                    <p>Module-wise notes and resources</p>
                   </div>
-                  <div className="notes-list">
-                    {getCourseNotes().length > 0 ? (
-                      getCourseNotes().map(note => (
-                        <div key={note.id} className="note-item">
-                          <div className="note-info">
-                            <h3>{note.title}</h3>
-                            <p>From: {note.moduleTitle}</p>
-                          </div>
-                          <div className="note-actions">
-                            <button 
-                              className="view-note-btn"
-                              onClick={() => window.open(note.url, '_blank')}
-                            >
-                              View
-                            </button>
-                            <a 
-                              href={note.url}
-                              download
-                              className="download-note-btn"
-                            >
-                              Download
-                            </a>
-                          </div>
+                  {(() => {
+                    const notesByModule = getCourseNotesByModule();
+                    if (notesByModule.length === 0) {
+                      return (
+                        <div className="no-notes" style={{ textAlign: 'center', padding: '40px 16px' }}>
+                          <div style={{ fontSize: '36px', marginBottom: '10px' }}>📂</div>
+                          <p>No study materials available for this course yet.</p>
                         </div>
-                      ))
-                    ) : (
-                      <div className="no-notes">
-                        <p>No notes available for this course.</p>
+                      );
+                    }
+                    return (
+                      <div className="notes-list">
+                        {notesByModule.map((moduleGroup, mIdx) => (
+                          <div key={mIdx} style={{ marginBottom: '20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                              <div style={{ width: '4px', height: '16px', background: '#2563EB', borderRadius: '2px' }} />
+                              <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                                {moduleGroup.moduleTitle}
+                              </h4>
+                            </div>
+                            {moduleGroup.items.map((item) => {
+                              const { icon, label } = getFileIcon(item.url, item.type);
+                              const fileName = item.url ? item.url.split('/').pop().split('?')[0] : item.title;
+                              return (
+                                <div key={item.id} className="note-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '10px', marginBottom: '8px', background: '#FAFBFF' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span style={{ fontSize: '20px' }}>{icon}</span>
+                                    <div>
+                                      <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#0F172A' }}>{item.title}</h3>
+                                      <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>{label}</p>
+                                    </div>
+                                  </div>
+                                  <div className="note-actions">
+                                    <button
+                                      className="view-note-btn"
+                                      onClick={() => window.open(item.url, '_blank')}
+                                    >
+                                      View
+                                    </button>
+                                    <a
+                                      href={item.url}
+                                      download={fileName}
+                                      className="download-note-btn"
+                                    >
+                                      Download
+                                    </a>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="video-info">
-                <h2>Course Notes</h2>
-                <p>{getCourseNotes().length} notes available</p>
+                <h2>Course Study Materials</h2>
+                <p>{getCourseNotes().length} resource{getCourseNotes().length !== 1 ? 's' : ''} available</p>
               </div>
             </div>
           ) : null}
@@ -2016,9 +2614,16 @@ const CourseLearningPage = () => {
             </button>
             <button 
               className={`tab ${activeTab === 'notes' ? 'active' : ''}`}
-              onClick={() => setActiveTab('notes')}
+              onClick={() => {
+                if (!enrollmentStatus?.enrolled) {
+                  alert('Please enroll in this course to access Notes.');
+                  return;
+                }
+                setActiveTab('notes');
+              }}
+              style={{ opacity: enrollmentStatus?.enrolled ? 1 : 0.5, cursor: enrollmentStatus?.enrolled ? 'pointer' : 'not-allowed' }}
             >
-              Notes
+              Notes {!enrollmentStatus?.enrolled && '🔒'}
             </button>
             <button 
               className={`tab ${activeTab === 'reviews' ? 'active' : ''}`}
@@ -2043,7 +2648,35 @@ const CourseLearningPage = () => {
                 <h4>About This Course</h4>
                 <p>{course.description}</p>
                 
-                {course.syllabusOverview && (
+                {/* Syllabus file download */}
+                {course.syllabusFileUrl && (
+                  <div>
+                    <h4>Syllabus</h4>
+                    <a
+                      href={course.syllabusFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 16px',
+                        background: '#eff6ff',
+                        border: '1px solid #93c5fd',
+                        borderRadius: '8px',
+                        color: '#1d4ed8',
+                        fontWeight: '500',
+                        fontSize: '14px',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      📄 {course.syllabusFileName || 'Download Syllabus'}
+                    </a>
+                  </div>
+                )}
+
+                {/* Fallback: plain text syllabus (for old courses) */}
+                {!course.syllabusFileUrl && course.syllabusOverview && (
                   <div>
                     <h4>Syllabus Overview</h4>
                     <p>{course.syllabusOverview}</p>
@@ -2064,38 +2697,80 @@ const CourseLearningPage = () => {
             
             {activeTab === 'notes' && (
               <div className="notes-tab">
-                <h3>Course Notes</h3>
-                <div className="notes-list">
-                  {getCourseNotes().length > 0 ? (
-                    getCourseNotes().map(note => (
-                      <div key={note.id} className="note-item">
-                        <div className="note-info">
-                          <h4>{note.title}</h4>
-                          <p>From: {note.moduleTitle}</p>
+                {!enrollmentStatus?.enrolled ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '48px 24px',
+                    border: '2px dashed #e2e8f0',
+                    borderRadius: '12px',
+                    background: '#f8fafc'
+                  }}>
+                    <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</div>
+                    <h3 style={{ color: '#1e293b', marginBottom: '8px' }}>Notes are locked</h3>
+                    <p style={{ color: '#64748b', fontSize: '14px' }}>
+                      Enroll in this course to access course notes.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h3>Course Study Materials</h3>
+                    {(() => {
+                      const notesByModule = getCourseNotesByModule();
+                      if (notesByModule.length === 0) {
+                        return (
+                          <div className="no-notes" style={{ textAlign: 'center', padding: '40px 16px' }}>
+                            <div style={{ fontSize: '36px', marginBottom: '10px' }}>📂</div>
+                            <p style={{ color: '#64748b' }}>No study materials available for this course yet.</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="notes-list">
+                          {notesByModule.map((moduleGroup, mIdx) => (
+                            <div key={mIdx} style={{ marginBottom: '20px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <div style={{ width: '4px', height: '16px', background: '#2563EB', borderRadius: '2px' }} />
+                                <h4 style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                                  {moduleGroup.moduleTitle}
+                                </h4>
+                              </div>
+                              {moduleGroup.items.map((item) => {
+                                const { icon, label } = getFileIcon(item.url, item.type);
+                                const fileName = item.url ? item.url.split('/').pop().split('?')[0] : item.title;
+                                return (
+                                  <div key={item.id} className="note-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '10px', marginBottom: '8px', background: '#FAFBFF' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <span style={{ fontSize: '20px' }}>{icon}</span>
+                                      <div>
+                                        <div style={{ fontWeight: '600', fontSize: '14px', color: '#0F172A' }}>{item.title}</div>
+                                        <div style={{ fontSize: '12px', color: '#94a3b8' }}>{label}</div>
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                      <button
+                                        className="view-note-btn"
+                                        onClick={() => window.open(item.url, '_blank')}
+                                      >
+                                        View
+                                      </button>
+                                      <a
+                                        href={item.url}
+                                        download={fileName}
+                                        className="download-note-btn"
+                                      >
+                                        Download
+                                      </a>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
                         </div>
-                        <div className="note-actions">
-                          <button 
-                            className="view-note-btn"
-                            onClick={() => window.open(note.url, '_blank')}
-                          >
-                            View
-                          </button>
-                          <a 
-                            href={note.url}
-                            download
-                            className="download-note-btn"
-                          >
-                            Download
-                          </a>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="no-notes">
-                      <p>No notes available for this course.</p>
-                    </div>
-                  )}
-                </div>
+                      );
+                    })()}
+                  </>
+                )}
               </div>
             )}
             
@@ -2308,20 +2983,20 @@ const CourseLearningPage = () => {
                         <h4>Question {index + 1}</h4>
                         <p>{question.question}</p>
                         <div className="question-options">
-                          {question.options?.map((option, optionIndex) => (
-                            <label key={optionIndex} className="option-label">
-                              <input
-                                type="radio"
-                                name={question.questionId}
-                                value={option}
-                                onChange={(e) => setQuizAnswers(prev => ({
-                                  ...prev,
-                                  [question.questionId]: e.target.value
-                                }))}
-                              />
-                              <span>{option}</span>
-                            </label>
-                          ))}
+                          {question.options?.map((option, optionIndex) => {
+                            const isSelected = quizAnswers[question.questionId] === option;
+                            return (
+                              <div
+                                key={optionIndex}
+                                className={`option-label${isSelected ? ' selected' : ''}`}
+                                onClick={() => setQuizAnswers(prev => ({ ...prev, [question.questionId]: option }))}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                <span className="option-indicator">{isSelected ? '●' : '○'}</span>
+                                <span>{option}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}

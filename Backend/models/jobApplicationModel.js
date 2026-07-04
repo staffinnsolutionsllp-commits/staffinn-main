@@ -6,24 +6,41 @@ const dynamoService = require('../services/dynamoService');
 const { JOB_APPLICATIONS_TABLE } = require('../config/dynamodb');
 const { v4: uuidv4 } = require('uuid');
 
+// ── 30-second in-memory cache for per-job application lookups ────────────────
+// getJobApplications and getProcessedStudentIds are called on every page load
+// when a recruiter browses Students Applied. Caching for 30s reduces scan RCUs
+// without any visible staleness — student lists don't change second-to-second.
+const _appCache = new Map();
+const _APP_CACHE_TTL = 30 * 1000; // 30 seconds
+
+const _getAppCached = async (key, fetchFn) => {
+  const cached = _appCache.get(key);
+  if (cached && (Date.now() - cached.time) < _APP_CACHE_TTL) return cached.data;
+  const data = await fetchFn();
+  _appCache.set(key, { data, time: Date.now() });
+  return data;
+};
+
+// Invalidate cache entries for a job when an application is created/updated
+const _invalidateJobCache = (jobID) => {
+  for (const key of _appCache.keys()) {
+    if (key.startsWith(`job_${jobID}`)) _appCache.delete(key);
+  }
+};
+
 /**
  * Create job application record
  */
 const createJobApplication = async (applicationData) => {
   try {
     const { studentID, jobID, recruiterID, instituteID, status = 'pending' } = applicationData;
-    
     const applicationRecord = {
-      staffinnjob: `${jobID}_${studentID}`, // Composite key for uniqueness
-      studentID,
-      jobID,
-      recruiterID,
-      instituteID,
-      status,
+      staffinnjob: `${jobID}_${studentID}`,
+      studentID, jobID, recruiterID, instituteID, status,
       timestamp: new Date().toISOString()
     };
-    
     await dynamoService.putItem(JOB_APPLICATIONS_TABLE, applicationRecord);
+    _invalidateJobCache(jobID); // clear cache so next read is fresh
     return applicationRecord;
   } catch (error) {
     console.error('Create job application error:', error);
@@ -37,13 +54,9 @@ const createJobApplication = async (applicationData) => {
 const updateJobApplicationStatus = async (jobID, studentID, status) => {
   try {
     const staffinnjob = `${jobID}_${studentID}`;
-    
-    const updateData = {
-      status,
-      updatedAt: new Date().toISOString()
-    };
-    
+    const updateData = { status, updatedAt: new Date().toISOString() };
     await dynamoService.simpleUpdate(JOB_APPLICATIONS_TABLE, { staffinnjob }, updateData);
+    _invalidateJobCache(jobID); // clear cache so updated status shows immediately
     return updateData;
   } catch (error) {
     console.error('Update job application status error:', error);
@@ -69,66 +82,42 @@ const getJobApplication = async (jobID, studentID) => {
  * Get all applications for a job
  */
 const getJobApplications = async (jobID) => {
-  try {
+  return _getAppCached(`job_${jobID}_all`, async () => {
     const params = {
       FilterExpression: 'jobID = :jobID',
-      ExpressionAttributeValues: {
-        ':jobID': jobID
-      }
+      ExpressionAttributeValues: { ':jobID': jobID }
     };
-    
-    const applications = await dynamoService.scanItems(JOB_APPLICATIONS_TABLE, params);
-    return applications;
-  } catch (error) {
-    console.error('Get job applications error:', error);
-    throw new Error('Failed to get job applications');
-  }
+    return await dynamoService.scanItems(JOB_APPLICATIONS_TABLE, params);
+  });
 };
 
 /**
  * Get hired/rejected student IDs for a job
  */
 const getProcessedStudentIds = async (jobID) => {
-  try {
+  return _getAppCached(`job_${jobID}_processed`, async () => {
     const params = {
       FilterExpression: 'jobID = :jobID AND (#status = :hired OR #status = :rejected)',
-      ExpressionAttributeNames: {
-        '#status': 'status'
-      },
-      ExpressionAttributeValues: {
-        ':jobID': jobID,
-        ':hired': 'hired',
-        ':rejected': 'rejected'
-      }
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: { ':jobID': jobID, ':hired': 'hired', ':rejected': 'rejected' }
     };
-    
     const applications = await dynamoService.scanItems(JOB_APPLICATIONS_TABLE, params);
     return applications.map(app => app.studentID);
-  } catch (error) {
-    console.error('Get processed student IDs error:', error);
-    return [];
-  }
+  });
 };
 
 /**
  * Get applied student IDs for a job by institute
  */
 const getAppliedStudentIds = async (jobID, instituteID) => {
-  try {
+  return _getAppCached(`job_${jobID}_inst_${instituteID}_applied`, async () => {
     const params = {
       FilterExpression: 'jobID = :jobID AND instituteID = :instituteID',
-      ExpressionAttributeValues: {
-        ':jobID': jobID,
-        ':instituteID': instituteID
-      }
+      ExpressionAttributeValues: { ':jobID': jobID, ':instituteID': instituteID }
     };
-    
     const applications = await dynamoService.scanItems(JOB_APPLICATIONS_TABLE, params);
     return applications.map(app => app.studentID);
-  } catch (error) {
-    console.error('Get applied student IDs error:', error);
-    return [];
-  }
+  });
 };
 
 /**

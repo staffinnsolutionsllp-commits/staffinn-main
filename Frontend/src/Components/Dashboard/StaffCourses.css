@@ -4,22 +4,26 @@
   margin: 0 auto;
 }
 
-.page-header {
+.staff-courses-container .page-header {
   margin-bottom: 30px;
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  padding: 24px 28px !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.2);
+  text-align: left !important;
 }
 
-.page-title {
+.staff-courses-container .page-title {
   font-size: 2rem;
-  color: #333;
-  margin-bottom: 10px;
+  color: #ffffff !important;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
 }
 
-.page-subtitle {
-  color: #666;
-  font-size: 1.1rem;
+.staff-courses-container .page-subtitle {
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 1rem;
 }
 
 .loading-spinner {
@@ -956,4 +960,106 @@
     width: 100%;
     max-height: 300px;
   }
+}
+
+
+/* ── Mode Filter Bar ── */
+.sc-filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.sc-filter-btn {
+  padding: 7px 18px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+}
+
+.sc-filter-btn:hover {
+  border-color: #4863f7;
+  color: #4863f7;
+}
+
+.sc-filter-btn--active {
+  border-color: #4863f7;
+  background: #4863f7;
+  color: #fff;
+}
+
+/* ── Mode badge on card ── */
+.sc-mode-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.sc-mode-badge--online {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.sc-mode-badge--campus {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* ── Pending payment banner ── */
+.sc-pending-banner {
+  background: linear-gradient(90deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px 8px 0 0;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+/* ── Receipt number box ── */
+.sc-receipt-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin: 10px 0;
+}
+
+.sc-receipt-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #3b82f6;
+  white-space: nowrap;
+}
+
+.sc-receipt-value {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #1e40af;
+  letter-spacing: 0.04em;
+  word-break: break-all;
+}
+
+/* ── Pending action button ── */
+.sc-btn-pending {
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  font-size: 0.82rem !important;
 }

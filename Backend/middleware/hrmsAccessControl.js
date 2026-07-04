@@ -91,7 +91,8 @@ const validateHRMSAccess = (req, res, next) => {
     req.path === '/register' ||
     req.path === '/profile' ||
     req.path.startsWith('/check-recruiter') ||
-    req.path.startsWith('/forgot-password')
+    req.path.startsWith('/forgot-password') ||
+    req.path.startsWith('/v2/')
   ) {
     return next();
   }

@@ -12,6 +12,7 @@ import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import { AuthContext } from '../../context/AuthContext';
 import ChatButton from '../Messages/ChatButton';
 import { FaComments, FaEnvelope, FaWhatsapp, FaSearch, FaBriefcase, FaFileAlt, FaCheckCircle, FaRocket, FaShieldAlt } from 'react-icons/fa';
+import { FaLinkedin, FaXTwitter, FaInstagram, FaFacebook, FaYoutube, FaGithub, FaGlobe } from 'react-icons/fa6';
 
 function Home({ isLoggedIn, onShowLogin }) {
    const { user } = useContext(AuthContext);
@@ -126,28 +127,9 @@ function Home({ isLoggedIn, onShowLogin }) {
            );
            
            if (response.data.success && response.data.data.images && response.data.data.images.length > 0) {
-               console.log('✅ Hero images loaded:', response.data.data.images.length);
-               console.log('🖼️ Images data:', response.data.data.images);
-               
-               // Test if images are accessible
-               response.data.data.images.forEach((image, index) => {
-                   console.log(`🔍 Testing image ${index + 1}:`, image.url);
-                   
-                   // Create a test image to verify accessibility
-                   const testImg = new Image();
-                   testImg.onload = () => {
-                       console.log(`✅ Image ${index + 1} is accessible:`, image.url);
-                   };
-                   testImg.onerror = () => {
-                       console.error(`❌ Image ${index + 1} failed to load:`, image.url);
-                   };
-                   testImg.src = image.url;
-               });
-               
                setHeroImages(response.data.data.images);
                setCurrentImageIndex(0); // Reset to first image
            } else {
-               console.log('⚠️ No hero images found, using default');
                setHeroImages([]);
                setCurrentImageIndex(0);
            }
@@ -161,21 +143,15 @@ function Home({ isLoggedIn, onShowLogin }) {
    // Slideshow effect for multiple images
    useEffect(() => {
        if (heroImages.length > 1) {
-           console.log('Starting slideshow with', heroImages.length, 'images');
            const interval = setInterval(() => {
                setCurrentImageIndex((prevIndex) => {
                    const nextIndex = prevIndex === heroImages.length - 1 ? 0 : prevIndex + 1;
-                   console.log('Slideshow: changing from', prevIndex, 'to', nextIndex);
                    return nextIndex;
                });
            }, 5000); // Change image every 5 seconds
            
-           return () => {
-               console.log('Stopping slideshow');
-               clearInterval(interval);
-           };
+           return () => clearInterval(interval);
        } else {
-           console.log('Single or no image, no slideshow needed');
            setCurrentImageIndex(0);
        }
    }, [heroImages]);
@@ -184,14 +160,10 @@ function Home({ isLoggedIn, onShowLogin }) {
    const getCurrentHeroImage = () => {
        if (heroImages.length > 0) {
            const currentImage = heroImages[currentImageIndex];
-           console.log('Current hero image:', currentImageIndex, 'of', heroImages.length, ':', currentImage?.url);
-           // Add debugging to check if URL is valid
            if (currentImage?.url) {
-               console.log('✅ Using dynamic hero image:', currentImage.url);
                return currentImage.url;
            }
        }
-       console.log('⚠️ Using default home image');
        return HomeImage; // Fallback to default image
    };
 
@@ -271,16 +243,11 @@ function Home({ isLoggedIn, onShowLogin }) {
            const response = await apiWithLoading.getTrendingJobs(8);
            
            if (response.success && response.data) {
-               console.log('📋 Trending jobs raw data:', response.data);
-               
                // Enhance job data with recruiter info including logo
                const enhancedJobs = await Promise.all(response.data.map(async (job) => {
-                   console.log('🔍 Processing job:', job.title, 'Recruiter ID:', job.recruiterId);
-                   
                    // Try to fetch recruiter details to get logo
                    try {
                        const recruiterResponse = await apiWithLoading.getRecruiterById(job.recruiterId);
-                       console.log('👤 Recruiter data for', job.title, ':', recruiterResponse);
                        
                        if (recruiterResponse.success && recruiterResponse.data) {
                            const recruiter = recruiterResponse.data;
@@ -291,11 +258,10 @@ function Home({ isLoggedIn, onShowLogin }) {
                                if (recruiter.profilePhoto.startsWith('http://') || recruiter.profilePhoto.startsWith('https://')) {
                                    logoUrl = recruiter.profilePhoto;
                                } else {
-                                   logoUrl = `http://localhost:4001${recruiter.profilePhoto}`;
+                                   const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+                                   logoUrl = `${backendUrl}${recruiter.profilePhoto}`;
                                }
                            }
-                           
-                           console.log('✅ Logo URL for', job.title, ':', logoUrl);
                            
                            return {
                                ...job,
@@ -309,7 +275,7 @@ function Home({ isLoggedIn, onShowLogin }) {
                            };
                        }
                    } catch (error) {
-                       console.error('❌ Error fetching recruiter for job:', job.title, error);
+                       // Silently handle error
                    }
                    
                    // Fallback if recruiter fetch fails
@@ -322,7 +288,6 @@ function Home({ isLoggedIn, onShowLogin }) {
                    };
                }));
                
-               console.log('✅ Enhanced jobs with logos:', enhancedJobs);
                setTrendingJobsData(enhancedJobs);
            } else {
                console.error('Failed to load trending jobs:', response.message);
@@ -575,8 +540,6 @@ function Home({ isLoggedIn, onShowLogin }) {
                sector: selectedSector,
                role: selectedRole
            };
-           
-           console.log('Search params:', searchParams);
            
            // If no search criteria selected, show trending staff
            if (!selectedState && !selectedCity && !selectedSector && !selectedRole) {
@@ -872,6 +835,18 @@ function Home({ isLoggedIn, onShowLogin }) {
                                    </div>
                                    
                                    <div className="clean-actions">
+                                       {/* Social icons on card — only if links exist */}
+                                       {staff.socialLinks && Object.values(staff.socialLinks).some(v => v) && (
+                                           <div className="card-social-icons">
+                                               {staff.socialLinks.linkedin && <a href={staff.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" title="LinkedIn" className="card-social-link"><FaLinkedin style={{color:'#0A66C2'}}/></a>}
+                                               {staff.socialLinks.twitter && <a href={staff.socialLinks.twitter} target="_blank" rel="noopener noreferrer" title="X (Twitter)" className="card-social-link"><FaXTwitter style={{color:'#000'}}/></a>}
+                                               {staff.socialLinks.instagram && <a href={staff.socialLinks.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="card-social-link"><FaInstagram style={{color:'#E1306C'}}/></a>}
+                                               {staff.socialLinks.facebook && <a href={staff.socialLinks.facebook} target="_blank" rel="noopener noreferrer" title="Facebook" className="card-social-link"><FaFacebook style={{color:'#1877F2'}}/></a>}
+                                               {staff.socialLinks.youtube && <a href={staff.socialLinks.youtube} target="_blank" rel="noopener noreferrer" title="YouTube" className="card-social-link"><FaYoutube style={{color:'#FF0000'}}/></a>}
+                                               {staff.socialLinks.github && <a href={staff.socialLinks.github} target="_blank" rel="noopener noreferrer" title="GitHub" className="card-social-link"><FaGithub style={{color:'#24292e'}}/></a>}
+                                               {staff.socialLinks.portfolio && <a href={staff.socialLinks.portfolio} target="_blank" rel="noopener noreferrer" title="Portfolio" className="card-social-link"><FaGlobe style={{color:'#4863f7'}}/></a>}
+                                           </div>
+                                       )}
                                        <button 
                                            className="clean-view-btn"
                                            onClick={() => handleViewProfile(staff)}
@@ -1100,6 +1075,50 @@ function Home({ isLoggedIn, onShowLogin }) {
                                                    <p>Year: {selectedStaff.education.tenth.year}</p>
                                                </div>
                                            )}
+                                       </div>
+                                   )}
+
+                                   {/* Social Media Links in modal */}
+                                   {selectedStaff.socialLinks && Object.values(selectedStaff.socialLinks).some(v => v) && (
+                                       <div className="clean-profile-section">
+                                           <h4>Social Media</h4>
+                                           <div className="modal-social-links">
+                                               {selectedStaff.socialLinks.linkedin && (
+                                                   <a href={selectedStaff.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="modal-social-link linkedin" title="LinkedIn">
+                                                       <FaLinkedin /> <span>LinkedIn</span>
+                                                   </a>
+                                               )}
+                                               {selectedStaff.socialLinks.twitter && (
+                                                   <a href={selectedStaff.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="modal-social-link twitter" title="X (Twitter)">
+                                                       <FaXTwitter /> <span>X (Twitter)</span>
+                                                   </a>
+                                               )}
+                                               {selectedStaff.socialLinks.instagram && (
+                                                   <a href={selectedStaff.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="modal-social-link instagram" title="Instagram">
+                                                       <FaInstagram /> <span>Instagram</span>
+                                                   </a>
+                                               )}
+                                               {selectedStaff.socialLinks.facebook && (
+                                                   <a href={selectedStaff.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="modal-social-link facebook" title="Facebook">
+                                                       <FaFacebook /> <span>Facebook</span>
+                                                   </a>
+                                               )}
+                                               {selectedStaff.socialLinks.youtube && (
+                                                   <a href={selectedStaff.socialLinks.youtube} target="_blank" rel="noopener noreferrer" className="modal-social-link youtube" title="YouTube">
+                                                       <FaYoutube /> <span>YouTube</span>
+                                                   </a>
+                                               )}
+                                               {selectedStaff.socialLinks.github && (
+                                                   <a href={selectedStaff.socialLinks.github} target="_blank" rel="noopener noreferrer" className="modal-social-link github" title="GitHub">
+                                                       <FaGithub /> <span>GitHub</span>
+                                                   </a>
+                                               )}
+                                               {selectedStaff.socialLinks.portfolio && (
+                                                   <a href={selectedStaff.socialLinks.portfolio} target="_blank" rel="noopener noreferrer" className="modal-social-link portfolio" title="Portfolio">
+                                                       <FaGlobe /> <span>Portfolio</span>
+                                                   </a>
+                                               )}
+                                           </div>
                                        </div>
                                    )}
 

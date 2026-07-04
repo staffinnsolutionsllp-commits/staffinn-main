@@ -1,98 +1,237 @@
-.modal-overlay {
+/* ============================================================
+   Student Application Modal — Scroll-safe overlay
+   ============================================================ */
+
+/* Overlay — fixed, full viewport, blocks background interaction */
+.sam-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 1000;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  /* Overlay itself does NOT scroll */
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
-.student-selection-modal {
-  background: white;
+/* Modal box — this is the only scrollable element */
+.sam-modal {
+  background: #fff;
   border-radius: 12px;
-  width: 90%;
-  max-width: 900px;
-  max-height: 80vh;
+  width: 100%;
+  max-width: 700px;
+  /* Cap height and make modal content scrollable */
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+  /* Prevent Lenis from intercepting scroll inside */
+  scroll-behavior: auto !important;
 }
 
+/* Prevent body scroll class (added/removed by useEffect) */
+body.modal-open {
+  overflow: hidden !important;
+}
+
+/* ── Modal header ── */
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f0f2f7;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+  border-radius: 12px 12px 0 0;
 }
 
 .modal-header h2 {
   margin: 0;
-  color: #1f2937;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 22px;
+  line-height: 1;
   cursor: pointer;
-  color: #6b7280;
-  padding: 4px;
-  border-radius: 4px;
-  transition: background-color 0.2s;
+  color: #64748b;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
 }
 
 .close-btn:hover {
-  background-color: #f3f4f6;
+  background: #f1f5f9;
+  color: #1e293b;
 }
 
+/* ── Job info banner ── */
 .job-info {
-  padding: 16px 24px;
-  background-color: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 24px;
+  background: #f8fafc;
+  border-bottom: 1px solid #f0f2f7;
 }
 
 .job-info h3 {
-  margin: 0 0 4px 0;
-  color: #1f2937;
-  font-size: 1.1rem;
+  margin: 0 0 4px;
+  font-size: 15px;
   font-weight: 600;
+  color: #1e293b;
 }
 
 .job-info p {
   margin: 0;
-  color: #6b7280;
-  font-size: 0.9rem;
+  font-size: 13px;
+  color: #64748b;
 }
 
+/* ── Modal content area (scrollable body) ── */
 .modal-content {
+  padding: 20px 24px;
   flex: 1;
   overflow-y: auto;
-  padding: 20px 24px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
-.loading-state {
+/* ── Student type options ── */
+.student-type-options h3 {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.options-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  width: 100%;
+}
+
+.option-btn:hover {
+  border-color: #4863f7;
+  background: #f5f7ff;
+  box-shadow: 0 2px 8px rgba(72, 99, 247, 0.1);
+}
+
+.institute-btn:hover { border-color: #4863f7; }
+.mis-btn:hover       { border-color: #059669; }
+
+.option-content h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.option-content p {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.option-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── Staffinn verified badge ── */
+.staffinn-verified-badge {
+  margin-top: 6px;
+  display: inline-block;
+  padding: 2px 8px;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 100px;
+}
+
+/* ── MIS info note ── */
+.mis-info {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+/* ── Selected type header (back btn) ── */
+.selected-type-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.selected-type-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.back-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+/* ── Loading & empty states ── */
+.loading-state,
+.no-students,
+.no-available-students {
+  padding: 32px 20px;
   text-align: center;
-  padding: 40px;
-  color: #6b7280;
+  color: #64748b;
+  font-size: 14px;
 }
 
-.no-students {
-  text-align: center;
-  padding: 40px;
-  color: #6b7280;
-}
-
-.no-students p {
-  margin: 8px 0;
-}
-
+/* ── Students table ── */
 .students-container {
   display: flex;
   flex-direction: column;
@@ -101,18 +240,14 @@
 
 .applied-students-section h4,
 .available-students-section h4 {
-  margin: 0 0 12px 0;
-  color: #1f2937;
-  font-size: 1rem;
+  margin: 0 0 10px;
+  font-size: 14px;
   font-weight: 600;
-}
-
-.applied-students-section h4 {
-  color: #059669;
+  color: #374151;
 }
 
 .students-table {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -120,295 +255,132 @@
 .table-header {
   display: grid;
   grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr;
-  background-color: #f9fafb;
-  padding: 12px 16px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
   font-weight: 600;
-  color: #374151;
-  font-size: 0.875rem;
-  border-bottom: 1px solid #e5e7eb;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .table-row {
   display: grid;
   grid-template-columns: 2fr 2fr 1.5fr 1.5fr 1fr;
-  padding: 12px 16px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f2f7;
+  font-size: 13px;
+  color: #374151;
   align-items: center;
-  transition: background-color 0.2s;
+  transition: background 0.15s;
 }
 
 .table-row:last-child {
   border-bottom: none;
 }
 
-.table-row:hover:not(.applied) {
-  background-color: #f9fafb;
+.table-row:hover {
+  background: #f8fafc;
 }
 
 .table-row.applied {
-  background-color: #f0fdf4;
-  opacity: 0.8;
-}
-
-.col-name,
-.col-email,
-.col-phone,
-.col-degree {
-  font-size: 0.875rem;
-  color: #374151;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.col-action {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.student-checkbox {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: #3b82f6;
+  background: #f0fdf4;
+  color: #64748b;
 }
 
 .applied-badge {
-  background-color: #059669;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  display: inline-block;
+  padding: 2px 8px;
+  background: #d1fae5;
+  color: #065f46;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 100px;
 }
 
-.no-available-students {
-  text-align: center;
-  padding: 20px;
-  color: #6b7280;
-  background-color: #f9fafb;
-  border-radius: 8px;
+.student-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #4863f7;
 }
 
+/* ── Modal footer (sticky) ── */
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 20px 24px;
-  border-top: 1px solid #e5e7eb;
-  background-color: #f9fafb;
-}
-
-.cancel-btn,
-.apply-btn {
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  font-size: 0.875rem;
+  gap: 10px;
+  padding: 14px 24px 20px;
+  border-top: 1px solid #f0f2f7;
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border-radius: 0 0 12px 12px;
+  z-index: 1;
 }
 
 .cancel-btn {
-  background-color: #f3f4f6;
-  color: #374151;
+  padding: 9px 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .cancel-btn:hover:not(:disabled) {
-  background-color: #e5e7eb;
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .apply-btn {
-  background-color: #3b82f6;
-  color: white;
+  padding: 9px 22px;
+  background: linear-gradient(135deg, #4863f7 0%, #3a4fd8 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(72, 99, 247, 0.25);
+  transition: opacity 0.15s, transform 0.15s;
 }
 
 .apply-btn:hover:not(:disabled) {
-  background-color: #2563eb;
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
 .apply-btn:disabled,
 .cancel-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-  .student-selection-modal {
-    width: 95%;
-    max-height: 90vh;
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .sam-overlay {
+    padding: 0;
+    align-items: flex-end;
   }
-  
+
+  .sam-modal {
+    max-height: 95vh;
+    border-radius: 14px 14px 0 0;
+    max-width: 100%;
+  }
+
   .table-header,
   .table-row {
-    grid-template-columns: 1.5fr 1.5fr 1fr 1fr 0.8fr;
-    font-size: 0.8rem;
+    grid-template-columns: 2fr 2fr 1fr;
   }
-  
-  .modal-header {
-    padding: 16px 20px;
-  }
-  
-  .modal-header h2 {
-    font-size: 1.25rem;
-  }
-  
-  .modal-content {
-    padding: 16px 20px;
-  }
-  
-  .modal-footer {
-    padding: 16px 20px;
-  }
-}
 
-/* Student Type Options */
-.student-type-options {
-  text-align: center;
-  padding: 20px 0;
-}
-
-.student-type-options h3 {
-  margin: 0 0 24px 0;
-  color: #1f2937;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.options-container {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.option-btn {
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 24px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 250px;
-  text-align: left;
-}
-
-.option-btn:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-  transform: translateY(-2px);
-}
-
-.institute-btn:hover {
-  border-color: #059669;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
-}
-
-.mis-btn:hover {
-  border-color: #7c3aed;
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
-}
-
-.option-content h4 {
-  margin: 0 0 8px 0;
-  color: #1f2937;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.option-content p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.mis-info {
-  background-color: #fef3c7;
-  border: 1px solid #f59e0b;
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 20px;
-}
-
-.mis-info p {
-  margin: 0;
-  color: #92400e;
-  font-size: 0.9rem;
-}
-
-.selected-type-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.back-btn {
-  background: #f3f4f6;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
-  cursor: pointer;
-  color: #374151;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-
-.back-btn:hover {
-  background-color: #e5e7eb;
-}
-
-.selected-type-header h3 {
-  margin: 0;
-  color: #1f2937;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-@media (max-width: 768px) {
-  .options-container {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .option-btn {
-    min-width: 200px;
-    width: 100%;
-    max-width: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .table-header,
-  .table-row {
-    grid-template-columns: 2fr 1fr 1fr;
-  }
-  
   .col-phone,
   .col-degree {
     display: none;
-  }
-  
-  .table-header .col-phone,
-  .table-header .col-degree {
-    display: none;
-  }
-  
-  .option-btn {
-    padding: 20px;
-    min-width: auto;
-  }
-  
-  .selected-type-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
   }
 }

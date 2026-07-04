@@ -10,15 +10,7 @@ const CourseCard = ({ course, onViewCourse, buttonText = "View Course" }) => {
     }
   };
 
-  // Debug: Log course data to see what fields are available
-  console.log('CourseCard received course data:', course);
-  console.log('Available fields:', Object.keys(course));
-  console.log('courseName:', course.courseName);
-  console.log('name:', course.name);
-  console.log('instituteName:', course.instituteName);
-  console.log('description:', course.description);
-  console.log('thumbnailUrl:', course.thumbnailUrl);
-  console.log('thumbnail:', course.thumbnail);
+
 
   // Get course name from multiple possible fields
   const courseName = course.courseName || course.name || course.title || course.courseTitle || 'Course Name';
@@ -89,7 +81,6 @@ const CourseCard = ({ course, onViewCourse, buttonText = "View Course" }) => {
             src={thumbnail} 
             alt={courseName}
             onError={(e) => {
-              console.error('Image failed to load:', e.target.src);
               e.target.style.display = 'none';
               const placeholder = e.target.parentElement.querySelector('.course-banner-placeholder');
               if (!placeholder) {

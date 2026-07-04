@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { Wifi, WifiOff, Download, Copy, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react'
+﻿import { useState, useEffect } from 'react'
+import { Wifi, WifiOff, Download, Copy, CheckCircle, AlertCircle, ExternalLink, Users, Link as LinkIcon } from 'lucide-react'
+import EmployeeDeviceMapping from './EmployeeDeviceMapping'
 
 interface DeviceSetupProps {
   companyId: string
@@ -10,6 +11,7 @@ export default function DeviceSetup({ companyId, apiKey }: DeviceSetupProps) {
   const [devices, setDevices] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState<{ [key: string]: boolean }>({})
+  const [activeTab, setActiveTab] = useState<'setup' | 'mapping'>('setup')
 
   console.log('DeviceSetup props:', { companyId, apiKey }); // Debug log
 
@@ -82,38 +84,85 @@ export default function DeviceSetup({ companyId, apiKey }: DeviceSetupProps) {
 
   return (
     <div className="space-y-6">
-      {/* Device Status */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Device Status</h3>
-          {devices.length > 0 ? (
-            <div className="flex items-center space-x-2 text-green-600">
-              <Wifi size={20} />
-              <span className="text-sm font-medium">{devices.length} Device(s) Connected</span>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2 text-red-600">
-              <WifiOff size={20} />
-              <span className="text-sm font-medium">No Device Connected</span>
-            </div>
-          )}
+      {/* Tabs */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="border-b">
+          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('setup')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'setup'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Wifi size={18} />
+                <span>Device Setup</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('mapping')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'mapping'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <LinkIcon size={18} />
+                <span>Employee Mapping</span>
+              </div>
+            </button>
+          </nav>
         </div>
+      </div>
 
-        {devices.length === 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={20} />
-              <div className="text-sm text-yellow-800">
-                <p className="font-medium mb-1">No biometric device detected</p>
-                <p className="mb-2">To start tracking attendance, you need to connect a biometric device using our Bridge software.</p>
-                <p className="text-xs mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
-                  <strong>Note:</strong> Bridge software is currently under development. For now, please use the <strong>"Mark Attendance"</strong> button on the Attendance page to manually record attendance.
-                </p>
+      {/* Tab Content */}
+      {activeTab === 'mapping' ? (
+        <EmployeeDeviceMapping />
+      ) : (
+        <>
+          {/* Device Status — show only when devices are connected */}
+          {devices.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Device Status</h3>
+              <div className="flex items-center space-x-2 text-green-600">
+                <Wifi size={20} />
+                <span className="text-sm font-medium">{devices.length} Device(s) Connected</span>
               </div>
             </div>
+            <div className="space-y-3">
+              {devices.map((device) => (
+                <div key={device.id} className="border border-green-200 bg-green-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <CheckCircle className="text-green-600" size={24} />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{device.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          Status: <span className="text-green-600 font-medium">Online</span>
+                        </p>
+                        {device.lastSeen && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Last seen: {new Date(device.lastSeen).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm text-green-600 font-medium">Connected</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+          )}
 
       {/* Recommended Device */}
       <div className="bg-white rounded-lg shadow p-6">
@@ -161,7 +210,7 @@ export default function DeviceSetup({ companyId, apiKey }: DeviceSetupProps) {
                 <Download size={16} />
                 <span>Download Bridge Software</span>
               </button>
-              <p className="text-xs text-gray-500 mt-2">Version 1.0.1 | Windows 10/11 | 104 MB</p>
+              <p className="text-xs text-gray-500 mt-2">Version 1.0.7 | Windows 10/11 | 105 MB</p>
             </div>
           </div>
 
@@ -258,6 +307,8 @@ export default function DeviceSetup({ companyId, apiKey }: DeviceSetupProps) {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

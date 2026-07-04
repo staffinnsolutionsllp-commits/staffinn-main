@@ -15,6 +15,9 @@ import HiddenUser from '../HiddenUser/HiddenUser';
 import GovernmentSchemes from './GovernmentSchemes';
 import ContactHistory from '../Messages/ContactHistory';
 import './HiddenNotification.css';
+import CampusInviteEnvelope from './CampusInviteEnvelope';
+import InstituteResponseSection from './InstituteResponseSection';
+import { FiMail } from 'react-icons/fi';
 
 const RecruiterDashboard = () => {
     const { currentUser } = useContext(AuthContext);
@@ -23,6 +26,7 @@ const RecruiterDashboard = () => {
     const { updateAllImages, notifyProfilePhotoUpdated } = useProfilePhotoSync(profilePhoto, 'recruiter');
     const [activeTab, setActiveTab] = useState('overview');
     const [isMyHiringsOpen, setIsMyHiringsOpen] = useState(false);
+    const [isInstitutesOpen, setIsInstitutesOpen] = useState(false);
     
     // Handle URL tab parameter and hash
     useEffect(() => {
@@ -39,6 +43,10 @@ const RecruiterDashboard = () => {
             // Open My Hirings dropdown if tab is jobs, candidates, or hiring
             if (tabParam === 'jobs' || tabParam === 'candidates' || tabParam === 'hiring') {
                 setIsMyHiringsOpen(true);
+            }
+            // Open Institutes dropdown if tab is institutes or campus-requests
+            if (tabParam === 'institutes' || tabParam === 'campus-requests' || tabParam === 'institute-response') {
+                setIsInstitutesOpen(true);
             }
         }
     }, []);
@@ -78,14 +86,24 @@ const RecruiterDashboard = () => {
         experience: '',
         website: '',
         phone: '',
+        gstNumber: '',
+        panNumber: '',
+        linkedin: '',
+        twitter: '',
+        instagram: '',
+        facebook: '',
+        youtube: '',
+        github: '',
+        awards: [],
         companyDescription: 'A leading technology company providing innovative solutions.',
         perks: [
-            { text: 'Health insurance' },
-            { text: 'Work from home options' },
-            { text: 'Learning & development budget' },
-            { text: 'Performance bonuses' }
+            { title: 'Health Insurance', description: 'Comprehensive health coverage for employees and their families', image: '' },
+            { title: 'Work From Home', description: 'Flexible remote work options available', image: '' },
+            { title: 'Learning Budget', description: 'Annual budget for professional development and courses', image: '' },
+            { title: 'Performance Bonus', description: 'Quarterly performance-based incentives', image: '' }
         ],
         officeImages: [],
+        officeLocations: [],   // [{id, locationName, unitCount, images: [], tempImages: []}]
         hiringSteps: [
             { title: 'Online Application', description: 'Submit your resume and complete a brief questionnaire.' },
             { title: 'HR Screening Call', description: '30-minute call to discuss your background and expectations.' },
@@ -173,13 +191,16 @@ const RecruiterDashboard = () => {
     const [selectedInstitute, setSelectedInstitute] = useState(null);
     const [selectedJob, setSelectedJob] = useState(null);
     const [selectedJobFilter, setSelectedJobFilter] = useState('all');
-    const [hiringHistory, setHiringHistory] = useState([]);
+    const [hiringHistory, setHiringHistory] = useState([]);          // institute modal only
+    const [recruiterHiringHistory, setRecruiterHiringHistory] = useState([]); // My Hirings tab
     const [showHiringHistoryModal, setShowHiringHistoryModal] = useState(false);
     // Removed processedStudents state as backend now handles filtering
     
     // Campus requests state
     const [campusRequests, setCampusRequests] = useState([]);
     const [campusRequestsLoading, setCampusRequestsLoading] = useState(false);
+    const [updatingInvite, setUpdatingInvite] = useState(null); // requestId being updated
+    const [newInviteNotification, setNewInviteNotification] = useState(false);
     
     // Filter institutes based on selected job
     const filteredInstitutes = appliedInstitutes.filter(institute => {
@@ -203,6 +224,8 @@ const RecruiterDashboard = () => {
     // Office images upload state
     const [uploadingOfficeImage, setUploadingOfficeImage] = useState(false);
     const [tempOfficeImages, setTempOfficeImages] = useState([]);
+    // Office location image upload state: { locationId: boolean }
+    const [uploadingLocationImage, setUploadingLocationImage] = useState({});
     
     // Password form state
     const [passwordForm, setPasswordForm] = useState({
@@ -243,7 +266,7 @@ const RecruiterDashboard = () => {
     }, []);
     
     // Real-time stats
-    const [dashboardStats, setDashboardStats] = useState({ applications: 0, hires: 0 });
+    const [dashboardStats, setDashboardStats] = useState({ applications: 0, hires: 0, followers: 0, campusInvites: 0 });
 
     // Load recruiter profile and jobs on component mount
     useEffect(() => {
@@ -265,39 +288,49 @@ const RecruiterDashboard = () => {
         try {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             if (!token) return;
-            
-            // Use Socket.io client (assuming it's available globally or imported)
+
+            // Use Socket.io client
             const socket = window.io ? window.io('http://localhost:4001', {
                 auth: { token }
             }) : null;
-            
+
             if (!socket) {
                 console.warn('Socket.io client not available, using fallback');
                 return;
             }
-            
+
             socket.on('connect', () => {
                 console.log('Socket connected for visibility updates');
-                // Check current visibility status
                 socket.emit('check_visibility');
+                // Join recruiter room for campus invite notifications
+                if (currentUser?.userId) {
+                    socket.emit('join-recruiter-room', currentUser.userId);
+                }
             });
-            
+
             socket.on('visibility_update', (visibilityData) => {
                 handleVisibilityUpdate(visibilityData);
             });
-            
+
+            // Real-time campus invite notification
+            socket.on('campus-invite-received', (data) => {
+                console.log('📬 New campus invite received:', data);
+                loadCampusRequests();
+                // Show a brief notification
+                setNewInviteNotification(true);
+                setTimeout(() => setNewInviteNotification(false), 6000);
+            });
+
             socket.on('disconnect', () => {
                 console.log('Socket disconnected');
             });
-            
+
             socket.on('connect_error', (error) => {
                 console.error('Socket connection error:', error);
             });
-            
+
             return () => {
-                if (socket) {
-                    socket.disconnect();
-                }
+                if (socket) socket.disconnect();
             };
         } catch (error) {
             console.error('Error setting up socket connection:', error);
@@ -446,10 +479,10 @@ const RecruiterDashboard = () => {
                 
                 // Default values for dashboard editing
                 const defaultPerks = [
-                    { text: 'Health insurance' },
-                    { text: 'Work from home options' },
-                    { text: 'Learning & development budget' },
-                    { text: 'Performance bonuses' }
+                    { title: 'Health Insurance', description: 'Comprehensive health coverage for employees and their families', image: '' },
+                    { title: 'Work From Home', description: 'Flexible remote work options available', image: '' },
+                    { title: 'Learning Budget', description: 'Annual budget for professional development and courses', image: '' },
+                    { title: 'Performance Bonus', description: 'Quarterly performance-based incentives', image: '' }
                 ];
                 
                 const defaultHiringSteps = [
@@ -476,18 +509,42 @@ const RecruiterDashboard = () => {
                     experience: profile.experience || '',
                     website: profile.website || '',
                     phone: profile.phone || '',
+                    gstNumber: profile.gstNumber || '',
+                    panNumber: profile.panNumber || '',
+                    linkedin: profile.linkedin || '',
+                    twitter: profile.twitter || '',
+                    instagram: profile.instagram || '',
+                    facebook: profile.facebook || '',
+                    youtube: profile.youtube || '',
+                    github: profile.github || '',
+                    awards: profile.awards || [],
                     companyDescription: profile.companyDescription || 'A leading technology company providing innovative solutions.',
                     // Always show default values in dashboard for editing, regardless of profile state
                     perks: (profile.perks && profile.perks.length > 0) ? profile.perks : defaultPerks,
                     hiringSteps: (profile.hiringSteps && profile.hiringSteps.length > 0) ? profile.hiringSteps : defaultHiringSteps,
                     interviewQuestions: (profile.interviewQuestions && profile.interviewQuestions.length > 0) ? profile.interviewQuestions : defaultQuestions,
-                    officeImages: (profile.officeImages || []).map(img => 
-                        img.startsWith('http') ? img : `http://localhost:4001${img}`
-                    )
+                    officeImages: (profile.officeImages || []).map(img => {
+                        if (!img || typeof img !== 'string') return null;
+                        if (img.startsWith('http://') || img.startsWith('https://')) return img;
+                        const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+                        return `${backendUrl}${img.startsWith('/') ? img : '/' + img}`;
+                    }).filter(Boolean),
+                    officeLocations: (profile.officeLocations || []).map(loc => ({
+                        ...loc,
+                        images: (loc.images || []).map(img => {
+                            if (!img || typeof img !== 'string') return null;
+                            if (img.startsWith('http://') || img.startsWith('https://')) return img;
+                            const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+                            return `${backendUrl}${img.startsWith('/') ? img : '/' + img}`;
+                        }).filter(Boolean),
+                        tempImages: []  // always reset temp on load
+                    }))
                 });
                 // Set profile photo with proper URL handling
                 if (profile.profilePhoto) {
-                    const fullPhotoUrl = profile.profilePhoto.startsWith('http') ? profile.profilePhoto : `http://localhost:4001${profile.profilePhoto}`;
+                    const fullPhotoUrl = profile.profilePhoto.startsWith('http://') || profile.profilePhoto.startsWith('https://')
+                        ? profile.profilePhoto
+                        : `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001'}${profile.profilePhoto.startsWith('/') ? profile.profilePhoto : '/' + profile.profilePhoto}`;
                     setProfilePhoto(fullPhotoUrl);
                     // Update all images immediately when profile loads
                     updateAllImages(fullPhotoUrl);
@@ -528,7 +585,8 @@ const RecruiterDashboard = () => {
             if (response.success && response.data && response.data.profilePhoto) {
                 const newProfilePhoto = response.data.profilePhoto;
                 // Convert relative path to full URL if needed
-                const fullPhotoUrl = newProfilePhoto.startsWith('http') ? newProfilePhoto : `http://localhost:4001${newProfilePhoto}`;
+                const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+                const fullPhotoUrl = newProfilePhoto.startsWith('http://') || newProfilePhoto.startsWith('https://') ? newProfilePhoto : `${backendUrl}${newProfilePhoto.startsWith('/') ? newProfilePhoto : '/' + newProfilePhoto}`;
                 
                 // Store photo temporarily - don't update everywhere yet
                 setTempProfilePhoto(fullPhotoUrl);
@@ -563,7 +621,8 @@ const RecruiterDashboard = () => {
             if (response.success && response.data && response.data.profilePhoto) {
                 const newImageUrl = response.data.profilePhoto;
                 // Convert relative path to full URL if needed
-                const fullImageUrl = newImageUrl.startsWith('http') ? newImageUrl : `http://localhost:4001${newImageUrl}`;
+                const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+                const fullImageUrl = newImageUrl.startsWith('http://') || newImageUrl.startsWith('https://') ? newImageUrl : `${backendUrl}${newImageUrl.startsWith('/') ? newImageUrl : '/' + newImageUrl}`;
                 
                 // Store image temporarily - don't update everywhere yet
                 setTempOfficeImages(prev => [...prev, fullImageUrl]);
@@ -590,19 +649,100 @@ const RecruiterDashboard = () => {
     const handleDeleteOfficeImage = (imageUrl, index, isTemp = false) => {
         if (window.confirm('Are you sure you want to delete this image?')) {
             if (isTemp) {
-                // Remove from temp images
                 const updatedTempImages = [...tempOfficeImages];
                 updatedTempImages.splice(index, 1);
                 setTempOfficeImages(updatedTempImages);
             } else {
-                // Remove from permanent images
                 const updatedImages = [...profileForm.officeImages];
                 updatedImages.splice(index, 1);
+                setProfileForm(prev => ({ ...prev, officeImages: updatedImages }));
+            }
+        }
+    };
+
+    // ── Office Locations handlers ──────────────────────────────────────────
+
+    const addOfficeLocation = () => {
+        const newLoc = {
+            id: `loc_${Date.now()}`,
+            locationName: '',
+            unitCount: 1,
+            images: [],
+            tempImages: []
+        };
+        setProfileForm(prev => ({
+            ...prev,
+            officeLocations: [...(prev.officeLocations || []), newLoc]
+        }));
+    };
+
+    const removeOfficeLocation = (locId) => {
+        if (window.confirm('Remove this office location?')) {
+            setProfileForm(prev => ({
+                ...prev,
+                officeLocations: (prev.officeLocations || []).filter(l => l.id !== locId)
+            }));
+        }
+    };
+
+    const updateOfficeLocation = (locId, field, value) => {
+        setProfileForm(prev => ({
+            ...prev,
+            officeLocations: (prev.officeLocations || []).map(l =>
+                l.id === locId ? { ...l, [field]: value } : l
+            )
+        }));
+    };
+
+    const handleLocationImageUpload = async (event, locId) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        setUploadingLocationImage(prev => ({ ...prev, [locId]: true }));
+        try {
+            console.log('📸 Uploading location image to S3...');
+            const response = await apiService.uploadOfficeImage(file);
+            console.log('📸 Upload response:', response);
+            if (response.success && response.data && response.data.imageUrl) {
+                const url = response.data.imageUrl;
+                console.log('📸 Image URL from S3:', url);
                 setProfileForm(prev => ({
                     ...prev,
-                    officeImages: updatedImages
+                    officeLocations: (prev.officeLocations || []).map(l =>
+                        l.id === locId
+                            ? { ...l, tempImages: [...(l.tempImages || []), url] }
+                            : l
+                    )
                 }));
+            } else {
+                console.error('📸 Upload failed:', response);
+                alert('Failed to upload image: ' + (response.message || 'Unknown error'));
             }
+        } catch (err) {
+            console.error('Location image upload error:', err);
+            alert('Failed to upload image');
+        } finally {
+            setUploadingLocationImage(prev => ({ ...prev, [locId]: false }));
+            event.target.value = '';
+        }
+    };
+
+    const removeLocationImage = (locId, imgIndex, isTemp = false) => {
+        if (window.confirm('Remove this image?')) {
+            setProfileForm(prev => ({
+                ...prev,
+                officeLocations: (prev.officeLocations || []).map(l => {
+                    if (l.id !== locId) return l;
+                    if (isTemp) {
+                        const t = [...(l.tempImages || [])];
+                        t.splice(imgIndex, 1);
+                        return { ...l, tempImages: t };
+                    } else {
+                        const imgs = [...(l.images || [])];
+                        imgs.splice(imgIndex, 1);
+                        return { ...l, images: imgs };
+                    }
+                })
+            }));
         }
     };
 
@@ -751,7 +891,7 @@ const RecruiterDashboard = () => {
                 );
                 
                 if (response.success) {
-                    // Add to hired candidates
+                    // Add to hired candidates (local optimistic state)
                     setHiredCandidates(prev => [...prev, {
                         id: candidate.id,
                         name: candidate.name,
@@ -760,8 +900,11 @@ const RecruiterDashboard = () => {
                         staffId: candidate.staffId
                     }]);
                     
-                    // Reload candidates to update status
+                    // Reload candidates list to reflect updated status
                     await loadCandidates(candidateFilters);
+                    
+                    // Reload recruiter hiring history so Hiring History tab shows this hire
+                    await loadHiringHistory();
                     
                     // Reload dashboard stats to update Hires count
                     await loadDashboardStats();
@@ -843,20 +986,76 @@ const RecruiterDashboard = () => {
     };
 
     // Handle perk changes
-    const handlePerkChange = (index, value) => {
+    const handlePerkChange = (index, field, value) => {
         setProfileForm(prev => ({
             ...prev,
             perks: prev.perks.map((perk, i) => 
-                i === index ? { text: value } : perk
+                i === index ? { ...perk, [field]: value } : perk
             )
         }));
+    };
+    
+    // Handle perk image upload
+    const handlePerkImageUpload = async (index, event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Validate file
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size must be less than 5MB.');
+            return;
+        }
+        
+        try {
+            const response = await apiService.uploadRecruiterPhoto(file);
+            
+            if (response.success && response.data && response.data.profilePhoto) {
+                const imageUrl = response.data.profilePhoto;
+                const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+                const fullImageUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://') ? imageUrl : `${backendUrl}${imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl}`;
+                
+                // Update perk with image URL
+                setProfileForm(prev => ({
+                    ...prev,
+                    perks: prev.perks.map((perk, i) => 
+                        i === index ? { ...perk, image: fullImageUrl } : perk
+                    )
+                }));
+                
+                alert('Perk image uploaded successfully!');
+            } else {
+                alert('Failed to upload image: ' + (response.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error uploading perk image:', error);
+            alert('Failed to upload perk image');
+        } finally {
+            event.target.value = '';
+        }
+    };
+    
+    // Remove perk image
+    const handleRemovePerkImage = (index) => {
+        if (window.confirm('Remove this perk image?')) {
+            setProfileForm(prev => ({
+                ...prev,
+                perks: prev.perks.map((perk, i) => 
+                    i === index ? { ...perk, image: '' } : perk
+                )
+            }));
+        }
     };
 
     // Add new perk
     const addPerk = () => {
         setProfileForm(prev => ({
             ...prev,
-            perks: [...prev.perks, { text: '' }]
+            perks: [...prev.perks, { title: '', description: '', image: '' }]
         }));
     };
 
@@ -865,6 +1064,76 @@ const RecruiterDashboard = () => {
         setProfileForm(prev => ({
             ...prev,
             perks: prev.perks.filter((_, i) => i !== index)
+        }));
+    };
+
+    // ── Awards & Achievements handlers ──
+    const handleAwardChange = (index, field, value) => {
+        setProfileForm(prev => ({
+            ...prev,
+            awards: prev.awards.map((award, i) =>
+                i === index ? { ...award, [field]: value } : award
+            )
+        }));
+    };
+
+    const handleAwardImageUpload = async (index, event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size must be less than 5MB.');
+            return;
+        }
+        try {
+            const response = await apiService.uploadRecruiterPhoto(file);
+            if (response.success && response.data && response.data.profilePhoto) {
+                const imageUrl = response.data.profilePhoto;
+                const backendUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:4001';
+                const fullImageUrl = imageUrl.startsWith('http://') || imageUrl.startsWith('https://') ? imageUrl : `${backendUrl}${imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl}`;
+                setProfileForm(prev => ({
+                    ...prev,
+                    awards: prev.awards.map((award, i) =>
+                        i === index ? { ...award, image: fullImageUrl } : award
+                    )
+                }));
+                alert('Award image uploaded successfully!');
+            } else {
+                alert('Failed to upload image: ' + (response.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error uploading award image:', error);
+            alert('Failed to upload award image');
+        } finally {
+            event.target.value = '';
+        }
+    };
+
+    const handleRemoveAwardImage = (index) => {
+        if (window.confirm('Remove this award image?')) {
+            setProfileForm(prev => ({
+                ...prev,
+                awards: prev.awards.map((award, i) =>
+                    i === index ? { ...award, image: '' } : award
+                )
+            }));
+        }
+    };
+
+    const addAward = () => {
+        setProfileForm(prev => ({
+            ...prev,
+            awards: [...prev.awards, { title: '', description: '', image: '' }]
+        }));
+    };
+
+    const removeAward = (index) => {
+        setProfileForm(prev => ({
+            ...prev,
+            awards: prev.awards.filter((_, i) => i !== index)
         }));
     };
 
@@ -923,17 +1192,45 @@ const RecruiterDashboard = () => {
     // Handle profile form submission - REAL-TIME UPDATE
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validate GST Number if provided
+        if (profileForm.gstNumber && profileForm.gstNumber.trim() !== '') {
+            const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+            if (!gstRegex.test(profileForm.gstNumber.trim())) {
+                alert('Invalid GST Number format. GST Number should be 15 characters (e.g., 22AAAAA0000A1Z5)');
+                return;
+            }
+        }
+        
+        // Validate PAN Number if provided
+        if (profileForm.panNumber && profileForm.panNumber.trim() !== '') {
+            const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+            if (!panRegex.test(profileForm.panNumber.trim().toUpperCase())) {
+                alert('Invalid PAN Number format. PAN should be 10 characters (e.g., ABCDE1234F)');
+                return;
+            }
+        }
+        
         setLoading(true);
         
         try {
-            // Include temp profile photo and office images in the update
-            const finalOfficeImages = tempOfficeImages.length > 0 
-                ? [...(profileForm.officeImages || []), ...tempOfficeImages]
-                : profileForm.officeImages || [];
+            // Keep existing office images for backward compatibility
+            const finalOfficeImages = profileForm.officeImages || [];
+
+            // Merge tempImages into images for each office location
+            const finalOfficeLocations = (profileForm.officeLocations || []).map(loc => ({
+                id: loc.id,
+                locationName: loc.locationName || '',
+                unitCount: parseInt(loc.unitCount) || 1,
+                images: [...(loc.images || []), ...(loc.tempImages || [])]
+            }));
+            
+            console.log('🏢 finalOfficeLocations being saved:', JSON.stringify(finalOfficeLocations, null, 2));
                 
             const updateData = {
                 ...profileForm,
                 officeImages: finalOfficeImages,
+                officeLocations: finalOfficeLocations,
                 // Handle profile photo: use temp photo if available, otherwise keep current photo
                 profilePhoto: tempProfilePhoto || profilePhoto
             };
@@ -962,10 +1259,26 @@ const RecruiterDashboard = () => {
                     const updatedOfficeImages = [...(profileForm.officeImages || []), ...tempOfficeImages];
                     setProfileForm(prev => ({
                         ...prev,
-                        officeImages: updatedOfficeImages
+                        officeImages: updatedOfficeImages,
+                        // Clear tempImages from all locations after save
+                        officeLocations: (prev.officeLocations || []).map(loc => ({
+                            ...loc,
+                            images: [...(loc.images || []), ...(loc.tempImages || [])],
+                            tempImages: []
+                        }))
                     }));
                     setTempOfficeImages([]);
                     console.log('Updated office images in form:', updatedOfficeImages);
+                } else {
+                    // Still clear location tempImages even if no global office images changed
+                    setProfileForm(prev => ({
+                        ...prev,
+                        officeLocations: (prev.officeLocations || []).map(loc => ({
+                            ...loc,
+                            images: [...(loc.images || []), ...(loc.tempImages || [])],
+                            tempImages: []
+                        }))
+                    }));
                 }
                 
                 alert('Profile updated successfully! Your changes are now live on the main recruiters page.');
@@ -1178,11 +1491,13 @@ const RecruiterDashboard = () => {
     };
     
     // Load hiring history
+    // Load recruiter hiring history — staff/seeker candidates ONLY
+    // Sets recruiterHiringHistory (isolated from institute placement history)
     const loadHiringHistory = async () => {
         try {
             const response = await apiService.getRecruiterHiringHistory();
             if (response.success) {
-                setHiringHistory(response.data.all || []);
+                setRecruiterHiringHistory(response.data.all || []);
             }
         } catch (error) {
             console.error('Error loading hiring history:', error);
@@ -1199,11 +1514,13 @@ const RecruiterDashboard = () => {
     };
     
     // Load hiring history for specific institute
+    // Load hiring history for specific institute — sets hiringHistory (modal only)
+    // Does NOT touch recruiterHiringHistory to prevent cross-contamination
     const loadInstituteSpecificHiringHistory = async (instituteId) => {
         try {
             const response = await apiService.getInstituteHiringHistory(instituteId);
             if (response.success) {
-                setHiringHistory(response.data || []);
+                setHiringHistory(response.data || []); // modal-only state
             }
         } catch (error) {
             console.error('Error loading institute hiring history:', error);
@@ -1273,9 +1590,14 @@ const RecruiterDashboard = () => {
                     })
                 );
                 setCampusRequests(requestsWithDetails);
+                // Keep dashboard stats in sync with latest campus invite count
+                setDashboardStats(prev => ({
+                    ...prev,
+                    campusInvites: response.data.length
+                }));
             }
         } catch (error) {
-            console.error('Error loading campus requests:', error);
+            console.error('Error loading campus invites:', error);
         } finally {
             setCampusRequestsLoading(false);
         }
@@ -1420,11 +1742,24 @@ const RecruiterDashboard = () => {
         if (tab === 'jobs' || tab === 'candidates' || tab === 'hiring') {
             setIsMyHiringsOpen(true);
         }
+        // Open Institutes dropdown if navigating to institutes or campus-requests
+        if (tab === 'institutes' || tab === 'campus-requests') {
+            setIsInstitutesOpen(true);
+        }
+        // Refresh candidates when switching to Hiring History so list is always current
+        if (tab === 'hiring') {
+            loadCandidates(candidateFilters);
+        }
     };
     
     // Toggle My Hirings dropdown
     const toggleMyHirings = () => {
         setIsMyHiringsOpen(!isMyHiringsOpen);
+    };
+
+    // Toggle Institutes dropdown
+    const toggleInstitutes = () => {
+        setIsInstitutesOpen(!isInstitutesOpen);
     };
     
     // Handle HRMS access - Direct redirect
@@ -1574,25 +1909,43 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'overview' ? 'active' : ''} onClick={() => handleTabChange('overview')}>
                         Dashboard Overview
                     </li>
-                    <li className={activeTab === 'jobs' || activeTab === 'candidates' || activeTab === 'hiring' ? 'active' : ''} onClick={toggleMyHirings}>
-                        My Hirings {isMyHiringsOpen ? '▼' : '▶'}
+                    <li className={`recruiter-dropdown-parent ${activeTab === 'jobs' || activeTab === 'candidates' || activeTab === 'hiring' ? 'active' : ''} ${isMyHiringsOpen ? 'open' : ''}`} onClick={toggleMyHirings}>
+                        <span className="dropdown-label">My Hirings</span>
+                        <span className="dropdown-icon">{isMyHiringsOpen ? '▼' : '▶'}</span>
                     </li>
                     {isMyHiringsOpen && (
                         <ul className="recruiter-submenu">
                             <li className={activeTab === 'jobs' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('jobs'); }}>
-                                Job Management
+                                Post Job
                             </li>
                             <li className={activeTab === 'candidates' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('candidates'); }}>
-                                Apply Candidates
+                                Candidates Applied
                             </li>
                             <li className={activeTab === 'hiring' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('hiring'); }}>
                                 Hiring History
                             </li>
                         </ul>
                     )}
-                    <li className={activeTab === 'institutes' ? 'active' : ''} onClick={() => handleTabChange('institutes')}>
-                        Institutes
+                    <li className={`recruiter-dropdown-parent ${activeTab === 'institutes' || activeTab === 'campus-requests' || activeTab === 'institute-response' ? 'active' : ''} ${isInstitutesOpen ? 'open' : ''}`} onClick={toggleInstitutes}>
+                        <span className="dropdown-label">Institutes</span>
+                        <span className="dropdown-icon">{isInstitutesOpen ? '▼' : '▶'}</span>
                     </li>
+                    {isInstitutesOpen && (
+                        <ul className="recruiter-submenu">
+                            <li onClick={(e) => { e.stopPropagation(); window.location.href = '/institute'; }}>
+                                Search Institute
+                            </li>
+                            <li className={activeTab === 'institutes' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('institutes'); }}>
+                                Students Applied
+                            </li>
+                            <li className={activeTab === 'campus-requests' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('campus-requests'); }}>
+                                Campus Invites
+                            </li>
+                            <li className={activeTab === 'institute-response' ? 'active' : ''} onClick={(e) => { e.stopPropagation(); handleTabChange('institute-response'); }}>
+                                Institute Response
+                            </li>
+                        </ul>
+                    )}
                     <li onClick={() => window.location.href = '/staff'}>
                         Search Staff
                     </li>
@@ -1600,7 +1953,7 @@ const RecruiterDashboard = () => {
                         News
                     </li>
                     <li className={activeTab === 'contact-history' ? 'active' : ''} onClick={() => handleTabChange('contact-history')}>
-                        Contact History
+                        Chat History
                     </li>
                     <li className={activeTab === 'government-schemes' ? 'active' : ''} onClick={() => handleTabChange('government-schemes')}>
                         Government Schemes
@@ -1608,24 +1961,30 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'hrms' ? 'active' : ''} onClick={handleHRMSAccess}>
                         HRMS
                     </li>
-                    <li className={activeTab === 'campus-requests' ? 'active' : ''} onClick={() => handleTabChange('campus-requests')}>
-                        Campus Requests
-                    </li>
                 </ul>
             </div>
 
             {/* Dashboard title will be shown inside the content area */}
 
+            {/* Real-time campus invite notification banner */}
+            {newInviteNotification && (
+                <div className="rci-new-invite-banner" onClick={() => { handleTabChange('campus-requests'); setNewInviteNotification(false); }}>
+                    <span>📬</span>
+                    <span>New campus invite received! Click to view.</span>
+                    <button onClick={(e) => { e.stopPropagation(); setNewInviteNotification(false); }}>×</button>
+                </div>
+            )}
+
             <div className="recruiter-dashboard-content">
                 <h1>
                     {activeTab === 'overview' && 'Dashboard Overview'}
-                    {activeTab === 'jobs' && 'Job Management'}
-                    {activeTab === 'candidates' && 'Apply Candidates'}
+                    {activeTab === 'jobs' && 'Post Job'}
+                    {activeTab === 'candidates' && 'Candidates Applied'}
                     {activeTab === 'hiring' && 'Hiring History'}
-                    {activeTab === 'institutes' && 'Institutes'}
-                    {activeTab === 'campus-requests' && 'Campus Requests'}
+                    {activeTab === 'institutes' && 'Students Applied'}
+                    {activeTab === 'campus-requests' && 'Campus Invites'}
                     {activeTab === 'news' && 'News'}
-                    {activeTab === 'contact-history' && 'Contact History'}
+                    {activeTab === 'contact-history' && 'Chat History'}
                     {activeTab === 'government-schemes' && 'Government Schemes'}
                     {activeTab === 'profile' && 'My Profile'}
                 </h1>
@@ -2018,6 +2377,11 @@ const RecruiterDashboard = () => {
                                 <p className="recruiter-metric-value">{dashboardStats.followers || 0}</p>
                                 <p className="recruiter-metric-trend positive">+{dashboardStats.followers || 0} total</p>
                             </div>
+                            <div className="recruiter-metric-card campus-invites-card">
+                                <h3>Campus Invites</h3>
+                                <p className="recruiter-metric-value">{dashboardStats.campusInvites || 0}</p>
+                                <p className="recruiter-metric-trend positive">{dashboardStats.campusInvites || 0} received</p>
+                            </div>
                         </div>
 
                         <div className="recruiter-charts-section">
@@ -2276,61 +2640,47 @@ const RecruiterDashboard = () => {
 
                 {activeTab === 'candidates' && (
                     <div className="recruiter-candidates-tab">
-                        <div className="recruiter-tab-header">
-                        </div>
 
-                        <div className="recruiter-search-section">
-                            <div className="recruiter-search-container">
-                                <div className="search-input-container">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Search by name, skills, or experience..." 
-                                        className="recruiter-search-input large"
-                                        name="search"
-                                        value={candidateFilters.search}
-                                        onChange={handleCandidateFilterChange}
-                                    />
-                                    {candidatesLoading && (
-                                        <div className="search-loading-indicator">
-                                            <div className="loading-spinner"></div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="search-filters">
-                                    <select 
-                                        className="recruiter-filter-select"
-                                        name="status"
-                                        value={candidateFilters.status}
-                                        onChange={handleCandidateFilterChange}
-                                        disabled={candidatesLoading}
-                                    >
-                                        <option value="all">All Status</option>
-                                        <option value="hired">Hired</option>
-                                        <option value="rejected">Rejected</option>
-                                        <option value="new">New</option>
-                                    </select>
-                                    <select 
-                                        className="recruiter-filter-select"
-                                        name="jobId"
-                                        value={candidateFilters.jobId}
-                                        onChange={handleCandidateFilterChange}
-                                        disabled={candidatesLoading}
-                                    >
-                                        <option value="all">Select Job</option>
-                                        {jobPostings.map(job => (
-                                            <option key={job.jobId} value={job.jobId}>{job.title}</option>
-                                        ))}
-                                    </select>
-                                    {candidatesLoading && (
-                                        <div className="filter-loading-text">
-                                            Searching...
-                                        </div>
-                                    )}
-                                </div>
+                        {/* Clean professional filter bar — no hero/banner */}
+                        <div className="rcd-filter-bar">
+                            <div className="rcd-search-wrap">
+                                <input
+                                    type="text"
+                                    placeholder="Search by name, skills, or experience..."
+                                    className="rcd-search-input"
+                                    name="search"
+                                    value={candidateFilters.search}
+                                    onChange={handleCandidateFilterChange}
+                                />
+                                {candidatesLoading && <span className="rcd-search-spinner" />}
                             </div>
+                            <select
+                                className="rcd-filter-select"
+                                name="status"
+                                value={candidateFilters.status}
+                                onChange={handleCandidateFilterChange}
+                                disabled={candidatesLoading}
+                            >
+                                <option value="all">All Status</option>
+                                <option value="hired">Hired</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="new">New</option>
+                            </select>
+                            <select
+                                className="rcd-filter-select"
+                                name="jobId"
+                                value={candidateFilters.jobId}
+                                onChange={handleCandidateFilterChange}
+                                disabled={candidatesLoading}
+                            >
+                                <option value="all">Search Job</option>
+                                {jobPostings.map(job => (
+                                    <option key={job.jobId} value={job.jobId}>{job.title}</option>
+                                ))}
+                            </select>
                         </div>
 
-                        <table className="recruiter-data-table full-width">
+                        <table className="recruiter-data-table full-width rcd-table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -2344,60 +2694,62 @@ const RecruiterDashboard = () => {
                             <tbody>
                                 {candidatesLoading ? (
                                     <tr>
-                                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
-                                            Loading candidates...
+                                        <td colSpan="6" className="rcd-loading-cell">
+                                            Loading candidates…
                                         </td>
                                     </tr>
                                 ) : candidates.length > 0 ? (
-                                    candidates.map(candidate => (
-                                        <tr key={candidate.id}>
-                                            <td>{candidate.name}</td>
-                                            <td>{candidate.position}</td>
-                                            <td>{candidate.skills}</td>
-                                            <td>
-                                                <span className={`recruiter-status-badge ${candidate.status.toLowerCase()}`}>
-                                                    {candidate.status}
-                                                </span>
-                                            </td>
-                                            <td>{new Date(candidate.date).toLocaleDateString()}</td>
-                                            <td>
-                                                <button 
-                                                    className="recruiter-table-action"
-                                                    onClick={() => handleViewProfile(candidate)}
-                                                >
-                                                    View Profile
-                                                </button>
-                                                <button 
-                                                    className="recruiter-table-action"
-                                                    onClick={() => handleHireCandidate(candidate)}
-                                                    disabled={loading}
-                                                >
-                                                    Hired
-                                                </button>
-                                                <button 
-                                                    className="recruiter-table-action delete"
-                                                    onClick={() => handleRejectCandidate(candidate)}
-                                                    disabled={loading}
-                                                >
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    candidates.map(candidate => {
+                                        const isHired = candidate.status?.toLowerCase() === 'hired';
+                                        return (
+                                            <tr key={candidate.id} className="rcd-row">
+                                                <td>{candidate.name}</td>
+                                                <td>{candidate.position}</td>
+                                                <td>{candidate.skills}</td>
+                                                <td>
+                                                    <span className={`recruiter-status-badge ${candidate.status.toLowerCase()}`}>
+                                                        {candidate.status}
+                                                    </span>
+                                                </td>
+                                                <td>{new Date(candidate.date).toLocaleDateString()}</td>
+                                                <td>
+                                                    <div className="rcd-actions">
+                                                        <button
+                                                            className="rcd-btn rcd-btn-view"
+                                                            onClick={() => handleViewProfile(candidate)}
+                                                        >
+                                                            View Profile
+                                                        </button>
+                                                        {!isHired && (
+                                                            <button
+                                                                className="rcd-btn rcd-btn-hire"
+                                                                onClick={() => handleHireCandidate(candidate)}
+                                                                disabled={loading}
+                                                            >
+                                                                Hire
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            className="rcd-btn rcd-btn-delete"
+                                                            onClick={() => handleRejectCandidate(candidate)}
+                                                            disabled={loading}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
-                                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
-                                            No candidates have applied yet.
+                                        <td colSpan="6" className="rcd-loading-cell">
+                                            No candidates found matching your criteria.
                                         </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
-                        {candidates.length === 0 && !candidatesLoading && (
-                            <div style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
-                                No candidates found matching your criteria.
-                            </div>
-                        )}
                     </div>
                 )}
 
@@ -2563,57 +2915,53 @@ const RecruiterDashboard = () => {
                 {activeTab === 'hiring' && (
                     <div className="recruiter-hiring-tab">
                         {(() => {
-                            const hiredCandidatesFromApplications = candidates.filter(c => c.status === 'Hired');
-                            const allHiredCandidates = [...hiredCandidates, ...hiredCandidatesFromApplications];
-                            
-                            return allHiredCandidates.length > 0 ? (
+                            // Read directly from candidates state (already loaded, always up-to-date)
+                            // Filter to only candidates this recruiter has hired
+                            // This is the single source of truth — same data shown in Candidates Applied
+                            const hiredCandidatesList = candidates.filter(
+                                c => c.status?.toLowerCase() === 'hired'
+                            );
+
+                            return hiredCandidatesList.length > 0 ? (
                                 <div className="recruiter-hiring-content">
-                                    {/* Staff Candidates */}
-                                    <div className="hiring-section">
-                                        <h3>Hired Staff Candidates</h3>
-                                        <table className="recruiter-data-table full-width">
-                                            <thead>
-                                                <tr>
-                                                    <th>Name</th>
-                                                    <th>Position</th>
-                                                    <th>Hire Date</th>
-                                                    <th>Actions</th>
+                                    <table className="recruiter-data-table full-width">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Position</th>
+                                                <th>Hire Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {hiredCandidatesList.map((candidate, index) => (
+                                                <tr key={candidate.id || index}>
+                                                    <td>{candidate.name}</td>
+                                                    <td>{candidate.position}</td>
+                                                    <td>
+                                                        {candidate.date
+                                                            ? new Date(candidate.date).toLocaleDateString()
+                                                            : '—'}
+                                                    </td>
+                                                    <td>
+                                                        <button
+                                                            className="recruiter-table-action"
+                                                            onClick={() => handleViewProfile(candidate)}
+                                                        >
+                                                            View Details
+                                                        </button>
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
-                                                {allHiredCandidates.map((hired, index) => (
-                                                    <tr key={hired.id || index}>
-                                                        <td>{hired.name}</td>
-                                                        <td>{hired.position}</td>
-                                                        <td>{hired.hireDate || new Date(hired.date).toLocaleDateString()}</td>
-                                                        <td>
-                                                            <button 
-                                                                className="recruiter-table-action"
-                                                                onClick={() => {
-                                                                    if (hired.staffId) {
-                                                                        const candidate = candidates.find(c => c.staffId === hired.staffId);
-                                                                        if (candidate) {
-                                                                            handleViewProfile(candidate);
-                                                                        }
-                                                                    }
-                                                                }}
-                                                            >
-                                                                View Details
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             ) : (
                                 <div className="recruiter-empty-state">
-                                    <p>No hiring records found. Hire candidates from the Candidate Search section.</p>
+                                    <p>No hiring records found. Hire candidates from the Candidates Applied section.</p>
                                 </div>
                             );
-                        })()
-                        }
+                        })()}
                     </div>
                 )}
 
@@ -2634,7 +2982,7 @@ const RecruiterDashboard = () => {
                         
                         {institutesLoading ? (
                             <div className="loading-section">
-                                <p>Loading applied institutes...</p>
+                                <p>Loading students applied...</p>
                             </div>
                         ) : filteredInstitutes.length > 0 ? (
                             <div className="institutes-grid">
@@ -2715,7 +3063,7 @@ const RecruiterDashboard = () => {
                             </div>
                         ) : (
                             <div className="recruiter-empty-state">
-                                <p>No institutes have applied to your jobs yet.</p>
+                                <p>No students have applied to your jobs yet.</p>
                             </div>
                         )}
                     </div>
@@ -2723,136 +3071,57 @@ const RecruiterDashboard = () => {
 
                 {activeTab === 'campus-requests' && (
                     <div className="recruiter-campus-requests-tab">
+                        <div className="rci-header">
+                            <div>
+                                <h1 className="rci-title">Campus Invites</h1>
+                                <p className="rci-subtitle">Institutes inviting you for campus placement drives</p>
+                            </div>
+                            <div className="rci-stats-row">
+                                <div className="rci-count-badge">{campusRequests.length} invite{campusRequests.length !== 1 ? 's' : ''}</div>
+                                {campusRequests.filter(r => r.status === 'pending').length > 0 && (
+                                    <div className="rci-pending-badge">
+                                        {campusRequests.filter(r => r.status === 'pending').length} pending
+                                    </div>
+                                )}
+                                {campusRequests.filter(r => r.status === 'confirmed').length > 0 && (
+                                    <div className="rci-confirmed-badge">
+                                        {campusRequests.filter(r => r.status === 'confirmed').length} confirmed
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                         {campusRequestsLoading ? (
-                            <div className="loading-section">
-                                <p>Loading campus requests...</p>
+                            <div className="rci-loading">
+                                <div className="rci-spinner" />
+                                <p>Loading campus invites...</p>
                             </div>
                         ) : campusRequests.length > 0 ? (
-                            <div className="campus-requests-grid">
+                            <div className="rci-envelopes-grid">
                                 {campusRequests.map((request) => (
-                                    <div key={request.campusreq} className="campus-request-card">
-                                        <div className="request-header">
-                                            <h3>{request.instituteName}</h3>
-                                            <span className="request-date">{formatDate(request.createdAt)}</span>
-                                        </div>
-                                        <div className="request-details">
-                                            <p><strong>Email:</strong> {request.instituteEmail}</p>
-                                            <p><strong>Phone:</strong> {request.institutePhone || 'Not provided'}</p>
-                                            <p><strong>Location:</strong> {request.instituteLocation || 'Not provided'}</p>
-                                        </div>
-                                        <div className="request-actions">
-                                            {request.status === 'pending' ? (
-                                                <>
-                                                    <button 
-                                                        className="approve-btn"
-                                                        onClick={async () => {
-                                                            if (window.confirm(`Approve campus invite from ${request.instituteName}?`)) {
-                                                                try {
-                                                                    setLoading(true);
-                                                                    const response = await apiService.updateCampusRequestStatus(request.campusreq, 'accepted');
-                                                                    if (response.success) {
-                                                                        alert('Campus invite approved successfully!');
-                                                                        await loadCampusRequests();
-                                                                    } else {
-                                                                        alert('Failed to approve request: ' + response.message);
-                                                                    }
-                                                                } catch (error) {
-                                                                    console.error('Error approving request:', error);
-                                                                    alert('Failed to approve request');
-                                                                } finally {
-                                                                    setLoading(false);
-                                                                }
-                                                            }
-                                                        }}
-                                                        disabled={loading}
-                                                        style={{
-                                                            backgroundColor: '#28a745',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            padding: '8px 16px',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '14px',
-                                                            fontWeight: '500',
-                                                            marginRight: '8px'
-                                                        }}
-                                                    >
-                                                        ✅ Approve
-                                                    </button>
-                                                    <button 
-                                                        className="reject-btn"
-                                                        onClick={async () => {
-                                                            if (window.confirm(`Reject campus invite from ${request.instituteName}?`)) {
-                                                                try {
-                                                                    setLoading(true);
-                                                                    const response = await apiService.updateCampusRequestStatus(request.campusreq, 'rejected');
-                                                                    if (response.success) {
-                                                                        alert('Campus invite rejected.');
-                                                                        await loadCampusRequests();
-                                                                    } else {
-                                                                        alert('Failed to reject request: ' + response.message);
-                                                                    }
-                                                                } catch (error) {
-                                                                    console.error('Error rejecting request:', error);
-                                                                    alert('Failed to reject request');
-                                                                } finally {
-                                                                    setLoading(false);
-                                                                }
-                                                            }
-                                                        }}
-                                                        disabled={loading}
-                                                        style={{
-                                                            backgroundColor: '#dc3545',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            padding: '8px 16px',
-                                                            borderRadius: '6px',
-                                                            cursor: 'pointer',
-                                                            fontSize: '14px',
-                                                            fontWeight: '500',
-                                                            marginRight: '8px'
-                                                        }}
-                                                    >
-                                                        ❌ Reject
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <span className={`status-badge ${request.status}`} style={{
-                                                    padding: '8px 16px',
-                                                    borderRadius: '6px',
-                                                    fontSize: '14px',
-                                                    fontWeight: '500',
-                                                    backgroundColor: request.status === 'accepted' ? '#28a745' : '#dc3545',
-                                                    color: 'white'
-                                                }}>
-                                                    {request.status === 'accepted' ? '✅ Approved' : '❌ Rejected'}
-                                                </span>
-                                            )}
-                                            <button 
-                                                className="view-details-btn"
-                                                onClick={() => window.open(`/institute/${request.instituteId}`, '_blank')}
-                                                style={{
-                                                    backgroundColor: '#007bff',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    padding: '8px 16px',
-                                                    borderRadius: '6px',
-                                                    cursor: 'pointer',
-                                                    fontSize: '14px',
-                                                    fontWeight: '500'
-                                                }}
-                                            >
-                                                View Institute
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <CampusInviteEnvelope
+                                        key={request.campusreq}
+                                        request={request}
+                                        onRefresh={async () => {
+                                            await loadCampusRequests();
+                                            await loadDashboardStats();
+                                        }}
+                                    />
                                 ))}
                             </div>
                         ) : (
-                            <div className="recruiter-empty-state">
-                                <p>No campus invite requests received yet.</p>
+                            <div className="rci-empty">
+                                <div className="rci-empty-icon"><FiMail /></div>
+                                <h3>No Campus Invites Yet</h3>
+                                <p>When institutes send you campus drive invitations, they'll appear here as interactive envelopes.</p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'institute-response' && (
+                    <div className="recruiter-institute-response-tab">
+                        <InstituteResponseSection />
                     </div>
                 )}
 
@@ -3195,6 +3464,148 @@ const RecruiterDashboard = () => {
                                         />
                                     </div>
                                 </div>
+
+                                {/* Social Links */}
+                                <div className="recruiter-social-links-section">
+                                    <h3 className="recruiter-social-links-heading">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                        Social Links
+                                    </h3>
+                                    <div className="recruiter-form-row">
+                                        <div className="recruiter-form-group recruiter-social-input-group">
+                                            <label>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                                                LinkedIn
+                                            </label>
+                                            <input
+                                                type="url"
+                                                name="linkedin"
+                                                value={profileForm.linkedin}
+                                                onChange={handleProfileInputChange}
+                                                placeholder="https://linkedin.com/company/yourcompany"
+                                            />
+                                        </div>
+                                        <div className="recruiter-form-group recruiter-social-input-group">
+                                            <label>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#000000"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                                                X (Twitter)
+                                            </label>
+                                            <input
+                                                type="url"
+                                                name="twitter"
+                                                value={profileForm.twitter}
+                                                onChange={handleProfileInputChange}
+                                                placeholder="https://x.com/yourhandle"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="recruiter-form-row">
+                                        <div className="recruiter-form-group recruiter-social-input-group">
+                                            <label>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="url(#ig-grad)">
+                                                    <defs>
+                                                        <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                                                            <stop offset="0%" stopColor="#f09433"/>
+                                                            <stop offset="25%" stopColor="#e6683c"/>
+                                                            <stop offset="50%" stopColor="#dc2743"/>
+                                                            <stop offset="75%" stopColor="#cc2366"/>
+                                                            <stop offset="100%" stopColor="#bc1888"/>
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                                                </svg>
+                                                Instagram
+                                            </label>
+                                            <input
+                                                type="url"
+                                                name="instagram"
+                                                value={profileForm.instagram}
+                                                onChange={handleProfileInputChange}
+                                                placeholder="https://instagram.com/yourhandle"
+                                            />
+                                        </div>
+                                        <div className="recruiter-form-group recruiter-social-input-group">
+                                            <label>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                                Facebook
+                                            </label>
+                                            <input
+                                                type="url"
+                                                name="facebook"
+                                                value={profileForm.facebook}
+                                                onChange={handleProfileInputChange}
+                                                placeholder="https://facebook.com/yourpage"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="recruiter-form-row">
+                                        <div className="recruiter-form-group recruiter-social-input-group">
+                                            <label>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                                                YouTube
+                                            </label>
+                                            <input
+                                                type="url"
+                                                name="youtube"
+                                                value={profileForm.youtube}
+                                                onChange={handleProfileInputChange}
+                                                placeholder="https://youtube.com/@yourchannel"
+                                            />
+                                        </div>
+                                        <div className="recruiter-form-group recruiter-social-input-group">
+                                            <label>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="#181717"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+                                                GitHub
+                                            </label>
+                                            <input
+                                                type="url"
+                                                name="github"
+                                                value={profileForm.github}
+                                                onChange={handleProfileInputChange}
+                                                placeholder="https://github.com/yourorg"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="recruiter-form-row">
+                                    <div className="recruiter-form-group">
+                                        <label>GST Number</label>
+                                        <input
+                                            type="text"
+                                            name="gstNumber"
+                                            value={profileForm.gstNumber}
+                                            onChange={(e) => {
+                                                const value = e.target.value.toUpperCase();
+                                                setProfileForm(prev => ({ ...prev, gstNumber: value }));
+                                            }}
+                                            placeholder="22AAAAA0000A1Z5"
+                                            maxLength="15"
+                                            style={{ textTransform: 'uppercase' }}
+                                        />
+                                        <small style={{ color: '#666', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                                            Format: 15 characters (e.g., 22AAAAA0000A1Z5) - Private field, not shown publicly
+                                        </small>
+                                    </div>
+                                    <div className="recruiter-form-group">
+                                        <label>PAN Number</label>
+                                        <input
+                                            type="text"
+                                            name="panNumber"
+                                            value={profileForm.panNumber}
+                                            onChange={(e) => {
+                                                const value = e.target.value.toUpperCase();
+                                                setProfileForm(prev => ({ ...prev, panNumber: value }));
+                                            }}
+                                            placeholder="ABCDE1234F"
+                                            maxLength="10"
+                                            style={{ textTransform: 'uppercase' }}
+                                        />
+                                        <small style={{ color: '#666', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                                            Format: 10 characters (e.g., ABCDE1234F) - Private field, not shown publicly
+                                        </small>
+                                    </div>
+                                </div>
                                 <div className="recruiter-form-group">
                                     <label>Company Description *</label>
                                     <textarea
@@ -3283,17 +3694,9 @@ const RecruiterDashboard = () => {
                                     </button>
                                 </div>
                                 {profileForm.perks.map((perk, index) => (
-                                    <div key={index} className="recruiter-perk-item">
-                                        <div className="recruiter-form-row">
-                                            <div className="recruiter-form-group">
-                                                <label>Benefit Description</label>
-                                                <input
-                                                    type="text"
-                                                    value={perk.text}
-                                                    onChange={(e) => handlePerkChange(index, e.target.value)}
-                                                    placeholder="Comprehensive health insurance"
-                                                />
-                                            </div>
+                                    <div key={index} className="recruiter-perk-item-enhanced">
+                                        <div className="perk-header">
+                                            <h4>Perk #{index + 1}</h4>
                                             <button
                                                 type="button"
                                                 className="recruiter-remove-btn small"
@@ -3301,6 +3704,61 @@ const RecruiterDashboard = () => {
                                             >
                                                 Remove
                                             </button>
+                                        </div>
+                                        <div className="recruiter-form-group">
+                                            <label>Title *</label>
+                                            <input
+                                                type="text"
+                                                value={perk.title || ''}
+                                                onChange={(e) => handlePerkChange(index, 'title', e.target.value)}
+                                                placeholder="e.g., Health Insurance"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="recruiter-form-group">
+                                            <label>Description *</label>
+                                            <textarea
+                                                value={perk.description || ''}
+                                                onChange={(e) => handlePerkChange(index, 'description', e.target.value)}
+                                                placeholder="Describe this benefit in detail..."
+                                                rows="3"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="recruiter-form-group">
+                                            <label>Image (Optional)</label>
+                                            {perk.image ? (
+                                                <div className="perk-image-preview">
+                                                    <img src={perk.image} alt={perk.title} />
+                                                    <button
+                                                        type="button"
+                                                        className="remove-image-btn"
+                                                        onClick={() => handleRemovePerkImage(index)}
+                                                    >
+                                                        Remove Image
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="perk-image-upload">
+                                                    <input
+                                                        type="file"
+                                                        id={`perk-image-${index}`}
+                                                        accept="image/*"
+                                                        onChange={(e) => handlePerkImageUpload(index, e)}
+                                                        style={{ display: 'none' }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="upload-image-btn"
+                                                        onClick={() => document.getElementById(`perk-image-${index}`).click()}
+                                                    >
+                                                        Upload Image
+                                                    </button>
+                                                    <small style={{ color: '#666', fontSize: '0.8rem', marginTop: '8px', display: 'block' }}>
+                                                        Recommended: 400x300px, Max 5MB
+                                                    </small>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -3352,77 +3810,158 @@ const RecruiterDashboard = () => {
                                 ))}
                             </div>
                             
-                            {/* Office Images */}
+                            {/* Office Images section removed - images now managed per location */}
+
+                            {/* Office Locations & Units */}
                             <div className="recruiter-profile-section">
                                 <div className="recruiter-section-header">
-                                    <h2>Office Images</h2>
-                                    <input
-                                        type="file"
-                                        id="officeImageInput"
-                                        accept="image/*"
-                                        onChange={handleOfficeImageUpload}
-                                        style={{ display: 'none' }}
-                                    />
+                                    <h2>Office Locations &amp; Units</h2>
                                     <button
                                         type="button"
                                         className="recruiter-add-btn"
-                                        onClick={() => document.getElementById('officeImageInput').click()}
-                                        disabled={uploadingOfficeImage}
+                                        onClick={addOfficeLocation}
                                     >
-                                        {uploadingOfficeImage ? 'Uploading...' : '+ Add Image'}
+                                        + Add Location
                                     </button>
                                 </div>
-                                
-                                <div className="recruiter-office-images-grid">
-                                    {/* Permanent office images */}
-                                    {profileForm.officeImages.map((imageUrl, index) => (
-                                        <div key={`permanent-${index}`} className="recruiter-office-image-item">
-                                            <img 
-                                                src={imageUrl} 
-                                                alt={`Office ${index + 1}`} 
-                                                className="office-image-preview"
-                                            />
+                                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px', marginTop: '-4px' }}>
+                                    Add your office branches/units with location details and photos.
+                                </p>
+
+                                {(profileForm.officeLocations || []).length === 0 && (
+                                    <div className="no-images-message">
+                                        <p>No office locations added yet. Click "+ Add Location" to add your first branch.</p>
+                                    </div>
+                                )}
+
+                                {(profileForm.officeLocations || []).map((loc, locIdx) => (
+                                    <div key={loc.id} style={{
+                                        border: '1px solid #E2E8F0',
+                                        borderRadius: '12px',
+                                        padding: '18px',
+                                        marginBottom: '16px',
+                                        background: '#FAFBFF'
+                                    }}>
+                                        {/* Location header */}
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                                            <span style={{ fontWeight: '700', fontSize: '14px', color: '#0F172A' }}>
+                                                📍 Office Location #{locIdx + 1}
+                                            </span>
                                             <button
                                                 type="button"
-                                                className="recruiter-remove-btn image-remove-btn"
-                                                onClick={() => handleDeleteOfficeImage(imageUrl, index, false)}
+                                                className="recruiter-remove-btn"
+                                                onClick={() => removeOfficeLocation(loc.id)}
+                                                style={{ padding: '4px 12px', fontSize: '12px' }}
                                             >
                                                 Remove
                                             </button>
                                         </div>
-                                    ))}
-                                    
-                                    {/* Temporary office images */}
-                                    {tempOfficeImages.map((imageUrl, index) => (
-                                        <div key={`temp-${index}`} className="recruiter-office-image-item temp-image">
-                                            <img 
-                                                src={imageUrl} 
-                                                alt={`Office ${profileForm.officeImages.length + index + 1}`} 
-                                                className="office-image-preview"
+
+                                        {/* Location Name */}
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>
+                                                Location Name / Address *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Jaipur, Rajasthan or 123 MG Road, Bangalore"
+                                                value={loc.locationName}
+                                                onChange={(e) => updateOfficeLocation(loc.id, 'locationName', e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 12px',
+                                                    border: '1px solid #D1D5DB',
+                                                    borderRadius: '8px',
+                                                    fontSize: '14px',
+                                                    outline: 'none',
+                                                    boxSizing: 'border-box'
+                                                }}
                                             />
-                                            <button
-                                                type="button"
-                                                className="recruiter-remove-btn image-remove-btn"
-                                                onClick={() => handleDeleteOfficeImage(imageUrl, index, true)}
-                                            >
-                                                Remove
-                                            </button>
-                                            <div className="temp-image-badge">Pending</div>
                                         </div>
-                                    ))}
-                                    
-                                    {profileForm.officeImages.length === 0 && tempOfficeImages.length === 0 && (
-                                        <div className="no-images-message">
-                                            <p>No office images uploaded yet. Add images to showcase your workplace.</p>
+
+                                        {/* Unit Count */}
+                                        <div style={{ marginBottom: '14px' }}>
+                                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>
+                                                Number of Office Units at this Location
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="999"
+                                                value={loc.unitCount}
+                                                onChange={(e) => updateOfficeLocation(loc.id, 'unitCount', e.target.value)}
+                                                style={{
+                                                    width: '120px',
+                                                    padding: '10px 12px',
+                                                    border: '1px solid #D1D5DB',
+                                                    borderRadius: '8px',
+                                                    fontSize: '14px',
+                                                    outline: 'none'
+                                                }}
+                                            />
                                         </div>
-                                    )}
-                                </div>
+
+                                        {/* Location Images */}
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>
+                                                    Office Images
+                                                </label>
+                                                <div>
+                                                    <input
+                                                        type="file"
+                                                        id={`locImageInput_${loc.id}`}
+                                                        accept="image/*"
+                                                        onChange={(e) => handleLocationImageUpload(e, loc.id)}
+                                                        style={{ display: 'none' }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="recruiter-add-btn"
+                                                        style={{ fontSize: '12px', padding: '6px 12px' }}
+                                                        onClick={() => document.getElementById(`locImageInput_${loc.id}`).click()}
+                                                        disabled={uploadingLocationImage[loc.id]}
+                                                    >
+                                                        {uploadingLocationImage[loc.id] ? 'Uploading...' : '+ Add Image'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="recruiter-office-images-grid">
+                                                {(loc.images || []).map((imgUrl, imgIdx) => (
+                                                    <div key={`loc-perm-${imgIdx}`} className="recruiter-office-image-item">
+                                                        <img src={imgUrl} alt={`${loc.locationName} ${imgIdx + 1}`} className="office-image-preview" />
+                                                        <button
+                                                            type="button"
+                                                            className="recruiter-remove-btn image-remove-btn"
+                                                            onClick={() => removeLocationImage(loc.id, imgIdx, false)}
+                                                        >Remove</button>
+                                                    </div>
+                                                ))}
+                                                {(loc.tempImages || []).map((imgUrl, imgIdx) => (
+                                                    <div key={`loc-temp-${imgIdx}`} className="recruiter-office-image-item temp-image">
+                                                        <img src={imgUrl} alt={`${loc.locationName} pending ${imgIdx + 1}`} className="office-image-preview" />
+                                                        <button
+                                                            type="button"
+                                                            className="recruiter-remove-btn image-remove-btn"
+                                                            onClick={() => removeLocationImage(loc.id, imgIdx, true)}
+                                                        >Remove</button>
+                                                        <div className="temp-image-badge">Pending</div>
+                                                    </div>
+                                                ))}
+                                                {(loc.images || []).length === 0 && (loc.tempImages || []).length === 0 && (
+                                                    <p style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>No photos for this location yet.</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
 
                             {/* Interview Questions */}
                             <div className="recruiter-profile-section">
                                 <div className="recruiter-section-header">
-                                    <h2>Common Interview Questions</h2>
+                                    <h2>Expectations from Candidates</h2>
                                     <button
                                         type="button"
                                         className="recruiter-add-btn"
@@ -3450,6 +3989,97 @@ const RecruiterDashboard = () => {
                                             >
                                                 Remove
                                             </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Awards & Achievements */}
+                            <div className="recruiter-profile-section">
+                                <div className="recruiter-section-header">
+                                    <h2>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:'8px',verticalAlign:'middle'}}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
+                                        Awards & Achievements
+                                    </h2>
+                                    <button
+                                        type="button"
+                                        className="recruiter-add-btn"
+                                        onClick={addAward}
+                                    >
+                                        + Add Award
+                                    </button>
+                                </div>
+                                {profileForm.awards.length === 0 && (
+                                    <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '8px' }}>
+                                        No awards added yet. Click "+ Add Award" to showcase your company's achievements.
+                                    </p>
+                                )}
+                                {profileForm.awards.map((award, index) => (
+                                    <div key={index} className="recruiter-award-item">
+                                        <div className="perk-header">
+                                            <h4>Award #{index + 1}</h4>
+                                            <button
+                                                type="button"
+                                                className="recruiter-remove-btn small"
+                                                onClick={() => removeAward(index)}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                        <div className="recruiter-form-group">
+                                            <label>Title *</label>
+                                            <input
+                                                type="text"
+                                                value={award.title || ''}
+                                                onChange={(e) => handleAwardChange(index, 'title', e.target.value)}
+                                                placeholder="e.g., Best Startup Award 2025"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="recruiter-form-group">
+                                            <label>Description *</label>
+                                            <textarea
+                                                value={award.description || ''}
+                                                onChange={(e) => handleAwardChange(index, 'description', e.target.value)}
+                                                placeholder="Describe this award or achievement in detail..."
+                                                rows="3"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="recruiter-form-group">
+                                            <label>Image (Optional)</label>
+                                            {award.image ? (
+                                                <div className="perk-image-preview">
+                                                    <img src={award.image} alt={award.title} />
+                                                    <button
+                                                        type="button"
+                                                        className="remove-image-btn"
+                                                        onClick={() => handleRemoveAwardImage(index)}
+                                                    >
+                                                        Remove Image
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="perk-image-upload">
+                                                    <input
+                                                        type="file"
+                                                        id={`award-image-${index}`}
+                                                        accept="image/*"
+                                                        onChange={(e) => handleAwardImageUpload(index, e)}
+                                                        style={{ display: 'none' }}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="upload-image-btn"
+                                                        onClick={() => document.getElementById(`award-image-${index}`).click()}
+                                                    >
+                                                        Upload Image
+                                                    </button>
+                                                    <small style={{ color: '#666', fontSize: '0.8rem', marginTop: '8px', display: 'block' }}>
+                                                        Recommended: 800x600px, Max 5MB
+                                                    </small>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

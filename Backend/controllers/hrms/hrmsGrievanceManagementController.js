@@ -9,37 +9,52 @@ const createGrievance = async (req, res) => {
     const recruiterId = req.user?.recruiterId || req.user?.userId;
     if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
 
-    const { employeeId, employeeName, category, subject, description, department, isConfidential, attachments } = req.body;
+    const {
+      employeeId, employeeName, employeeDepartment, employeeDesignation,
+      category, subject, description, department, priority,
+      dateOfGrievance, isConfidential, attachments
+    } = req.body;
 
     if (!employeeId || !category || !subject || !description) {
-      return res.status(400).json(errorResponse('Missing required fields'));
+      return res.status(400).json(errorResponse('Missing required fields: employeeId, category, subject, description'));
     }
 
     const grievanceId = generateId();
+    const now = getCurrentTimestamp();
+    const datePart = now.slice(0, 10).replace(/-/g, '');
+    const ticketNo = `GRV-${datePart}-${grievanceId.slice(0, 6).toUpperCase()}`;
+
     const grievance = {
       grievanceId,
+      ticketNo,
       recruiterId,
       employeeId,
       employeeName: employeeName || '',
+      employeeDepartment: employeeDepartment || department || '',
+      employeeDesignation: employeeDesignation || '',
       category,
       subject,
+      title: subject,
       description,
-      department: department || '',
+      department: department || employeeDepartment || '',
+      priority: priority || 'Medium',
+      dateOfGrievance: dateOfGrievance || now.split('T')[0],
       isConfidential: isConfidential || false,
       status: 'Open',
-      priority: 'Medium',
-      attachments: attachments || [],
+      attachments: Array.isArray(attachments) ? attachments : [],
       remarks: [],
+      resolutionRemarks: '',
+      dateOfClosure: null,
       statusHistory: [{
         status: 'Open',
         changedBy: req.user.userId,
         changedByName: req.user.name,
-        timestamp: getCurrentTimestamp()
+        timestamp: now
       }],
       submittedBy: req.user.userId,
       submittedByName: req.user.name,
-      createdAt: getCurrentTimestamp(),
-      updatedAt: getCurrentTimestamp()
+      createdAt: now,
+      updatedAt: now
     };
 
     if (isUsingMockDB()) {
@@ -176,8 +191,10 @@ const updateGrievanceStatus = async (req, res) => {
       priority: priority || grievance.priority,
       remarks,
       statusHistory,
+      resolutionRemarks: req.body.resolutionRemarks || grievance.resolutionRemarks || '',
       updatedAt: getCurrentTimestamp(),
-      resolvedAt: status === 'Resolved' || status === 'Closed' ? getCurrentTimestamp() : grievance.resolvedAt
+      resolvedAt: (status === 'Resolved' || status === 'Closed') ? getCurrentTimestamp() : grievance.resolvedAt,
+      dateOfClosure: (status === 'Closed' || status === 'Resolved') ? getCurrentTimestamp() : grievance.dateOfClosure
     };
 
     if (isUsingMockDB()) {
@@ -265,10 +282,11 @@ const getGrievanceStats = async (req, res) => {
     const stats = {
       total: grievances.length,
       open: grievances.filter(g => g.status === 'Open').length,
-      inProgress: grievances.filter(g => g.status === 'In Progress').length,
+      inProgress: grievances.filter(g => g.status === 'In Progress' || g.status === 'Under Review').length,
       resolved: grievances.filter(g => g.status === 'Resolved').length,
       closed: grievances.filter(g => g.status === 'Closed').length,
-      pending: grievances.filter(g => g.status === 'Open' || g.status === 'In Progress').length
+      rejected: grievances.filter(g => g.status === 'Rejected').length,
+      pending: grievances.filter(g => g.status === 'Open' || g.status === 'In Progress' || g.status === 'Under Review').length
     };
 
     const categoryBreakdown = {};

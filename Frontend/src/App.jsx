@@ -14,7 +14,7 @@ import NewsPage from './Components/Pages/NewsPage.jsx';
 import RecruiterPage from './Components/Pages/RecruiterPage.jsx';
 import JobsPage from './Components/Pages/JobsPage.jsx';
 import CoursesPage from './Components/Pages/CoursesPage.jsx';
-import CourseDetailPage from './Components/Pages/CourseDetailPage.jsx';
+
 import CourseLearningPage from './Components/Pages/CourseLearningPage.jsx';
 import LoadingExample from './Components/common/LoadingExample.jsx';
 import MessageCenter from './Components/Messages/MessageCenter.jsx';
@@ -24,7 +24,7 @@ import HRMS from './Components/HRMS/HRMS.jsx';
 import { AuthProvider, AuthContext, LoadingProvider } from './context';
 import HourglassLoader from './Components/common/HourglassLoader';
 import apiService from './services/api';
-import AttendanceManagement from './Components/AttendanceManagement.jsx';
+
 import { useLenis } from './hooks/useLenis';
 import { showLoginWithMessage } from './utils/authGuard';
 import './App.css';
@@ -104,14 +104,13 @@ function AppContent() {
                 <Routes>
                     <Route path="/" element={<Home isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/staff" element={<StaffPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} /> 
-                    <Route path="/institute" element={<InstitutePageList isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    <Route path="/institute" element={<InstitutePageList isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} currentUser={currentUser} />} />
                     <Route path="/institute/:id" element={<InstitutePage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/news" element={<NewsPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/recruiter" element={<RecruiterPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/recruiter/:recruiterId" element={<RecruiterPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/jobs" element={<JobsPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/courses" element={<CoursesPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
-                    <Route path="/course/:courseId" element={<CourseDetailPage />} />
                     <Route path="/course-learning/:courseId" element={<CourseLearningPage />} />
                     <Route path="/loading-demo" element={<LoadingExample />} />
                     <Route 
@@ -156,12 +155,7 @@ function AppContent() {
                             <HRMS /> : <Navigate to="/" />
                         } 
                     />
-                    <Route 
-                        path="/attendance" 
-                        element={isLoggedIn && (currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'recruiter') ? 
-                            <AttendanceManagement /> : <Navigate to="/" />
-                        } 
-                    />
+
                 </Routes>
             </main>
         </div>

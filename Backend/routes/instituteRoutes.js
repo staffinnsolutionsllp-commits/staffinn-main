@@ -18,6 +18,11 @@ const {
   deleteInstitute,
   uploadProfileImage,
   deleteProfileImage,
+  uploadBannerImage,
+  deleteBannerImage,
+  uploadCampusTourMedia,
+  deleteCampusTourMedia,
+  getPublicCampusTour,
   updatePlacementSection,
   getPlacementSection,
   getPublicPlacementSection,
@@ -39,7 +44,8 @@ const {
   upload,
   studentUpload,
   placementUpload,
-  industryCollabUpload
+  industryCollabUpload,
+  campusTourUpload
 } = require('../controllers/instituteController');
 
 // Import student controller
@@ -133,6 +139,7 @@ router.get('/public/:id/industry-collaborations', getPublicIndustryCollaboration
 router.get('/public/:instituteId/events-news', getPublicEventNews);
 router.get('/public/:instituteId/government-schemes', getPublicInstituteGovernmentSchemes);
 router.get('/public/:instituteId/awards', getPublicAwards);
+router.get('/public/:instituteId/campus-tour', getPublicCampusTour);
 router.get('/mou-pdf/:filename', serveMouPdf); // Public PDF serving route
 
 
@@ -150,6 +157,14 @@ router.put('/profile', updateInstituteProfile);
 // Image upload routes
 router.post('/upload-image', upload.single('profileImage'), uploadProfileImage);
 router.delete('/profile-image', deleteProfileImage);
+
+// Banner image upload routes
+router.post('/upload-banner', upload.single('bannerImage'), uploadBannerImage);
+router.delete('/banner-image', deleteBannerImage);
+
+// Campus Tour media upload routes
+router.post('/campus-tour/upload', campusTourUpload.single('campusTourMedia'), uploadCampusTourMedia);
+router.delete('/campus-tour/:itemId', deleteCampusTourMedia);
 
 // Placement section routes
 router.put('/placement-section', placementUpload.any(), updatePlacementSection);

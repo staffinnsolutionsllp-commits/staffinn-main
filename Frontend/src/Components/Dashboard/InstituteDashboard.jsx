@@ -7,6 +7,7 @@ import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
 import { useGlobalLoading } from '../../hooks/useGlobalLoading';
 import useWebSocket from '../../hooks/useWebSocket';
 import { FaBars } from 'react-icons/fa';
+import { FiSend, FiCheckCircle, FiXCircle, FiClock, FiExternalLink, FiTrendingUp } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 
 import './InstituteDashboard.css';
@@ -17,6 +18,8 @@ import './PlacementSection.css';
 import './EventNewsStyles.css';
 import './CourseCardStyles.css';
 import './AchievementStyles.css';
+import RecruiterInviteEnvelope from './RecruiterInviteEnvelope';
+import RecruiterInvitesList from './RecruiterInvitesList';
 import './StaffinnPartnerMenu.css';
 import './Categories.css';
 import CourseQuizManager from './CourseQuizManager';
@@ -27,6 +30,7 @@ import StudentTracking from './StudentTracking';
 import BankDetailsForm from './BankDetailsForm';
 import PlacementTracking from './Placement/PlacementTracking';
 import AwardsRecognition from './AwardsRecognition';
+import PlacementPlanner from './PlacementPlanner';
 
 
 const InstituteDashboard = () => {
@@ -41,6 +45,7 @@ const InstituteDashboard = () => {
     const [staffinnPartnerDropdownOpen, setStaffinnPartnerDropdownOpen] = useState(false);
     const [coursesDropdownOpen, setCoursesDropdownOpen] = useState(false);
     const [placementDropdownOpen, setPlacementDropdownOpen] = useState(false);
+    const [campusDriveDropdownOpen, setCampusDriveDropdownOpen] = useState(false);
     const [infrastructureDropdownOpen, setInfrastructureDropdownOpen] = useState(false);
     const [batchesDropdownOpen, setBatchesDropdownOpen] = useState(false);
     const [reportDropdownOpen, setReportDropdownOpen] = useState(false);
@@ -69,6 +74,8 @@ const InstituteDashboard = () => {
         description: '',
         establishedYear: '',
         profileImage: null,
+        bannerImage: null,
+        campusTour: [],
         isLive: false,
         instituteType: 'normal'
     });
@@ -83,6 +90,10 @@ const InstituteDashboard = () => {
     const [currentBadge, setCurrentBadge] = useState('');
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
+    const [bannerFile, setBannerFile] = useState(null);
+    const [bannerPreview, setBannerPreview] = useState(null);
+    const [campusTourItems, setCampusTourItems] = useState([]); // persisted items from DB
+    const [campusTourUploading, setCampusTourUploading] = useState(false);
     
     // Real-time dashboard data
     const [dashboardStats, setDashboardStats] = useState({
@@ -114,7 +125,7 @@ const InstituteDashboard = () => {
     const { withLoading } = useGlobalLoading();
     
     // WebSocket for real-time updates
-    const { joinInstituteRoom, onMisStatusUpdate, offMisStatusUpdate } = useWebSocket();
+    const { joinInstituteRoom, onMisStatusUpdate, offMisStatusUpdate, onCampusInviteStatusUpdate, offCampusInviteStatusUpdate } = useWebSocket();
     
 
     
@@ -142,6 +153,8 @@ const InstituteDashboard = () => {
     
     // Campus Requests states
     const [campusRequests, setCampusRequests] = useState([]);
+    // Campus invite real-time toast
+    const [campusInviteToast, setCampusInviteToast] = useState(null);
     
     // Modal states
     const [showEventNewsModal, setShowEventNewsModal] = useState(false);
@@ -160,6 +173,23 @@ const InstituteDashboard = () => {
         loadAwards();
         loadCampusRequests();
         // MIS status will be loaded in loadProfileData for Staffinn Partners
+    }, []);
+
+    // Real-time campus invite status updates (recruiter accepted/rejected)
+    useEffect(() => {
+        const handleInviteStatusUpdate = (data) => {
+            console.log('📡 Campus invite status update:', data);
+            // Reload campus requests to reflect new status
+            loadCampusRequests();
+            // Show toast notification
+            const msg = data.status === 'accepted'
+                ? `✅ ${data.recruiterName || 'Recruiter'} accepted your campus invite!`
+                : `❌ ${data.recruiterName || 'Recruiter'} declined your campus invite.`;
+            setCampusInviteToast(msg);
+            setTimeout(() => setCampusInviteToast(null), 5000);
+        };
+        onCampusInviteStatusUpdate(handleInviteStatusUpdate);
+        return () => offCampusInviteStatusUpdate(handleInviteStatusUpdate);
     }, []);
     
     // Real-time enrollment count updates
@@ -669,6 +699,7 @@ const InstituteDashboard = () => {
             
             if (response.success && response.data) {
                 const profileImageUrl = response.data.profileImage || null;
+                const bannerImageUrl = response.data.bannerImage || null;
                 const instituteType = response.data.instituteType || 'normal';
                 
                 setProfileData({
@@ -684,10 +715,15 @@ const InstituteDashboard = () => {
                     description: response.data.description || '',
                     establishedYear: response.data.establishedYear || '',
                     profileImage: profileImageUrl,
+                    bannerImage: bannerImageUrl,
+                    campusTour: response.data.campusTour || [],
                     isLive: response.data.isLive || false,
                     instituteType: instituteType
                 });
                 setImagePreview(profileImageUrl);
+                setBannerPreview(bannerImageUrl);
+                // Load campus tour items
+                setCampusTourItems(response.data.campusTour || []);
                 
                 // Update all image elements with loaded profile image
                 if (profileImageUrl) {
@@ -767,7 +803,10 @@ const InstituteDashboard = () => {
         category: '',
         mode: 'On Campus',
         prerequisites: '',
-        syllabus: '',
+        syllabusFile: null,        // File object for new upload
+        syllabusFileUrl: null,     // Existing S3 URL (for edit mode)
+        syllabusFileName: null,    // Existing file name (for edit mode)
+        learningObjectives: '',    // Newline-separated learning points
         certification: '',
         thumbnail: null,
         modules: [],
@@ -964,6 +1003,10 @@ const InstituteDashboard = () => {
         // Reset image states
         setImageFile(null);
         setImagePreview(profileData.profileImage || null);
+        setBannerFile(null);
+        setBannerPreview(profileData.bannerImage || null);
+        // Reset campus tour to persisted state on close
+        setCampusTourItems(profileData.campusTour || []);
         // Reset forms
         setStudentForm({
             fullName: '', email: '', phoneNumber: '', dateOfBirth: '', gender: '', address: '',
@@ -1192,16 +1235,25 @@ const InstituteDashboard = () => {
             // Create FormData for file uploads
             const formData = new FormData();
             
-            // Add basic course data
+            // Add basic course data — skip file fields and arrays, handle them separately
+            const skipKeys = ['thumbnail', 'modules', 'onCampusFiles', 'syllabusFile', 'syllabusFileUrl', 'syllabusFileName', 'learningObjectives'];
             Object.keys(courseForm).forEach(key => {
-                if (key !== 'thumbnail' && key !== 'modules' && courseForm[key]) {
+                if (!skipKeys.includes(key) && courseForm[key] !== null && courseForm[key] !== undefined && courseForm[key] !== '') {
                     formData.append(key, courseForm[key]);
                 }
             });
+
+            // Add learningObjectives as a single string (newline-separated) — kept separate to avoid duplicate append
+            formData.append('learningObjectives', courseForm.learningObjectives || '');
             
             // Add thumbnail
             if (courseForm.thumbnail) {
                 formData.append('thumbnail', courseForm.thumbnail);
+            }
+
+            // Add syllabus file if a new one was selected
+            if (courseForm.syllabusFile) {
+                formData.append('syllabus', courseForm.syllabusFile);
             }
             
             // Add on-campus files (images and videos)
@@ -1215,28 +1267,29 @@ const InstituteDashboard = () => {
             // Add modules data
             if (courseForm.mode === 'Online' && courseForm.modules.length > 0) {
                 formData.append('modules', JSON.stringify(courseForm.modules.map(module => ({
+                    moduleId: module.moduleId || null,
                     title: module.title,
                     description: module.description,
                     order: module.order,
+                    quiz: module.quiz || null,
                     content: module.content.map(content => ({
+                        contentId: content.contentId || null,
                         title: content.title,
                         type: content.type,
-                        order: content.order
-                    })),
-                    quiz: module.quiz || null
+                        order: content.order,
+                        existingUrl: content.existingUrl || null  // tell backend to preserve this URL if no new file
+                    }))
                 }))));
                 
                 // Add content files (only for Online mode)
-                if (courseForm.mode === 'Online') {
-                    courseForm.modules.forEach((module, moduleIndex) => {
-                        module.content.forEach((content, contentIndex) => {
-                            if (content.file) {
-                                const fieldName = `content_${moduleIndex}_${contentIndex}`;
-                                formData.append(fieldName, content.file);
-                            }
-                        });
+                courseForm.modules.forEach((module, moduleIndex) => {
+                    module.content.forEach((content, contentIndex) => {
+                        if (content.file) {
+                            const fieldName = `content_${moduleIndex}_${contentIndex}`;
+                            formData.append(fieldName, content.file);
+                        }
                     });
-                }
+                });
             }
             
             let response;
@@ -1871,8 +1924,8 @@ const InstituteDashboard = () => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const courseId = course.coursesId || course.instituteCourseID;
         
-        // Navigate to CourseLearningPage with institute context
-        navigate(`/course/${courseId}?preview=true&institute=${user.id}`);
+        // Navigate to CourseLearningPage
+        navigate(`/course-learning/${courseId}`);
     };
 
     const handleEditCourse = async (course) => {
@@ -1898,14 +1951,19 @@ const InstituteDashboard = () => {
             
             // Process modules to ensure proper structure for editing
             const processedModules = (courseData.modules || []).map((module, index) => ({
+                moduleId: module.moduleId || null,
                 title: module.moduleTitle || module.title || '',
                 description: module.moduleDescription || module.description || '',
                 order: module.order || index + 1,
+                quiz: module.quiz || null,
                 content: (module.content || []).map((content, contentIndex) => ({
+                    contentId: content.contentId || null,
                     title: content.contentTitle || content.title || '',
                     type: content.contentType || content.type || 'video',
-                    file: null, // Don't pre-load existing files
-                    order: content.order || contentIndex + 1
+                    existingUrl: content.contentUrl || null,   // preserve existing S3 URL
+                    file: null,                                 // no new file selected yet
+                    order: content.order || contentIndex + 1,
+                    durationMinutes: content.durationMinutes || 0
                 }))
             }));
             
@@ -1921,9 +1979,14 @@ const InstituteDashboard = () => {
                 category: courseData.category || '',
                 mode: courseData.mode === 'Offline' ? 'On Campus' : courseData.mode || 'On Campus',
                 prerequisites: courseData.prerequisites || '',
-                syllabus: courseData.syllabus || courseData.syllabusOverview || '',
+                syllabusFile: null,
+                syllabusFileUrl: courseData.syllabusFileUrl || null,
+                syllabusFileName: courseData.syllabusFileName || null,
+                learningObjectives: Array.isArray(courseData.learningObjectives)
+                    ? courseData.learningObjectives.join('\n')
+                    : (courseData.learningObjectives || ''),
                 certification: courseData.certification || '',
-                thumbnail: null, // File input will be empty, but existing thumbnail will be shown via thumbnailUrl
+                thumbnail: null,
                 modules: processedModules,
                 onCampusFiles: courseData.onCampusFiles || []
             });
@@ -1937,14 +2000,19 @@ const InstituteDashboard = () => {
             
             // Fallback: use course list data if API fails
             const fallbackModules = (course.modules || []).map((module, index) => ({
+                moduleId: module.moduleId || null,
                 title: module.moduleTitle || module.title || '',
                 description: module.moduleDescription || module.description || '',
                 order: module.order || index + 1,
+                quiz: module.quiz || null,
                 content: (module.content || []).map((content, contentIndex) => ({
+                    contentId: content.contentId || null,
                     title: content.contentTitle || content.title || '',
                     type: content.contentType || content.type || 'video',
+                    existingUrl: content.contentUrl || null,
                     file: null,
-                    order: content.order || contentIndex + 1
+                    order: content.order || contentIndex + 1,
+                    durationMinutes: content.durationMinutes || 0
                 }))
             }));
             
@@ -1957,7 +2025,12 @@ const InstituteDashboard = () => {
                 category: course.category || '',
                 mode: course.mode === 'Offline' ? 'On Campus' : course.mode || 'On Campus',
                 prerequisites: course.prerequisites || '',
-                syllabus: course.syllabus || course.syllabusOverview || '',
+                syllabusFile: null,
+                syllabusFileUrl: course.syllabusFileUrl || null,
+                syllabusFileName: course.syllabusFileName || null,
+                learningObjectives: Array.isArray(course.learningObjectives)
+                    ? course.learningObjectives.join('\n')
+                    : (course.learningObjectives || ''),
                 certification: course.certification || '',
                 thumbnail: null,
                 modules: fallbackModules,
@@ -2004,20 +2077,32 @@ const InstituteDashboard = () => {
             
             let finalProfileData = { ...profileData };
             
-            // First upload image if there's a new one
+            // Upload profile image if a new one was selected
             if (imageFile) {
                 const imageResponse = await apiService.uploadInstituteImage(imageFile);
                 if (imageResponse.success) {
-                    // Update profile data with new image URL
                     finalProfileData.profileImage = imageResponse.data.profileImage;
                     setProfileData(prev => ({ ...prev, profileImage: imageResponse.data.profileImage }));
                     setImagePreview(imageResponse.data.profileImage);
                     setImageFile(null);
-                    
-                    // Update all image elements immediately
                     updateAllImageElements(imageResponse.data.profileImage);
                 } else {
                     alert(imageResponse.message || 'Failed to upload image');
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // Upload banner image if a new one was selected
+            if (bannerFile) {
+                const bannerResponse = await apiService.uploadInstituteBannerImage(bannerFile);
+                if (bannerResponse.success) {
+                    finalProfileData.bannerImage = bannerResponse.data.bannerImage;
+                    setProfileData(prev => ({ ...prev, bannerImage: bannerResponse.data.bannerImage }));
+                    setBannerPreview(bannerResponse.data.bannerImage);
+                    setBannerFile(null);
+                } else {
+                    alert(bannerResponse.message || 'Failed to upload banner image');
                     setLoading(false);
                     return;
                 }
@@ -2027,6 +2112,7 @@ const InstituteDashboard = () => {
             const updateData = {
                 ...finalProfileData,
                 badges: Array.isArray(finalProfileData.badges) ? finalProfileData.badges : [],
+                campusTour: campusTourItems, // preserve campus tour items
                 isLive: true
             };
             
@@ -2034,7 +2120,7 @@ const InstituteDashboard = () => {
             
             if (response.success) {
                 alert('Profile updated and is now live!');
-                await loadProfileData(); // Reload data
+                await loadProfileData();
                 closeModal();
             } else {
                 alert(response.message || 'Failed to update profile');
@@ -2145,12 +2231,9 @@ const InstituteDashboard = () => {
                 setProfileData(prev => ({ ...prev, profileImage: null }));
                 setImagePreview(null);
                 setImageFile(null);
-                
-                // Update all image elements immediately
                 updateAllImageElements(null);
-                
                 alert('Profile image deleted successfully!');
-                await loadProfileData(); // Reload profile data to ensure consistency
+                await loadProfileData();
             } else {
                 alert(response.message || 'Failed to delete image');
             }
@@ -2159,6 +2242,103 @@ const InstituteDashboard = () => {
             alert('Failed to delete image. Please try again.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleBannerChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Banner image size should be less than 5 MB');
+            return;
+        }
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+            return;
+        }
+        setBannerFile(file);
+        const reader = new FileReader();
+        reader.onload = (ev) => setBannerPreview(ev.target.result);
+        reader.readAsDataURL(file);
+    };
+
+    const handleBannerDelete = async () => {
+        try {
+            setLoading(true);
+            const response = await apiService.deleteInstituteBannerImage();
+            if (response.success) {
+                setProfileData(prev => ({ ...prev, bannerImage: null }));
+                setBannerPreview(null);
+                setBannerFile(null);
+                alert('Banner image removed successfully!');
+                await loadProfileData();
+            } else {
+                alert(response.message || 'Failed to remove banner image');
+            }
+        } catch (error) {
+            console.error('Error deleting banner image:', error);
+            alert('Failed to remove banner image. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle campus tour — upload a single file immediately
+    const handleCampusTourFileSelect = async (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        for (const file of files) {
+            const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+
+            if (!isImage && !isVideo) {
+                alert(`Unsupported file type: ${file.name}. Please use images (JPG, PNG, GIF, WebP) or videos (MP4, WebM, MOV).`);
+                continue;
+            }
+            if (isImage && file.size > 5 * 1024 * 1024) {
+                alert(`Image "${file.name}" exceeds 5 MB limit.`);
+                continue;
+            }
+            if (isVideo && file.size > 100 * 1024 * 1024) {
+                alert(`Video "${file.name}" exceeds 100 MB limit.`);
+                continue;
+            }
+
+            try {
+                setCampusTourUploading(true);
+                const response = await apiService.uploadCampusTourMedia(file);
+                if (response.success) {
+                    setCampusTourItems(response.data.campusTour || []);
+                } else {
+                    alert(response.message || `Failed to upload ${file.name}`);
+                }
+            } catch (err) {
+                console.error('Campus tour upload error:', err);
+                alert(`Failed to upload ${file.name}. Please try again.`);
+            } finally {
+                setCampusTourUploading(false);
+            }
+        }
+        // Reset input so same file can be re-selected
+        e.target.value = '';
+    };
+
+    const handleCampusTourDelete = async (itemId) => {
+        try {
+            setCampusTourUploading(true);
+            const response = await apiService.deleteCampusTourMedia(itemId);
+            if (response.success) {
+                setCampusTourItems(response.data.campusTour || []);
+            } else {
+                alert(response.message || 'Failed to remove media');
+            }
+        } catch (err) {
+            console.error('Campus tour delete error:', err);
+            alert('Failed to remove media. Please try again.');
+        } finally {
+            setCampusTourUploading(false);
         }
     };
 
@@ -2185,6 +2365,12 @@ const InstituteDashboard = () => {
 
     return (
         <div className="institute-dashboard">
+            {/* Campus invite status toast */}
+            {campusInviteToast && (
+                <div className="campus-invite-toast">
+                    {campusInviteToast}
+                </div>
+            )}
             <button className="mobile-hamburger" onClick={toggleMobileSidebar}>
                 <FaBars />
             </button>
@@ -2234,13 +2420,39 @@ const InstituteDashboard = () => {
                                     Student Management
                                 </li>
                                 <li className={activeTab === 'applied-jobs' ? 'active' : ''} onClick={() => {
-                                    // Redirect to Recruiter page
-                                    navigate('/recruiter');
+                                    // Redirect to Jobs page
+                                    navigate('/jobs');
                                 }}>
-                                    Applied Jobs
+                                    Apply a Job
                                 </li>
                                 <li className={activeTab === 'placement-tracking' ? 'active' : ''} onClick={() => handleTabChange('placement-tracking')}>
                                     Placement Tracking
+                                </li>
+                            </ul>
+                        )}
+                    </li>
+                    {/* Campus Drive — standalone section between My Placement and My Achievements */}
+                    <li className={`dropdown ${['placement-planner', 'send-invite', 'campus-interest', 'recruiter-invites'].includes(activeTab) ? 'active' : ''}`}>
+                        <div className="dropdown-header" onClick={() => setCampusDriveDropdownOpen(!campusDriveDropdownOpen)}>
+                            Campus Drive
+                            <span className={`dropdown-arrow ${campusDriveDropdownOpen ? 'open' : ''}`}>▼</span>
+                        </div>
+                        {campusDriveDropdownOpen && (
+                            <ul className="dropdown-menu">
+                                <li className={activeTab === 'placement-planner' ? 'active' : ''} onClick={() => handleTabChange('placement-planner')}>
+                                    Placement Planner
+                                </li>
+                                <li className={activeTab === 'send-invite' ? 'active' : ''} onClick={() => {
+                                    // Redirect to Recruiter listing page
+                                    navigate('/recruiter');
+                                }}>
+                                    Send an Invite
+                                </li>
+                                <li className={activeTab === 'campus-interest' ? 'active' : ''} onClick={() => handleTabChange('campus-interest')}>
+                                    Campus Interest
+                                </li>
+                                <li className={activeTab === 'recruiter-invites' ? 'active' : ''} onClick={() => handleTabChange('recruiter-invites')}>
+                                    Recruiter Invites
                                 </li>
                             </ul>
                         )}
@@ -2269,9 +2481,6 @@ const InstituteDashboard = () => {
                     </li>
                     <li className={activeTab === 'news-events' ? 'active' : ''} onClick={() => handleTabChange('news-events')}>
                         News & Events
-                    </li>
-                    <li className={activeTab === 'campus-requests' ? 'active' : ''} onClick={() => handleTabChange('campus-requests')}>
-                        Campus Requests
                     </li>
                     {profileData.instituteType === 'staffinn_partner' && (
                         <li className={`dropdown staffinn-partner-item ${staffinnPartnerDropdownOpen ? 'active' : ''}`}>
@@ -2855,46 +3064,93 @@ const InstituteDashboard = () => {
                     <PlacementTracking />
                 )}
 
-                {activeTab === 'campus-requests' && (
-                    <div className="institute-campus-requests-tab">
-                        <div className="institute-tab-header">
-                            <h1>Campus Requests</h1>
-                            <p>Manage campus invite requests sent to recruiters</p>
+                {/* Campus Drive: Placement Planner Tab */}
+                {activeTab === 'placement-planner' && (
+                    <PlacementPlanner />
+                )}
+
+                {/* Campus Drive: Campus Interest Tab — shows confirmed/accepted invites */}
+                {activeTab === 'campus-interest' && (
+                    <div className="institute-campus-drive-tab">
+                        <div className="cds-header">
+                            <div>
+                                <h1 className="cds-title">Campus Interest</h1>
+                                <p className="cds-subtitle">Recruiters who have confirmed or accepted your campus drive invitations</p>
+                            </div>
                         </div>
 
-                        {campusRequests.length > 0 ? (
-                            <div className="campus-requests-grid">
-                                {campusRequests.map(request => (
-                                    <div className="campus-request-card" key={request.campusreq}>
-                                        <div className="request-header">
-                                            <h3>{request.companyName || 'Company Name'}</h3>
-                                            <span className={`status-badge ${request.status}`}>
-                                                {request.status === 'pending' ? 'Pending' : 
-                                                 request.status === 'accepted' ? 'Approved' : 'Rejected'}
-                                            </span>
-                                        </div>
-                                        <div className="request-details">
-                                            <p><strong>Email:</strong> {request.email || 'N/A'}</p>
-                                            <p><strong>Phone:</strong> {request.phone || 'N/A'}</p>
-                                            <p><strong>Location:</strong> {request.location || 'N/A'}</p>
-                                            <p><strong>Sent:</strong> {new Date(request.createdAt).toLocaleDateString()}</p>
-                                        </div>
-                                        <div className="request-actions">
-                                            <button 
-                                                className="institute-action-button"
-                                                onClick={() => navigate(`/recruiter/${request.recruiterId}`)}
-                                            >
-                                                View Recruiter
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
+                        {campusRequests.filter(r => ['accepted','confirmed','tentative'].includes(r.status)).length === 0 ? (
+                            <div className="cds-empty">
+                                <div className="cds-empty-icon"><FiTrendingUp /></div>
+                                <h3>No Responses Yet</h3>
+                                <p>When a recruiter responds to your campus invite, they'll appear here. Keep sending invites!</p>
                             </div>
                         ) : (
-                            <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-                                <p>No campus requests sent yet.</p>
+                            <div className="cds-interest-grid">
+                                {campusRequests.filter(r => ['accepted','confirmed','tentative'].includes(r.status)).map(req => {
+                                    const rr = req.recruiterResponse || {};
+                                    const isConfirmed = req.status === 'confirmed';
+                                    const isTentative = req.status === 'tentative';
+                                    return (
+                                        <div key={req.campusreq} className="cds-interest-card">
+                                            <div className="cds-interest-header">
+                                                <div className="cds-interest-avatar">{(req.companyName || req.recruiterName || 'R')[0]}</div>
+                                                <div>
+                                                    <h3>{req.companyName || req.recruiterName || 'Recruiter'}</h3>
+                                                    <p>{req.recruiterEmail || ''}</p>
+                                                </div>
+                                                <span className="cds-accepted-badge" style={isTentative ? { background: '#ede9fe', borderColor: '#c4b5fd', color: '#5b21b6' } : {}}>
+                                                    <FiCheckCircle /> {isConfirmed ? 'Confirmed' : isTentative ? 'Tentative' : 'Accepted'}
+                                                </span>
+                                            </div>
+                                            <div className="cds-interest-details">
+                                                {(req.driveMode || req.campusDriveMode) && (
+                                                    <div className="cds-interest-row"><span>Drive Mode</span><strong>{req.driveMode || req.campusDriveMode}</strong></div>
+                                                )}
+                                                {(req.totalEligibleStudents || req.numberOfStudents) && (
+                                                    <div className="cds-interest-row"><span>Eligible Students</span><strong>{req.totalEligibleStudents || req.numberOfStudents}</strong></div>
+                                                )}
+                                                {rr.preferredDate && (
+                                                    <div className="cds-interest-row"><span>Confirmed Date</span>
+                                                        <strong>{(() => { const d = new Date(rr.preferredDate + 'T00:00:00'); return `${d.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]} ${d.getFullYear()}`; })()}</strong>
+                                                    </div>
+                                                )}
+                                                {rr.preferredTimeSlot && (
+                                                    <div className="cds-interest-row"><span>Time Slot</span><strong>{rr.preferredTimeSlot}</strong></div>
+                                                )}
+                                                {rr.hiringDetails?.jobRoles && (
+                                                    <div className="cds-interest-row"><span>Job Roles</span><strong>{rr.hiringDetails.jobRoles}</strong></div>
+                                                )}
+                                                {rr.hiringDetails?.numberOfVacancies && (
+                                                    <div className="cds-interest-row"><span>Vacancies</span><strong>{rr.hiringDetails.numberOfVacancies}</strong></div>
+                                                )}
+                                                {req.selectedDates && req.selectedDates.length > 0 && (
+                                                    <div className="cds-interest-row cds-interest-dates">
+                                                        <span>Proposed Dates</span>
+                                                        <div className="cds-dates-wrap">
+                                                            {req.selectedDates.sort().map(d => {
+                                                                const dt = new Date(d + 'T00:00:00');
+                                                                return <span key={d} className="cds-date-chip">{dt.getDate()} {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()]} {dt.getFullYear()}</span>;
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="cds-interest-footer">
+                                                <button className="cds-view-btn" onClick={() => navigate(`/recruiter/${req.recruiterId}`)}>View Recruiter <FiExternalLink /></button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* Campus Drive: Recruiter Invites Tab - shows invites received from recruiters */}
+                {activeTab === 'recruiter-invites' && (
+                    <div className="institute-recruiter-invites-tab">
+                        <RecruiterInvitesList />
                     </div>
                 )}
 
@@ -4331,201 +4587,438 @@ const InstituteDashboard = () => {
 
                         {/* Profile Form */}
                         {modalType === 'profile' && (
-                            <form onSubmit={handleProfileUpdate} className="institute-modal-form">
-                                <div className="institute-form-group">
-                                    <label>Profile Image</label>
-                                    <div className="institute-image-upload-section">
-                                        {imagePreview ? (
-                                            <div className="institute-image-preview-container">
-                                                <img 
-                                                    src={imagePreview} 
-                                                    alt="Profile Preview" 
-                                                    className="institute-profile-preview-image"
-                                                    onError={(e) => {
-                                                        console.error('Image preview error:', e);
-                                                        console.log('Failed image URL:', imagePreview);
-                                                        e.target.style.display = 'none';
-                                                    }}
-                                                    onLoad={() => {
-                                                        console.log('Image preview loaded successfully:', imagePreview);
-                                                    }}
+                            <form onSubmit={handleProfileUpdate} className="institute-modal-form ep-form">
+
+                                {/* ── Section: Profile Image ── */}
+                                <div className="ep-section">
+                                    <div className="ep-section-header">
+                                        <span className="ep-section-icon">🖼️</span>
+                                        <span className="ep-section-title">Profile Image</span>
+                                    </div>
+                                    <div className={`ep-image-card ${loading ? 'image-loading' : ''}`}>
+                                        <div className="ep-image-preview-area">
+                                            {(imagePreview || profileData.profileImage) ? (
+                                                <div className="ep-image-preview-wrap">
+                                                    <img
+                                                        src={imagePreview || profileData.profileImage}
+                                                        alt="Profile Preview"
+                                                        className="ep-profile-img"
+                                                        onError={(e) => {
+                                                            console.log('Image load error:', e.target.src);
+                                                            e.target.style.display = 'none';
+                                                        }}
+                                                        onLoad={() => console.log('Image loaded successfully:', imagePreview || profileData.profileImage)}
+                                                    />
+                                                    <button type="button" onClick={handleImageDelete} className="ep-remove-img-btn" disabled={loading} title="Remove image">
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="ep-image-placeholder">
+                                                    <div className="ep-image-placeholder-icon">📷</div>
+                                                    <p className="ep-image-placeholder-text">No image uploaded</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="ep-image-upload-area">
+                                            <label className="ep-upload-label">
+                                                <span className="ep-upload-btn-text">
+                                                    {(imagePreview || profileData.profileImage) ? '🔄 Change Image' : '⬆️ Upload Image'}
+                                                </span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                                    onChange={handleImageChange}
+                                                    disabled={loading}
+                                                    className="ep-file-input-hidden"
                                                 />
-                                                <button 
-                                                    type="button" 
-                                                    className="institute-remove-image-btn"
-                                                    onClick={() => {
-                                                        setImagePreview(null);
-                                                        setImageFile(null);
-                                                    }}
+                                            </label>
+                                            {imageFile && (
+                                                <p className="ep-upload-success-msg">✓ New image selected — will save on submit.</p>
+                                            )}
+                                            {loading && <p className="ep-upload-loading-msg">Processing...</p>}
+                                            <p className="ep-upload-helper">Supported formats: JPG, JPEG, PNG, GIF, WEBP &nbsp;·&nbsp; Max size: 5 MB</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── Section: Banner Image ── */}
+                                <div className="ep-section">
+                                    <div className="ep-section-header">
+                                        <span className="ep-section-icon">🖼️</span>
+                                        <span className="ep-section-title">Banner Image</span>
+                                    </div>
+                                    <div className={`ep-banner-card ${loading ? 'image-loading' : ''}`}>
+                                        {(bannerPreview || profileData.bannerImage) ? (
+                                            <div className="ep-banner-preview-wrap">
+                                                <img
+                                                    src={bannerPreview || profileData.bannerImage}
+                                                    alt="Banner Preview"
+                                                    className="ep-banner-preview-img"
+                                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={handleBannerDelete}
+                                                    className="ep-remove-img-btn ep-banner-remove-btn"
+                                                    disabled={loading}
+                                                    title="Remove banner"
                                                 >
-                                                    Remove
+                                                    ✕
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="institute-no-image-placeholder">
-                                                <p>No image selected</p>
+                                            <div className="ep-banner-placeholder">
+                                                <div style={{fontSize: '2rem', marginBottom: '6px'}}>🏞️</div>
+                                                <p style={{margin: 0, fontSize: '13px', color: '#94a3b8'}}>No banner image uploaded</p>
+                                                <p style={{margin: '4px 0 0', fontSize: '11px', color: '#cbd5e1'}}>Recommended: wide landscape image (1600 × 600 px)</p>
                                             </div>
                                         )}
-                                        <input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            onChange={handleImageChange}
-                                            className="institute-file-input"
+                                        <div className="ep-banner-upload-row">
+                                            <label className="ep-upload-label">
+                                                <span className="ep-upload-btn-text">
+                                                    {(bannerPreview || profileData.bannerImage) ? '🔄 Change Banner' : '⬆️ Upload Banner'}
+                                                </span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                                    onChange={handleBannerChange}
+                                                    disabled={loading}
+                                                    className="ep-file-input-hidden"
+                                                />
+                                            </label>
+                                            {bannerFile && (
+                                                <p className="ep-upload-success-msg">✓ Banner selected — will save on submit.</p>
+                                            )}
+                                            <p className="ep-upload-helper">
+                                                Supported: JPG, JPEG, PNG, GIF, WEBP &nbsp;·&nbsp; Max: 5 MB &nbsp;·&nbsp; Recommended: 1600 × 600 px
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── Section: Campus Tour ── */}
+                                <div className="ep-section">
+                                    <div className="ep-section-header">
+                                        <span className="ep-section-icon">🏫</span>
+                                        <span className="ep-section-title">Campus Tour</span>
+                                    </div>
+                                    <p className="ep-section-hint">
+                                        Showcase your campus — classrooms, labs, facilities, events, and more.
+                                        Files upload immediately. Manage them here anytime.
+                                    </p>
+
+                                    {/* Existing media grid */}
+                                    {campusTourItems.length > 0 && (
+                                        <div className="ep-campus-grid">
+                                            {campusTourItems.map(item => (
+                                                <div key={item.id} className="ep-campus-item">
+                                                    {item.type === 'video' ? (
+                                                        <video
+                                                            src={item.url}
+                                                            className="ep-campus-media"
+                                                            muted
+                                                            preload="metadata"
+                                                        />
+                                                    ) : (
+                                                        <img
+                                                            src={item.url}
+                                                            alt={item.fileName || 'Campus'}
+                                                            className="ep-campus-media"
+                                                            onError={(e) => { e.target.style.display = 'none'; }}
+                                                        />
+                                                    )}
+                                                    {item.type === 'video' && (
+                                                        <div className="ep-campus-play-badge">▶</div>
+                                                    )}
+                                                    <div className="ep-campus-type-badge">
+                                                        {item.type === 'video' ? '🎬' : '🖼️'}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        className="ep-campus-remove-btn"
+                                                        onClick={() => handleCampusTourDelete(item.id)}
+                                                        disabled={campusTourUploading}
+                                                        title="Remove"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                    <p className="ep-campus-filename" title={item.fileName}>
+                                                        {item.fileName && item.fileName.length > 22
+                                                            ? item.fileName.substring(0, 20) + '…'
+                                                            : (item.fileName || '')}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Upload area */}
+                                    <div className="ep-campus-upload-area">
+                                        <label className={`ep-campus-upload-label ${campusTourUploading ? 'ep-campus-uploading' : ''}`}>
+                                            {campusTourUploading ? (
+                                                <span>⏳ Uploading...</span>
+                                            ) : (
+                                                <>
+                                                    <span className="ep-campus-upload-icon">⬆️</span>
+                                                    <span className="ep-campus-upload-text">Add Images or Videos</span>
+                                                </>
+                                            )}
+                                            <input
+                                                type="file"
+                                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,video/avi"
+                                                multiple
+                                                onChange={handleCampusTourFileSelect}
+                                                disabled={campusTourUploading}
+                                                className="ep-file-input-hidden"
+                                            />
+                                        </label>
+                                        <div className="ep-campus-specs">
+                                            <p>📷 Images: JPG, JPEG, PNG, GIF, WEBP · Max 5 MB each</p>
+                                            <p>🎬 Videos: MP4, WebM, MOV · Max 100 MB each</p>
+                                            <p>You can upload multiple files at once. They save immediately to S3.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── Section: Basic Information ── */}
+                                <div className="ep-section">
+                                    <div className="ep-section-header">
+                                        <span className="ep-section-icon">🏫</span>
+                                        <span className="ep-section-title">Basic Information</span>
+                                    </div>
+                                    <div className="ep-fields-grid ep-grid-3">
+                                        <div className="ep-field">
+                                            <label className="ep-label">Institute Name <span className="ep-required">*</span></label>
+                                            <input
+                                                className="ep-input"
+                                                type="text"
+                                                value={profileData.instituteName}
+                                                onChange={(e) => setProfileData(prev => ({...prev, instituteName: e.target.value}))}
+                                                placeholder="e.g., ABC Institute of Technology"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="ep-field">
+                                            <label className="ep-label">Phone Number <span className="ep-required">*</span></label>
+                                            <input
+                                                className="ep-input"
+                                                type="tel"
+                                                value={profileData.phone}
+                                                onChange={(e) => setProfileData(prev => ({...prev, phone: e.target.value}))}
+                                                placeholder="e.g., +91 9876543210"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="ep-field">
+                                            <label className="ep-label">Email Address <span className="ep-required">*</span></label>
+                                            <input
+                                                className="ep-input ep-input-disabled"
+                                                type="email"
+                                                value={profileData.email}
+                                                onChange={(e) => setProfileData(prev => ({...prev, email: e.target.value}))}
+                                                required
+                                                readOnly
+                                                disabled
+                                            />
+                                        </div>
+                                        <div className="ep-field">
+                                            <label className="ep-label">Website</label>
+                                            <input
+                                                className="ep-input"
+                                                type="url"
+                                                value={profileData.website || ''}
+                                                onChange={(e) => setProfileData(prev => ({...prev, website: e.target.value}))}
+                                                placeholder="https://www.exampleinstitute.com"
+                                            />
+                                        </div>
+                                        <div className="ep-field">
+                                            <label className="ep-label">Established Year</label>
+                                            <input
+                                                className="ep-input"
+                                                type="number"
+                                                value={profileData.establishedYear}
+                                                onChange={(e) => setProfileData(prev => ({...prev, establishedYear: e.target.value}))}
+                                                placeholder="e.g., 1995"
+                                            />
+                                        </div>
+                                        <div className="ep-field">
+                                            <label className="ep-label">Years of Experience</label>
+                                            <div className="ep-experience-row">
+                                                <input
+                                                    className="ep-input ep-input-sm"
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    value={profileData.experience}
+                                                    onChange={(e) => setProfileData(prev => ({...prev, experience: e.target.value}))}
+                                                    placeholder="5"
+                                                />
+                                                <span className="ep-experience-suffix">yrs</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── Section: Location ── */}
+                                <div className="ep-section">
+                                    <div className="ep-section-header">
+                                        <span className="ep-section-icon">📍</span>
+                                        <span className="ep-section-title">Location</span>
+                                    </div>
+                                    <div className="ep-fields-grid ep-grid-1">
+                                        <div className="ep-field">
+                                            <label className="ep-label">Address <span className="ep-required">*</span></label>
+                                            <textarea
+                                                className="ep-textarea"
+                                                value={profileData.address}
+                                                onChange={(e) => setProfileData(prev => ({...prev, address: e.target.value}))}
+                                                rows="3"
+                                                placeholder="Full address of your institute"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="ep-fields-grid ep-grid-3" style={{marginTop: '12px'}}>
+                                        <div className="ep-field">
+                                            <label className="ep-label">Pincode <span className="ep-required">*</span></label>
+                                            <input
+                                                className="ep-input"
+                                                type="text"
+                                                value={profileData.pincode}
+                                                onChange={(e) => setProfileData(prev => ({...prev, pincode: e.target.value}))}
+                                                placeholder="e.g., 110001"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ── Section: About ── */}
+                                <div className="ep-section">
+                                    <div className="ep-section-header">
+                                        <span className="ep-section-icon">📝</span>
+                                        <span className="ep-section-title">About</span>
+                                    </div>
+                                    <div className="ep-field">
+                                        <label className="ep-label">Description</label>
+                                        <textarea
+                                            className="ep-textarea"
+                                            value={profileData.description}
+                                            onChange={(e) => setProfileData(prev => ({...prev, description: e.target.value}))}
+                                            rows="4"
+                                            placeholder="Tell recruiters and students about your institute — programs offered, achievements, culture..."
                                         />
                                     </div>
                                 </div>
 
-                                <div className="institute-form-grid">
-                                    <div className="institute-form-group">
-                                        <label>Institute Name *</label>
+                                {/* ── Section: Institute Type ── */}
+                                <div className="ep-section">
+                                    <div className="ep-section-header">
+                                        <span className="ep-section-icon">🏷️</span>
+                                        <span className="ep-section-title">Institute Type</span>
+                                    </div>
+                                    <p className="ep-section-hint">Select all that apply. This determines how your institute appears in filtered listings.</p>
+                                    <div className="ep-categories-grid">
+                                        {['Colleges', 'Skill and Vocational', 'Upskilling', 'School', 'Coaching Centre'].map(category => (
+                                            <label key={category} className={`ep-category-chip ${(profileData.categories || []).includes(category) ? 'ep-category-chip--active' : ''}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={(profileData.categories || []).includes(category)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setProfileData(prev => ({
+                                                                ...prev,
+                                                                categories: [...(prev.categories || []), category]
+                                                            }));
+                                                        } else {
+                                                            setProfileData(prev => ({
+                                                                ...prev,
+                                                                categories: (prev.categories || []).filter(c => c !== category)
+                                                            }));
+                                                        }
+                                                    }}
+                                                    className="ep-category-hidden-input"
+                                                />
+                                                <span className="ep-category-chip-label">{category}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* ── Section: Badges ── */}
+                                <div className="ep-section">
+                                    <div className="ep-section-header">
+                                        <span className="ep-section-icon">🏅</span>
+                                        <span className="ep-section-title">Badges</span>
+                                    </div>
+                                    <p className="ep-section-hint">Add achievement or recognition badges visible on your public profile.</p>
+                                    <div className="ep-badge-input-row">
                                         <input
+                                            className="ep-input"
                                             type="text"
-                                            value={profileData.instituteName}
-                                            onChange={(e) => setProfileData({...profileData, instituteName: e.target.value})}
-                                            required
+                                            value={currentBadge}
+                                            onChange={(e) => setCurrentBadge(e.target.value)}
+                                            placeholder="e.g., NAAC A+ Accredited, ISO Certified"
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    if (currentBadge.trim() && !profileData.badges.includes(currentBadge.trim())) {
+                                                        setProfileData(prev => ({...prev, badges: [...prev.badges, currentBadge.trim()]}));
+                                                        setCurrentBadge('');
+                                                    }
+                                                }
+                                            }}
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (currentBadge.trim() && !profileData.badges.includes(currentBadge.trim())) {
+                                                    setProfileData(prev => ({...prev, badges: [...prev.badges, currentBadge.trim()]}));
+                                                    setCurrentBadge('');
+                                                }
+                                            }}
+                                            className="ep-add-badge-btn"
+                                        >
+                                            + Add
+                                        </button>
                                     </div>
-                                    <div className="institute-form-group">
-                                        <label>Phone *</label>
-                                        <input
-                                            type="tel"
-                                            value={profileData.phone}
-                                            onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="institute-form-group">
-                                        <label>Email *</label>
-                                        <input
-                                            type="email"
-                                            value={profileData.email}
-                                            onChange={(e) => setProfileData({...profileData, email: e.target.value})}
-                                            required
-                                            disabled
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Address *</label>
-                                    <textarea
-                                        value={profileData.address}
-                                        onChange={(e) => setProfileData({...profileData, address: e.target.value})}
-                                        rows="3"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Pincode *</label>
-                                    <input
-                                        type="text"
-                                        value={profileData.pincode}
-                                        onChange={(e) => setProfileData({...profileData, pincode: e.target.value})}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Website</label>
-                                    <input
-                                        type="url"
-                                        value={profileData.website}
-                                        onChange={(e) => setProfileData({...profileData, website: e.target.value})}
-                                        placeholder="https://example.com"
-                                    />
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Years of Experience *</label>
-                                    <input
-                                        type="number"
-                                        value={profileData.experience}
-                                        onChange={(e) => setProfileData({...profileData, experience: e.target.value})}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Established Year</label>
-                                    <input
-                                        type="number"
-                                        value={profileData.establishedYear}
-                                        onChange={(e) => setProfileData({...profileData, establishedYear: e.target.value})}
-                                        placeholder="2000"
-                                    />
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Description</label>
-                                    <textarea
-                                        value={profileData.description}
-                                        onChange={(e) => setProfileData({...profileData, description: e.target.value})}
-                                        rows="4"
-                                        placeholder="Brief description about your institute..."
-                                    />
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Badges</label>
-                                    <div className="institute-badges-input">
-                                        <div className="institute-badges-list">
+                                    {profileData.badges.length > 0 && (
+                                        <div className="ep-badges-display">
                                             {profileData.badges.map((badge, index) => (
-                                                <span key={index} className="institute-badge-tag">
+                                                <span key={index} className="ep-badge-pill">
                                                     {badge}
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            const newBadges = profileData.badges.filter((_, i) => i !== index);
-                                                            setProfileData({...profileData, badges: newBadges});
+                                                            setProfileData(prev => ({
+                                                                ...prev,
+                                                                badges: prev.badges.filter((_, i) => i !== index)
+                                                            }));
                                                         }}
-                                                        className="institute-remove-badge-btn"
+                                                        className="ep-badge-remove-btn"
+                                                        title="Remove badge"
                                                     >
                                                         ×
                                                     </button>
                                                 </span>
                                             ))}
                                         </div>
-                                        <div className="institute-add-badge-section">
-                                            <input
-                                                type="text"
-                                                value={currentBadge}
-                                                onChange={(e) => setCurrentBadge(e.target.value)}
-                                                placeholder="Enter badge name"
-                                                onKeyPress={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        if (currentBadge.trim() && !profileData.badges.includes(currentBadge.trim())) {
-                                                            setProfileData({...profileData, badges: [...profileData.badges, currentBadge.trim()]});
-                                                            setCurrentBadge('');
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (currentBadge.trim() && !profileData.badges.includes(currentBadge.trim())) {
-                                                        setProfileData({...profileData, badges: [...profileData.badges, currentBadge.trim()]});
-                                                        setCurrentBadge('');
-                                                    }
-                                                }}
-                                                className="institute-add-badge-btn"
-                                            >
-                                                Add Badge
-                                            </button>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
 
-                                <div className="institute-form-buttons">
-                                    <button type="submit" className="institute-primary-button" disabled={loading}>
-                                        {loading ? 'Updating...' : 'Update Profile'}
+                                {/* ── Form Actions ── */}
+                                <div className="ep-form-actions">
+                                    <button type="submit" className="ep-btn-primary institute-primary-button" disabled={loading}>
+                                        {loading ? '⏳ Saving...' : '🚀 Update and Go Live'}
                                     </button>
-                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
+                                    <button type="button" className="ep-btn-secondary institute-secondary-button" onClick={closeModal}>
+                                        Cancel
+                                    </button>
                                 </div>
                             </form>
                         )}
+
                     </div>
                 </div>
             )}
@@ -5159,239 +5652,6 @@ const InstituteDashboard = () => {
                                 </div>
                             </form>
                         )}
-
-                        {/* Profile Form */}
-                        {modalType === 'profile' && (
-                            <form onSubmit={handleProfileUpdate} className="institute-modal-form">
-                                <div className="institute-form-group">
-                                    <label>Profile Image</label>
-                                    <div className={`image-upload-container ${loading ? 'image-loading' : ''}`}>
-                                        <div className="image-preview-section">
-                                            {(imagePreview || profileData.profileImage) && (
-                                                <div className="image-preview">
-                                                    <img 
-                                                        src={imagePreview || profileData.profileImage} 
-                                                        alt="Profile Preview" 
-                                                        style={{
-                                                            width: '150px', 
-                                                            height: '150px', 
-                                                            objectFit: 'cover', 
-                                                            borderRadius: '8px',
-                                                            display: 'block'
-                                                        }} 
-                                                        onError={(e) => {
-                                                            console.log('Image load error:', e.target.src);
-                                                            e.target.style.display = 'none';
-                                                        }}
-                                                        onLoad={() => console.log('Image loaded successfully:', imagePreview || profileData.profileImage)}
-                                                    />
-                                                    <button type="button" onClick={handleImageDelete} className="delete-image-btn" disabled={loading}>×</button>
-                                                </div>
-                                            )}
-                                            {!(imagePreview || profileData.profileImage) && (
-                                                <div style={{textAlign: 'center', padding: '20px', color: '#666'}}>
-                                                    No image selected
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="image-upload-controls">
-                                            <input
-                                                type="file"
-                                                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                                                onChange={handleImageChange}
-                                                disabled={loading}
-                                                style={{marginBottom: '10px'}}
-                                            />
-                                            {imageFile && (
-                                                <p style={{color: '#27ae60', fontSize: '14px', margin: '5px 0', fontWeight: '500'}}>✓ New image selected. Click "Update and Go Live" to save changes.</p>
-                                            )}
-                                            {loading && (
-                                                <p style={{color: '#3498db', fontSize: '14px', margin: '5px 0'}}>Processing...</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="institute-form-grid">
-                                    <div className="institute-form-group">
-                                        <label>Institute Name *</label>
-                                        <input
-                                            type="text"
-                                            value={profileData.instituteName}
-                                            onChange={(e) => setProfileData(prev => ({...prev, instituteName: e.target.value}))}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="institute-form-group">
-                                        <label>Phone Number *</label>
-                                        <input
-                                            type="tel"
-                                            value={profileData.phone}
-                                            onChange={(e) => setProfileData(prev => ({...prev, phone: e.target.value}))}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="institute-form-group">
-                                        <label>Email Address *</label>
-                                        <input
-                                            type="email"
-                                            value={profileData.email}
-                                            onChange={(e) => setProfileData(prev => ({...prev, email: e.target.value}))}
-                                            required
-                                            readOnly
-                                            disabled
-                                        />
-                                    </div>
-
-                                </div>
-                                <div className="institute-form-group">
-                                    <label>Address *</label>
-                                    <textarea
-                                        value={profileData.address}
-                                        onChange={(e) => setProfileData(prev => ({...prev, address: e.target.value}))}
-                                        rows="3"
-                                        required
-                                    />
-                                </div>
-                                <div className="institute-form-group">
-                                    <label>Pincode *</label>
-                                    <input
-                                        type="text"
-                                        value={profileData.pincode}
-                                        onChange={(e) => setProfileData(prev => ({...prev, pincode: e.target.value}))}
-                                        placeholder="e.g., 110001"
-                                        required
-                                    />
-                                </div>
-                                <div className="institute-form-group">
-                                    <label>Experience</label>
-                                    <div className="experience-input-container">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            value={profileData.experience}
-                                            onChange={(e) => setProfileData(prev => ({...prev, experience: e.target.value}))}
-                                            placeholder="e.g., 5"
-                                        />
-                                        <span className="experience-label">+ Years of Experience</span>
-                                    </div>
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Website</label>
-                                    <input
-                                        type="url"
-                                        value={profileData.website || ''}
-                                        onChange={(e) => setProfileData(prev => ({...prev, website: e.target.value}))}
-                                        placeholder="https://www.exampleinstitute.com"
-                                    />
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Description</label>
-                                    <textarea
-                                        value={profileData.description}
-                                        onChange={(e) => setProfileData(prev => ({...prev, description: e.target.value}))}
-                                        rows="3"
-                                        placeholder="Brief description of your institute"
-                                    />
-                                </div>
-                                <div className="institute-form-group">
-                                    <label>Established Year</label>
-                                    <input
-                                        type="number"
-                                        value={profileData.establishedYear}
-                                        onChange={(e) => setProfileData(prev => ({...prev, establishedYear: e.target.value}))}
-                                        placeholder="e.g., 1995"
-                                    />
-                                </div>
-                                <div className="institute-form-group">
-                                    <label>Badges</label>
-                                    <div className="badges-input-container">
-                                        <div className="badge-input-row">
-                                            <input
-                                                type="text"
-                                                value={currentBadge}
-                                                onChange={(e) => setCurrentBadge(e.target.value)}
-                                                placeholder="Enter a badge"
-                                                onKeyPress={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        if (currentBadge.trim() && !profileData.badges.includes(currentBadge.trim())) {
-                                                            setProfileData(prev => ({...prev, badges: [...prev.badges, currentBadge.trim()]}));
-                                                            setCurrentBadge('');
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (currentBadge.trim() && !profileData.badges.includes(currentBadge.trim())) {
-                                                        setProfileData(prev => ({...prev, badges: [...prev.badges, currentBadge.trim()]}));
-                                                        setCurrentBadge('');
-                                                    }
-                                                }}
-                                                className="add-badge-btn"
-                                            >
-                                                Add
-                                            </button>
-                                        </div>
-                                        <div className="badges-display">
-                                            {profileData.badges.map((badge, index) => (
-                                                <span key={index} className="badge-pill">
-                                                    {badge}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setProfileData(prev => ({
-                                                                ...prev,
-                                                                badges: prev.badges.filter((_, i) => i !== index)
-                                                            }));
-                                                        }}
-                                                        className="remove-badge-btn"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="institute-form-group">
-                                    <label>Categories</label>
-                                    <div className="categories-selection">
-                                        {['Colleges', 'Skill and Vocational', 'Upskilling', 'School', 'Coaching Centre'].map(category => (
-                                            <label key={category} className="category-checkbox">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={profileData.categories.includes(category)}
-                                                    onChange={(e) => {
-                                                        if (e.target.checked) {
-                                                            setProfileData(prev => ({
-                                                                ...prev,
-                                                                categories: [...prev.categories, category]
-                                                            }));
-                                                        } else {
-                                                            setProfileData(prev => ({
-                                                                ...prev,
-                                                                categories: prev.categories.filter(c => c !== category)
-                                                            }));
-                                                        }
-                                                    }}
-                                                />
-                                                <span>{category}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="institute-form-buttons">
-                                    <button type="submit" className="institute-primary-button">Update and Go Live</button>
-                                    <button type="button" className="institute-secondary-button" onClick={closeModal}>Cancel</button>
-                                </div>
-                            </form>
-                        )}
                     </div>
                 </div>
             )}
@@ -5531,18 +5791,89 @@ const InstituteDashboard = () => {
                                 />
                             </div>
                             <div className="institute-form-group">
-                                <label>Syllabus Overview</label>
-                                <textarea
-                                    value={courseForm.syllabus}
-                                    onChange={(e) => setCourseForm({...courseForm, syllabus: e.target.value})}
-                                    rows="4"
-                                    placeholder="Main topics covered in the course"
-                                />
-                                {modalType === 'editCourse' && !courseForm.syllabus && (
-                                    <p style={{fontSize: '12px', color: '#999', marginTop: '5px', fontStyle: 'italic'}}>
-                                        No syllabus data found for this course. You can add it here.
-                                    </p>
+                                <label>Syllabus (PDF or DOC/DOCX)</label>
+                                {/* Show existing syllabus file in edit mode */}
+                                {courseForm.syllabusFileUrl && !courseForm.syllabusFile && (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        padding: '8px 12px',
+                                        background: '#f0fdf4',
+                                        border: '1px solid #86efac',
+                                        borderRadius: '6px',
+                                        marginBottom: '8px',
+                                        fontSize: '13px'
+                                    }}>
+                                        <span>📄</span>
+                                        <a
+                                            href={courseForm.syllabusFileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ color: '#15803d', fontWeight: '500', flex: 1 }}
+                                        >
+                                            {courseForm.syllabusFileName || 'View current syllabus'}
+                                        </a>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCourseForm({ ...courseForm, syllabusFileUrl: null, syllabusFileName: null })}
+                                            style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '16px' }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
                                 )}
+                                {/* Show newly selected file name */}
+                                {courseForm.syllabusFile && (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        padding: '8px 12px',
+                                        background: '#eff6ff',
+                                        border: '1px solid #93c5fd',
+                                        borderRadius: '6px',
+                                        marginBottom: '8px',
+                                        fontSize: '13px'
+                                    }}>
+                                        <span>📄</span>
+                                        <span style={{ color: '#1d4ed8', flex: 1 }}>{courseForm.syllabusFile.name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCourseForm({ ...courseForm, syllabusFile: null })}
+                                            style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '16px' }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                )}
+                                <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file) {
+                                            setCourseForm({ ...courseForm, syllabusFile: file });
+                                        }
+                                        e.target.value = '';
+                                    }}
+                                    style={{ display: 'block', width: '100%' }}
+                                />
+                                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                                    Upload PDF or DOC/DOCX file (max 20MB)
+                                </p>
+                            </div>
+                            <div className="institute-form-group">
+                                <label>What Students Will Learn</label>
+                                <textarea
+                                    value={courseForm.learningObjectives}
+                                    onChange={(e) => setCourseForm({ ...courseForm, learningObjectives: e.target.value })}
+                                    rows="5"
+                                    placeholder={`Enter each learning point on a new line, e.g.:\nMaster the fundamentals of web development\nBuild real-world projects\nGet hands-on experience`}
+                                />
+                                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                                    Each line will appear as a separate bullet point on the course page.
+                                </p>
                             </div>
                             <div className="institute-form-group">
                                 <label>Certification</label>
@@ -5617,7 +5948,7 @@ const InstituteDashboard = () => {
                                                     <h5>Module Content ({module.content?.length || 0})</h5>
                                                     {module.content && module.content.length > 0 ? (
                                                         module.content.map((content, contentIndex) => (
-                                                            <div key={contentIndex} className="content-item">
+                                                            <div key={contentIndex} className="content-item" style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fafafa' }}>
                                                                 <input
                                                                     type="text"
                                                                     placeholder="Content Title"
@@ -5637,22 +5968,55 @@ const InstituteDashboard = () => {
                                                                     }}
                                                                 >
                                                                     <option value="video">Video</option>
-                                                                    <option value="assignment">Assignment</option>
+                                                                    <option value="assignment">Assignment (PDF)</option>
+                                                                    <option value="notes">Notes / Study Material (PDF/DOC)</option>
                                                                 </select>
+
+                                                                {/* Show existing file status in edit mode */}
+                                                                {modalType === 'editCourse' && content.existingUrl && !content.file && (
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px', marginTop: '6px', fontSize: '12px' }}>
+                                                                        <span>{content.type === 'video' ? '🎬' : content.type === 'assignment' ? '📄' : '📝'}</span>
+                                                                        <span style={{ color: '#15803d', flex: 1, fontWeight: '500' }}>
+                                                                            {content.type === 'video' ? 'Video uploaded' : 'File uploaded'} — will be preserved
+                                                                        </span>
+                                                                        <a href={content.existingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#2563EB', textDecoration: 'none', fontWeight: '600' }}>View</a>
+                                                                        <span style={{ color: '#94a3b8' }}>|</span>
+                                                                        <span style={{ color: '#64748b' }}>Upload new to replace ↓</span>
+                                                                    </div>
+                                                                )}
+                                                                {/* Show newly selected file */}
+                                                                {content.file && (
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: '6px', marginTop: '6px', fontSize: '12px' }}>
+                                                                        <span>📎</span>
+                                                                        <span style={{ color: '#1d4ed8', flex: 1 }}>{content.file.name} — will replace existing</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const updatedModules = [...courseForm.modules];
+                                                                                updatedModules[moduleIndex].content[contentIndex].file = null;
+                                                                                setCourseForm({...courseForm, modules: updatedModules});
+                                                                            }}
+                                                                            style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '14px', padding: '0' }}
+                                                                        >×</button>
+                                                                    </div>
+                                                                )}
+
                                                                 <input
                                                                     type="file"
-                                                                    accept={content.type === 'video' ? 'video/*' : content.type === 'assignment' ? '.pdf' : '*'}
+                                                                    accept={
+                                                                        content.type === 'video' ? 'video/*' :
+                                                                        content.type === 'assignment' ? '.pdf,application/pdf' :
+                                                                        content.type === 'notes' ? '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document' :
+                                                                        '*'
+                                                                    }
+                                                                    style={{ marginTop: '6px' }}
                                                                     onChange={(e) => {
                                                                         const updatedModules = [...courseForm.modules];
-                                                                        updatedModules[moduleIndex].content[contentIndex].file = e.target.files[0];
+                                                                        updatedModules[moduleIndex].content[contentIndex].file = e.target.files[0] || null;
+                                                                        e.target.value = '';
                                                                         setCourseForm({...courseForm, modules: updatedModules});
                                                                     }}
                                                                 />
-                                                                {modalType === 'editCourse' && (
-                                                                    <small style={{fontSize: '11px', color: '#666', display: 'block', marginTop: '2px'}}>
-                                                                        Existing content will be preserved unless you upload a new file
-                                                                    </small>
-                                                                )}
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
@@ -5661,6 +6025,7 @@ const InstituteDashboard = () => {
                                                                         setCourseForm({...courseForm, modules: updatedModules});
                                                                     }}
                                                                     className="institute-remove-btn"
+                                                                    style={{ marginTop: '8px' }}
                                                                 >
                                                                     Remove
                                                                 </button>
@@ -5675,13 +6040,14 @@ const InstituteDashboard = () => {
                                                         type="button"
                                                         onClick={() => {
                                                             const updatedModules = [...courseForm.modules];
-                                                            // Ensure content array exists
                                                             if (!updatedModules[moduleIndex].content) {
                                                                 updatedModules[moduleIndex].content = [];
                                                             }
                                                             updatedModules[moduleIndex].content.push({
+                                                                contentId: null,
                                                                 title: '',
                                                                 type: 'video',
+                                                                existingUrl: null,
                                                                 file: null,
                                                                 order: updatedModules[moduleIndex].content.length + 1
                                                             });
@@ -5705,9 +6071,11 @@ const InstituteDashboard = () => {
                                                 setCourseForm({
                                                     ...courseForm,
                                                     modules: [...courseForm.modules, {
+                                                        moduleId: null,
                                                         title: '',
                                                         description: '',
                                                         order: courseForm.modules.length + 1,
+                                                        quiz: null,
                                                         content: []
                                                     }]
                                                 });

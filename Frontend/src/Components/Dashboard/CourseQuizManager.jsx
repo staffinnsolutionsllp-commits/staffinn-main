@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './CourseQuizManager.css';
 
-const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
+const CourseQuizManager = ({ moduleIndex, onQuizUpdate, existingQuiz }) => {
   const [quiz, setQuiz] = useState({
     title: '',
     description: '',
@@ -12,6 +12,26 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
   });
 
   const [showQuizForm, setShowQuizForm] = useState(false);
+  const [quizSaved, setQuizSaved] = useState(false);
+
+  // Load existingQuiz into state when component mounts or existingQuiz changes
+  useEffect(() => {
+    if (existingQuiz && existingQuiz.questions && existingQuiz.questions.length > 0) {
+      setQuiz({
+        quizId: existingQuiz.quizId || null,   // preserve existing quizId
+        title: existingQuiz.title || '',
+        description: existingQuiz.description || '',
+        passingScore: existingQuiz.passingScore || 70,
+        timeLimit: existingQuiz.timeLimit || 30,
+        maxAttempts: existingQuiz.maxAttempts || 3,
+        questions: existingQuiz.questions.map(q => ({
+          ...q,
+          id: q.id || q.questionId || Date.now() + Math.random()
+        }))
+      });
+      setQuizSaved(true);
+    }
+  }, [existingQuiz]);
 
   const addQuestion = () => {
     const newQuestion = {
@@ -31,7 +51,7 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
   const updateQuestion = (questionId, field, value) => {
     setQuiz(prev => ({
       ...prev,
-      questions: prev.questions.map(q => 
+      questions: prev.questions.map(q =>
         q.id === questionId ? { ...q, [field]: value } : q
       )
     }));
@@ -40,12 +60,12 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
   const updateQuestionOption = (questionId, optionIndex, value) => {
     setQuiz(prev => ({
       ...prev,
-      questions: prev.questions.map(q => 
-        q.id === questionId 
-          ? { 
-              ...q, 
+      questions: prev.questions.map(q =>
+        q.id === questionId
+          ? {
+              ...q,
               options: q.options.map((opt, idx) => idx === optionIndex ? value : opt)
-            } 
+            }
           : q
       )
     }));
@@ -64,10 +84,9 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
       return;
     }
 
-    // Validate questions
-    const invalidQuestions = quiz.questions.filter(q => 
-      !q.question.trim() || 
-      q.options.some(opt => !opt.trim()) || 
+    const invalidQuestions = quiz.questions.filter(q =>
+      !q.question.trim() ||
+      q.options.some(opt => !opt.trim()) ||
       !q.correctAnswer || !q.correctAnswer.trim()
     );
 
@@ -77,10 +96,42 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
     }
 
     onQuizUpdate(moduleIndex, quiz);
+    setQuizSaved(true);
     setShowQuizForm(false);
   };
 
   const handleCancelQuiz = () => {
+    // If there was an existing quiz, restore it; otherwise clear
+    if (existingQuiz && existingQuiz.questions && existingQuiz.questions.length > 0) {
+      setQuiz({
+        quizId: existingQuiz.quizId || null,
+        title: existingQuiz.title || '',
+        description: existingQuiz.description || '',
+        passingScore: existingQuiz.passingScore || 70,
+        timeLimit: existingQuiz.timeLimit || 30,
+        maxAttempts: existingQuiz.maxAttempts || 3,
+        questions: existingQuiz.questions.map(q => ({
+          ...q,
+          id: q.id || q.questionId || Date.now() + Math.random()
+        }))
+      });
+      setQuizSaved(true);
+    } else {
+      setQuiz({
+        title: '',
+        description: '',
+        passingScore: 70,
+        timeLimit: 30,
+        maxAttempts: 3,
+        questions: []
+      });
+      setQuizSaved(false);
+      onQuizUpdate(moduleIndex, null);
+    }
+    setShowQuizForm(false);
+  };
+
+  const handleRemoveQuiz = () => {
     setQuiz({
       title: '',
       description: '',
@@ -89,14 +140,69 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
       maxAttempts: 3,
       questions: []
     });
-    setShowQuizForm(false);
+    setQuizSaved(false);
     onQuizUpdate(moduleIndex, null);
   };
 
   return (
     <div className="quiz-manager">
-      {!showQuizForm ? (
-        <button 
+      {/* Quiz saved indicator */}
+      {quizSaved && !showQuizForm && (
+        <div className="quiz-saved-indicator" style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '10px 14px',
+          background: '#f0fdf4',
+          border: '1px solid #86efac',
+          borderRadius: '8px',
+          marginTop: '10px'
+        }}>
+          <span style={{ color: '#16a34a', fontSize: '16px' }}>✅</span>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontWeight: '600', color: '#15803d', fontSize: '14px' }}>
+              Quiz saved: {quiz.title || `Module ${moduleIndex + 1} Quiz`}
+            </span>
+            <span style={{ color: '#4ade80', fontSize: '12px', marginLeft: '8px' }}>
+              ({quiz.questions.length} question{quiz.questions.length !== 1 ? 's' : ''})
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowQuizForm(true)}
+            style={{
+              background: 'transparent',
+              border: '1px solid #86efac',
+              color: '#15803d',
+              padding: '4px 10px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={handleRemoveQuiz}
+            style={{
+              background: 'transparent',
+              border: '1px solid #fca5a5',
+              color: '#dc2626',
+              padding: '4px 10px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            Remove
+          </button>
+        </div>
+      )}
+
+      {/* Add Quiz button (shown when no quiz saved and form not open) */}
+      {!quizSaved && !showQuizForm && (
+        <button
           type="button"
           className="add-quiz-btn"
           onClick={() => setShowQuizForm(true)}
@@ -113,11 +219,14 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
         >
           💡 Add Quiz
         </button>
-      ) : (
+      )}
+
+      {/* Quiz form */}
+      {showQuizForm && (
         <div className="quiz-form">
           <div className="quiz-form-header">
-            <h4>Create Quiz for Module {moduleIndex + 1}</h4>
-            <button 
+            <h4>{quizSaved ? 'Edit Quiz' : 'Create Quiz'} for Module {moduleIndex + 1}</h4>
+            <button
               type="button"
               className="close-quiz-form"
               onClick={handleCancelQuiz}
@@ -185,7 +294,7 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
           <div className="quiz-questions">
             <div className="questions-header">
               <h5>Questions ({quiz.questions.length})</h5>
-              <button 
+              <button
                 type="button"
                 className="add-question-btn"
                 onClick={addQuestion}
@@ -198,7 +307,7 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
               <div key={question.id} className="question-form">
                 <div className="question-header">
                   <h6>Question {index + 1}</h6>
-                  <button 
+                  <button
                     type="button"
                     className="remove-question-btn"
                     onClick={() => removeQuestion(question.id)}
@@ -252,14 +361,14 @@ const CourseQuizManager = ({ moduleIndex, onQuizUpdate }) => {
           </div>
 
           <div className="quiz-form-actions">
-            <button 
+            <button
               type="button"
               className="save-quiz-btn"
               onClick={handleSaveQuiz}
             >
               Save Quiz
             </button>
-            <button 
+            <button
               type="button"
               className="cancel-quiz-btn"
               onClick={handleCancelQuiz}

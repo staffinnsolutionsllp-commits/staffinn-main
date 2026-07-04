@@ -16,7 +16,7 @@ export default function LeaveManagement() {
     { id: 'rules', label: 'Leave Rules', icon: FileText },
     { id: 'balance', label: 'Leave Balance', icon: Wallet },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'settings', label: 'Holidays & Settings', icon: Settings }
   ]
 
   const renderContent = () => {

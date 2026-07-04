@@ -27,6 +27,9 @@ const ADMIN_TABLE = process.env.ADMIN_TABLE || 'staffinn-admin';
 const MESSAGES_TABLE = process.env.MESSAGES_TABLE || 'Messages';
 const MIS_PLACEMENT_ANALYTICS_TABLE = process.env.MIS_PLACEMENT_ANALYTICS_TABLE || 'staffinn-mis-placement-analytics';
 const HERO_IMAGES_TABLE = 'Hero-images';
+const CAMPUS_DRIVE_PLANNERS_TABLE = process.env.CAMPUS_PLANNERS_TABLE || 'campus-drive-planners';
+const CAMPUS_REQUESTS_TABLE = process.env.CAMPUS_REQUESTS_TABLE || 'campus-requests';
+const INSTITUTE_REVIEWS_TABLE = process.env.INSTITUTE_REVIEWS_TABLE || 'staffinn-institute-reviews';
 
 // Define table schemas
 const usersTableSchema = {
@@ -229,6 +232,58 @@ const heroImagesTableSchema = {
   BillingMode: 'PAY_PER_REQUEST'
 };
 
+// Campus Drive Planners table — stores each institute's selected placement dates
+const campusDrivePlannersTableSchema = {
+  TableName: CAMPUS_DRIVE_PLANNERS_TABLE,
+  KeySchema: [
+    { AttributeName: 'plannerId', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'plannerId', AttributeType: 'S' },
+    { AttributeName: 'instituteId', AttributeType: 'S' }
+  ],
+  GlobalSecondaryIndexes: [
+    {
+      IndexName: 'InstituteIdIndex',
+      KeySchema: [{ AttributeName: 'instituteId', KeyType: 'HASH' }],
+      Projection: { ProjectionType: 'ALL' }
+    }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+// Campus Requests table — stores campus invites with full form data
+const campusRequestsTableSchema = {
+  TableName: CAMPUS_REQUESTS_TABLE,
+  KeySchema: [
+    { AttributeName: 'campusreq', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'campusreq', AttributeType: 'S' }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
+// Institute Reviews table — PK: instituteId (GSI hash), SK: reviewId (table hash)
+const instituteReviewsTableSchema = {
+  TableName: INSTITUTE_REVIEWS_TABLE,
+  KeySchema: [
+    { AttributeName: 'reviewId', KeyType: 'HASH' }
+  ],
+  AttributeDefinitions: [
+    { AttributeName: 'reviewId', AttributeType: 'S' },
+    { AttributeName: 'instituteId', AttributeType: 'S' }
+  ],
+  GlobalSecondaryIndexes: [
+    {
+      IndexName: 'InstituteIdIndex',
+      KeySchema: [{ AttributeName: 'instituteId', KeyType: 'HASH' }],
+      Projection: { ProjectionType: 'ALL' }
+    }
+  ],
+  BillingMode: 'PAY_PER_REQUEST'
+};
+
 /**
  * Check if a table exists
  * @param {string} tableName - Table name to check
@@ -425,6 +480,33 @@ const createTablesIfNotExist = async () => {
     } else {
       console.log(`Table already exists: ${HERO_IMAGES_TABLE}`);
     }
+
+    // Check if campus drive planners table exists
+    const campusDrivePlannersExists = await tableExists(CAMPUS_DRIVE_PLANNERS_TABLE);
+    if (!campusDrivePlannersExists) {
+      await dynamoClient.send(new CreateTableCommand(campusDrivePlannersTableSchema));
+      console.log(`Created table: ${CAMPUS_DRIVE_PLANNERS_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${CAMPUS_DRIVE_PLANNERS_TABLE}`);
+    }
+
+    // Check if campus requests table exists
+    const campusRequestsExists = await tableExists(CAMPUS_REQUESTS_TABLE);
+    if (!campusRequestsExists) {
+      await dynamoClient.send(new CreateTableCommand(campusRequestsTableSchema));
+      console.log(`Created table: ${CAMPUS_REQUESTS_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${CAMPUS_REQUESTS_TABLE}`);
+    }
+
+    // Check if institute reviews table exists
+    const instituteReviewsExists = await tableExists(INSTITUTE_REVIEWS_TABLE);
+    if (!instituteReviewsExists) {
+      await dynamoClient.send(new CreateTableCommand(instituteReviewsTableSchema));
+      console.log(`Created table: ${INSTITUTE_REVIEWS_TABLE}`);
+    } else {
+      console.log(`Table already exists: ${INSTITUTE_REVIEWS_TABLE}`);
+    }
   } catch (error) {
     // ResourceInUseException means table already exists
     if (error.name === 'ResourceInUseException') {
@@ -513,5 +595,8 @@ module.exports = {
   MESSAGES_TABLE,
   MIS_PLACEMENT_ANALYTICS_TABLE,
   HERO_IMAGES_TABLE,
+  CAMPUS_DRIVE_PLANNERS_TABLE,
+  CAMPUS_REQUESTS_TABLE,
+  INSTITUTE_REVIEWS_TABLE,
   createTablesIfNotExist
 };

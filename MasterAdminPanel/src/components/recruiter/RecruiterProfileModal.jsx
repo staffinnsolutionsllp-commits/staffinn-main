@@ -117,7 +117,7 @@ const RecruiterProfileModal = ({ recruiter, onClose }) => {
 
           {recruiter.interviewQuestions && recruiter.interviewQuestions.length > 0 && (
             <div className="detail-section">
-              <h3>Common Interview Questions</h3>
+              <h3>Expectations from Candidates</h3>
               <div className="questions-list">
                 {recruiter.interviewQuestions.map((question, index) => (
                   <div key={index} className="question-item">

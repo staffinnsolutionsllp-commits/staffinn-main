@@ -968,3 +968,363 @@ a:focus-visible {
 body.modal-open {
   overflow: hidden;
 }
+
+/* Verify OTP Button */
+.verify-otp-btn {
+  width: 100%;
+  height: 48px;
+  background: #10B981;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 200ms ease;
+  font-family: 'Inter', sans-serif;
+  margin-top: 0.5rem;
+}
+
+.verify-otp-btn:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.verify-otp-btn:disabled {
+  background: #D1D5DB;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.verify-otp-btn.verified {
+  background: #059669;
+  cursor: default;
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FORGOT PASSWORD STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+.forgot-password-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.forgot-icon {
+  color: #2563EB;
+  margin: 0 auto 1.5rem;
+  display: block;
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.forgot-password-header .form-title {
+  margin-bottom: 0.75rem;
+}
+
+.forgot-password-header .form-subtitle {
+  margin-bottom: 0;
+}
+
+.forgot-password-header .form-subtitle strong {
+  color: #2563EB;
+  font-weight: 600;
+}
+
+/* OTP Timer */
+.otp-timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 12px;
+  color: #92400E;
+  font-size: 0.875rem;
+  font-weight: 600;
+  animation: timerPulse 1s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% {
+    background: #FEF3C7;
+  }
+  50% {
+    background: #FDE68A;
+  }
+}
+
+.otp-timer svg {
+  color: #F59E0B;
+  flex-shrink: 0;
+}
+
+/* Resend OTP Section */
+.resend-otp-section {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.resend-link {
+  background: none;
+  border: none;
+  color: #2563EB;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+  font-family: 'Inter', sans-serif;
+  text-decoration: underline;
+  padding: 0.5rem 1rem;
+}
+
+.resend-link:hover:not(:disabled) {
+  color: #1D4ED8;
+  text-decoration: none;
+}
+
+.resend-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.resend-disabled {
+  color: #94A3B8;
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+/* Password Requirements */
+.password-requirements {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.requirements-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  margin: 0 0 0.75rem 0;
+}
+
+.requirements-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.requirements-list li {
+  font-size: 0.8125rem;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 200ms ease;
+}
+
+.requirements-list li.valid {
+  color: #10B981;
+  font-weight: 600;
+}
+
+.requirements-list li.valid::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  background: #10B981;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Forgot Password Success */
+.forgot-password-success {
+  text-align: center;
+  padding: 2rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.success-icon {
+  color: #10B981;
+  margin-bottom: 1.5rem;
+  animation: successBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes successBounce {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.success-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 1rem;
+}
+
+.success-message {
+  font-size: 0.9375rem;
+  color: #64748B;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.auto-redirect {
+  font-size: 0.8125rem;
+  color: #94A3B8;
+  margin-top: 1rem;
+  font-style: italic;
+}
+
+/* Back Link with Icon */
+.back-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.back-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Responsive Adjustments for Forgot Password */
+@media (max-width: 768px) {
+  .forgot-password-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .forgot-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 1rem;
+  }
+
+  .otp-timer {
+    font-size: 0.8125rem;
+    padding: 0.625rem 0.875rem;
+  }
+
+  .password-requirements {
+    padding: 0.875rem;
+  }
+
+  .forgot-password-success {
+    padding: 1.5rem 0;
+    min-height: 350px;
+  }
+
+  .success-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .success-title {
+    font-size: 1.25rem;
+  }
+
+  .success-message {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .forgot-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .success-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .success-title {
+    font-size: 1.125rem;
+  }
+}
+
+/* Loading States */
+.verify-otp-btn:disabled,
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.verify-otp-btn:disabled::after,
+.submit-btn:disabled::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  right: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Enhanced Focus States for Accessibility */
+.forgot-password-header .auth-input:focus,
+.otp-input:focus {
+  border-color: #2563EB;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+/* Smooth Transitions */
+.auth-form-content > * {
+  animation: fadeInUp 300ms ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

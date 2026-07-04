@@ -10,6 +10,7 @@ import StaffCourses from './StaffCourses';
 import GovernmentSchemes from './GovernmentSchemes';
 import ContactHistory from '../Messages/ContactHistory';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
+import { FaLinkedin, FaXTwitter, FaInstagram, FaFacebook, FaYoutube, FaGithub, FaGlobe } from 'react-icons/fa6';
 import './HiddenNotification.css';
 import './Dashboard.css';
 import './HiddenNotification.css';
@@ -126,7 +127,16 @@ const StaffDashboard = ({ currentUser }) => {
         visibility: 'public',
         availability: 'available',
         isActiveStaff: false,
-        profileVisibility: 'private'
+        profileVisibility: 'private',
+        socialLinks: {
+            linkedin: '',
+            twitter: '',
+            instagram: '',
+            facebook: '',
+            youtube: '',
+            github: '',
+            portfolio: ''
+        }
     });
 
     // Available roles based on selected sector
@@ -372,7 +382,16 @@ const StaffDashboard = ({ currentUser }) => {
                     visibility: profileData.visibility || 'public',
                     availability: profileData.availability || 'available',
                     isActiveStaff: Boolean(profileData.isActiveStaff),
-                    profileVisibility: profileData.profileVisibility || 'private'
+                    profileVisibility: profileData.profileVisibility || 'private',
+                    socialLinks: profileData.socialLinks || {
+                        linkedin: '',
+                        twitter: '',
+                        instagram: '',
+                        facebook: '',
+                        youtube: '',
+                        github: '',
+                        portfolio: ''
+                    }
                 });
                 
                 // Update available roles if sector is set
@@ -472,7 +491,7 @@ const StaffDashboard = ({ currentUser }) => {
         
         // Handle city change - update profile
         if (name === 'city') {
-            const selectedCityName = cities.find(c => c.id === parseInt(value))?.name || '';
+            const selectedCityName = cities.find(c => String(c.id) === String(value))?.name || value;
             setSelectedCity(value);
             setProfile(prev => ({
                 ...prev,
@@ -548,10 +567,17 @@ const StaffDashboard = ({ currentUser }) => {
         });
         
         // Check mandatory fields
+        // City can be stored in profile.city (name) OR derived from selectedCity
+        // Use string comparison for city ID to handle both string and number IDs from API
+        const cityFromSelectedId = selectedCity
+            ? (cities.find(c => String(c.id) === String(selectedCity))?.name || '')
+            : '';
+        const cityValue = profile.city?.trim() || cityFromSelectedId || selectedCity || '';
+
         const missingFields = [];
         if (!profile.address?.trim()) missingFields.push('Address (House No. / Street / Area)');
         if (!profile.state?.trim()) missingFields.push('State');
-        if (!profile.city?.trim()) missingFields.push('City');
+        if (!cityValue) missingFields.push('City');
         if (!profile.pincode?.trim()) missingFields.push('Pincode');
         if (!profile.sector?.trim()) missingFields.push('Choose Your Sector');
         if (!profile.role?.trim()) missingFields.push('Choose Your Role');
@@ -574,13 +600,14 @@ const StaffDashboard = ({ currentUser }) => {
                 sector: profile.sector,
                 role: profile.role,
                 state: profile.state,
-                city: profile.city,
+                city: cityValue,
                 education: profile.education,
                 visibility: profile.visibility,
                 availability: profile.availability,
                 experiences: experiences.filter(exp => exp.role || exp.company),
                 isActiveStaff: true,
-                profileVisibility: 'public'
+                profileVisibility: 'public',
+                socialLinks: profile.socialLinks || {}
             };
             
             console.log('📝 Sending update data:', updateData);
@@ -799,6 +826,12 @@ const StaffDashboard = ({ currentUser }) => {
             return;
         }
         
+        // Capture current isActiveStaff BEFORE the upload so we can restore it
+        // loadStaffProfile() reads isActiveStaff from the DB, which may be false
+        // if the user toggled to Active Staff in the UI but hasn't saved the full
+        // profile yet. We must not let a photo upload reset the toggle.
+        const currentIsActiveStaff = isActiveStaff;
+        
         try {
             setUploadLoading(prev => ({ ...prev, [fileType]: true }));
             
@@ -817,6 +850,9 @@ const StaffDashboard = ({ currentUser }) => {
                 
                 // Reload profile to get updated file URLs
                 await loadStaffProfile();
+                
+                // Restore the toggle state — photo upload must never change it
+                setIsActiveStaff(currentIsActiveStaff);
             } else {
                 throw new Error(response.message || 'Failed to upload file');
             }
@@ -1023,8 +1059,8 @@ const StaffDashboard = ({ currentUser }) => {
                         className={`staff-nav-item ${activeTab === 'contact-history' ? 'active' : ''}`}
                         onClick={() => handleTabChange('contact-history')}
                     >
-                        <i className="fas fa-history"></i>
-                        Contact History
+                        <i className="fas fa-comments"></i>
+                        Chat History
                     </button>
                     
                     <button 
@@ -1454,7 +1490,7 @@ const StaffDashboard = ({ currentUser }) => {
                                                             <img src={profile.profilePhoto} alt="Profile" />
                                                         ) : (
                                                             <div className="staff-profile-photo-placeholder">
-                                                                {profile.fullName ? profile.fullName.charAt(0) : 'S'}
+                                                                {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : 'S'}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1464,7 +1500,7 @@ const StaffDashboard = ({ currentUser }) => {
                                                                 type="file" 
                                                                 hidden 
                                                                 onChange={(e) => handleFileUpload(e, 'profilePhoto')} 
-                                                                accept="image/*"
+                                                                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                                                                 disabled={uploadLoading.profilePhoto}
                                                             />
                                                             {uploadLoading.profilePhoto ? 'Uploading...' : 'Upload Photo'}
@@ -1479,6 +1515,11 @@ const StaffDashboard = ({ currentUser }) => {
                                                                 {loading ? 'Removing...' : 'Remove'}
                                                             </button>
                                                         )}
+                                                    </div>
+                                                    <div className="staff-photo-guidelines">
+                                                        <p>📁 Supported: JPG, JPEG, PNG, WEBP, GIF</p>
+                                                        <p>📦 Max size: 5 MB</p>
+                                                        <p>✅ Recommended: Square image (500×500 px or higher)</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1844,6 +1885,88 @@ const StaffDashboard = ({ currentUser }) => {
                                                     )}
                                                 </div>
                                                 
+                                                <h3>Social Media Links</h3>
+                                                <p className="staff-section-hint">Add your social media profiles. Only filled links will be shown publicly.</p>
+                                                <div className="staff-social-links-grid">
+                                                    <div className="staff-form-group staff-social-field">
+                                                        <label className="staff-social-label">
+                                                            <FaLinkedin style={{ color: '#0A66C2', fontSize: '18px' }} /> LinkedIn
+                                                        </label>
+                                                        <input
+                                                            type="url"
+                                                            placeholder="https://linkedin.com/in/yourprofile"
+                                                            value={profile.socialLinks?.linkedin || ''}
+                                                            onChange={(e) => setProfile(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, linkedin: e.target.value } }))}
+                                                        />
+                                                    </div>
+                                                    <div className="staff-form-group staff-social-field">
+                                                        <label className="staff-social-label">
+                                                            <FaXTwitter style={{ color: '#000000', fontSize: '18px' }} /> X (Twitter)
+                                                        </label>
+                                                        <input
+                                                            type="url"
+                                                            placeholder="https://x.com/yourhandle"
+                                                            value={profile.socialLinks?.twitter || ''}
+                                                            onChange={(e) => setProfile(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, twitter: e.target.value } }))}
+                                                        />
+                                                    </div>
+                                                    <div className="staff-form-group staff-social-field">
+                                                        <label className="staff-social-label">
+                                                            <FaInstagram style={{ color: '#E1306C', fontSize: '18px' }} /> Instagram
+                                                        </label>
+                                                        <input
+                                                            type="url"
+                                                            placeholder="https://instagram.com/yourprofile"
+                                                            value={profile.socialLinks?.instagram || ''}
+                                                            onChange={(e) => setProfile(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, instagram: e.target.value } }))}
+                                                        />
+                                                    </div>
+                                                    <div className="staff-form-group staff-social-field">
+                                                        <label className="staff-social-label">
+                                                            <FaFacebook style={{ color: '#1877F2', fontSize: '18px' }} /> Facebook
+                                                        </label>
+                                                        <input
+                                                            type="url"
+                                                            placeholder="https://facebook.com/yourprofile"
+                                                            value={profile.socialLinks?.facebook || ''}
+                                                            onChange={(e) => setProfile(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, facebook: e.target.value } }))}
+                                                        />
+                                                    </div>
+                                                    <div className="staff-form-group staff-social-field">
+                                                        <label className="staff-social-label">
+                                                            <FaYoutube style={{ color: '#FF0000', fontSize: '18px' }} /> YouTube
+                                                        </label>
+                                                        <input
+                                                            type="url"
+                                                            placeholder="https://youtube.com/@yourchannel"
+                                                            value={profile.socialLinks?.youtube || ''}
+                                                            onChange={(e) => setProfile(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, youtube: e.target.value } }))}
+                                                        />
+                                                    </div>
+                                                    <div className="staff-form-group staff-social-field">
+                                                        <label className="staff-social-label">
+                                                            <FaGithub style={{ color: '#24292e', fontSize: '18px' }} /> GitHub
+                                                        </label>
+                                                        <input
+                                                            type="url"
+                                                            placeholder="https://github.com/yourusername"
+                                                            value={profile.socialLinks?.github || ''}
+                                                            onChange={(e) => setProfile(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, github: e.target.value } }))}
+                                                        />
+                                                    </div>
+                                                    <div className="staff-form-group staff-social-field">
+                                                        <label className="staff-social-label">
+                                                            <FaGlobe style={{ color: '#4863f7', fontSize: '18px' }} /> Portfolio / Website
+                                                        </label>
+                                                        <input
+                                                            type="url"
+                                                            placeholder="https://yourportfolio.com"
+                                                            value={profile.socialLinks?.portfolio || ''}
+                                                            onChange={(e) => setProfile(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, portfolio: e.target.value } }))}
+                                                        />
+                                                    </div>
+                                                </div>
+
                                                 <h3>Availability Status</h3>
                                                 <div className="staff-radio-group">
                                                     <label>
@@ -1897,7 +2020,7 @@ const StaffDashboard = ({ currentUser }) => {
                                                             <img src={profile.profilePhoto} alt="Profile" />
                                                         ) : (
                                                             <div className="staff-profile-photo-placeholder">
-                                                                {profile.fullName ? profile.fullName.charAt(0) : 'S'}
+                                                                {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : 'S'}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1907,7 +2030,7 @@ const StaffDashboard = ({ currentUser }) => {
                                                                 type="file" 
                                                                 hidden 
                                                                 onChange={(e) => handleFileUpload(e, 'profilePhoto')} 
-                                                                accept="image/*"
+                                                                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
                                                                 disabled={uploadLoading.profilePhoto}
                                                             />
                                                             {uploadLoading.profilePhoto ? 'Uploading...' : 'Upload Photo'}
@@ -1922,6 +2045,11 @@ const StaffDashboard = ({ currentUser }) => {
                                                                 {loading ? 'Removing...' : 'Remove'}
                                                             </button>
                                                         )}
+                                                    </div>
+                                                    <div className="staff-photo-guidelines">
+                                                        <p>📁 Supported: JPG, JPEG, PNG, WEBP, GIF</p>
+                                                        <p>📦 Max size: 5 MB</p>
+                                                        <p>✅ Recommended: Square image (500×500 px or higher)</p>
                                                     </div>
                                                 </div>
                                                 

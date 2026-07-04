@@ -46,18 +46,22 @@ const RegistrationRequests = () => {
       
       // For recruiters, approve directly
       console.log('🔄 Approving request:', requestId);
+      setLoading(true); // Disable button during processing
       await adminAPI.approveRegistrationRequest(requestId);
       console.log('✅ Request approved successfully');
       fetchRequests(); // Refresh the list
     } catch (error) {
       console.error('Error approving request:', error);
       setError('Failed to approve request');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleInstituteTypeSelection = async (instituteType) => {
     try {
       console.log('🔄 Approving institute request with type:', selectedRequestId, instituteType);
+      setLoading(true); // Disable buttons during processing
       await adminAPI.approveRegistrationRequest(selectedRequestId, instituteType);
       console.log('✅ Institute request approved successfully');
       setShowInstituteTypeModal(false);
@@ -68,6 +72,8 @@ const RegistrationRequests = () => {
       setError('Failed to approve institute request');
       setShowInstituteTypeModal(false);
       setSelectedRequestId(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -142,6 +148,7 @@ const RegistrationRequests = () => {
               <button 
                 className="type-btn normal-btn"
                 onClick={() => handleInstituteTypeSelection('normal')}
+                disabled={loading}
               >
                 <i className="fas fa-university"></i>
                 Normal Institute
@@ -149,6 +156,7 @@ const RegistrationRequests = () => {
               <button 
                 className="type-btn partner-btn"
                 onClick={() => handleInstituteTypeSelection('staffinn_partner')}
+                disabled={loading}
               >
                 <i className="fas fa-handshake"></i>
                 Staffinn Partner
@@ -160,6 +168,7 @@ const RegistrationRequests = () => {
                 setShowInstituteTypeModal(false);
                 setSelectedRequestId(null);
               }}
+              disabled={loading}
             >
               Cancel
             </button>
@@ -247,6 +256,7 @@ const RegistrationRequests = () => {
                               className="action-btn approve-btn"
                               onClick={() => handleApprove(request.requestId)}
                               title="Approve Request"
+                              disabled={loading}
                             >
                               <i className="fas fa-check"></i>
                             </button>
@@ -254,6 +264,7 @@ const RegistrationRequests = () => {
                               className="action-btn reject-btn"
                               onClick={() => handleReject(request.requestId)}
                               title="Reject Request"
+                              disabled={loading}
                             >
                               <i className="fas fa-times"></i>
                             </button>
@@ -263,6 +274,7 @@ const RegistrationRequests = () => {
                           className="action-btn delete-btn"
                           onClick={() => handleDelete(request.requestId)}
                           title="Delete Request"
+                          disabled={loading}
                         >
                           <i className="fas fa-trash"></i>
                         </button>

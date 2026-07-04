@@ -13,13 +13,13 @@ import Claims from './pages/Claims';
 import Tasks from './pages/Tasks';
 import Grievances from './pages/Grievances';
 import Organogram from './pages/Organogram';
+import Resignation from './pages/Resignation';
+import NoDuesClearance from './pages/NoDuesClearance';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>Loading...</div>;
   if (!user) return <Navigate to="/login" />;
-  
   return <Layout>{children}</Layout>;
 }
 
@@ -40,6 +40,8 @@ function App() {
           <Route path="/grievances" element={<ProtectedRoute><Grievances /></ProtectedRoute>} />
           <Route path="/organogram" element={<ProtectedRoute><Organogram /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/resignation" element={<ProtectedRoute><Resignation /></ProtectedRoute>} />
+          <Route path="/separation/:separationId/ndc" element={<ProtectedRoute><NoDuesClearance /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
       </BrowserRouter>

@@ -169,6 +169,9 @@
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
+  /* Ensure true edge-to-edge: compensate for any body padding */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .staff-hero-section::before {

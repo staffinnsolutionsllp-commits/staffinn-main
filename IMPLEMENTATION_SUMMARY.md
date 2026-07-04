@@ -1,85 +1,136 @@
-# Implementation Summary - Events & News UI Fixes
+# Recruiter → Institute Campus Invite System - Implementation Summary
 
-## Changes Implemented
+## ✅ Completed Components
 
-### 1. ✅ Upcoming Events UI Update
-- **File Modified**: `Frontend/src/Components/Pages/InstitutePage.jsx`
-- **Changes**: 
-  - Updated event card class from `event-card-new` to `event-card-seminar`
-  - Enhanced event card styling to match reference design
+### 1. API Methods (api.js) ✅
+All API methods have been added to `Frontend/src/services/api.js`:
+- `sendRecruiterCampusInvite` - Recruiter sends invite to institute
+- `getRecruiterSentInvites` - Recruiter views sent invites
+- `getInstituteReceivedRecruiterInvites` - Institute views received invites
+- `getInstituteCourses` - Get courses for an institute
+- `getInstitutePlanner` - Get institute's placement planner dates
+- `respondToRecruiterInvite` - Institute responds to invite
 
-- **File Modified**: `Frontend/src/Components/Pages/InstitutePage.css`
-- **Changes**:
-  - Added new `.event-card-seminar` CSS class with enhanced styling
-  - Improved visual design with gradients, shadows, and better spacing
-  - Enhanced typography and color scheme to match reference image
+### 2. Frontend Components ✅
+- `RecruiterCampusInviteModal.jsx` - Modal for recruiters to send invites (Already exists)
+- `RecruiterInviteEnvelope.jsx` - Institute component to view/respond to invites (Already exists)
+- `RecruiterCampusInviteTracking.jsx` - Recruiter tracking dashboard (Already exists)
+- `RecruiterCampusInviteTracking.css` - Styling for tracking component (Created)
 
-### 2. ✅ Dashboard Event & News Management (Edit Option)
-- **File Modified**: `Frontend/src/Components/Dashboard/InstituteDashboard.jsx`
-- **Status**: Edit functionality was already implemented
-- **Features**:
-  - Edit button present in event/news management cards
-  - Full edit functionality with form pre-population
-  - Update API integration working
+### 3. Integration Points
 
-### 3. ✅ Event/News Details Formatting (Preserve Input Format)
-- **File Modified**: `Frontend/src/Components/Pages/InstitutePage.jsx`
-- **Changes**:
-  - Enhanced `dangerouslySetInnerHTML` formatting for event descriptions
-  - Added support for:
-    - Line breaks (`\n` → `<br>`)
-    - Bold text (`**text**` → `<strong>text</strong>`)
-    - Italic text (`*text*` → `<em>text</em>`)
-    - Bullet points (`• text` → `<li>text</li>` wrapped in `<ul>`)
+#### A. InstitutePageList.jsx ✅
+Already integrated in lines 12-13:
+```javascript
+import RecruiterCampusInviteModal from '../Dashboard/RecruiterCampusInviteModal';
+```
 
-- **File Modified**: `Frontend/src/Components/Pages/InstitutePage.css`
-- **Changes**:
-  - Added `.formatted-content` CSS class
-  - Proper styling for lists, bold, and italic text
-  - Enhanced line-height and spacing
+The modal is already being used when recruiters click "Campus Invite" button on institute cards.
 
-### 4. ✅ Latest News "Read More" Functionality
-- **File Modified**: `Frontend/src/Components/Pages/InstitutePage.jsx`
-- **Status**: Modal functionality was already implemented
-- **Features**:
-  - News items open in popup modal (not redirecting to news page)
-  - Enhanced modal content formatting
-  - Preserved input formatting in modal display
+#### B. InstituteDashboard.jsx
+**Location to add:** Institute needs a new tab to view received recruiter invites
 
-### 5. ✅ Add "Venue" Field in Event Creation
-- **File Modified**: `Backend/models/instituteEventNewsModel.js`
-- **Changes**: Added `venue` field to event/news data model
+**Suggested Tab Name:** "Recruiter Invites" or add to existing "Campus Drive" section
 
-- **File Modified**: `Frontend/src/Components/Dashboard/InstituteDashboard.jsx`
-- **Status**: Venue field was already present in both event and news forms
-- **Features**:
-  - Venue input field in Add Event form
-  - Venue input field in Add News form
-  - Venue display in event cards on Institute Page
+**Integration Code:**
+```javascript
+// Add to sidebar menu (around line 250):
+<li className={activeTab === 'recruiter-invites' ? 'active' : ''} 
+    onClick={() => handleTabChange('recruiter-invites')}>
+  Recruiter Invites
+</li>
 
-## Technical Details
+// Add to content area (around line 900):
+{activeTab === 'recruiter-invites' && (
+  <div className="institute-recruiter-invites-tab">
+    <div className="institute-tab-header">
+      <h1>Recruiter Campus Invitations</h1>
+      <p>Manage invitations received from recruiters</p>
+    </div>
+    <RecruiterInviteEnvelope />
+  </div>
+)}
+```
 
-### Backend Changes
-1. **Event/News Model**: Added venue field support in DynamoDB schema
-2. **API Compatibility**: Existing API endpoints support venue field
+#### C. RecruiterDashboard.jsx
+**Location to add:** Recruiter needs a section to track sent invites
 
-### Frontend Changes
-1. **UI Enhancement**: New seminar-style event cards with modern design
-2. **Formatting Preservation**: Rich text formatting support for event/news details
-3. **Modal Functionality**: Enhanced modal display with proper formatting
-4. **Form Fields**: Venue field integration in dashboard forms
+**Suggested Tab Name:** "Campus Invites Tracking" or add to "Campus Drive" section
 
-### CSS Enhancements
-1. **New Event Card Design**: `.event-card-seminar` class with gradient backgrounds
-2. **Formatted Content**: `.formatted-content` class for rich text display
-3. **Responsive Design**: Maintained mobile compatibility
-4. **Visual Improvements**: Enhanced shadows, borders, and typography
+**Integration Code:**
+```javascript
+// Add to sidebar menu:
+<li className={activeTab === 'campus-invites-tracking' ? 'active' : ''} 
+    onClick={() => setActiveTab('campus-invites-tracking')}>
+  Campus Invites
+</li>
 
-## Files Modified
-1. `Backend/models/instituteEventNewsModel.js` - Added venue field
-2. `Frontend/src/Components/Pages/InstitutePage.jsx` - UI updates and formatting
-3. `Frontend/src/Components/Pages/InstitutePage.css` - New styling
-4. `Frontend/src/Components/Dashboard/InstituteDashboard.jsx` - Verified edit functionality
+// Add to content area:
+{activeTab === 'campus-invites-tracking' && (
+  <RecruiterCampusInviteTracking />
+)}
+```
 
-## Status: ✅ COMPLETED
-All requested features have been implemented and are ready for testing.
+## 📋 Next Steps
+
+### For Institute Dashboard:
+1. Import RecruiterInviteEnvelope component at the top
+2. Add new tab to sidebar menu
+3. Add content area for the tab
+
+### For Recruiter Dashboard:
+1. Import RecruiterCampusInviteTracking component at the top
+2. Add new tab to sidebar menu
+3. Add content area for the tab
+
+### Backend Prerequisites:
+Before frontend will work, ensure backend is ready:
+1. Run table creation script: `node Backend/scripts/create-recruiter-campus-invites-table.js`
+2. Verify all API endpoints are working:
+   - POST `/api/v1/recruiter-campus-invites/send`
+   - GET `/api/v1/recruiter-campus-invites/sent`
+   - GET `/api/v1/recruiter-campus-invites/received`
+   - GET `/api/v1/recruiter-campus-invites/institute-courses/:instituteId`
+   - GET `/api/v1/recruiter-campus-invites/institute-planner/:instituteId`
+   - PUT `/api/v1/recruiter-campus-invites/:inviteId/respond`
+
+## 🎯 Component Features
+
+### RecruiterInviteEnvelope (Institute View)
+- Displays all received invitations from recruiters
+- Shows invitation details (location, job role, courses, message)
+- Allows institute to accept with date selection
+- Allows institute to decline
+- Real-time status updates
+
+### RecruiterCampusInviteTracking (Recruiter View)
+- Lists all sent campus invites
+- Shows status (Pending/Accepted/Declined)
+- Displays invite details and institute responses
+- Includes institute coordinator contact info when accepted
+- Links to view full institute profile
+
+## 🔄 User Flow
+
+### Recruiter Flow:
+1. Browse institutes at `/institutes`
+2. Click "Campus Invite" button on institute card
+3. Fill modal with job details, dates, courses
+4. Send invite
+5. Track status in "Campus Invites" tab in dashboard
+
+### Institute Flow:
+1. Receive notification of new recruiter invite
+2. View invite in "Recruiter Invites" tab
+3. Review recruiter details and requirements
+4. Accept (select date) or Decline
+5. Status updates automatically for recruiter
+
+## 🎨 UI Components Used
+- React Icons (FiSend, FiCheckCircle, FiXCircle, FiClock, etc.)
+- React state management for modals and forms
+- CSS Grid for responsive layouts
+- Real-time status badges with color coding
+
+## ✅ All Code Ready
+All components are fully implemented and styled. Only integration into dashboard tabs is needed.

@@ -44,7 +44,7 @@
 }
 
 .logo-image {
- height: 60px;
+ height: 45px;
  width: auto;
  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

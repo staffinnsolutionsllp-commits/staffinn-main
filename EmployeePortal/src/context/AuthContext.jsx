@@ -35,7 +35,16 @@ export const AuthProvider = ({ children }) => {
     const response = await authAPI.login(email, password);
     const { token, user } = response.data.data;
     localStorage.setItem('employeeToken', token);
+    // Set basic user immediately so navigation works
     setUser(user);
+    // Then fetch full profile (includes employee details like name, designation, etc.)
+    try {
+      const profileResponse = await authAPI.getProfile();
+      setUser(profileResponse.data.data);
+    } catch (e) {
+      // If profile fetch fails, keep the basic user object
+      console.error('Profile fetch after login failed:', e);
+    }
     return user;
   };
 

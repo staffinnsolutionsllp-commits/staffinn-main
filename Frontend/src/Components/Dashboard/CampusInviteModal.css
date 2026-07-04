@@ -1,0 +1,910 @@
+/* ═══════════════════════════════════════════════════════════════
+   Campus Invite Modal — Enterprise-Grade v2
+   ═══════════════════════════════════════════════════════════════ */
+
+.cim-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 30, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.cim-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.22);
+  overflow: hidden;
+  animation: cim-slide-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cim-modal-v2 {
+  max-width: 820px;
+}
+
+@keyframes cim-slide-up {
+  from { opacity: 0; transform: translateY(32px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Header ── */
+.cim-header {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.cim-header-v2 {
+  background: linear-gradient(135deg, #0f2044 0%, #1d4ed8 60%, #2563eb 100%);
+  padding: 22px 28px;
+}
+
+.cim-header-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cim-header-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 2px;
+}
+
+.cim-company-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.18);
+  border: 2px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cim-company-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cim-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.cim-company {
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  margin: 2px 0 0;
+}
+
+.cim-close {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.cim-close:hover { background: rgba(255,255,255,0.28); }
+
+/* ── Step Indicator ── */
+.cim-steps {
+  display: flex;
+  align-items: center;
+  padding: 16px 28px;
+  background: #f8faff;
+  border-bottom: 1px solid #e8edf5;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.cim-steps-v2 {
+  padding: 14px 28px;
+  gap: 0;
+}
+
+.cim-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cim-step-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.25s;
+  flex-shrink: 0;
+}
+
+.cim-step.active .cim-step-circle {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.18);
+}
+
+.cim-step.done .cim-step-circle {
+  background: #10b981;
+  color: #fff;
+}
+
+.cim-step-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.cim-step.active .cim-step-label { color: #2563eb; }
+.cim-step.done .cim-step-label { color: #10b981; }
+
+.cim-step-line {
+  width: 32px;
+  height: 2px;
+  background: #e2e8f0;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.cim-step.done + .cim-step .cim-step-line,
+.cim-step.done .cim-step-line {
+  background: #10b981;
+}
+
+/* ── Body ── */
+.cim-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 28px;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+.cim-body-v2 {
+  padding: 24px 28px 8px;
+}
+
+.cim-step-content {
+  animation: cim-fade-in 0.2s ease;
+}
+
+@keyframes cim-fade-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.cim-step-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cim-step-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.cim-step-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+}
+
+.cim-step-desc {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Form Grid ── */
+.cim-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.cim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cim-field-full {
+  grid-column: 1 / -1;
+}
+
+.cim-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cim-req {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.cim-field-hint {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.cim-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cim-input-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  pointer-events: none;
+  display: block;
+  z-index: 1;
+}
+
+.cim-input-wrap input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  background: #fff;
+}
+
+.cim-field input,
+.cim-field select,
+.cim-field textarea {
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #f8faff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* When input is inside an icon-wrap, the icon padding takes priority */
+.cim-input-wrap input {
+  padding-left: 40px !important;
+}
+
+.cim-field input:focus,
+.cim-field select:focus,
+.cim-field textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  background: #fff;
+}
+
+/* ── Courses Grid ── */
+.cim-courses-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cim-course-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8faff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.cim-course-chip:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.cim-course-chip.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.cim-course-check {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Facilities Grid ── */
+.cim-facilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cim-facility-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8faff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  transition: all 0.2s;
+  user-select: none;
+  position: relative;
+}
+
+.cim-facility-chip:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.cim-facility-chip.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.cim-facility-icon { font-size: 16px; }
+
+.cim-facility-check {
+  margin-left: auto;
+  color: #2563eb;
+  font-size: 13px;
+}
+
+/* ── Time Slots ── */
+.cim-timeslots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cim-timeslot-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8faff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.cim-timeslot-chip:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.cim-timeslot-chip.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.cim-timeslot-icon { font-size: 14px; color: #64748b; }
+.cim-timeslot-check { margin-left: auto; color: #2563eb; font-size: 13px; }
+
+/* ── Drive Mode Toggle ── */
+.cim-mode-toggle {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cim-mode-toggle-v2 {
+  gap: 12px;
+}
+
+.cim-mode-btn {
+  padding: 10px 20px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8faff;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.cim-mode-btn:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.cim-mode-btn.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+}
+
+/* ── Date Cards ── */
+.cim-dates-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cim-date-card {
+  width: 72px;
+  padding: 10px 8px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8faff;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  position: relative;
+  user-select: none;
+}
+
+.cim-date-card:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  transform: translateY(-2px);
+}
+
+.cim-date-card.selected {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+  transform: translateY(-2px);
+}
+
+.cim-date-day { font-size: 10px; font-weight: 600; text-transform: uppercase; opacity: 0.7; }
+.cim-date-num { font-size: 22px; font-weight: 800; line-height: 1.1; margin: 2px 0; }
+.cim-date-month { font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.cim-date-year { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+
+.cim-date-check {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  background: #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  border: 2px solid #fff;
+}
+
+/* ── Selected Summary ── */
+.cim-selected-summary {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #166534;
+}
+
+/* ── No Dates / No Courses ── */
+.cim-no-dates {
+  text-align: center;
+  padding: 28px 20px;
+  background: #f8faff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+.cim-no-dates-icon { font-size: 36px; margin-bottom: 10px; }
+.cim-no-dates h4 { font-size: 15px; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
+.cim-no-dates p { font-size: 13px; color: #64748b; margin: 4px 0; }
+
+/* ── Loading ── */
+.cim-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.cim-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: cim-spin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes cim-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Review Grid ── */
+.cim-review-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.cim-review-section {
+  background: #f8faff;
+  border: 1px solid #e8edf5;
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.cim-review-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2563eb;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cim-review-rows { display: flex; flex-direction: column; gap: 8px; }
+
+.cim-review-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  gap: 8px;
+}
+
+.cim-review-row-wrap {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.cim-review-row span { color: #64748b; flex-shrink: 0; }
+.cim-review-row strong { color: #1e293b; text-align: right; word-break: break-word; }
+
+.cim-review-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cim-review-chip {
+  padding: 3px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.cim-review-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cim-review-date-chip {
+  padding: 5px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.cim-mode-badge {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cim-mode-badge.cim-mode-offline { background: #fef3c7; color: #92400e; }
+.cim-mode-badge.cim-mode-virtual { background: #ede9fe; color: #5b21b6; }
+.cim-mode-badge.cim-mode-hybrid  { background: #d1fae5; color: #065f46; }
+
+/* ── Error ── */
+.cim-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 11px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cim-error-icon { flex-shrink: 0; }
+
+/* ── Footer ── */
+.cim-footer {
+  padding: 16px 28px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.cim-footer-v2 {
+  padding: 16px 28px 20px;
+}
+
+.cim-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.cim-btn-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.cim-btn-back:hover { border-color: #94a3b8; background: #f8faff; }
+
+.cim-btn-cancel {
+  padding: 10px 18px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.cim-btn-cancel:hover { background: #f8faff; }
+
+.cim-btn-next {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+}
+
+.cim-btn-next:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 6px 18px rgba(37,99,235,0.4);
+  transform: translateY(-1px);
+}
+
+.cim-btn-send {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 26px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-shadow: 0 4px 14px rgba(5,150,105,0.35);
+}
+
+.cim-btn-send:hover:not(:disabled) {
+  background: linear-gradient(135deg, #047857, #065f46);
+  box-shadow: 0 6px 20px rgba(5,150,105,0.45);
+  transform: translateY(-1px);
+}
+
+.cim-btn-send:disabled,
+.cim-btn-next:disabled,
+.cim-btn-back:disabled,
+.cim-btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .cim-modal { border-radius: 16px; }
+  .cim-header-v2 { padding: 16px 18px; }
+  .cim-body-v2 { padding: 16px 18px 8px; }
+  .cim-footer-v2 { padding: 14px 18px 18px; }
+  .cim-form-grid { grid-template-columns: 1fr; }
+  .cim-review-grid { grid-template-columns: 1fr; }
+  .cim-steps { padding: 12px 16px; }
+  .cim-step-label { display: none; }
+  .cim-facilities-grid { grid-template-columns: 1fr 1fr; }
+  .cim-timeslots-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Slot Availability Indicators — Institute Invite Form
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Date card — fully booked */
+.cim-date-card-booked {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+  border-color: #fca5a5 !important;
+  background: #fff5f5 !important;
+  color: #dc2626 !important;
+}
+
+.cim-date-card-booked:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.cim-date-booked-badge {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Time slot chip — booked */
+.cim-timeslot-booked {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+  border-color: #fca5a5 !important;
+  background: #fff5f5 !important;
+  color: #dc2626 !important;
+}
+
+.cim-timeslot-booked:hover {
+  border-color: #fca5a5 !important;
+  background: #fff5f5 !important;
+  transform: none !important;
+}
+
+/* Time slot chip — tentative */
+.cim-timeslot-tentative {
+  border-color: #fde68a !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
+}
+
+/* Slot status badge inside chip */
+.cim-slot-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.cim-slot-booked    { background: #fee2e2; color: #dc2626; }
+.cim-slot-tentative { background: #fef3c7; color: #92400e; }

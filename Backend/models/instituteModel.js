@@ -30,6 +30,8 @@ const createOrUpdateProfile = async (instituteId, profileData) => {
       description: profileData.description || '',
       establishedYear: profileData.establishedYear || null,
       profileImage: profileData.profileImage || null,
+      bannerImage: profileData.bannerImage || null,
+      campusTour: profileData.campusTour || [],
       affiliations: profileData.affiliations || [],
       courses: profileData.courses || [],
       placementRate: profileData.placementRate || null,

@@ -9,6 +9,7 @@ import Attendance from './components/Attendance'
 import LeaveManagement from './components/LeaveManagement'
 import Payroll from './components/Payroll'
 import ClaimManagement from './components/ClaimManagement'
+import ClaimApprovals from './components/ClaimApprovals'
 import TaskPerformance from './components/TaskPerformance'
 import GrievanceManagement from './components/GrievanceManagement'
 import SeparationManagement from './components/SeparationManagement'
@@ -45,6 +46,7 @@ function AppContent() {
       case 'leave': return <LeaveManagement />
       case 'payroll': return <Payroll />
       case 'claims': return <ClaimManagement />
+      case 'claim-approvals': return <ClaimApprovals />
       case 'tasks-performance': return <TaskPerformance />
       case 'grievance-management': return <GrievanceManagement />
       case 'separation': return <SeparationManagement />

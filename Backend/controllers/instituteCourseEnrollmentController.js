@@ -626,6 +626,8 @@ const getCourseEnrollmentTracking = async (req, res) => {
         let userName = enrollment.userName || enrollment.studentName || enrollment.name || enrollment.fullName;
         let userEmail = enrollment.userEmail || enrollment.studentEmail || enrollment.email;
         let paymentStatus = enrollment.paymentStatus || 'completed';
+        // Normalize pending_at_institute → pending so frontend shows "Pending" correctly
+        if (paymentStatus === 'pending_at_institute') paymentStatus = 'pending';
         
         console.log('   - Initial userName:', userName);
         console.log('   - Initial userEmail:', userEmail);
@@ -684,6 +686,8 @@ const getCourseEnrollmentTracking = async (req, res) => {
           enrollmentDate: enrollment.enrolledAt || enrollment.enrollmentDate || enrollment.createdAt,
           progressPercentage: enrollment.progressPercentage || enrollment.progress || 0,
           paymentStatus: paymentStatus,
+          paymentMode: enrollment.paymentMode || null,
+          receiptNumber: enrollment.receiptNumber || null,
           pendingPaymentId: hasPendingPayment?.pendingPaymentId
         };
       });

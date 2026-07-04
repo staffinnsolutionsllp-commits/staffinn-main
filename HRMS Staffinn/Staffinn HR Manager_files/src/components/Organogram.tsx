@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash, Users, Building2, ChevronDown, ChevronRight, GitBranch, List } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Edit, Trash, Users, Building2, GitBranch, List, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { apiService } from '../services/api'
 
 interface Employee {
@@ -11,6 +11,9 @@ interface Employee {
   designation?: string
   department: string
   teamName?: string
+  isPeopleManager?: string
+  roleLevel?: string
+  profilePictureUrl?: string
 }
 
 interface OrgNode {
@@ -23,50 +26,43 @@ interface OrgNode {
   employee: Employee | null
 }
 
+// ── Role badge color ─────────────────────────────────────────────────────────
+const roleBadgeColor = (level: string | undefined) => {
+  switch (level) {
+    case 'RM':         return 'bg-purple-100 text-purple-700'
+    case 'Manager':    return 'bg-blue-100 text-blue-700'
+    case 'Team Lead':  return 'bg-green-100 text-green-700'
+    case 'Employee':   return 'bg-gray-100 text-gray-600'
+    default:           return 'bg-gray-100 text-gray-600'
+  }
+}
+
 export default function Organogram() {
   const [orgData, setOrgData] = useState<{ nodes: OrgNode[], hierarchy: OrgNode[] }>({ nodes: [], hierarchy: [] })
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [showAddForm, setShowAddForm] = useState(false)
-  const [viewMode, setViewMode] = useState<'diagram' | 'list'>('diagram')
+  const [viewMode, setViewMode] = useState<'list' | 'diagram'>('list')
   const [editingNode, setEditingNode] = useState<OrgNode | null>(null)
-  const [formData, setFormData] = useState({
-    employeeId: '',
-    parentId: '',
-    level: 0,
-    position: ''
-  })
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const panStart = useRef({ x: 0, y: 0 })
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [formData, setFormData] = useState({ employeeId: '', parentId: '', level: 0, position: '' })
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { loadData() }, [])
 
   const loadData = async () => {
     try {
       setLoading(true)
-      console.log('Loading organization data...')
       const [orgResponse, empResponse] = await Promise.all([
         apiService.getOrganizationChart(),
         apiService.getEmployees()
       ])
-      
-      console.log('Organization response:', orgResponse)
-      console.log('Employees response:', empResponse)
-      
-      if (orgResponse.success) {
-        console.log('Setting org data:', orgResponse.data)
-        setOrgData(orgResponse.data)
-      } else {
-        console.error('Organization API failed:', orgResponse)
-      }
-      
-      if (empResponse.success) {
-        console.log('Setting employees data:', empResponse.data)
-        setEmployees(empResponse.data)
-      } else {
-        console.error('Employees API failed:', empResponse)
-      }
+      if (orgResponse.success) setOrgData(orgResponse.data)
+      if (empResponse.success) setEmployees(empResponse.data)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -74,370 +70,318 @@ export default function Organogram() {
     }
   }
 
-  const toggleNode = (nodeId: string) => {
-    const newExpanded = new Set(expandedNodes)
-    if (newExpanded.has(nodeId)) {
-      newExpanded.delete(nodeId)
-    } else {
-      newExpanded.add(nodeId)
+  // expand all nodes by default
+  useEffect(() => {
+    if (orgData.nodes.length > 0) {
+      setExpandedNodes(new Set(orgData.nodes.map(n => n.nodeId)))
     }
-    setExpandedNodes(newExpanded)
+  }, [orgData])
+
+  const toggleNode = (nodeId: string) => {
+    const s = new Set(expandedNodes)
+    s.has(nodeId) ? s.delete(nodeId) : s.add(nodeId)
+    setExpandedNodes(s)
   }
 
   const handleAddNode = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!formData.position.trim()) {
-      alert('Position title is required')
-      return
-    }
-    
+    if (!formData.position.trim()) { alert('Position title is required'); return }
     try {
-      console.log('Creating org node with data:', formData)
-      const response = await apiService.createOrgNode(formData)
-      console.log('Create org node response:', response)
-      
-      if (response.success) {
-        await loadData()
-        setShowAddForm(false)
-        setFormData({ employeeId: '', parentId: '', level: 0, position: '' })
-      } else {
-        console.error('API returned error:', response)
-        alert(response.message || 'Failed to create organization node')
-      }
-    } catch (error) {
-      console.error('Error creating node:', error)
-      alert(error.message || 'Failed to create organization node')
-    }
+      const res = await apiService.createOrgNode(formData)
+      if (res.success) { await loadData(); setShowAddForm(false); setFormData({ employeeId: '', parentId: '', level: 0, position: '' }) }
+      else alert(res.message || 'Failed to create node')
+    } catch (err: any) { alert(err.message || 'Failed') }
   }
 
   const handleEditNode = (node: OrgNode) => {
     setEditingNode(node)
-    setFormData({
-      employeeId: node.employeeId,
-      parentId: node.parentId || '',
-      level: node.level,
-      position: node.position
-    })
+    setFormData({ employeeId: node.employeeId, parentId: node.parentId || '', level: node.level, position: node.position })
     setShowAddForm(true)
   }
 
   const handleUpdateNode = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingNode) return
-
     try {
-      const response = await apiService.updateOrgNode(editingNode.nodeId, formData)
-      if (response.success) {
-        await loadData()
-        setShowAddForm(false)
-        setEditingNode(null)
-        setFormData({ employeeId: '', parentId: '', level: 0, position: '' })
-      }
-    } catch (error) {
-      console.error('Error updating node:', error)
-      alert('Failed to update organization node')
-    }
+      const res = await apiService.updateOrgNode(editingNode.nodeId, formData)
+      if (res.success) { await loadData(); setShowAddForm(false); setEditingNode(null); setFormData({ employeeId: '', parentId: '', level: 0, position: '' }) }
+    } catch { alert('Failed to update') }
   }
 
   const handleDeleteNode = async (nodeId: string) => {
-    if (!confirm('Are you sure you want to delete this organization node?')) return
-
+    if (!confirm('Delete this node?')) return
     try {
-      const response = await apiService.deleteOrgNode(nodeId)
-      if (response.success) {
-        await loadData()
-      }
-    } catch (error) {
-      console.error('Error deleting node:', error)
-      alert('Failed to delete organization node')
-    }
+      const res = await apiService.deleteOrgNode(nodeId)
+      if (res.success) await loadData()
+    } catch { alert('Failed to delete') }
   }
 
-  const renderOrgNode = (node: OrgNode, depth = 0) => {
+  // ── Zoom / Pan handlers ────────────────────────────────────────────────────
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return
+    setIsPanning(true)
+    panStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y }
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return
+    setPan({ x: e.clientX - panStart.current.x, y: e.clientY - panStart.current.y })
+  }
+
+  const handleMouseUp = () => setIsPanning(false)
+  const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }) }
+
+  // ── List view: recursive card ──────────────────────────────────────────────
+  const renderListNode = (node: OrgNode, depth = 0) => {
     const hasChildren = node.children && node.children.length > 0
     const isExpanded = expandedNodes.has(node.nodeId)
+    const emp = node.employee
+    const initials = emp ? (emp.fullName || emp.name || '?').charAt(0).toUpperCase() : '?'
+    const roleLevel = emp?.roleLevel
 
     return (
-      <div key={node.nodeId} className="mb-2">
-        <div 
-          className={`flex items-center p-3 bg-white rounded-lg shadow border-l-4 border-blue-500 ml-${depth * 8}`}
-          style={{ marginLeft: `${depth * 2}rem` }}
-        >
-          {hasChildren && (
-            <button
-              onClick={() => toggleNode(node.nodeId)}
-              className="mr-2 p-1 hover:bg-gray-100 rounded"
-            >
-              {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </button>
-          )}
-          
-          <div className="flex-1">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Users size={20} className="text-blue-600" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-gray-900">
-                  {node.employee ? (node.employee.fullName || node.employee.name || 'Unknown') : 'No Employee Assigned'}
-                </h4>
-                <p className="text-sm text-gray-600">
-                  {node.position || (node.employee && (node.employee.designation || node.employee.position)) || 'No Position'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {node.employee?.department || 'No Department'} • Level {node.level}
-                </p>
-              </div>
-            </div>
+      <div key={node.nodeId} style={{ marginLeft: depth * 28 }}>
+        <div className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 mb-2 shadow-sm hover:shadow-md transition-shadow">
+          {/* expand toggle */}
+          <button
+            onClick={() => hasChildren && toggleNode(node.nodeId)}
+            className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold transition-colors
+              ${hasChildren ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer' : 'cursor-default opacity-0'}`}
+          >
+            {isExpanded ? '−' : '+'}
+          </button>
+
+          {/* avatar */}
+          <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-300 flex items-center justify-center text-blue-700 font-bold text-base flex-shrink-0 overflow-hidden">
+            {emp?.profilePictureUrl
+              ? <img src={emp.profilePictureUrl} alt="" className="w-full h-full object-cover" />
+              : initials}
           </div>
 
-          <div className="flex space-x-2">
-            <button
-              onClick={() => handleEditNode(node)}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded"
-              title="Edit Node"
-            >
-              <Edit size={16} />
+          {/* info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-gray-900 text-sm truncate">
+                {emp ? (emp.fullName || emp.name || 'Unknown') : 'Vacant Position'}
+              </span>
+              {roleLevel && (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleBadgeColor(roleLevel)}`}>
+                  {roleLevel}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 truncate">
+              {node.position || emp?.designation || '—'} &bull; {emp?.department || 'No Dept'} &bull; L{node.level}
+            </p>
+          </div>
+
+          {/* actions */}
+          <div className="flex gap-1 flex-shrink-0">
+            <button onClick={() => handleEditNode(node)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg" title="Edit">
+              <Edit size={14} />
             </button>
-            <button
-              onClick={() => handleDeleteNode(node.nodeId)}
-              className="p-2 text-red-600 hover:bg-red-50 rounded"
-              title="Delete Node"
-            >
-              <Trash size={16} />
+            <button onClick={() => handleDeleteNode(node.nodeId)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="Delete">
+              <Trash size={14} />
             </button>
           </div>
         </div>
 
+        {/* connector line */}
         {hasChildren && isExpanded && (
-          <div className="mt-2">
-            {node.children.map(child => renderOrgNode(child, depth + 1))}
+          <div className="border-l-2 border-dashed border-blue-200 ml-7 pl-2">
+            {node.children.map(child => renderListNode(child, 0))}
           </div>
         )}
       </div>
     )
   }
 
-  const renderDiagramNode = (node: OrgNode, x: number, y: number, level: number): JSX.Element => {
-    const nodeWidth = 200
-    const nodeHeight = 100
-    const hasChildren = node.children && node.children.length > 0
-    
-    return (
-      <g key={node.nodeId}>
-        {/* Node Box */}
-        <rect
-          x={x - nodeWidth/2}
-          y={y}
-          width={nodeWidth}
-          height={nodeHeight}
-          rx={8}
-          fill="white"
-          stroke="#3B82F6"
-          strokeWidth={2}
-          className="drop-shadow-md"
-        />
-        
-        {/* Employee Avatar */}
-        {node.employee?.profilePictureUrl ? (
-          <image
-            x={x - nodeWidth/2 + 10}
-            y={y + 10}
-            width={40}
-            height={40}
-            href={node.employee.profilePictureUrl}
-            clipPath="circle(20px at 20px 20px)"
-          />
-        ) : (
-          <>
-            <circle
-              cx={x - nodeWidth/2 + 30}
-              cy={y + 30}
-              r={20}
-              fill="#DBEAFE"
-              stroke="#3B82F6"
-              strokeWidth={2}
-            />
-            <text
-              x={x - nodeWidth/2 + 30}
-              y={y + 35}
-              textAnchor="middle"
-              className="text-sm font-semibold fill-blue-600"
-            >
-              {node.employee && (node.employee.fullName || node.employee.name) ? 
-                (node.employee.fullName || node.employee.name).charAt(0).toUpperCase() : '?'}
-            </text>
-          </>
-        )}
-        
-        {/* Employee Name */}
-        <text
-          x={x - nodeWidth/2 + 65}
-          y={y + 25}
-          className="text-sm font-semibold fill-gray-900"
-        >
-          {node.employee ? 
-            ((node.employee.fullName || node.employee.name || '').length > 15 ? 
-              (node.employee.fullName || node.employee.name || '').substring(0, 15) + '...' : 
-              (node.employee.fullName || node.employee.name || 'Unknown')) : 
-            'Vacant Position'
-          }
-        </text>
-        
-        {/* Position Title */}
-        <text
-          x={x - nodeWidth/2 + 65}
-          y={y + 45}
-          className="text-xs fill-gray-600"
-        >
-          {node.position.length > 20 ? node.position.substring(0, 20) + '...' : node.position}
-        </text>
-        
-        {/* Department & Level */}
-        <text
-          x={x - nodeWidth/2 + 65}
-          y={y + 60}
-          className="text-xs fill-gray-500"
-        >
-          {node.employee?.department || 'No Dept'} • L{node.level}
-        </text>
-        
-        {/* Team Name */}
-        {node.employee?.teamName && (
-          <text
-            x={x - nodeWidth/2 + 65}
-            y={y + 75}
-            className="text-xs fill-blue-600 font-semibold"
-          >
-            Team: {node.employee.teamName}
-          </text>
-        )}
-        
-        {/* Action Buttons */}
-        <g>
-          <rect
-            x={x + nodeWidth/2 - 60}
-            y={y + 75}
-            width={25}
-            height={20}
-            rx={4}
-            fill="#EFF6FF"
-            stroke="#3B82F6"
-            className="cursor-pointer hover:fill-blue-50"
-            onClick={() => handleEditNode(node)}
-          />
-          <text
-            x={x + nodeWidth/2 - 47.5}
-            y={y + 87}
-            textAnchor="middle"
-            className="text-xs fill-blue-600 cursor-pointer"
-            onClick={() => handleEditNode(node)}
-          >
-            ✎
-          </text>
-          
-          <rect
-            x={x + nodeWidth/2 - 30}
-            y={y + 75}
-            width={25}
-            height={20}
-            rx={4}
-            fill="#FEF2F2"
-            stroke="#EF4444"
-            className="cursor-pointer hover:fill-red-50"
-            onClick={() => handleDeleteNode(node.nodeId)}
-          />
-          <text
-            x={x + nodeWidth/2 - 17.5}
-            y={y + 87}
-            textAnchor="middle"
-            className="text-xs fill-red-600 cursor-pointer"
-            onClick={() => handleDeleteNode(node.nodeId)}
-          >
-            ✕
-          </text>
-        </g>
-        
-        {/* Connection Lines to Children */}
-        {hasChildren && node.children.map((child, index) => {
-          const childrenCount = node.children.length
-          const childX = x + (index - (childrenCount - 1) / 2) * 250
-          const childY = y + 150
-          
-          return (
-            <g key={`line-${child.nodeId}`}>
-              {/* Vertical line down */}
-              <line
-                x1={x}
-                y1={y + nodeHeight}
-                x2={x}
-                y2={y + nodeHeight + 25}
-                stroke="#6B7280"
-                strokeWidth={2}
-              />
-              
-              {/* Horizontal line */}
-              {childrenCount > 1 && (
-                <line
-                  x1={x + (0 - (childrenCount - 1) / 2) * 250}
-                  y1={y + nodeHeight + 25}
-                  x2={x + ((childrenCount - 1) - (childrenCount - 1) / 2) * 250}
-                  y2={y + nodeHeight + 25}
-                  stroke="#6B7280"
-                  strokeWidth={2}
-                />
-              )}
-              
-              {/* Vertical line to child */}
-              <line
-                x1={childX}
-                y1={y + nodeHeight + 25}
-                x2={childX}
-                y2={childY}
-                stroke="#6B7280"
-                strokeWidth={2}
-              />
-            </g>
-          )
-        })}
-        
-        {/* Render Children */}
-        {hasChildren && node.children.map((child, index) => {
-          const childrenCount = node.children.length
-          const childX = x + (index - (childrenCount - 1) / 2) * 250
-          const childY = y + 150
-          
-          return renderDiagramNode(child, childX, childY, level + 1)
-        })}
+  // ── Diagram: measure tree width recursively ───────────────────────────────
+  const NODE_W = 220
+  const NODE_H = 110
+  const H_GAP = 40   // horizontal gap between siblings
+  const V_GAP = 80   // vertical gap between levels
+
+  const measureWidth = (node: OrgNode): number => {
+    if (!node.children || node.children.length === 0) return NODE_W
+    const childTotal = node.children.reduce((sum, c) => sum + measureWidth(c) + H_GAP, -H_GAP)
+    return Math.max(NODE_W, childTotal)
+  }
+
+  const renderDiagramNode = (node: OrgNode, cx: number, cy: number): JSX.Element[] => {
+    const emp = node.employee
+    const initials = emp ? (emp.fullName || emp.name || '?').charAt(0).toUpperCase() : '?'
+    const name = emp ? (emp.fullName || emp.name || 'Unknown') : 'Vacant'
+    const title = (node.position || emp?.designation || '').substring(0, 22) + ((node.position || emp?.designation || '').length > 22 ? '…' : '')
+    const dept = (emp?.department || 'No Dept').substring(0, 20)
+    const roleLevel = emp?.roleLevel
+
+    const elements: JSX.Element[] = []
+
+    // card shadow rect
+    elements.push(
+      <rect key={`shadow-${node.nodeId}`} x={cx - NODE_W/2 + 3} y={cy + 3}
+        width={NODE_W} height={NODE_H} rx={12} fill="rgba(0,0,0,0.08)" />
+    )
+    // card
+    elements.push(
+      <rect key={`card-${node.nodeId}`} x={cx - NODE_W/2} y={cy}
+        width={NODE_W} height={NODE_H} rx={12} fill="white"
+        stroke={roleLevel === 'RM' ? '#7C3AED' : roleLevel === 'Manager' ? '#2563EB' : roleLevel === 'Team Lead' ? '#059669' : '#CBD5E1'}
+        strokeWidth={2} />
+    )
+    // avatar bg
+    elements.push(
+      <circle key={`av-bg-${node.nodeId}`} cx={cx - NODE_W/2 + 32} cy={cy + 38}
+        r={22} fill="#DBEAFE" stroke="#3B82F6" strokeWidth={2} />
+    )
+    // avatar initials
+    elements.push(
+      <text key={`av-txt-${node.nodeId}`} x={cx - NODE_W/2 + 32} y={cy + 44}
+        textAnchor="middle" fontSize={14} fontWeight="700" fill="#1D4ED8">{initials}</text>
+    )
+    // name
+    elements.push(
+      <text key={`name-${node.nodeId}`} x={cx - NODE_W/2 + 64} y={cy + 24}
+        fontSize={12} fontWeight="700" fill="#111827"
+      >{name.length > 18 ? name.substring(0, 18) + '…' : name}</text>
+    )
+    // role badge bg
+    if (roleLevel) {
+      const badgeColors: Record<string, string> = { RM: '#EDE9FE', Manager: '#DBEAFE', 'Team Lead': '#D1FAE5', Employee: '#F1F5F9' }
+      const badgeText: Record<string, string> = { RM: '#6D28D9', Manager: '#1D4ED8', 'Team Lead': '#065F46', Employee: '#475569' }
+      elements.push(<rect key={`badge-bg-${node.nodeId}`} x={cx - NODE_W/2 + 64} y={cy + 29} width={roleLevel.length * 7 + 8} height={14} rx={7} fill={badgeColors[roleLevel] || '#F1F5F9'} />)
+      elements.push(<text key={`badge-${node.nodeId}`} x={cx - NODE_W/2 + 68} y={cy + 40} fontSize={9} fontWeight="600" fill={badgeText[roleLevel] || '#475569'}>{roleLevel}</text>)
+    }
+    // title
+    elements.push(
+      <text key={`title-${node.nodeId}`} x={cx - NODE_W/2 + 64} y={cy + 56}
+        fontSize={10} fill="#4B5563">{title}</text>
+    )
+    // dept + level
+    elements.push(
+      <text key={`dept-${node.nodeId}`} x={cx - NODE_W/2 + 64} y={cy + 70}
+        fontSize={9} fill="#9CA3AF">{dept} • L{node.level}</text>
+    )
+    // edit button
+    elements.push(
+      <g key={`edit-${node.nodeId}`} onClick={() => handleEditNode(node)} style={{ cursor: 'pointer' }}>
+        <rect x={cx + NODE_W/2 - 52} y={cy + NODE_H - 24} width={22} height={18} rx={4} fill="#EFF6FF" stroke="#BFDBFE" />
+        <text x={cx + NODE_W/2 - 41} y={cy + NODE_H - 11} textAnchor="middle" fontSize={11} fill="#2563EB">✎</text>
       </g>
     )
+    // delete button
+    elements.push(
+      <g key={`del-${node.nodeId}`} onClick={() => handleDeleteNode(node.nodeId)} style={{ cursor: 'pointer' }}>
+        <rect x={cx + NODE_W/2 - 26} y={cy + NODE_H - 24} width={22} height={18} rx={4} fill="#FEF2F2" stroke="#FECACA" />
+        <text x={cx + NODE_W/2 - 15} y={cy + NODE_H - 11} textAnchor="middle" fontSize={11} fill="#DC2626">✕</text>
+      </g>
+    )
+
+    // children
+    if (node.children && node.children.length > 0) {
+      const childWidths = node.children.map(c => measureWidth(c))
+      const totalW = childWidths.reduce((s, w) => s + w + H_GAP, -H_GAP)
+      let childX = cx - totalW / 2
+
+      // vertical stem down from parent
+      elements.push(<line key={`stem-${node.nodeId}`} x1={cx} y1={cy + NODE_H} x2={cx} y2={cy + NODE_H + V_GAP/2} stroke="#94A3B8" strokeWidth={1.5} />)
+
+      // horizontal bar
+      if (node.children.length > 1) {
+        const firstChildCX = childX + childWidths[0] / 2
+        const lastChildCX = cx + totalW/2 - childWidths[node.children.length-1]/2
+        elements.push(<line key={`hbar-${node.nodeId}`} x1={firstChildCX} y1={cy + NODE_H + V_GAP/2} x2={lastChildCX} y2={cy + NODE_H + V_GAP/2} stroke="#94A3B8" strokeWidth={1.5} />)
+      }
+
+      node.children.forEach((child, i) => {
+        const childCX = childX + childWidths[i] / 2
+        const childCY = cy + NODE_H + V_GAP
+        // stem down to child
+        elements.push(<line key={`cstem-${child.nodeId}`} x1={childCX} y1={cy + NODE_H + V_GAP/2} x2={childCX} y2={childCY} stroke="#94A3B8" strokeWidth={1.5} />)
+        elements.push(...renderDiagramNode(child, childCX, childCY))
+        childX += childWidths[i] + H_GAP
+      })
+    }
+
+    return elements
   }
 
   const renderDiagram = () => {
     if (orgData.hierarchy.length === 0) {
       return (
-        <div className="text-center py-16 text-gray-500">
-          <Building2 size={64} className="mx-auto mb-4 text-gray-300" />
-          <p className="text-lg">No organizational structure defined yet.</p>
-          <p className="text-sm">Add positions to build your organization chart.</p>
+        <div className="text-center py-16 text-gray-400">
+          <Building2 size={56} className="mx-auto mb-3 opacity-30" />
+          <p>No organizational structure yet. Add positions to get started.</p>
         </div>
       )
     }
 
-    // Calculate SVG dimensions based on hierarchy
-    const maxLevel = Math.max(...orgData.nodes.map(n => n.level))
-    const svgHeight = Math.max(600, (maxLevel + 1) * 200)
-    const svgWidth = Math.max(1000, orgData.hierarchy.length * 300)
+    // total width for all roots side by side
+    const rootWidths = orgData.hierarchy.map(n => measureWidth(n))
+    const totalRootsW = rootWidths.reduce((s, w) => s + w + H_GAP * 2, 0)
+    const svgW = Math.max(900, totalRootsW + 80)
+
+    // height: deepest node level
+    const maxLevel = orgData.nodes.length > 0 ? Math.max(...orgData.nodes.map(n => n.level)) : 0
+    const svgH = Math.max(400, (maxLevel + 1) * (NODE_H + V_GAP) + 120)
+
+    let rootX = 40
+    const allElements: JSX.Element[] = []
+    orgData.hierarchy.forEach((node, i) => {
+      const cx = rootX + rootWidths[i] / 2
+      allElements.push(...renderDiagramNode(node, cx, 40))
+      rootX += rootWidths[i] + H_GAP * 2
+    })
 
     return (
-      <div className="overflow-auto bg-gray-50 rounded-lg p-4" style={{ minHeight: '500px' }}>
-        <svg width={svgWidth} height={svgHeight} className="mx-auto">
-          {orgData.hierarchy.map((node, index) => {
-            const x = (index + 1) * (svgWidth / (orgData.hierarchy.length + 1))
-            const y = 50
-            return renderDiagramNode(node, x, y, 0)
-          })}
+      <div
+        className="relative bg-slate-50 rounded-xl border border-slate-200"
+        style={{ height: 520, overflow: 'hidden', cursor: isPanning ? 'grabbing' : 'grab', userSelect: 'none' }}
+        onWheel={(e) => {
+          // prevent page scroll, only zoom diagram
+          e.preventDefault()
+          e.stopPropagation()
+          const delta = e.deltaY > 0 ? -0.1 : 0.1
+          setZoom(z => Math.min(3, Math.max(0.3, +(z + delta).toFixed(2))))
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* zoom controls — fixed inside container */}
+        <div className="absolute top-3 right-3 flex flex-col gap-1 z-10" onMouseDown={e => e.stopPropagation()}>
+          <button onClick={() => setZoom(z => Math.min(3, +(z + 0.15).toFixed(2)))}
+            className="w-8 h-8 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-center hover:bg-gray-50 text-gray-600">
+            <ZoomIn size={15} />
+          </button>
+          <button onClick={() => setZoom(z => Math.max(0.3, +(z - 0.15).toFixed(2)))}
+            className="w-8 h-8 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-center hover:bg-gray-50 text-gray-600">
+            <ZoomOut size={15} />
+          </button>
+          <button onClick={resetView}
+            className="w-8 h-8 bg-white border border-gray-200 rounded-lg shadow-sm flex items-center justify-center hover:bg-gray-50 text-gray-600" title="Reset view">
+            <Maximize2 size={13} />
+          </button>
+          <span className="text-center text-xs text-gray-400 mt-0.5">{Math.round(zoom * 100)}%</span>
+        </div>
+
+        <div className="absolute bottom-3 left-3 text-xs text-gray-400 select-none z-10 bg-white/70 px-2 py-1 rounded-md">
+          Scroll to zoom • Drag to pan
+        </div>
+
+        {/* SVG fills container, transform only on inner <g> so header/stats stay fixed */}
+        <svg
+          ref={svgRef}
+          width="100%"
+          height="100%"
+          style={{ display: 'block' }}
+          className="select-none"
+        >
+          <g style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0' }}>
+            {allElements}
+          </g>
         </svg>
       </div>
     )
@@ -447,8 +391,8 @@ export default function Organogram() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading organization chart...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto" />
+          <p className="mt-3 text-gray-500 text-sm">Loading organization chart…</p>
         </div>
       </div>
     )
@@ -456,178 +400,105 @@ export default function Organogram() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Organization Chart</h1>
-          <p className="text-gray-600">Visual representation of company hierarchy and reporting structure</p>
+          <p className="text-sm text-gray-500">Company hierarchy and reporting structure</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-3">
+          {/* view toggle */}
           <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('diagram')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'diagram' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <GitBranch size={16} />
-              <span>Diagram</span>
+            <button onClick={() => setViewMode('list')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors
+                ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              <List size={15} /> List
             </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'list' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <List size={16} />
-              <span>List</span>
+            <button onClick={() => setViewMode('diagram')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors
+                ${viewMode === 'diagram' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              <GitBranch size={15} /> Diagram
             </button>
           </div>
-          <button 
-            onClick={() => setShowAddForm(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <Plus size={16} />
-            <span>Add Position</span>
+          <button onClick={() => setShowAddForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+            <Plus size={15} /> Add Position
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-blue-100 rounded-full">
-              <Building2 className="text-blue-600" size={24} />
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Total Positions', value: orgData.nodes.length, color: 'blue', Icon: Building2 },
+          { label: 'Filled',          value: orgData.nodes.filter(n => n.employee).length, color: 'green', Icon: Users },
+          { label: 'Vacant',          value: orgData.nodes.filter(n => !n.employee).length, color: 'orange', Icon: Building2 },
+        ].map(({ label, value, color, Icon }) => (
+          <div key={label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4">
+            <div className={`p-3 bg-${color}-50 rounded-xl`}>
+              <Icon size={22} className={`text-${color}-500`} />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Total Positions</p>
-              <p className="text-2xl font-bold text-gray-900">{orgData.nodes.length}</p>
+              <p className="text-xs text-gray-500">{label}</p>
+              <p className="text-2xl font-bold text-gray-900">{value}</p>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-green-100 rounded-full">
-              <Users className="text-green-600" size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Filled Positions</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {orgData.nodes.filter(n => n.employee).length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-orange-100 rounded-full">
-              <Building2 className="text-orange-600" size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Vacant Positions</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {orgData.nodes.filter(n => !n.employee).length}
-              </p>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Organizational Hierarchy</h3>
-        
-        
-        {viewMode === 'diagram' ? (
-          renderDiagram()
-        ) : (
+      {/* Main view */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 className="text-base font-semibold text-gray-800 mb-4">Organizational Hierarchy</h3>
+
+        {viewMode === 'list' ? (
           orgData.hierarchy.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Building2 size={48} className="mx-auto mb-4 text-gray-300" />
-              <p>No organizational structure defined yet.</p>
-              <p className="text-sm">Add positions to build your organization chart.</p>
+            <div className="text-center py-12 text-gray-400">
+              <Building2 size={48} className="mx-auto mb-3 opacity-30" />
+              <p>No organizational structure yet.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {orgData.hierarchy.map(node => renderOrgNode(node))}
+            <div className="space-y-1">
+              {orgData.hierarchy.map(node => renderListNode(node, 0))}
             </div>
           )
-        )}
+        ) : renderDiagram()}
       </div>
 
+      {/* Add/Edit modal */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">
-              {editingNode ? 'Edit Position' : 'Add New Position'}
-            </h3>
-
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold mb-4">{editingNode ? 'Edit Position' : 'Add New Position'}</h3>
             <form onSubmit={editingNode ? handleUpdateNode : handleAddNode} className="space-y-4">
-              <select
-                value={formData.employeeId}
-                onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">No Employee (Vacant Position)</option>
-                {employees.map((emp) => (
+              <select value={formData.employeeId} onChange={e => setFormData({ ...formData, employeeId: e.target.value })}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <option value="">No Employee (Vacant)</option>
+                {employees.map(emp => (
                   <option key={emp.employeeId} value={emp.employeeId}>
-                    {emp.fullName || emp.name || 'Unknown'} - {emp.designation || emp.position || 'No Position'}
+                    {emp.fullName || emp.name} — {emp.designation || emp.position || 'No Position'}
                   </option>
                 ))}
               </select>
-
-              <select
-                value={formData.parentId}
-                onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={formData.parentId} onChange={e => setFormData({ ...formData, parentId: e.target.value })}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 <option value="">No Parent (Top Level)</option>
-                {orgData.nodes.map((node) => (
+                {orgData.nodes.map(node => (
                   <option key={node.nodeId} value={node.nodeId}>
-                    {(node.employee && (node.employee.fullName || node.employee.name)) || 'Vacant'} - {node.position}
+                    {(node.employee && (node.employee.fullName || node.employee.name)) || 'Vacant'} — {node.position}
                   </option>
                 ))}
               </select>
-
-              <input
-                type="number"
-                placeholder="Hierarchy Level"
-                value={formData.level}
-                onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || 0 })}
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-                min="0"
-              />
-
-              <input
-                type="text"
-                placeholder="Position Title *"
-                value={formData.position}
-                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddForm(false)
-                    setEditingNode(null)
-                    setFormData({ employeeId: '', parentId: '', level: 0, position: '' })
-                  }}
-                  className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
+              <input type="number" placeholder="Hierarchy Level" min="0" value={formData.level}
+                onChange={e => setFormData({ ...formData, level: parseInt(e.target.value) || 0 })}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+              <input type="text" placeholder="Position Title *" value={formData.position}
+                onChange={e => setFormData({ ...formData, position: e.target.value })}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" required />
+              <div className="flex gap-3">
+                <button type="button" onClick={() => { setShowAddForm(false); setEditingNode(null); setFormData({ employeeId: '', parentId: '', level: 0, position: '' }) }}
+                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">Cancel</button>
+                <button type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
                   {editingNode ? 'Update' : 'Add'} Position
                 </button>
               </div>

@@ -7,8 +7,9 @@ import '../Dashboard/Categories.css';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe, FaCheckCircle, FaSearch, FaGraduationCap, FaUniversity, FaUserGraduate, FaChartLine, FaSchool, FaChalkboardTeacher, FaTh, FaList, FaBriefcase, FaCalendarAlt } from 'react-icons/fa';
 import InstitutepageImage from '../../assets/Institutepage.jpg';
 import { useGlobalLoading } from '../../hooks/useGlobalLoading';
+import RecruiterCampusInviteModal from '../Dashboard/RecruiterCampusInviteModal';
 
-const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
+const InstitutePageList = ({ isLoggedIn, onShowLogin, currentUser }) => {
   const [nameLocationSearch, setNameLocationSearch] = useState('');
   const [courseSearch, setCourseSearch] = useState('');
   const [filter, setFilter] = useState('');
@@ -24,9 +25,14 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
   const [experienceRange, setExperienceRange] = useState('all');
   const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
   const heroSectionRef = useRef(null);
+  const [selectedInstituteForInvite, setSelectedInstituteForInvite] = useState(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   
   // Use global loading hook
   const { withLoading } = useGlobalLoading();
+
+  // Check if current user is a logged-in recruiter
+  const isRecruiter = isLoggedIn && currentUser?.role === 'recruiter';
 
   // Load institutes from API
   useEffect(() => {
@@ -105,7 +111,6 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
     try {
       const timestamp = new Date().getTime();
       const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1'}/hero-images/institute/public?t=${timestamp}`;
-      console.log('🌐 Fetching hero images from:', apiUrl);
       
       const response = await axios.get(apiUrl, {
         headers: {
@@ -114,15 +119,10 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
         }
       });
       
-      console.log('📦 Hero images API response:', response.data);
-      
       if (response.data.success && response.data.data.images && response.data.data.images.length > 0) {
-        console.log('✅ Institute hero images loaded:', response.data.data.images.length);
-        console.log('🖼️ Image URLs:', response.data.data.images.map(img => img.url));
         setHeroImages(response.data.data.images);
         setCurrentImageIndex(0);
       } else {
-        console.log('⚠️ No institute hero images found, using default');
         setHeroImages([]);
         setCurrentImageIndex(0);
       }
@@ -138,25 +138,20 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
     let slideInterval;
     
     if (heroImages.length > 1) {
-      console.log('🎬 Starting institute slideshow with', heroImages.length, 'images');
-      
       setCurrentImageIndex(0);
       
       slideInterval = setInterval(() => {
         setCurrentImageIndex((prevIndex) => {
           const nextIndex = prevIndex >= heroImages.length - 1 ? 0 : prevIndex + 1;
-          console.log('🔄 Slideshow:', prevIndex, '→', nextIndex);
           return nextIndex;
         });
       }, 5000);
     } else {
-      console.log('🖼️ Single or no institute image, no slideshow needed');
       setCurrentImageIndex(0);
     }
     
     return () => {
       if (slideInterval) {
-        console.log('⏹️ Stopping institute slideshow');
         clearInterval(slideInterval);
       }
     };
@@ -170,30 +165,18 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
       const validIndex = Math.max(0, Math.min(currentImageIndex, heroImages.length - 1));
       const currentImage = heroImages[validIndex];
       const imageUrl = currentImage?.url || InstitutepageImage;
-      console.log('🖼️ Current hero image URL:', imageUrl);
       return imageUrl;
     }
-    console.log('⚠️ No hero images, using default');
     return InstitutepageImage;
   }, [heroImages, currentImageIndex]);
 
   // Update background image using ref
   useEffect(() => {
     if (heroSectionRef.current && currentHeroImage) {
-      console.log('🎨 Setting background image...');
-      console.log('📍 Element found:', heroSectionRef.current);
-      console.log('🖼️ Image URL:', currentHeroImage);
       heroSectionRef.current.style.setProperty('background-image', `url("${currentHeroImage}")`, 'important');
       heroSectionRef.current.style.setProperty('background-size', 'cover', 'important');
       heroSectionRef.current.style.setProperty('background-position', 'center', 'important');
       heroSectionRef.current.style.setProperty('background-repeat', 'no-repeat', 'important');
-      console.log('✅ Background image applied');
-      console.log('🔍 Verify:', heroSectionRef.current.style.backgroundImage);
-    } else {
-      console.log('❌ Cannot set background:', {
-        hasRef: !!heroSectionRef.current,
-        hasImage: !!currentHeroImage
-      });
     }
   }, [currentHeroImage]);
 
@@ -332,7 +315,6 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
                 key={`indicator-${index}-${heroImages[index]?.imageId || index}`}
                 className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
                 onClick={() => {
-                  console.log('👆 Indicator clicked:', index, 'Current:', currentImageIndex);
                   setCurrentImageIndex(index);
                 }}
                 title={`Image ${index + 1} of ${heroImages.length}`}
@@ -596,18 +578,28 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
                 >
                   View Details
                 </button>
-                <button 
-                  className="contact-institute-btn"
-                  onClick={() => {
-                    if (!isLoggedIn) {
-                      onShowLogin();
-                      return;
-                    }
-                    // Handle contact functionality here
-                  }}
-                >
-                  Contact
-                </button>
+                {isRecruiter && (
+                  <button 
+                    className="campus-invite-btn"
+                    onClick={() => {
+                      setSelectedInstituteForInvite(institute);
+                      setShowInviteModal(true);
+                    }}
+                  >
+                    <FaCalendarAlt style={{ marginRight: '6px' }} />
+                    Campus Invite
+                  </button>
+                )}
+                {institute.email && (
+                  <button 
+                    className="contact-institute-btn"
+                    onClick={() => {
+                      window.open(`mailto:${institute.email}`, '_self');
+                    }}
+                  >
+                    Contact
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -619,6 +611,23 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin }) => {
         )}
         </div>
       </div>
+
+      {/* Recruiter Campus Invite Modal */}
+      {showInviteModal && selectedInstituteForInvite && (
+        <RecruiterCampusInviteModal
+          institute={selectedInstituteForInvite}
+          onClose={() => {
+            setShowInviteModal(false);
+            setSelectedInstituteForInvite(null);
+          }}
+          onSuccess={() => {
+            setShowInviteModal(false);
+            setSelectedInstituteForInvite(null);
+            // Show success message
+            alert('Campus invite sent successfully!');
+          }}
+        />
+      )}
     </div>
   );
 };

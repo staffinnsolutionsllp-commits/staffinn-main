@@ -75,4 +75,7 @@ export interface AuthContextType {
   resetPassword: (email: string) => Promise<boolean>
   isLoading: boolean
 }
+
+// Forgot-password multi-step types
+export type ForgotPasswordStep = 'email' | 'otp' | 'newPassword' | 'success'
  

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import messageApi from '../../services/messageApi';
+import useWebSocket from '../../hooks/useWebSocket';
 import './ChatWindow.css';
 
 const ChatWindow = ({ isOpen, onClose, recipientId, recipientName }) => {
@@ -25,6 +26,7 @@ const ChatWindow = ({ isOpen, onClose, recipientId, recipientName }) => {
   const [messageToEdit, setMessageToEdit] = useState(null);
   const [editText, setEditText] = useState('');
   const [showMessageMenu, setShowMessageMenu] = useState(null);
+  const ws = useWebSocket();
 
   useEffect(() => {
     if (isOpen && recipientId) {
@@ -34,20 +36,46 @@ const ChatWindow = ({ isOpen, onClose, recipientId, recipientName }) => {
       // Prevent background scroll when chat is open
       document.body.style.overflow = 'hidden';
       
-      // Set up real-time updates for the conversation (less frequent)
+      // Polling fallback (less critical now that we have WebSocket push)
       const interval = setInterval(() => {
         if (isOpen) {
           fetchConversation();
         }
-      }, 15000); // Refresh every 15 seconds instead of 5
+      }, 60000);
       
       return () => {
         clearInterval(interval);
-        // Restore background scroll when chat closes
         document.body.style.overflow = 'unset';
       };
     }
   }, [isOpen, recipientId]);
+
+  // Real-time: join user room and refresh on new-message events
+  useEffect(() => {
+    if (!isOpen || !currentUser?.userId || !ws.joinUserRoom) return;
+
+    ws.joinUserRoom(currentUser.userId);
+
+    const handleNewMessage = (data) => {
+      const msg = data.message;
+      // Only react if this message belongs to the currently open conversation
+      if (
+        (msg.senderId === recipientId && msg.receiverId === currentUser.userId) ||
+        (msg.senderId === currentUser.userId && msg.receiverId === recipientId)
+      ) {
+        // Append the new message immediately without waiting for a full re-fetch
+        setMessages(prev => {
+          // Avoid duplicates (temp message was already added optimistically)
+          const alreadyExists = prev.some(m => m.messageId === msg.messageId);
+          if (alreadyExists) return prev;
+          return [...prev, msg];
+        });
+      }
+    };
+
+    ws.onNewMessage(handleNewMessage);
+    return () => ws.offNewMessage(handleNewMessage);
+  }, [isOpen, recipientId, currentUser?.userId, ws.joinUserRoom, ws.onNewMessage, ws.offNewMessage]);
 
   const fetchRecipientProfile = async () => {
     try {

@@ -10,6 +10,7 @@ const StaffCourses = () => {
   const navigate = useNavigate();
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modeFilter, setModeFilter] = useState('all'); // 'all' | 'online' | 'oncampus'
 
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [selectedQuiz, setSelectedQuiz] = useState(null);
@@ -182,8 +183,25 @@ const StaffCourses = () => {
         <h1 className="page-title">My Enrolled Courses</h1>
         <p className="page-subtitle">Access your enrolled courses and track your progress</p>
       </div>
-      
 
+      {/* ── Mode Filter ── */}
+      {enrolledCourses.length > 0 && (
+        <div className="sc-filter-bar">
+          {[
+            { key: 'all',       label: 'All Courses' },
+            { key: 'online',    label: '🖥️ Online' },
+            { key: 'oncampus',  label: '🏫 On-Campus' }
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              className={`sc-filter-btn ${modeFilter === key ? 'sc-filter-btn--active' : ''}`}
+              onClick={() => setModeFilter(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {enrolledCourses.length === 0 ? (
         <div className="no-courses">
@@ -192,37 +210,92 @@ const StaffCourses = () => {
         </div>
       ) : (
         <div className="courses-grid">
-          {enrolledCourses.map((enrollment) => (
-            <div key={enrollment.courseId} className="course-card">
-              {enrollment.course?.thumbnailUrl && (
-                <div className="course-thumbnail">
-                  <img src={enrollment.course.thumbnailUrl} alt={enrollment.course.name} />
+          {enrolledCourses
+            .filter(enrollment => {
+              if (modeFilter === 'all') return true;
+              const mode = (enrollment.course?.mode || '').toLowerCase();
+              if (modeFilter === 'online')   return mode === 'online';
+              if (modeFilter === 'oncampus') return mode === 'on campus' || mode === 'offline';
+              return true;
+            })
+            .map((enrollment) => {
+              const isPending = enrollment.status === 'pending_payment' ||
+                enrollment.paymentStatus === 'pending_at_institute' ||
+                enrollment.paymentMode === 'PAY_AT_INSTITUTE';
+              const courseMode = enrollment.course?.mode || '';
+
+              return (
+                <div key={enrollment.courseId} className="course-card">
+                  {/* Pending badge */}
+                  {isPending && (
+                    <div className="sc-pending-banner">
+                      ⏳ Pending Payment at Institute
+                    </div>
+                  )}
+                  {enrollment.course?.thumbnailUrl && (
+                    <div className="course-thumbnail">
+                      <img src={enrollment.course.thumbnailUrl} alt={enrollment.course.name} />
+                    </div>
+                  )}
+                  <div className="course-content">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                      <h3 className="course-title" style={{ margin: 0 }}>
+                        {enrollment.course?.courseName || enrollment.course?.name || 'Course Name'}
+                      </h3>
+                      {courseMode && (
+                        <span className={`sc-mode-badge ${courseMode.toLowerCase() === 'online' ? 'sc-mode-badge--online' : 'sc-mode-badge--campus'}`}>
+                          {courseMode}
+                        </span>
+                      )}
+                    </div>
+                    <div className="course-details">
+                      <p><strong>Duration:</strong> {enrollment.course?.duration || 'Not specified'}</p>
+                      <p><strong>Instructor:</strong> {enrollment.course?.instructor || 'Not specified'}</p>
+                      <p><strong>Progress:</strong> {enrollment.progressPercentage || 0}%</p>
+                    </div>
+                    {/* Receipt number — visible only for Pay-at-Institute */}
+                    {enrollment.receiptNumber && (
+                      <div className="sc-receipt-box">
+                        <span className="sc-receipt-label">🧾 Receipt No.</span>
+                        <span className="sc-receipt-value">{enrollment.receiptNumber}</span>
+                      </div>
+                    )}
+                    <div className="progress-bar">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${enrollment.progressPercentage || 0}%` }}
+                      />
+                    </div>
+                    <div className="course-actions">
+                      {isPending ? (
+                        <button className="access-course-btn sc-btn-pending" disabled>
+                          Awaiting Payment Verification
+                        </button>
+                      ) : (
+                        <button
+                          className="access-course-btn"
+                          onClick={() => handleAccessCourse(enrollment.courseId)}
+                        >
+                          Continue Learning
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-              <div className="course-content">
-                <h3 className="course-title">{enrollment.course?.courseName || enrollment.course?.name || 'Course Name'}</h3>
-                <div className="course-details">
-                  <p><strong>Duration:</strong> {enrollment.course?.duration || 'Not specified'}</p>
-                  <p><strong>Instructor:</strong> {enrollment.course?.instructor || 'Not specified'}</p>
-                  <p><strong>Progress:</strong> {enrollment.progressPercentage || 0}%</p>
-                </div>
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: `${enrollment.progressPercentage || 0}%` }}
-                  ></div>
-                </div>
-                <div className="course-actions">
-                  <button 
-                    className="access-course-btn"
-                    onClick={() => handleAccessCourse(enrollment.courseId)}
-                  >
-                    Continue Learning
-                  </button>
-                </div>
-              </div>
+              );
+            })}
+          {/* Empty filtered state */}
+          {enrolledCourses.filter(e => {
+            if (modeFilter === 'all') return true;
+            const mode = (e.course?.mode || '').toLowerCase();
+            if (modeFilter === 'online')   return mode === 'online';
+            if (modeFilter === 'oncampus') return mode === 'on campus' || mode === 'offline';
+            return true;
+          }).length === 0 && (
+            <div className="no-courses" style={{ gridColumn: '1/-1' }}>
+              <p>No {modeFilter === 'online' ? 'online' : 'on-campus'} courses found.</p>
             </div>
-          ))}
+          )}
         </div>
       )}
 

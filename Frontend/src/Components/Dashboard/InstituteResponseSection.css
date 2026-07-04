@@ -1,0 +1,756 @@
+/* ═══════════════════════════════════════════════════════════════
+   InstituteResponseSection — Recruiter sees institute responses
+   Prefix: irs-  (no conflicts with recruiter-inv- or cie-)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Page Layout ── */
+.irs-container {
+  padding: 28px 28px 40px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.irs-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.irs-page-title {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.irs-page-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.irs-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.irs-refresh-btn:hover:not(:disabled) {
+  border-color: #7c3aed;
+  color: #7c3aed;
+  background: #faf5ff;
+}
+
+.irs-refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@keyframes irs-spin { to { transform: rotate(360deg); } }
+.irs-spinning { animation: irs-spin 0.8s linear infinite; }
+
+/* ── Stats / Filter Bar ── */
+.irs-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.irs-stat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.irs-stat-btn:hover { border-color: #94a3b8; background: #f8faff; }
+.irs-stat-btn.active { background: #fff; font-weight: 800; }
+
+.irs-stat-count {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0f172a;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* ── Loading / Empty ── */
+.irs-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #64748b;
+  gap: 14px;
+}
+
+.irs-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #7c3aed;
+  border-radius: 50%;
+  animation: irs-spin 0.7s linear infinite;
+}
+
+.irs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: #94a3b8;
+  text-align: center;
+  gap: 12px;
+}
+
+.irs-empty svg { color: #cbd5e1; }
+
+.irs-empty h3 {
+  font-size: 1.2rem;
+  color: #475569;
+  margin: 0;
+  font-weight: 700;
+}
+
+.irs-empty p {
+  margin: 0;
+  font-size: 13.5px;
+  max-width: 380px;
+}
+
+/* ── Cards Grid ── */
+.irs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+/* ── Individual Card ── */
+.irs-card {
+  background: #fff;
+  border-radius: 18px;
+  border: 1.5px solid #e2e8f0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s ease, border-color 0.2s;
+  animation: irs-card-in 0.3s ease both;
+}
+
+@keyframes irs-card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.irs-card:hover {
+  transform: translateY(-4px) scale(1.005);
+  box-shadow: 0 12px 40px rgba(124,58,237,0.12);
+  border-color: #c4b5fd;
+}
+
+.irs-card-pending  { border-top: 4px solid #f59e0b; }
+.irs-card-accepted { border-top: 4px solid #10b981; }
+.irs-card-declined { border-top: 4px solid #ef4444; }
+
+.irs-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 18px 18px 12px;
+}
+
+.irs-card-seal {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 1px solid #bfdbfe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.irs-card-title-block { flex: 1; min-width: 0; }
+
+.irs-card-from-label {
+  font-size: 10px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin: 0 0 2px;
+  font-weight: 600;
+}
+
+.irs-card-institute {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.irs-card-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  border: 1px solid;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.irs-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 18px 10px;
+}
+
+.irs-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.irs-card-hiring {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 18px 10px;
+}
+
+.irs-card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.irs-chip-role  { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
+.irs-chip-count { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+.irs-card-courses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 18px 10px;
+}
+
+.irs-card-course-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  font-size: 11px;
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.irs-chip-more {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+.irs-card-response-preview {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 18px 10px;
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border: 1px solid #a7f3d0;
+  border-radius: 9px;
+  font-size: 12.5px;
+  color: #064e3b;
+}
+
+.irs-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px 16px;
+  border-top: 1px solid #f1f5f9;
+  margin-top: auto;
+}
+
+.irs-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  box-shadow: 0 3px 10px rgba(124,58,237,0.25);
+}
+
+.irs-view-btn:hover {
+  background: linear-gradient(135deg, #6d28d9, #5b21b6);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(124,58,237,0.35);
+}
+
+.irs-card-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #065f46;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Detail Modal
+   ═══════════════════════════════════════════════════════════════ */
+.irs-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 30, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 20px;
+  animation: irs-overlay-in 0.2s ease;
+  overflow: hidden;
+}
+
+@keyframes irs-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.irs-modal {
+  background: #fff;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 90vh;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 32px 100px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.08);
+  overflow: hidden;
+  animation: irs-modal-in 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  z-index: 100000;
+}
+
+@keyframes irs-modal-in {
+  from { opacity: 0; transform: scale(0.92) translateY(24px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Modal Header */
+.irs-modal-header {
+  position: relative;
+  padding: 22px 24px 18px;
+  background: linear-gradient(135deg, #1a3a6e 0%, #2563eb 60%, #4f46e5 100%);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.irs-modal-header-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 80% at 80% 50%, rgba(99,102,241,0.28) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.irs-modal-header-inner {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-right: 44px;
+  flex-wrap: wrap;
+}
+
+.irs-modal-seal {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+.irs-modal-header-text { flex: 1; min-width: 0; }
+
+.irs-modal-from-label {
+  font-size: 10.5px;
+  color: rgba(255,255,255,0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  margin: 0 0 3px;
+  font-weight: 600;
+}
+
+.irs-modal-institute {
+  font-size: 21px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 5px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.irs-modal-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.62);
+  flex-wrap: wrap;
+}
+
+.irs-modal-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 15px;
+  border-radius: 20px;
+  border: 1.5px solid;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.irs-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255,255,255,0.12);
+  border: none;
+  color: #fff;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+  z-index: 5;
+}
+
+.irs-modal-close:hover {
+  background: rgba(255,255,255,0.25);
+  transform: rotate(90deg);
+}
+
+/* Modal Body */
+.irs-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 26px 14px;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.irs-modal-body::-webkit-scrollbar { width: 5px; }
+.irs-modal-body::-webkit-scrollbar-track { background: #f8faff; }
+.irs-modal-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* Sections */
+.irs-modal-section {
+  padding: 18px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.irs-modal-section:last-child { border-bottom: none; }
+
+.irs-modal-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 13px;
+}
+
+.irs-sh-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--irs-sh, #2563eb) 12%, white);
+  color: var(--irs-sh, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.irs-modal-section-head span {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--irs-sh, #2563eb);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* Info Grid */
+.irs-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.irs-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 9px 12px;
+  background: #f8faff;
+  border-radius: 10px;
+  border: 1px solid #f1f5f9;
+}
+
+.irs-info-row-full { grid-column: 1 / -1; }
+
+.irs-info-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.irs-info-label {
+  display: block;
+  font-size: 10.5px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.irs-info-value {
+  display: block;
+  font-size: 13px;
+  color: #1e293b;
+  font-weight: 600;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+/* Tag Row */
+.irs-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.irs-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.irs-tag-blue   { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.irs-tag-green  { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.irs-tag-purple { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
+
+/* Response Divider */
+.irs-response-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.irs-response-divider::before,
+.irs-response-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #e2e8f0, #a7f3d0);
+}
+
+.irs-response-divider::after {
+  background: linear-gradient(90deg, #a7f3d0, #e2e8f0);
+}
+
+.irs-response-divider span {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #059669;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  white-space: nowrap;
+}
+
+/* No response / declined */
+.irs-no-response {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 20px;
+  gap: 10px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.irs-no-response svg { color: #cbd5e1; }
+.irs-no-response p { margin: 0; font-size: 13.5px; }
+
+.irs-declined-note {
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  margin: 14px 0;
+}
+
+.irs-declined-note svg { color: #f87171; }
+.irs-declined-note p { color: #b91c1c; }
+
+.irs-responded-at {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #059669;
+  margin: 12px 0 0;
+  font-weight: 600;
+}
+
+/* Modal Footer */
+.irs-modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 26px 18px;
+  border-top: 1px solid #f1f5f9;
+  flex-shrink: 0;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.irs-footer-confirmed {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  background: #d1fae5;
+  border: 1.5px solid #a7f3d0;
+  border-radius: 10px;
+  color: #065f46;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.irs-footer-declined {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  background: #fee2e2;
+  border: 1.5px solid #fca5a5;
+  border-radius: 10px;
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.irs-footer-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  background: #f1f5f9;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  margin-left: auto;
+}
+
+.irs-footer-close:hover { background: #e2e8f0; }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .irs-container { padding: 18px 16px 32px; }
+  .irs-grid { grid-template-columns: 1fr; }
+  .irs-info-grid { grid-template-columns: 1fr; }
+  .irs-modal-header { padding: 18px 18px 14px; }
+  .irs-modal-body { padding: 0 16px 10px; }
+  .irs-modal-footer { padding: 12px 16px 18px; }
+  .irs-modal-institute { font-size: 17px; }
+}

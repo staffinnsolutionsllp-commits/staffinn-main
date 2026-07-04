@@ -20,6 +20,11 @@ const {
   getCourseEnrollmentCount
 } = require('../controllers/courseReviewController');
 
+const {
+  addInstituteReview,
+  getInstituteReviews
+} = require('../controllers/instituteReviewController');
+
 // Staff Reviews
 // POST /api/reviews - Add a review for staff (requires authentication)
 router.post('/', authenticate, addReview);
@@ -46,5 +51,12 @@ router.get('/course/:courseId/stats', getCourseRatingStats);
 
 // GET /api/reviews/course/:courseId/enrollment - Get enrollment count for a course (public)
 router.get('/course/:courseId/enrollment', getCourseEnrollmentCount);
+
+// Institute Reviews
+// POST /api/reviews/institute - Add a review for an institute (requires authentication)
+router.post('/institute', authenticate, addInstituteReview);
+
+// GET /api/reviews/institute/:instituteId - Get reviews for an institute (public)
+router.get('/institute/:instituteId', getInstituteReviews);
 
 module.exports = router;

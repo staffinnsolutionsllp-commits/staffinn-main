@@ -29,7 +29,7 @@ const Login = ({ onLogin }) => {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <img src="/Logo.jpg" alt="STAFFINN Logo" className="login-logo" />
+          <img src="/Logo.png" alt="STAFFINN Logo" className="login-logo" />
           <h1 className="login-title">STAFFINN News Admin Panel</h1>
           <p className="login-subtitle">Please sign in to continue</p>
         </div>

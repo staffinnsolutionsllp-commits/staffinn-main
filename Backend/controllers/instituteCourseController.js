@@ -78,6 +78,23 @@ const createCourse = async (req, res) => {
       }
     }
 
+    // Upload syllabus file (PDF or DOC/DOCX)
+    let syllabusFileUrl = null;
+    let syllabusFileName = null;
+    const syllabusFile = files.find(file => file.fieldname === 'syllabus');
+    if (syllabusFile) {
+      const ext = syllabusFile.originalname.split('.').pop().toLowerCase();
+      const syllabusKey = `staffinn-files/staffinn-courses-content/courses/syllabus/${courseId}.${ext}`;
+      try {
+        const uploadResult = await s3Service.uploadFile(syllabusFile, syllabusKey);
+        syllabusFileUrl = uploadResult.Location || uploadResult.url;
+        syllabusFileName = syllabusFile.originalname;
+        console.log('Syllabus uploaded:', syllabusFileUrl);
+      } catch (error) {
+        console.error('Syllabus upload failed:', error);
+      }
+    }
+
     // Handle On Campus files (images and videos)
     let onCampusFiles = [];
     if (courseData.mode === 'On Campus') {
@@ -163,8 +180,10 @@ const createCourse = async (req, res) => {
               // Determine S3 path based on content type
               if (contentData.type === 'video' && uploadedFile.mimetype.startsWith('video/')) {
                 s3Key = `staffinn-files/staffinn-courses-content/courses/videos/${courseId}_${moduleId}_${contentId}.${ext}`;
-              } else if (contentData.type === 'assignment' && uploadedFile.mimetype === 'application/pdf') {
+              } else if (contentData.type === 'assignment') {
                 s3Key = `staffinn-files/staffinn-courses-content/courses/assignments/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else if (contentData.type === 'notes') {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/notes/${courseId}_${moduleId}_${contentId}.${ext}`;
               } else {
                 s3Key = `staffinn-files/staffinn-courses-content/courses/content/${courseId}_${moduleId}_${contentId}.${ext}`;
               }
@@ -241,9 +260,16 @@ const createCourse = async (req, res) => {
       description: courseData.description || '',
       prerequisites: courseData.prerequisites || '',
       syllabusOverview: courseData.syllabus || '',
+      syllabusFileUrl: syllabusFileUrl || null,
+      syllabusFileName: syllabusFileName || null,
+      learningObjectives: courseData.learningObjectives
+        ? (Array.isArray(courseData.learningObjectives)
+            ? courseData.learningObjectives
+            : courseData.learningObjectives.split('\n').map(s => s.trim()).filter(Boolean))
+        : [],
       certification: courseData.certification || 'Basic',
       modules: processedModules,
-      onCampusFiles: onCampusFiles, // Add on-campus files for On Campus mode
+      onCampusFiles: onCampusFiles,
       isActive: true,
       createdAt: timestamp,
       updatedAt: timestamp
@@ -385,6 +411,9 @@ const getPublicCourseById = async (req, res) => {
       description: course.description,
       prerequisites: course.prerequisites,
       syllabusOverview: course.syllabusOverview,
+      syllabusFileUrl: course.syllabusFileUrl || null,
+      syllabusFileName: course.syllabusFileName || null,
+      learningObjectives: course.learningObjectives || [],
       certification: course.certification,
       modules: course.modules || [],
       onCampusFiles: course.onCampusFiles || [],
@@ -695,6 +724,9 @@ const getCourseContent = async (req, res) => {
       description: course.description,
       prerequisites: course.prerequisites,
       syllabusOverview: course.syllabusOverview,
+      syllabusFileUrl: course.syllabusFileUrl || null,
+      syllabusFileName: course.syllabusFileName || null,
+      learningObjectives: course.learningObjectives || [],
       certification: course.certification,
       modules: course.modules || [],
       onCampusFiles: course.onCampusFiles || [],
@@ -828,6 +860,23 @@ const updateCourse = async (req, res) => {
       }
     }
 
+    // Upload new syllabus file if provided (PDF or DOC/DOCX)
+    let syllabusFileUrl = existingCourse.syllabusFileUrl || null;
+    let syllabusFileName = existingCourse.syllabusFileName || null;
+    const syllabusFile = files.find(file => file.fieldname === 'syllabus');
+    if (syllabusFile) {
+      const ext = syllabusFile.originalname.split('.').pop().toLowerCase();
+      const syllabusKey = `staffinn-files/staffinn-courses-content/courses/syllabus/${courseId}.${ext}`;
+      try {
+        const uploadResult = await s3Service.uploadFile(syllabusFile, syllabusKey);
+        syllabusFileUrl = uploadResult.Location || uploadResult.url;
+        syllabusFileName = syllabusFile.originalname;
+        console.log('Syllabus updated:', syllabusFileUrl);
+      } catch (error) {
+        console.error('Syllabus update failed:', error);
+      }
+    }
+
     // Handle On Campus files update
     let onCampusFiles = existingCourse.onCampusFiles || [];
     if (courseData.mode === 'On Campus') {
@@ -875,11 +924,20 @@ const updateCourse = async (req, res) => {
       const modules = typeof courseData.modules === 'string' 
         ? JSON.parse(courseData.modules) 
         : courseData.modules;
+
+      // Build a lookup map of existing modules by moduleId for fast access
+      const existingModuleMap = {};
+      (existingCourse.modules || []).forEach(m => {
+        if (m.moduleId) existingModuleMap[m.moduleId] = m;
+      });
       
       processedModules = [];
       for (let i = 0; i < modules.length; i++) {
         const moduleData = modules[i];
-        const moduleId = uuidv4();
+
+        // Preserve existing moduleId if provided, otherwise generate new one
+        const moduleId = moduleData.moduleId || uuidv4();
+        const existingModule = existingModuleMap[moduleId] || null;
         
         const processedModule = {
           moduleId,
@@ -891,11 +949,21 @@ const updateCourse = async (req, res) => {
 
         // Process module content
         if (moduleData.content && Array.isArray(moduleData.content)) {
+          // Build lookup of existing content by contentId
+          const existingContentMap = {};
+          (existingModule?.content || []).forEach(c => {
+            if (c.contentId) existingContentMap[c.contentId] = c;
+          });
+
           for (let j = 0; j < moduleData.content.length; j++) {
             const contentData = moduleData.content[j];
-            const contentId = uuidv4();
+
+            // Preserve existing contentId if provided, otherwise generate new one
+            const contentId = contentData.contentId || uuidv4();
+            const existingContent = existingContentMap[contentId] || null;
             
-            let contentUrl = null;
+            // Start with existing URL — only replace if a new file is uploaded
+            let contentUrl = contentData.existingUrl || existingContent?.contentUrl || null;
             
             const possibleFieldNames = [
               `content_${i}_${j}`,
@@ -911,13 +979,16 @@ const updateCourse = async (req, res) => {
             }
             
             if (uploadedFile) {
+              // New file uploaded — replace the existing one
               const ext = uploadedFile.originalname.split('.').pop();
               let s3Key;
               
               if (contentData.type === 'video' && uploadedFile.mimetype.startsWith('video/')) {
                 s3Key = `staffinn-files/staffinn-courses-content/courses/videos/${courseId}_${moduleId}_${contentId}.${ext}`;
-              } else if (contentData.type === 'assignment' && uploadedFile.mimetype === 'application/pdf') {
+              } else if (contentData.type === 'assignment') {
                 s3Key = `staffinn-files/staffinn-courses-content/courses/assignments/${courseId}_${moduleId}_${contentId}.${ext}`;
+              } else if (contentData.type === 'notes') {
+                s3Key = `staffinn-files/staffinn-courses-content/courses/notes/${courseId}_${moduleId}_${contentId}.${ext}`;
               } else {
                 s3Key = `staffinn-files/staffinn-courses-content/courses/content/${courseId}_${moduleId}_${contentId}.${ext}`;
               }
@@ -925,20 +996,20 @@ const updateCourse = async (req, res) => {
               try {
                 const uploadResult = await s3Service.uploadFile(uploadedFile, s3Key);
                 contentUrl = uploadResult.Location || uploadResult.url;
-                console.log('Content file updated:', { contentId, contentUrl, type: contentData.type });
+                console.log('Content file replaced:', { contentId, contentUrl, type: contentData.type });
               } catch (uploadError) {
-                console.error('Content file update failed:', uploadError);
+                console.error('Content file upload failed, keeping existing URL:', uploadError);
+                // Keep existing URL on upload failure
               }
             }
 
-            // Calculate video duration if content is video
-            let durationMinutes = 0;
-            if (contentData.type === 'video' && contentUrl) {
+            // Calculate video duration — preserve existing if no new upload
+            let durationMinutes = existingContent?.durationMinutes || 0;
+            if (contentData.type === 'video' && uploadedFile && contentUrl) {
               try {
                 durationMinutes = await getVideoDurationFromUrl(contentUrl);
               } catch (durationError) {
                 console.error('Duration calculation failed:', durationError);
-                durationMinutes = 0;
               }
             }
 
@@ -956,24 +1027,31 @@ const updateCourse = async (req, res) => {
           }
         }
 
-        // Process quiz if exists
+        // Process quiz — preserve existing quizId and question IDs to maintain progress tracking
         if (moduleData.quiz && moduleData.quiz.questions && moduleData.quiz.questions.length > 0) {
+          const existingQuiz = existingModule?.quiz || null;
           processedModule.quiz = {
-            quizId: uuidv4(),
+            quizId: moduleData.quiz.quizId || existingQuiz?.quizId || uuidv4(),
             title: moduleData.quiz.title || `${moduleData.title} Quiz`,
             description: moduleData.quiz.description || '',
-            passingScore: moduleData.quiz.passingScore || 70,
-            timeLimit: moduleData.quiz.timeLimit || 30,
-            maxAttempts: moduleData.quiz.maxAttempts || 3,
-            questions: moduleData.quiz.questions.map(q => ({
-              questionId: uuidv4(),
-              question: q.question,
-              type: q.type || 'multiple_choice',
-              options: q.options || [],
-              correctAnswer: q.correctAnswer,
-              points: q.points || 1
-            }))
+            passingScore: moduleData.quiz.passingScore || existingQuiz?.passingScore || 70,
+            timeLimit: moduleData.quiz.timeLimit || existingQuiz?.timeLimit || 30,
+            maxAttempts: moduleData.quiz.maxAttempts || existingQuiz?.maxAttempts || 3,
+            questions: moduleData.quiz.questions.map((q, qIdx) => {
+              const existingQuestion = existingQuiz?.questions?.[qIdx];
+              return {
+                questionId: q.questionId || existingQuestion?.questionId || uuidv4(),
+                question: q.question,
+                type: q.type || 'multiple_choice',
+                options: q.options || [],
+                correctAnswer: q.correctAnswer,
+                points: q.points || 1
+              };
+            })
           };
+        } else if (existingModule?.quiz && !moduleData.quiz) {
+          // Quiz not included in update payload — preserve existing quiz
+          processedModule.quiz = existingModule.quiz;
         }
 
         processedModules.push(processedModule);
@@ -996,6 +1074,13 @@ const updateCourse = async (req, res) => {
       description: courseData.description || existingCourse.description,
       prerequisites: courseData.prerequisites || existingCourse.prerequisites,
       syllabusOverview: courseData.syllabus || existingCourse.syllabusOverview,
+      syllabusFileUrl: syllabusFileUrl,
+      syllabusFileName: syllabusFileName,
+      learningObjectives: courseData.learningObjectives
+        ? (Array.isArray(courseData.learningObjectives)
+            ? courseData.learningObjectives
+            : courseData.learningObjectives.split('\n').map(s => s.trim()).filter(Boolean))
+        : (existingCourse.learningObjectives || []),
       certification: courseData.certification || existingCourse.certification,
       modules: processedModules,
       onCampusFiles: onCampusFiles,
@@ -1057,6 +1142,9 @@ const getCourseById = async (req, res) => {
       description: course.description,
       prerequisites: course.prerequisites,
       syllabusOverview: course.syllabusOverview,
+      syllabusFileUrl: course.syllabusFileUrl || null,
+      syllabusFileName: course.syllabusFileName || null,
+      learningObjectives: course.learningObjectives || [],
       certification: course.certification,
       modules: course.modules || [],
       onCampusFiles: course.onCampusFiles || [],
@@ -1510,6 +1598,11 @@ const enrollInCoursePayAtInstitute = async (req, res) => {
     const pendingPayment = await pendingPaymentModel.createPendingPayment(paymentData);
     
     console.log('✅ Pending payment created:', pendingPayment.pendingPaymentId);
+
+    // Generate unique receipt number: STF-<YEAR>-<8-char uppercase hex from uuid>
+    const receiptYear = new Date().getFullYear();
+    const receiptHex = uuidv4().replace(/-/g, '').substring(0, 8).toUpperCase();
+    const receiptNumber = `STF-${receiptYear}-${receiptHex}`;
     
     // Create enrollment record with pending status
     const enrollmentId = uuidv4();
@@ -1524,12 +1617,13 @@ const enrollInCoursePayAtInstitute = async (req, res) => {
       status: 'pending_payment',
       paymentStatus: 'pending_at_institute',
       paymentMode: 'PAY_AT_INSTITUTE',
-      pendingPaymentId: pendingPayment.pendingPaymentId
+      pendingPaymentId: pendingPayment.pendingPaymentId,
+      receiptNumber: receiptNumber
     };
     
     await dynamoService.putItem(COURSE_ENROLLMENTS_TABLE, enrollment);
     
-    console.log('✅ Enrollment created with pending payment status');
+    console.log('✅ Enrollment created with pending payment status, receipt:', receiptNumber);
     
     // Send notification to institute
     console.log('📬 Attempting to send notification to institute:', course.instituteId);
@@ -1575,6 +1669,7 @@ const enrollInCoursePayAtInstitute = async (req, res) => {
       message: 'Enrollment request submitted successfully. Please pay at the institute to activate your enrollment.',
       data: {
         enrollment,
+        receiptNumber: receiptNumber,
         pendingPayment: {
           pendingPaymentId: pendingPayment.pendingPaymentId,
           amount: pendingPayment.amount,

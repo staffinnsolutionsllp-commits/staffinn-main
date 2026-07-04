@@ -8,11 +8,14 @@
   background-size: cover !important;
   background-position: center !important;
   padding: 120px 60px !important;
-  border-radius: 10px !important;
+  border-radius: 0 !important;
   text-align: center !important;
   position: relative !important;
   color: white !important;
   margin-bottom: 40px !important;
+  margin-left: calc(-50vw + 50%) !important;
+  margin-right: calc(-50vw + 50%) !important;
+  width: 100vw !important;
   min-height: 500px !important;
   display: flex !important;
   flex-direction: column !important;
@@ -93,6 +96,8 @@
     color: #1a1a1a;
     line-height: 1.6;
     background: #f8f9fa;
+    /* Allow hero section to break out full-bleed */
+    overflow-x: clip;
   }
   
   /* Hero Section with Background Image */
@@ -100,12 +105,15 @@
     background-size: cover;
     background-position: center;
     padding: 120px 60px;
-    border-radius: 10px;
+    border-radius: 0;
     text-align: center;
     position: relative;
     color: white;
     margin-bottom: 40px;
     min-height: 500px;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    margin-right: calc(-50vw + 50%);
   }
 
   .recruiter-search-section::before {
@@ -117,7 +125,7 @@
     bottom: 0;
     background: rgba(0, 0, 0, 0.3);
     z-index: 1;
-    border-radius: 10px;
+    border-radius: 0;
   }
 
   .recruiter-search-section > * {
@@ -692,6 +700,40 @@
     align-items: center !important;
     gap: 6px !important;
     transition: all 0.2s ease !important;
+  }
+
+  /* Social Links — public recruiter profile header */
+  .recruiter-social-links {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin-top: 14px !important;
+  }
+
+  .recruiter-social-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    border: 1.5px solid #e5e7eb !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+    text-decoration: none !important;
+    flex-shrink: 0 !important;
+  }
+
+  .recruiter-social-link:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.13) !important;
+    border-color: #d1d5db !important;
+  }
+
+  .recruiter-social-link svg {
+    display: block !important;
   }
   
   .follow-btn {
@@ -1779,4 +1821,526 @@ body div.recruiter-page section.recruiter-profile div.profile-header div.profile
   flex: 0 0 auto !important;
   width: auto !important;
   margin: 0 !important;
+}
+
+/* Enhanced Perks & Benefits Display */
+.benefits-list-enhanced {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.benefit-item-enhanced {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 16px;
+    padding: 25px;
+    border: 2px solid #e2e8f0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    /* Fixed card height so all cards are uniform */
+    display: flex;
+    flex-direction: column;
+    height: 320px;
+}
+
+.benefit-item-enhanced:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(72, 99, 247, 0.15);
+    border-color: #4863f7;
+}
+
+.benefit-image {
+    width: 100%;
+    height: 160px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    flex-shrink: 0;
+}
+
+.benefit-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.benefit-item-enhanced:hover .benefit-image img {
+    transform: scale(1.05);
+}
+
+.benefit-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.benefit-title {
+    margin: 0 0 8px 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    flex-shrink: 0;
+}
+
+/* Preview text — clamped to 3 lines */
+.benefit-description-preview {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+}
+
+/* Read More button */
+.perk-read-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    padding: 5px 0;
+    background: none;
+    border: none;
+    color: #4863f7;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease, gap 0.2s ease;
+    flex-shrink: 0;
+    text-decoration: none;
+}
+
+.perk-read-more-btn::after {
+    content: '→';
+    font-size: 0.9rem;
+    transition: transform 0.2s ease;
+}
+
+.perk-read-more-btn:hover {
+    color: #3451d1;
+    gap: 8px;
+}
+
+.perk-read-more-btn:hover::after {
+    transform: translateX(3px);
+}
+
+/* ── Perk Detail Modal ── */
+.perk-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+    animation: perkOverlayIn 0.22s ease;
+}
+
+@keyframes perkOverlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.perk-modal {
+    background: #ffffff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22);
+    position: relative;
+    animation: perkModalIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+.perk-modal::-webkit-scrollbar {
+    width: 5px;
+}
+.perk-modal::-webkit-scrollbar-track {
+    background: transparent;
+}
+.perk-modal::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+@keyframes perkModalIn {
+    from { opacity: 0; transform: scale(0.88) translateY(20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.perk-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    z-index: 1;
+}
+
+.perk-modal-close:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: rotate(90deg);
+}
+
+.perk-modal-image {
+    width: 100%;
+    height: 240px;
+    overflow: hidden;
+    border-radius: 20px 20px 0 0;
+}
+
+.perk-modal-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.perk-modal-body {
+    padding: 28px 28px 32px;
+}
+
+.perk-modal-title {
+    margin: 0 0 16px 0;
+    color: #0f172a;
+    font-size: 1.45rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    padding-right: 36px; /* avoid overlap with close btn when no image */
+}
+
+.perk-modal-description {
+    margin: 0;
+    color: #475569;
+    font-size: 1rem;
+    line-height: 1.75;
+    white-space: pre-wrap;
+}
+
+/* Responsive for enhanced perks */
+@media (max-width: 768px) {
+    .benefits-list-enhanced {
+        grid-template-columns: 1fr;
+    }
+
+    .benefit-item-enhanced {
+        height: auto;
+        min-height: 200px;
+    }
+
+    .perk-modal {
+        max-width: 100%;
+        border-radius: 16px;
+    }
+
+    .perk-modal-image {
+        height: 180px;
+        border-radius: 16px 16px 0 0;
+    }
+
+    .perk-modal-body {
+        padding: 20px 20px 24px;
+    }
+
+    .perk-modal-title {
+        font-size: 1.2rem;
+    }
+}
+
+/* ── Awards & Achievements — Public Recruiter Page ── */
+.awards-achievements {
+  margin-top: 40px;
+}
+
+.awards-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 24px;
+}
+
+.awards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+/* Fixed-height award card */
+.award-card {
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+  border-radius: 16px;
+  border: 2px solid #fde68a;
+  box-shadow: 0 2px 12px rgba(245, 158, 11, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  height: 320px;
+  overflow: hidden;
+}
+
+.award-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.18);
+  border-color: #f59e0b;
+}
+
+.award-card-image {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+}
+
+.award-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.award-card:hover .award-card-image img {
+  transform: scale(1.05);
+}
+
+.award-card-content {
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.award-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-radius: 50%;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.award-card-title {
+  margin: 0 0 8px 0;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+.award-card-description {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+/* Read More button — awards */
+.award-read-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  color: #d97706;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s ease, gap 0.2s ease;
+  flex-shrink: 0;
+}
+
+.award-read-more-btn::after {
+  content: '→';
+  transition: transform 0.2s ease;
+}
+
+.award-read-more-btn:hover {
+  color: #b45309;
+  gap: 8px;
+}
+
+.award-read-more-btn:hover::after {
+  transform: translateX(3px);
+}
+
+/* ── Award Detail Modal ── */
+.award-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  animation: perkOverlayIn 0.22s ease;
+}
+
+.award-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22);
+  position: relative;
+  animation: perkModalIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  scrollbar-width: thin;
+  scrollbar-color: #fde68a transparent;
+}
+
+.award-modal::-webkit-scrollbar { width: 5px; }
+.award-modal::-webkit-scrollbar-track { background: transparent; }
+.award-modal::-webkit-scrollbar-thumb { background: #fde68a; border-radius: 10px; }
+
+.award-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+  z-index: 1;
+}
+
+.award-modal-close:hover {
+  background: #fde68a;
+  transform: rotate(90deg);
+}
+
+.award-modal-image {
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  border-radius: 20px 20px 0 0;
+}
+
+.award-modal-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.award-modal-body {
+  padding: 28px 28px 32px;
+}
+
+.award-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 14px;
+}
+
+.award-modal-title {
+  margin: 0 0 16px 0;
+  color: #0f172a;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  padding-right: 36px;
+}
+
+.award-modal-description {
+  margin: 0;
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .awards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .award-card {
+    height: auto;
+    min-height: 200px;
+  }
+
+  .award-modal {
+    max-width: 100%;
+    border-radius: 16px;
+  }
+
+  .award-modal-image {
+    height: 180px;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .award-modal-body {
+    padding: 20px 20px 24px;
+  }
+
+  .award-modal-title {
+    font-size: 1.2rem;
+  }
 }

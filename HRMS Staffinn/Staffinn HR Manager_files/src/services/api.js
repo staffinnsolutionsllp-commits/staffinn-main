@@ -224,6 +224,14 @@ class ApiService {
     return this.request(`/attendance/date/${date}`);
   }
 
+  async getEmployeeAttendance(employeeId, startDate, endDate) {
+    const params = new URLSearchParams();
+    if (startDate) params.set('startDate', startDate);
+    if (endDate)   params.set('endDate', endDate);
+    const qs = params.toString();
+    return this.request(`/attendance/employee/${encodeURIComponent(employeeId)}${qs ? '?' + qs : ''}`);
+  }
+
   async markAttendance(attendanceData) {
     return this.request('/attendance', {
       method: 'POST',
@@ -600,12 +608,53 @@ class ApiService {
     return this.request('/separation/stats');
   }
 
-  // Payroll methods
-  async runPayroll(month) {
+  // ── No Dues Clearance (NDC) ────────────────────────────────────────────
+  async generateNDC(separationId) {
+    return this.request(`/separation/${separationId}/generate-ndc`, { method: 'POST' });
+  }
+
+  async getNDC(separationId) {
+    return this.request(`/separation/${separationId}/ndc`);
+  }
+
+  async updateITClearance(separationId, data) {
+    return this.request(`/separation/${separationId}/ndc/it`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async updateMediaClearance(separationId, data) {
+    return this.request(`/separation/${separationId}/ndc/media`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async updateProjectClearance(separationId, data) {
+    return this.request(`/separation/${separationId}/ndc/project`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async updateAccountsClearance(separationId, data) {
+    return this.request(`/separation/${separationId}/ndc/accounts`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async updateHRClearance(separationId, data) {
+    return this.request(`/separation/${separationId}/ndc/hr`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async updateFinalNDCApproval(separationId, data) {
+    return this.request(`/separation/${separationId}/ndc/final-approval`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  // Payroll methods — enhanced with date range, snapshots, runs
+  async runPayroll(startDate, endDate, employeeId = null) {
     return this.request('/payroll/run', {
       method: 'POST',
-      body: JSON.stringify({ month }),
+      body: JSON.stringify({ startDate, endDate, employeeId }),
     });
+  }
+
+  async getPayrollRuns() {
+    return this.request('/payroll/runs');
+  }
+
+  async getPayrollByRun(runId) {
+    return this.request(`/payroll/run/${runId}`);
   }
 
   async getPayrollByMonth(month) {
@@ -625,8 +674,109 @@ class ApiService {
     return this.request(`/payroll/${payrollRecordId}/${month}`);
   }
 
+  // Holiday methods
+  async getHolidays() {
+    return this.request('/holidays');
+  }
+
+  async createHoliday(data) {
+    return this.request('/holidays', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateHoliday(holidayId, data) {
+    return this.request(`/holidays/${holidayId}`, { method: 'PUT', body: JSON.stringify(data) });
+  }
+
+  async deleteHoliday(holidayId) {
+    return this.request(`/holidays/${holidayId}`, { method: 'DELETE' });
+  }
+
+  async seedNationalHolidays() {
+    return this.request('/holidays/seed-national', { method: 'POST' });
+  }
+
   async getEmployeeCredentials(employeeId) {
     return this.request(`/employees/${employeeId}/credentials`);
+  }
+
+  // ── Forgot-Password (OTP flow) ──────────────────────────────────────────
+  async forgotPasswordSendOTP(email) {    return this.request('/auth/forgot-password/send-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async forgotPasswordVerifyOTP(email, otp) {
+    return this.request('/auth/forgot-password/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    });
+  }
+
+  async forgotPasswordReset(email, resetToken, newPassword) {
+    return this.request('/auth/forgot-password/reset', {
+      method: 'POST',
+      body: JSON.stringify({ email, resetToken, newPassword }),
+    });
+  }
+
+  async forgotPasswordResendOTP(email) {
+    return this.request('/auth/forgot-password/resend-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  // ── Claim Management V2 ─────────────────────────────────────────────────
+  async getClaimTypesV2()                          { return this.request('/v2/claim-types') }
+  async createClaimTypeV2(data)                    { return this.request('/v2/claim-types', { method: 'POST', body: JSON.stringify(data) }) }
+  async updateClaimTypeV2(id, data)                { return this.request(`/v2/claim-types/${id}`, { method: 'PUT', body: JSON.stringify(data) }) }
+  async deleteClaimTypeV2(id)                      { return this.request(`/v2/claim-types/${id}`, { method: 'DELETE' }) }
+  async getClaimStatsV2()                          { return this.request('/v2/claims/stats') }
+  async getMyClaimsV2()                            { return this.request('/v2/claims/my') }
+  async getAllClaimsV2(filters = {})               { const p = new URLSearchParams(filters).toString(); return this.request(`/v2/claims${p ? '?'+p : ''}`) }
+  async getPendingApprovalsV2()                    { return this.request('/v2/claims/pending-approvals') }
+  async getClaimByIdV2(id)                         { return this.request(`/v2/claims/${id}`) }
+  async createClaimV2(data)                        { return this.request('/v2/claims', { method: 'POST', body: JSON.stringify(data) }) }
+  async updateClaimV2(id, data)                    { return this.request(`/v2/claims/${id}`, { method: 'PUT', body: JSON.stringify(data) }) }
+  async submitClaimV2(id)                          { return this.request(`/v2/claims/${id}/submit`, { method: 'POST' }) }
+  async processClaimActionV2(id, data)             { return this.request(`/v2/claims/${id}/action`, { method: 'POST', body: JSON.stringify(data) }) }
+  async markClaimPaidV2(id, data)                  { return this.request(`/v2/claims/${id}/paid`, { method: 'POST', body: JSON.stringify(data) }) }
+  async addLineItemV2(claimId, data)               { return this.request(`/v2/claims/${claimId}/line-items`, { method: 'POST', body: JSON.stringify(data) }) }
+  async deleteLineItemV2(claimId, lineItemId)      { return this.request(`/v2/claims/${claimId}/line-items/${lineItemId}`, { method: 'DELETE' }) }
+
+  // Employee-Device Mapping methods
+  async getMappings() {
+    return this.request('/attendance/mappings');
+  }
+
+  async createMapping(mappingData) {
+    return this.request('/attendance/mappings', {
+      method: 'POST',
+      body: JSON.stringify(mappingData),
+    });
+  }
+
+  async deleteMapping(mappingId) {
+    return this.request(`/attendance/mappings/${mappingId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Device Management methods
+  async getDevices() {
+    return this.request('/attendance/devices');
+  }
+
+  async registerDevice(deviceData) {
+    return this.request('/attendance/devices', {
+      method: 'POST',
+      body: JSON.stringify(deviceData),
+    });
+  }
+
+  async getDeviceStatus() {
+    return this.request('/attendance/device-status');
   }
 }
 

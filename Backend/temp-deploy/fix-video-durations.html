@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Video Durations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #2563EB;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        #status.loading {
+            background: #fef3c7;
+            color: #92400e;
+            display: block;
+        }
+        #status.success {
+            background: #d1fae5;
+            color: #065f46;
+            display: block;
+        }
+        #status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            display: block;
+        }
+        #results {
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .result-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-left: 4px solid #2563EB;
+            border-radius: 3px;
+        }
+        .result-item h4 {
+            margin: 0 0 5px 0;
+            color: #1e293b;
+        }
+        .result-item p {
+            margin: 5px 0;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .summary {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .summary h3 {
+            margin: 0 0 10px 0;
+            color: #1e40af;
+        }
+        .summary p {
+            margin: 5px 0;
+            color: #1e293b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Fix Video Durations</h1>
+        <p>This tool will scan all courses and calculate video durations for videos that have 0 minutes duration.</p>
+        
+        <button id="fixBtn" onclick="fixVideoDurations()">Start Fixing Video Durations</button>
+        <button onclick="window.location.reload()">Refresh Page</button>
+        
+        <div id="status"></div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function fixVideoDurations() {
+            const btn = document.getElementById('fixBtn');
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            
+            // Get token from localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                status.className = 'error';
+                status.textContent = '❌ Error: No authentication token found. Please login first.';
+                return;
+            }
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            status.className = 'loading';
+            status.textContent = '⏳ Processing... This may take a few minutes depending on the number of videos.';
+            results.style.display = 'none';
+            results.innerHTML = '';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/institute/fix-video-durations', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    status.className = 'success';
+                    status.textContent = '✅ Video durations fixed successfully!';
+                    
+                    // Display summary
+                    const summary = data.data;
+                    let html = `
+                        <div class="summary">
+                            <h3>📊 Summary</h3>
+                            <p><strong>Total Courses Processed:</strong> ${summary.totalCourses}</p>
+                            <p><strong>Courses Updated:</strong> ${summary.coursesUpdated}</p>
+                            <p><strong>Videos Fixed:</strong> ${summary.videosFixed}</p>
+                        </div>
+                    `;
+                    
+                    // Display course details
+                    if (summary.results && summary.results.length > 0) {
+                        html += '<h3>Course Details:</h3>';
+                        summary.results.forEach(result => {
+                            if (result.videosFixed > 0 || result.errors.length > 0) {
+                                html += `
+                                    <div class="result-item">
+                                        <h4>${result.courseName}</h4>
+                                        <p><strong>Videos Fixed:</strong> ${result.videosFixed}</p>
+                                        ${result.errors.length > 0 ? `<p style="color: #dc2626;"><strong>Errors:</strong> ${result.errors.join(', ')}</p>` : ''}
+                                    </div>
+                                `;
+                            }
+                        });
+                    }
+                    
+                    results.innerHTML = html;
+                    results.style.display = 'block';
+                } else {
+                    status.className = 'error';
+                    status.textContent = `❌ Error: ${data.message || 'Failed to fix video durations'}`;
+                }
+            } catch (error) {
+                status.className = 'error';
+                status.textContent = `❌ Error: ${error.message}`;
+                console.error('Error:', error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import Logo from './Logo.jpg';
+import Logo from './Logo.png';
 import facebook_icon from './facebook_icon.png';
 import twitter_icon from './twitter_icon.png';
 import linkedin_icon from './linkedin_icon.png';

@@ -1,27 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { profileAPI } from '../services/api';
+import { User, Briefcase, Phone, Edit2, Save, X } from 'lucide-react';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user }  = useAuth();
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
-    phone: '',
-    currentAddress: '',
-    emergencyContactName: '',
-    emergencyContactNumber: '',
-    emergencyContactRelation: ''
+    phone: '', currentAddress: '',
+    emergencyContactName: '', emergencyContactNumber: '', emergencyContactRelation: ''
   });
 
   useEffect(() => {
-    console.log('👤 User data in Profile:', user);
-    console.log('🏢 Employee data:', user?.employee);
     if (user?.employee) {
       setFormData({
-        phone: user.employee.phone || user.employee.emergencyContactNumber || '',
-        currentAddress: user.employee.currentAddress || '',
-        emergencyContactName: user.employee.emergencyContactName || '',
-        emergencyContactNumber: user.employee.emergencyContactNumber || '',
+        phone:                    user.employee.phone || user.employee.emergencyContactNumber || '',
+        currentAddress:           user.employee.currentAddress || '',
+        emergencyContactName:     user.employee.emergencyContactName || '',
+        emergencyContactNumber:   user.employee.emergencyContactNumber || '',
         emergencyContactRelation: user.employee.emergencyContactRelation || ''
       });
     }
@@ -39,159 +35,130 @@ export default function Profile() {
   };
 
   const employee = user?.employee || {};
+  const initials = employee.fullName
+    ? employee.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'E';
+
+  const InfoRow = ({ label, value }) => (
+    <div>
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-sm font-semibold text-slate-800">{value || <span className="text-slate-300 font-normal">—</span>}</p>
+    </div>
+  );
+
+  const InputField = ({ label, type = 'text', value, onChange, textarea }) => (
+    <div>
+      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">{label}</label>
+      {textarea ? (
+        <textarea value={value} onChange={onChange} rows="3"
+          className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white resize-none" />
+      ) : (
+        <input type={type} value={value} onChange={onChange}
+          className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white" />
+      )}
+    </div>
+  );
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600 mt-1">View and manage your information</p>
-          </div>
-          <button
-            onClick={() => setEditing(!editing)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition"
-          >
-            {editing ? 'Cancel' : 'Edit Profile'}
-          </button>
+    <div className="p-8 space-y-6 animate-fadeIn max-w-4xl">
+
+      {/* Profile hero */}
+      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5 text-white">
+        <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0 border-2 border-white/30">
+          <span className="text-2xl font-black">{initials}</span>
         </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl font-bold truncate">{employee.fullName || 'Employee'}</h2>
+          <p className="text-indigo-200 text-sm mt-0.5">
+            {employee.designation}{employee.department ? ` · ${employee.department}` : ''}
+          </p>
+          <p className="text-indigo-300 text-xs mt-1">{employee.employeeId}</p>
+        </div>
+        <button
+          onClick={() => setEditing(!editing)}
+          className="flex items-center gap-2 px-4 py-2 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-sm font-semibold transition-all"
+        >
+          {editing ? <><X size={14} /> Cancel</> : <><Edit2 size={14} /> Edit Profile</>}
+        </button>
+      </div>
 
-        {!editing ? (
-          <div className="space-y-6">
-            {/* Personal Information */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Full Name</p>
-                  <p className="font-semibold text-gray-900">{employee.fullName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Employee ID</p>
-                  <p className="font-semibold text-gray-900">{employee.employeeId}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Email</p>
-                  <p className="font-semibold text-gray-900">{employee.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Date of Birth</p>
-                  <p className="font-semibold text-gray-900">{employee.dateOfBirth || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Blood Group</p>
-                  <p className="font-semibold text-gray-900">{employee.bloodGroup || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Phone</p>
-                  <p className="font-semibold text-gray-900">{employee.emergencyContactNumber || 'N/A'}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <p className="text-sm text-gray-600 mb-1">Address</p>
-                  <p className="font-semibold text-gray-900">{employee.currentAddress || 'N/A'}</p>
-                </div>
+      {!editing ? (
+        <div className="space-y-5">
+          {/* Personal */}
+          <Section icon={<User size={16} className="text-indigo-500" />} title="Personal Information">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <InfoRow label="Full Name"    value={employee.fullName} />
+              <InfoRow label="Employee ID"  value={employee.employeeId} />
+              <InfoRow label="Email"        value={employee.email} />
+              <InfoRow label="Date of Birth" value={employee.dateOfBirth} />
+              <InfoRow label="Blood Group"  value={employee.bloodGroup} />
+              <InfoRow label="Phone"        value={employee.emergencyContactNumber} />
+              <div className="sm:col-span-2">
+                <InfoRow label="Address" value={employee.currentAddress} />
               </div>
             </div>
+          </Section>
 
-            {/* Employment Details */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Employment Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Designation</p>
-                  <p className="font-semibold text-gray-900">{employee.designation}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Department</p>
-                  <p className="font-semibold text-gray-900">{employee.department}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Date of Joining</p>
-                  <p className="font-semibold text-gray-900">{employee.dateOfJoining}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Employment Type</p>
-                  <p className="font-semibold text-gray-900">{employee.employmentType}</p>
-                </div>
-              </div>
+          {/* Employment */}
+          <Section icon={<Briefcase size={16} className="text-indigo-500" />} title="Employment Details">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <InfoRow label="Designation"      value={employee.designation} />
+              <InfoRow label="Department"       value={employee.department} />
+              <InfoRow label="Date of Joining"  value={employee.dateOfJoining} />
+              <InfoRow label="Employment Type"  value={employee.employmentType} />
             </div>
+          </Section>
 
-            {/* Emergency Contact */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Emergency Contact</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Name</p>
-                  <p className="font-semibold text-gray-900">{employee.emergencyContactName || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Relation</p>
-                  <p className="font-semibold text-gray-900">{employee.emergencyContactRelation || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Phone</p>
-                  <p className="font-semibold text-gray-900">{employee.emergencyContactNumber || 'N/A'}</p>
-                </div>
-              </div>
+          {/* Emergency */}
+          <Section icon={<Phone size={16} className="text-indigo-500" />} title="Emergency Contact">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <InfoRow label="Name"     value={employee.emergencyContactName} />
+              <InfoRow label="Relation" value={employee.emergencyContactRelation} />
+              <InfoRow label="Phone"    value={employee.emergencyContactNumber} />
             </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Profile</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                <textarea
-                  value={formData.currentAddress}
-                  onChange={(e) => setFormData({...formData, currentAddress: e.target.value})}
-                  rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name</label>
-                <input
-                  type="text"
-                  value={formData.emergencyContactName}
-                  onChange={(e) => setFormData({...formData, emergencyContactName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Number</label>
-                <input
-                  type="tel"
-                  value={formData.emergencyContactNumber}
-                  onChange={(e) => setFormData({...formData, emergencyContactNumber: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Relation</label>
-                <input
-                  type="text"
-                  value={formData.emergencyContactRelation}
-                  onChange={(e) => setFormData({...formData, emergencyContactRelation: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition"
-              >
-                Save Changes
+          </Section>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h2 className="font-bold text-slate-900 mb-5">Edit Profile</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InputField label="Phone" type="tel" value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+              <InputField label="Emergency Contact Name" value={formData.emergencyContactName}
+                onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} />
+              <InputField label="Emergency Contact Number" type="tel" value={formData.emergencyContactNumber}
+                onChange={(e) => setFormData({ ...formData, emergencyContactNumber: e.target.value })} />
+              <InputField label="Relation" value={formData.emergencyContactRelation}
+                onChange={(e) => setFormData({ ...formData, emergencyContactRelation: e.target.value })} />
+            </div>
+            <InputField label="Current Address" value={formData.currentAddress}
+              onChange={(e) => setFormData({ ...formData, currentAddress: e.target.value })} textarea />
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setEditing(false)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+                Cancel
               </button>
-            </form>
-          </div>
-        )}
+              <button type="submit"
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                <Save size={14} /> Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Section({ icon, title, children }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 card-hover">
+      <div className="flex items-center gap-2 mb-5 pb-4 border-b border-slate-100">
+        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">{icon}</div>
+        <h2 className="font-bold text-slate-800 text-sm">{title}</h2>
+      </div>
+      {children}
     </div>
   );
 }

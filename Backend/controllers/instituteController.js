@@ -211,6 +211,17 @@ const updateInstituteProfile = async (req, res) => {
         message: 'Institute name, address, phone, and email are required'
       });
     }
+
+    // Preserve campus tour data from existing profile if not provided in request
+    // (campus tour is managed via its own upload/delete endpoints)
+    const existingProfile = await instituteModel.getProfileById(userId);
+    if (existingProfile && existingProfile.campusTour && !profileData.campusTour) {
+      profileData.campusTour = existingProfile.campusTour;
+    }
+    // Also preserve banner and profile images if not provided (safety guard)
+    if (existingProfile && existingProfile.bannerImage && !profileData.bannerImage) {
+      profileData.bannerImage = existingProfile.bannerImage;
+    }
     
     // Create or update institute profile
     const updatedProfile = await instituteModel.createOrUpdateProfile(userId, profileData);
@@ -659,6 +670,242 @@ const deleteProfileImage = async (req, res) => {
       success: false,
       message: error.message || 'Failed to delete profile image'
     });
+  }
+};
+
+/**
+ * Upload institute banner image to S3
+ * @route POST /api/institute/upload-banner
+ */
+const uploadBannerImage = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No banner image file provided' });
+    }
+
+    const currentProfile = await instituteModel.getProfileById(userId);
+
+    // Delete old banner image from S3 if exists
+    if (currentProfile && currentProfile.bannerImage) {
+      try {
+        const oldKey = currentProfile.bannerImage.split('/').pop();
+        await s3Client.send(new DeleteObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: `institute-banner-images/${oldKey}`
+        }));
+      } catch (deleteError) {
+        console.error('Error deleting old banner image from S3:', deleteError);
+      }
+    }
+
+    // Generate unique filename
+    const fileExtension = req.file.originalname.split('.').pop();
+    const fileName = `${uuidv4()}-${Date.now()}.${fileExtension}`;
+    const key = `institute-banner-images/${fileName}`;
+
+    // Upload to S3
+    await s3Client.send(new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      CacheControl: 'max-age=31536000'
+    }));
+
+    const bannerUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+    // Update profile with banner URL
+    const profileData = currentProfile
+      ? { ...currentProfile, bannerImage: bannerUrl }
+      : { bannerImage: bannerUrl };
+    await instituteModel.createOrUpdateProfile(userId, profileData);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Banner image uploaded successfully',
+      data: { bannerImage: bannerUrl }
+    });
+  } catch (error) {
+    console.error('Upload banner image error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to upload banner image' });
+  }
+};
+
+/**
+ * Delete institute banner image from S3
+ * @route DELETE /api/institute/banner-image
+ */
+const deleteBannerImage = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const currentProfile = await instituteModel.getProfileById(userId);
+
+    if (!currentProfile || !currentProfile.bannerImage) {
+      return res.status(404).json({ success: false, message: 'No banner image found' });
+    }
+
+    try {
+      const key = currentProfile.bannerImage.split('/').pop();
+      await s3Client.send(new DeleteObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: `institute-banner-images/${key}`
+      }));
+    } catch (s3Error) {
+      console.error('Error deleting banner from S3:', s3Error);
+    }
+
+    await instituteModel.createOrUpdateProfile(userId, { ...currentProfile, bannerImage: null });
+
+    return res.status(200).json({ success: true, message: 'Banner image deleted successfully' });
+  } catch (error) {
+    console.error('Delete banner image error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete banner image' });
+  }
+};
+
+// Multer for campus tour uploads (images + videos)
+const campusTourUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB — covers both images (5MB) and videos (up to 100MB)
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedImageTypes = /jpeg|jpg|png|gif|webp/;
+    const allowedVideoTypes = /mp4|webm|mov|avi|ogv/;
+    const isImage = allowedImageTypes.test(file.originalname.toLowerCase()) && file.mimetype.startsWith('image/');
+    const isVideo = allowedVideoTypes.test(file.originalname.toLowerCase()) && file.mimetype.startsWith('video/');
+    if (isImage || isVideo) {
+      return cb(null, true);
+    }
+    cb(new Error('Only image (JPG, PNG, GIF, WebP) and video (MP4, WebM, MOV) files are allowed'));
+  }
+});
+
+/**
+ * Upload a single campus tour media file (image or video) to S3
+ * @route POST /api/institute/campus-tour/upload
+ */
+const uploadCampusTourMedia = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file provided' });
+    }
+
+    const currentProfile = await instituteModel.getProfileById(userId);
+
+    // Determine file type
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const folder = isVideo ? 'campus-tour-videos' : 'campus-tour-images';
+
+    // Generate S3 key
+    const fileExtension = req.file.originalname.split('.').pop();
+    const fileName = `${uuidv4()}-${Date.now()}.${fileExtension}`;
+    const key = `${folder}/${userId}/${fileName}`;
+
+    // Upload to S3
+    await s3Client.send(new PutObjectCommand({
+      Bucket: S3_BUCKET_NAME,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      CacheControl: 'max-age=31536000'
+    }));
+
+    const mediaUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+    // Build new campus tour item
+    const newItem = {
+      id: uuidv4(),
+      type: isVideo ? 'video' : 'image',
+      url: mediaUrl,
+      fileName: req.file.originalname,
+      uploadedAt: new Date().toISOString()
+    };
+
+    // Append to existing campus tour array
+    const existingTour = (currentProfile && currentProfile.campusTour) ? currentProfile.campusTour : [];
+    const updatedTour = [...existingTour, newItem];
+
+    const profileData = currentProfile
+      ? { ...currentProfile, campusTour: updatedTour }
+      : { campusTour: updatedTour };
+
+    await instituteModel.createOrUpdateProfile(userId, profileData);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Campus tour media uploaded successfully',
+      data: { item: newItem, campusTour: updatedTour }
+    });
+  } catch (error) {
+    console.error('Upload campus tour media error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to upload campus tour media' });
+  }
+};
+
+/**
+ * Delete a campus tour media item from S3 and profile
+ * @route DELETE /api/institute/campus-tour/:itemId
+ */
+const deleteCampusTourMedia = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { itemId } = req.params;
+
+    const currentProfile = await instituteModel.getProfileById(userId);
+    if (!currentProfile) {
+      return res.status(404).json({ success: false, message: 'Institute profile not found' });
+    }
+
+    const existingTour = currentProfile.campusTour || [];
+    const item = existingTour.find(i => i.id === itemId);
+
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Campus tour item not found' });
+    }
+
+    // Delete from S3
+    try {
+      // Extract key from URL
+      const urlParts = item.url.split('.amazonaws.com/');
+      if (urlParts.length > 1) {
+        const s3Key = urlParts[1];
+        await s3Client.send(new DeleteObjectCommand({ Bucket: S3_BUCKET_NAME, Key: s3Key }));
+      }
+    } catch (s3Error) {
+      console.error('Error deleting campus tour file from S3:', s3Error);
+    }
+
+    // Remove from array and save
+    const updatedTour = existingTour.filter(i => i.id !== itemId);
+    await instituteModel.createOrUpdateProfile(userId, { ...currentProfile, campusTour: updatedTour });
+
+    return res.status(200).json({ success: true, message: 'Campus tour media deleted', data: { campusTour: updatedTour } });
+  } catch (error) {
+    console.error('Delete campus tour media error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete campus tour media' });
+  }
+};
+
+/**
+ * Get public campus tour for an institute
+ * @route GET /api/institute/public/:instituteId/campus-tour
+ */
+const getPublicCampusTour = async (req, res) => {
+  try {
+    const { instituteId } = req.params;
+    const profile = await instituteModel.getProfileById(instituteId);
+    return res.status(200).json({
+      success: true,
+      data: (profile && profile.campusTour) ? profile.campusTour : []
+    });
+  } catch (error) {
+    console.error('Get public campus tour error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to get campus tour' });
   }
 };
 
@@ -2306,6 +2553,11 @@ module.exports = {
   deleteInstitute,
   uploadProfileImage,
   deleteProfileImage,
+  uploadBannerImage,
+  deleteBannerImage,
+  uploadCampusTourMedia,
+  deleteCampusTourMedia,
+  getPublicCampusTour,
   updatePlacementSection,
   getPlacementSection,
   getPublicPlacementSection,
@@ -2326,6 +2578,7 @@ module.exports = {
   getMisAgreement,
   upload,
   studentUpload,
+  campusTourUpload,
   placementUpload,
   industryCollabUpload
 };

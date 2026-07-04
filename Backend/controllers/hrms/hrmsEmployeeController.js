@@ -289,6 +289,51 @@ const getEmployeeById = async (req, res) => {
   }
 };
 
+/**
+ * Syncs email in staffinn-hrms-employee-users when admin changes it via HRMS onboarding.
+ * Password is NOT touched — employee keeps whatever password they set (or temp if never changed).
+ */
+const syncEmployeeLoginEmail = async (employeeId, newEmail) => {
+  try {
+    console.log(`🔄 Syncing login email for employeeId ${employeeId} → ${newEmail}`);
+
+    // Find the login record by employeeId (scan, since employeeId is not the PK)
+    const scanResult = await docClient.send(new ScanCommand({
+      TableName: 'staffinn-hrms-employee-users',
+      FilterExpression: 'employeeId = :empId',
+      ExpressionAttributeValues: { ':empId': employeeId }
+    }));
+
+    if (!scanResult.Items || scanResult.Items.length === 0) {
+      console.log(`⚠️  No login record found for employeeId ${employeeId} — skipping email sync`);
+      return;
+    }
+
+    const loginRecord = scanResult.Items[0];
+
+    // Only update if email actually changed
+    if (loginRecord.email === newEmail) {
+      console.log('✅ Login email already up to date — no sync needed');
+      return;
+    }
+
+    await docClient.send(new UpdateCommand({
+      TableName: 'staffinn-hrms-employee-users',
+      Key: { userId: loginRecord.userId },
+      UpdateExpression: 'SET email = :newEmail, updatedAt = :now',
+      ExpressionAttributeValues: {
+        ':newEmail': newEmail,
+        ':now': getCurrentTimestamp()
+      }
+    }));
+
+    console.log(`✅ Login email synced: ${loginRecord.email} → ${newEmail} (password unchanged)`);
+  } catch (err) {
+    // Non-fatal — log and continue so employee data update still succeeds
+    console.error('❌ Failed to sync login email:', err);
+  }
+};
+
 const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
@@ -338,6 +383,11 @@ const updateEmployee = async (req, res) => {
           department: updates.department || existingEmployee.department
         });
       }
+
+      // Sync login email if email changed
+      if (updates.email && updates.email !== existingEmployee.email) {
+        await syncEmployeeLoginEmail(id, updates.email);
+      }
       
       res.json(successResponse(updatedEmployee, 'Employee updated successfully'));
     } else {
@@ -384,6 +434,11 @@ const updateEmployee = async (req, res) => {
           employeeName: updates.fullName || getResult.Item.fullName,
           department: updates.department || getResult.Item.department
         });
+      }
+
+      // Sync login email if email changed
+      if (updates.email && updates.email !== getResult.Item.email) {
+        await syncEmployeeLoginEmail(id, updates.email);
       }
       
       res.json(successResponse(result.Attributes, 'Employee updated successfully'));

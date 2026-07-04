@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import messageApi from '../../services/messageApi';
 import ChatWindow from './ChatWindow';
+import useWebSocket from '../../hooks/useWebSocket';
 import './ContactHistory.css';
 
 const ContactHistory = () => {
@@ -13,13 +14,29 @@ const ContactHistory = () => {
   const [sidebarWidth, setSidebarWidth] = useState(380);
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef(null);
+  const ws = useWebSocket();
 
   useEffect(() => {
     fetchConversations();
-    // Set up real-time updates
-    const interval = setInterval(fetchConversations, 30000); // Refresh every 30 seconds
+    // Polling fallback — less frequent since we have WebSocket push now
+    const interval = setInterval(fetchConversations, 120000);
     return () => clearInterval(interval);
   }, []);
+
+  // Join personal room and subscribe to new-message events for real-time sidebar updates
+  useEffect(() => {
+    if (!currentUser?.userId || !ws.joinUserRoom) return;
+
+    ws.joinUserRoom(currentUser.userId);
+
+    const handleNewMessage = () => {
+      // Immediately refresh conversation list so lastMessage is up to date
+      fetchConversations();
+    };
+
+    ws.onNewMessage(handleNewMessage);
+    return () => ws.offNewMessage(handleNewMessage);
+  }, [currentUser?.userId, ws.joinUserRoom, ws.onNewMessage, ws.offNewMessage]);
 
   const fetchConversations = async () => {
     setLoading(true);

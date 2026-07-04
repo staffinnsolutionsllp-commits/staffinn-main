@@ -1,4 +1,4 @@
-import  { Home, Users, Clock, CreditCard, UserPlus, TrendingUp, CheckCircle, LogOut, MessageSquare, Network, Calendar } from 'lucide-react'
+import  { Home, Users, Clock, CreditCard, UserPlus, TrendingUp, CheckCircle, LogOut, MessageSquare, Network, Calendar, ShieldCheck } from 'lucide-react'
 
 interface SidebarProps {
   activeTab: string
@@ -6,18 +6,17 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: Home },
-  { id: 'onboarding', label: 'Onboarding', icon: UserPlus },
-  { id: 'organogram', label: 'Organogram', icon: Network },
-  { id: 'attendance', label: 'Attendance', icon: Clock },
-  { id: 'leave', label: 'Leave Management', icon: Calendar },
-  { id: 'claims', label: 'Claim Management', icon: CreditCard },
-  { id: 'tasks-performance', label: 'Task & Performance', icon: TrendingUp },
-  { id: 'grievance-management', label: 'Grievance Management', icon: MessageSquare },
-  { id: 'separation', label: 'Separation Management', icon: LogOut },
-  { id: 'payroll', label: 'Payroll', icon: CreditCard },
-  { id: 'grievances', label: 'Grievances', icon: MessageSquare },
-  { id: 'separation', label: 'Separation', icon: LogOut }
+  { id: 'dashboard',            label: 'Dashboard',             icon: Home },
+  { id: 'onboarding',           label: 'Onboarding',            icon: UserPlus },
+  { id: 'organogram',           label: 'Organogram',            icon: Network },
+  { id: 'attendance',           label: 'Attendance',            icon: Clock },
+  { id: 'leave',                label: 'Leave Management',      icon: Calendar },
+  { id: 'claims',               label: 'Claim Management',      icon: CreditCard },
+  { id: 'claim-approvals',      label: 'Claim Approvals',       icon: ShieldCheck },
+  { id: 'tasks-performance',    label: 'Task & Performance',    icon: TrendingUp },
+  { id: 'grievance-management', label: 'Grievance Management',  icon: MessageSquare },
+  { id: 'separation',           label: 'Separation Management', icon: LogOut },
+  { id: 'payroll',              label: 'Payroll',               icon: CreditCard },
 ]
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {

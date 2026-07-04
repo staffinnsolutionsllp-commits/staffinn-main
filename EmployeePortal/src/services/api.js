@@ -52,9 +52,26 @@ export const profileAPI = {
 };
 
 export const claimAPI = {
+  // Legacy v1
   getMyClaims: () => api.get('/employee/claims'),
   getCategories: () => api.get('/employee/claims/categories'),
-  submitClaim: (data) => api.post('/employee/claims', data)
+  submitClaim: (data) => api.post('/employee/claims', data),
+  // V2 Enterprise
+  getClaimTypes: () => api.get('/employee/v2/claim-types'),
+  getMyClaimsV2: () => api.get('/employee/v2/claims/my'),
+  getClaimStatsV2: () => api.get('/employee/v2/claims/stats'),
+  getClaimById: (id) => api.get(`/employee/v2/claims/${id}`),
+  createClaim: (data) => api.post('/employee/v2/claims', data),
+  updateClaim: (id, data) => api.put(`/employee/v2/claims/${id}`, data),
+  submitClaimV2: (id) => api.post(`/employee/v2/claims/${id}/submit`),
+  addLineItem: (claimId, data) => api.post(`/employee/v2/claims/${claimId}/line-items`, data),
+  deleteLineItem: (claimId, lineItemId) => api.delete(`/employee/v2/claims/${claimId}/line-items/${lineItemId}`),
+  // Attachment upload
+  uploadAttachment: (claimId, formData) => api.post(
+    `/employee/claims/${claimId}/upload`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
 };
 
 export const taskAPI = {
@@ -69,7 +86,12 @@ export const grievanceAPI = {
   getAssignedGrievances: () => api.get('/employee/grievances/assigned'),
   updateGrievanceStatus: (id, data) => api.put(`/employee/grievances/${id}/status`, data),
   getOrganizationEmployees: () => api.get('/employee/grievances/organization-employees'),
-  getReportingManagers: () => api.get('/employee/grievances/reporting-managers')
+  getReportingManagers: () => api.get('/employee/grievances/reporting-managers'),
+  uploadDocument: (grievanceId, formData) => api.post(
+    `/employee/grievances/${grievanceId}/upload`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
 };
 
 export const organogramAPI = {
@@ -84,6 +106,13 @@ export const notificationAPI = {
   getUnreadCount: () => api.get('/employee/notifications/unread-count'),
   markAsRead: (notificationId) => api.put(`/employee/notifications/${notificationId}/read`),
   markAllAsRead: () => api.put('/employee/notifications/mark-all-read')
+};
+
+export const separationAPI = {
+  submitResignation: (data) => api.post('/employee/separation/resign', data),
+  getMyResignation:  ()     => api.get('/employee/separation/my'),
+  getMyNDC:          (separationId) => api.get(`/employee/separation/${separationId}/ndc`),
+  submitDeclaration: (separationId) => api.put(`/employee/separation/${separationId}/declaration`, {})
 };
 
 export default api;

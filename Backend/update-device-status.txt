@@ -1,0 +1,78 @@
+## Instructions to Update Backend on EC2
+
+1. SSH into the server:
+   ssh -i "staffinn-backend.pem" ubuntu@13.233.105.122
+
+2. Navigate to the controller file:
+   cd ~/Backend/controllers/hrms
+
+3. Open the file for editing:
+   nano hrmsAttendanceController.js
+
+4. Find the `getDeviceStatus` function (around line 300-320) and replace it with:
+
+```javascript
+const getDeviceStatus = async (req, res) => {
+  try {
+    const recruiterId = req.user?.recruiterId;
+    
+    if (!recruiterId) {
+      return res.json(successResponse({
+        connected: false,
+        lastSeen: null,
+        error: 'Recruiter ID not found'
+      }, 'Device status retrieved'));
+    }
+    
+    // Get companyId from recruiterId
+    const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+    const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+    
+    const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-south-1' });
+    const docClient = DynamoDBDocumentClient.from(client);
+    const COMPANIES_TABLE = 'staffinn-hrms-companies';
+    
+    // Query companies table using recruiterId GSI
+    const queryResult = await docClient.send(new QueryCommand({
+      TableName: COMPANIES_TABLE,
+      IndexName: 'recruiterId-index',
+      KeyConditionExpression: 'recruiterId = :recruiterId',
+      ExpressionAttributeValues: {
+        ':recruiterId': recruiterId
+      },
+      Limit: 1
+    }));
+    
+    if (!queryResult.Items || queryResult.Items.length === 0) {
+      return res.json(successResponse({
+        connected: false,
+        lastSeen: null,
+        error: 'Company not found for recruiter'
+      }, 'Device status retrieved'));
+    }
+    
+    const companyId = queryResult.Items[0].companyId;
+    
+    // Check if device sent heartbeat in last 30 seconds
+    const lastHeartbeat = deviceHeartbeats.get(companyId);
+    const isOnline = lastHeartbeat && (Date.now() - lastHeartbeat) < 30000;
+    
+    res.json(successResponse({
+      connected: isOnline,
+      lastSeen: lastHeartbeat ? new Date(lastHeartbeat).toISOString() : null,
+      companyId: companyId
+    }, 'Device status retrieved'));
+  } catch (error) {
+    console.error('Error getting device status:', error);
+    handleError(error, res);
+  }
+};
+```
+
+5. Save the file (Ctrl+X, then Y, then Enter)
+
+6. Restart PM2:
+   pm2 restart staffinn-backend
+
+7. Verify the changes:
+   pm2 logs staffinn-backend --lines 50

@@ -4,7 +4,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, X, Building2, Briefcase, ChevronDown, Info } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, X, Building2, Briefcase, ChevronDown, Info, KeyRound, ArrowLeft, Clock, CheckCircle2 } from 'lucide-react';
 import { assets } from "../../assets/assets";
 import { AuthContext } from '../../context/AuthContext';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
@@ -30,15 +30,37 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
     const [lastScrollY, setLastScrollY] = useState(0);
     
     // New state for modal views
-    const [modalView, setModalView] = useState('login'); // 'login', 'registerStaff', 'registerPartner'
+    const [modalView, setModalView] = useState('login'); // 'login', 'registerStaff', 'registerPartner', 'forgotPassword'
     const [registrationType, setRegistrationType] = useState('');
     const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+    const [partnerFormData, setPartnerFormData] = useState({
+        name: '',
+        email: '',
+        phoneNumber: ''
+    });
+    
+    // Forgot Password states
+    const [forgotPasswordStep, setForgotPasswordStep] = useState('email'); // 'email', 'otp', 'newPassword', 'success'
+    const [resetEmail, setResetEmail] = useState('');
+    const [resetOtpValues, setResetOtpValues] = useState(['', '', '', '', '', '']);
+    const [resetOtpError, setResetOtpError] = useState('');
+    const [isVerifyingResetOtp, setIsVerifyingResetOtp] = useState(false);
+    const [resetToken, setResetToken] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+    const [otpExpiryTime, setOtpExpiryTime] = useState(null);
+    const [otpCountdown, setOtpCountdown] = useState(0);
+    const [canResendOtp, setCanResendOtp] = useState(false);
+    const [isResendingOtp, setIsResendingOtp] = useState(false);
     
     // OTP related states for staff registration
     const [otpSent, setOtpSent] = useState(false);
     const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
     const [otpError, setOtpError] = useState('');
     const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+    const [otpVerified, setOtpVerified] = useState(false);
     const [staffFormData, setStaffFormData] = useState({
         fullName: '',
         email: '',
@@ -198,6 +220,7 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
             setOtpSent(false);
             setOtpValues(['', '', '', '', '', '']);
             setOtpError('');
+            setOtpVerified(false);
             setStaffFormData({
                 fullName: '',
                 email: '',
@@ -205,7 +228,26 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                 confirmPassword: '',
                 phoneNumber: ''
             });
+            // Reset Forgot Password states
+            resetForgotPasswordState();
         }, 300);
+    };
+
+    const resetForgotPasswordState = () => {
+        setForgotPasswordStep('email');
+        setResetEmail('');
+        setResetOtpValues(['', '', '', '', '', '']);
+        setResetOtpError('');
+        setIsVerifyingResetOtp(false);
+        setResetToken('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setShowNewPassword(false);
+        setShowConfirmNewPassword(false);
+        setOtpExpiryTime(null);
+        setOtpCountdown(0);
+        setCanResendOtp(false);
+        setIsResendingOtp(false);
     };
 
     const handleLogoutClick = () => {
@@ -222,11 +264,46 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
         }
     };
 
-    const handleRequestFormClick = () => {
-        setShowLoginModal(false);
-        setShowRequestForm(true);
-        if (onRegisterClick) {
-            onRegisterClick(handleLoginRedirect, true);
+    const handlePartnerRegistrationRequest = async (e) => {
+        e.preventDefault();
+        
+        if (!registrationType) {
+            alert('Please select registration type (Institute or Recruiter)');
+            return;
+        }
+        
+        if (partnerFormData.phoneNumber.length !== 10) {
+            alert('Please enter valid 10-digit phone number');
+            return;
+        }
+        
+        try {
+            const requestData = {
+                type: registrationType,
+                name: partnerFormData.name,
+                email: partnerFormData.email,
+                phoneNumber: partnerFormData.phoneNumber
+            };
+            
+            console.log('Submitting registration request:', requestData);
+            const response = await apiService.submitRegistrationRequest(requestData);
+            
+            if (response.success) {
+                alert('Registration request submitted successfully! You will receive login credentials via email within 24-48 hours.');
+                // Reset form
+                setPartnerFormData({
+                    name: '',
+                    email: '',
+                    phoneNumber: ''
+                });
+                setRegistrationType('');
+                setModalView('login');
+            } else {
+                alert(response.message || 'Failed to submit registration request');
+            }
+        } catch (error) {
+            console.error('Registration request error:', error);
+            alert('Failed to submit registration request. Please try again.');
         }
     };
     
@@ -275,6 +352,308 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
             const prevInput = document.getElementById(`otp-${index - 1}`);
             if (prevInput) prevInput.focus();
         }
+    };
+    
+    const handleVerifyOtp = async () => {
+        const otpString = otpValues.join('');
+        
+        if (otpString.length !== 6) {
+            setOtpError('Please enter complete 6-digit OTP');
+            return;
+        }
+        
+        setIsVerifyingOtp(true);
+        setOtpError('');
+        
+        try {
+            const data = await apiService.verifyOTP(staffFormData.email, otpString);
+            
+            if (data.success) {
+                setOtpError('');
+                setOtpVerified(true);
+                alert('OTP verified successfully!');
+            } else {
+                setOtpError(data.message || 'Invalid OTP');
+                setOtpVerified(false);
+            }
+        } catch (error) {
+            console.error('Verify OTP Error:', error);
+            setOtpError('Error verifying OTP');
+            setOtpVerified(false);
+        } finally {
+            setIsVerifyingOtp(false);
+        }
+    };
+    
+    const handleStaffRegistration = async (e) => {
+        e.preventDefault();
+        
+        // Validate OTP is verified
+        if (!otpVerified) {
+            setOtpError('Please verify OTP first by clicking "Verify OTP" button');
+            return;
+        }
+        
+        // Validate passwords match
+        if (staffFormData.password !== staffFormData.confirmPassword) {
+            alert('Passwords do not match!');
+            return;
+        }
+        
+        // Validate phone number
+        if (staffFormData.phoneNumber.length !== 10) {
+            alert('Please enter valid 10-digit phone number');
+            return;
+        }
+        
+        try {
+            // Proceed with registration (OTP already verified)
+            const registrationData = {
+                fullName: staffFormData.fullName,
+                email: staffFormData.email,
+                password: staffFormData.password,
+                phoneNumber: staffFormData.phoneNumber,
+                role: 'staff'
+            };
+            
+            const response = await apiService.register(registrationData, 'staff');
+            
+            if (response.success) {
+                alert('Registration successful! Please login with your credentials.');
+                // Reset form and switch to login
+                setStaffFormData({
+                    fullName: '',
+                    email: '',
+                    password: '',
+                    confirmPassword: '',
+                    phoneNumber: ''
+                });
+                setOtpSent(false);
+                setOtpValues(['', '', '', '', '', '']);
+                setOtpVerified(false);
+                setModalView('login');
+                setEmail(staffFormData.email);
+            } else {
+                alert(response.message || 'Registration failed');
+            }
+        } catch (error) {
+            console.error('Registration Error:', error);
+            alert('Registration failed. Please try again.');
+        }
+    };
+
+    // Forgot Password Functions
+    const handleForgotPasswordClick = () => {
+        setModalView('forgotPassword');
+        setForgotPasswordStep('email');
+        resetForgotPasswordState();
+    };
+
+    const handleSendResetCode = async (e) => {
+        e.preventDefault();
+        
+        if (!resetEmail) {
+            setResetOtpError('Please enter your email address');
+            return;
+        }
+        
+        try {
+            setResetOtpError('');
+            const response = await apiService.sendPasswordResetOTP(resetEmail);
+            
+            if (response.success) {
+                setForgotPasswordStep('otp');
+                // Set expiry time (10 minutes from now)
+                const expiryTime = Date.now() + (10 * 60 * 1000);
+                setOtpExpiryTime(expiryTime);
+                setOtpCountdown(600); // 10 minutes in seconds
+                setCanResendOtp(false);
+            } else {
+                setResetOtpError(response.message || 'Failed to send reset code');
+            }
+        } catch (error) {
+            console.error('Send reset code error:', error);
+            setResetOtpError('Failed to send reset code. Please try again.');
+        }
+    };
+
+    const handleResetOtpChange = (index, value) => {
+        // Only allow numbers
+        if (value && !/^[0-9]$/.test(value)) return;
+        
+        const newOtpValues = [...resetOtpValues];
+        newOtpValues[index] = value;
+        setResetOtpValues(newOtpValues);
+        
+        // Auto-focus next input
+        if (value && index < 5) {
+            const nextInput = document.getElementById(`reset-otp-${index + 1}`);
+            if (nextInput) nextInput.focus();
+        }
+    };
+
+    const handleResetOtpKeyDown = (index, e) => {
+        // Handle backspace
+        if (e.key === 'Backspace' && !resetOtpValues[index] && index > 0) {
+            const prevInput = document.getElementById(`reset-otp-${index - 1}`);
+            if (prevInput) prevInput.focus();
+        }
+    };
+
+    const handleVerifyResetOtp = async () => {
+        const otpString = resetOtpValues.join('');
+        
+        if (otpString.length !== 6) {
+            setResetOtpError('Please enter complete 6-digit code');
+            return;
+        }
+        
+        setIsVerifyingResetOtp(true);
+        setResetOtpError('');
+        
+        try {
+            const response = await apiService.verifyPasswordResetOTP(resetEmail, otpString);
+            
+            console.log('✅ Verify OTP Response:', response);
+            
+            if (response.success) {
+                // Extract resetToken from response.data
+                const token = response.data?.resetToken || response.resetToken;
+                console.log('🔑 Reset Token:', token);
+                
+                if (!token) {
+                    setResetOtpError('Failed to get reset token. Please try again.');
+                    return;
+                }
+                
+                setResetToken(token);
+                setForgotPasswordStep('newPassword');
+                setResetOtpError('');
+            } else {
+                setResetOtpError(response.message || 'Invalid code. Please try again.');
+            }
+        } catch (error) {
+            console.error('Verify reset OTP error:', error);
+            setResetOtpError('Failed to verify code. Please try again.');
+        } finally {
+            setIsVerifyingResetOtp(false);
+        }
+    };
+
+    const handleResendResetCode = async () => {
+        if (!canResendOtp || isResendingOtp) return;
+        
+        setIsResendingOtp(true);
+        setResetOtpError('');
+        
+        try {
+            const response = await apiService.resendPasswordResetOTP(resetEmail);
+            
+            if (response.success) {
+                // Reset OTP inputs
+                setResetOtpValues(['', '', '', '', '', '']);
+                // Reset timer
+                const expiryTime = Date.now() + (10 * 60 * 1000);
+                setOtpExpiryTime(expiryTime);
+                setOtpCountdown(600);
+                setCanResendOtp(false);
+                // Focus first input
+                const firstInput = document.getElementById('reset-otp-0');
+                if (firstInput) firstInput.focus();
+            } else {
+                setResetOtpError(response.message || 'Failed to resend code');
+            }
+        } catch (error) {
+            console.error('Resend reset code error:', error);
+            setResetOtpError('Failed to resend code. Please try again.');
+        } finally {
+            setIsResendingOtp(false);
+        }
+    };
+
+    const handleResetPassword = async (e) => {
+        e.preventDefault();
+        
+        console.log('🔍 Reset Password Debug:');
+        console.log('Email:', resetEmail);
+        console.log('Reset Token:', resetToken);
+        console.log('New Password:', newPassword ? '***' : 'EMPTY');
+        
+        // Validate passwords
+        if (!newPassword || !confirmNewPassword) {
+            setResetOtpError('Please enter both password fields');
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            setResetOtpError('Password must be at least 6 characters long');
+            return;
+        }
+        
+        if (newPassword !== confirmNewPassword) {
+            setResetOtpError('Passwords do not match');
+            return;
+        }
+        
+        // Check if email and token exist
+        if (!resetEmail) {
+            setResetOtpError('Email is missing. Please start over.');
+            console.error('❌ Reset email is empty!');
+            return;
+        }
+        
+        if (!resetToken) {
+            setResetOtpError('Reset token is missing. Please verify OTP again.');
+            console.error('❌ Reset token is empty!');
+            return;
+        }
+        
+        setResetOtpError('');
+        
+        try {
+            console.log('📤 Sending reset password request...');
+            const response = await apiService.resetPassword(resetEmail, resetToken, newPassword);
+            console.log('📥 Response:', response);
+            
+            if (response.success) {
+                setForgotPasswordStep('success');
+                // Auto redirect to login after 3 seconds
+                setTimeout(() => {
+                    setModalView('login');
+                    resetForgotPasswordState();
+                    setEmail(resetEmail);
+                }, 3000);
+            } else {
+                setResetOtpError(response.message || 'Failed to reset password');
+            }
+        } catch (error) {
+            console.error('Reset password error:', error);
+            setResetOtpError('Failed to reset password. Please try again.');
+        }
+    };
+
+    // OTP Countdown Timer
+    useEffect(() => {
+        if (forgotPasswordStep === 'otp' && otpCountdown > 0) {
+            const timer = setInterval(() => {
+                setOtpCountdown(prev => {
+                    if (prev <= 1) {
+                        setCanResendOtp(true);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            
+            return () => clearInterval(timer);
+        }
+    }, [forgotPasswordStep, otpCountdown]);
+
+    // Format countdown time
+    const formatCountdown = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     return (
@@ -457,7 +836,10 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                                             </button>
                                         </div>
                                         
-                                        <a href="#" className="forgot-password">Forgot password?</a>
+                                        <a href="#" className="forgot-password" onClick={(e) => {
+                                            e.preventDefault();
+                                            handleForgotPasswordClick();
+                                        }}>Forgot password?</a>
                                         
                                         <button type="submit" className="submit-btn">
                                             LOGIN
@@ -485,10 +867,7 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                                     <h2 className="form-title">Register as Staff</h2>
                                     <p className="form-subtitle">Start filling the form to become a quality staff member!</p>
                                     
-                                    <form className="auth-form" onSubmit={(e) => {
-                                        e.preventDefault();
-                                        handleRegisterClick();
-                                    }}>
+                                    <form className="auth-form" onSubmit={handleStaffRegistration}>
                                         <div className="input-wrapper">
                                             <input
                                                 type="text"
@@ -539,6 +918,14 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                                                     ))}
                                                 </div>
                                                 {otpError && <div className="otp-error-message">{otpError}</div>}
+                                                <button 
+                                                    type="button" 
+                                                    className={`verify-otp-btn ${otpVerified ? 'verified' : ''}`}
+                                                    onClick={handleVerifyOtp}
+                                                    disabled={isVerifyingOtp || otpValues.join('').length !== 6 || otpVerified}
+                                                >
+                                                    {otpVerified ? '✓ Verified' : (isVerifyingOtp ? 'Verifying...' : 'Verify OTP')}
+                                                </button>
                                             </>
                                         )}
                                         
@@ -605,10 +992,7 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                                         </p>
                                     </div>
                                     
-                                    <form className="auth-form" onSubmit={(e) => {
-                                        e.preventDefault();
-                                        handleRequestFormClick();
-                                    }}>
+                                    <form className="auth-form" onSubmit={handlePartnerRegistrationRequest}>
                                         <div className="custom-dropdown" onClick={() => setShowTypeDropdown(!showTypeDropdown)}>
                                             <input
                                                 type="text"
@@ -655,6 +1039,8 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                                                 type="text"
                                                 placeholder="Name *"
                                                 className="auth-input"
+                                                value={partnerFormData.name}
+                                                onChange={(e) => setPartnerFormData({...partnerFormData, name: e.target.value})}
                                                 required
                                             />
                                         </div>
@@ -664,6 +1050,8 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                                                 type="email"
                                                 placeholder="Email *"
                                                 className="auth-input"
+                                                value={partnerFormData.email}
+                                                onChange={(e) => setPartnerFormData({...partnerFormData, email: e.target.value})}
                                                 required
                                             />
                                         </div>
@@ -674,6 +1062,10 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                                                 type="tel"
                                                 placeholder="Phone Number *"
                                                 className="auth-input phone-input"
+                                                value={partnerFormData.phoneNumber}
+                                                onChange={(e) => setPartnerFormData({...partnerFormData, phoneNumber: e.target.value})}
+                                                maxLength="10"
+                                                pattern="[0-9]{10}"
                                                 required
                                             />
                                         </div>
@@ -686,6 +1078,230 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                                             Back to Login
                                         </button>
                                     </form>
+                                </div>
+                            )}
+                            
+                            {/* Forgot Password Views */}
+                            {modalView === 'forgotPassword' && (
+                                <div className="auth-form-content">
+                                    {/* Step 1: Email Input */}
+                                    {forgotPasswordStep === 'email' && (
+                                        <>
+                                            <div className="forgot-password-header">
+                                                <KeyRound className="forgot-icon" size={48} />
+                                                <h2 className="form-title">Forgot Password?</h2>
+                                                <div className="title-divider-line"></div>
+                                                <p className="form-subtitle">Enter your email to receive a password reset code</p>
+                                            </div>
+                                            
+                                            <form onSubmit={handleSendResetCode} className="auth-form">
+                                                <div className="input-wrapper">
+                                                    <Mail className="input-icon-left" size={20} />
+                                                    <input
+                                                        type="email"
+                                                        placeholder="Email Address"
+                                                        value={resetEmail}
+                                                        onChange={(e) => setResetEmail(e.target.value)}
+                                                        className="auth-input"
+                                                        required
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                
+                                                {resetOtpError && (
+                                                    <div className="otp-error-message">{resetOtpError}</div>
+                                                )}
+                                                
+                                                <button type="submit" className="submit-btn">
+                                                    Send Reset Code
+                                                </button>
+                                                
+                                                <button 
+                                                    type="button" 
+                                                    className="back-link"
+                                                    onClick={() => setModalView('login')}
+                                                >
+                                                    <ArrowLeft size={16} /> Back to Login
+                                                </button>
+                                            </form>
+                                        </>
+                                    )}
+                                    
+                                    {/* Step 2: OTP Verification */}
+                                    {forgotPasswordStep === 'otp' && (
+                                        <>
+                                            <div className="forgot-password-header">
+                                                <Mail className="forgot-icon" size={48} />
+                                                <h2 className="form-title">Verify Reset Code</h2>
+                                                <div className="title-divider-line"></div>
+                                                <p className="form-subtitle">
+                                                    Enter the 6-digit code sent to<br />
+                                                    <strong>{resetEmail}</strong>
+                                                </p>
+                                            </div>
+                                            
+                                            <div className="auth-form">
+                                                <div className="otp-inputs-container">
+                                                    {resetOtpValues.map((value, index) => (
+                                                        <input
+                                                            key={index}
+                                                            id={`reset-otp-${index}`}
+                                                            type="text"
+                                                            maxLength="1"
+                                                            className="otp-input"
+                                                            value={value}
+                                                            onChange={(e) => handleResetOtpChange(index, e.target.value)}
+                                                            onKeyDown={(e) => handleResetOtpKeyDown(index, e)}
+                                                            autoFocus={index === 0}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                
+                                                {otpCountdown > 0 && (
+                                                    <div className="otp-timer">
+                                                        <Clock size={16} />
+                                                        <span>Code expires in: {formatCountdown(otpCountdown)}</span>
+                                                    </div>
+                                                )}
+                                                
+                                                {resetOtpError && (
+                                                    <div className="otp-error-message">{resetOtpError}</div>
+                                                )}
+                                                
+                                                <button 
+                                                    type="button" 
+                                                    className="verify-otp-btn"
+                                                    onClick={handleVerifyResetOtp}
+                                                    disabled={isVerifyingResetOtp || resetOtpValues.join('').length !== 6}
+                                                >
+                                                    {isVerifyingResetOtp ? 'Verifying...' : 'Verify Code'}
+                                                </button>
+                                                
+                                                <div className="resend-otp-section">
+                                                    {canResendOtp ? (
+                                                        <button 
+                                                            type="button"
+                                                            className="resend-link"
+                                                            onClick={handleResendResetCode}
+                                                            disabled={isResendingOtp}
+                                                        >
+                                                            {isResendingOtp ? 'Sending...' : 'Resend Code'}
+                                                        </button>
+                                                    ) : (
+                                                        <span className="resend-disabled">Didn't receive code? Wait {formatCountdown(otpCountdown)}</span>
+                                                    )}
+                                                </div>
+                                                
+                                                <button 
+                                                    type="button" 
+                                                    className="back-link"
+                                                    onClick={() => {
+                                                        setForgotPasswordStep('email');
+                                                        setResetOtpValues(['', '', '', '', '', '']);
+                                                        setResetOtpError('');
+                                                    }}
+                                                >
+                                                    <ArrowLeft size={16} /> Change Email
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                    
+                                    {/* Step 3: New Password */}
+                                    {forgotPasswordStep === 'newPassword' && (
+                                        <>
+                                            <div className="forgot-password-header">
+                                                <Lock className="forgot-icon" size={48} />
+                                                <h2 className="form-title">Reset Password</h2>
+                                                <div className="title-divider-line"></div>
+                                                <p className="form-subtitle">Create your new password</p>
+                                            </div>
+                                            
+                                            <form onSubmit={handleResetPassword} className="auth-form">
+                                                <div className="input-wrapper">
+                                                    <Lock className="input-icon-left" size={20} />
+                                                    <input
+                                                        type={showNewPassword ? "text" : "password"}
+                                                        placeholder="New Password"
+                                                        value={newPassword}
+                                                        onChange={(e) => setNewPassword(e.target.value)}
+                                                        className="auth-input"
+                                                        required
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="password-toggle"
+                                                        onClick={() => setShowNewPassword(!showNewPassword)}
+                                                    >
+                                                        {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="input-wrapper">
+                                                    <Lock className="input-icon-left" size={20} />
+                                                    <input
+                                                        type={showConfirmNewPassword ? "text" : "password"}
+                                                        placeholder="Confirm New Password"
+                                                        value={confirmNewPassword}
+                                                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                                        className="auth-input"
+                                                        required
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        className="password-toggle"
+                                                        onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                                                    >
+                                                        {showConfirmNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="password-requirements">
+                                                    <p className="requirements-title">Password Requirements:</p>
+                                                    <ul className="requirements-list">
+                                                        <li className={newPassword.length >= 6 ? 'valid' : ''}>
+                                                            {newPassword.length >= 6 ? '✓' : '○'} At least 6 characters
+                                                        </li>
+                                                        <li className={newPassword && confirmNewPassword && newPassword === confirmNewPassword ? 'valid' : ''}>
+                                                            {newPassword && confirmNewPassword && newPassword === confirmNewPassword ? '✓' : '○'} Passwords match
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                
+                                                {resetOtpError && (
+                                                    <div className="otp-error-message">{resetOtpError}</div>
+                                                )}
+                                                
+                                                <button type="submit" className="submit-btn">
+                                                    Reset Password
+                                                </button>
+                                            </form>
+                                        </>
+                                    )}
+                                    
+                                    {/* Step 4: Success */}
+                                    {forgotPasswordStep === 'success' && (
+                                        <div className="forgot-password-success">
+                                            <CheckCircle2 className="success-icon" size={80} />
+                                            <h2 className="success-title">Password Reset Successful!</h2>
+                                            <p className="success-message">
+                                                Your password has been successfully reset.<br />
+                                                You can now login with your new password.
+                                            </p>
+                                            <button 
+                                                className="submit-btn"
+                                                onClick={() => {
+                                                    setModalView('login');
+                                                    resetForgotPasswordState();
+                                                    setEmail(resetEmail);
+                                                }}
+                                            >
+                                                Go to Login
+                                            </button>
+                                            <p className="auto-redirect">Redirecting automatically in 3 seconds...</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

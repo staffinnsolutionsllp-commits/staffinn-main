@@ -157,7 +157,7 @@ const CourseEnrollmentHistory = () => {
             <thead>
               <tr>
                 <th>User Name</th>
-                <th>Email</th>
+                <th>{activeTab === 'oncampus' ? 'Receipt Number' : 'Email'}</th>
                 <th>Enrollment Date</th>
                 <th>Progress</th>
                 <th>Payment Status</th>
@@ -165,25 +165,21 @@ const CourseEnrollmentHistory = () => {
             </thead>
             <tbody>
               {course.individualEnrollments.map(enrollment => {
-                console.log('🔍 [FRONTEND] Rendering individual enrollment:', JSON.stringify(enrollment, null, 2));
-                console.log('   - userName:', enrollment.userName);
-                console.log('   - userEmail:', enrollment.userEmail);
-                console.log('   - paymentStatus:', enrollment.paymentStatus);
-                console.log('   - enrolledID:', enrollment.enrolledID);
-                console.log('   - userId:', enrollment.userId);
-                
                 const paymentStatus = (enrollment.paymentStatus || 'completed').toLowerCase().trim();
                 const displayStatus = paymentStatus === 'pending' ? 'Pending' : 'Completed';
-                
-                console.log('   - Processed paymentStatus:', paymentStatus);
-                console.log('   - Display status:', displayStatus);
-                console.log('   - Badge background:', paymentStatus === 'pending' ? '#fef3c7' : '#d1fae5');
-                console.log('   - Badge color:', paymentStatus === 'pending' ? '#92400e' : '#065f46');
                 
                 return (
                   <tr key={enrollment.enrolledID}>
                     <td>{enrollment.userName}</td>
-                    <td>{enrollment.userEmail}</td>
+                    <td>
+                      {activeTab === 'oncampus' && enrollment.receiptNumber ? (
+                        <span style={{fontFamily: 'monospace', fontWeight: 700, color: '#1e40af', fontSize: '0.85rem', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px'}}>
+                          {enrollment.receiptNumber}
+                        </span>
+                      ) : (
+                        enrollment.userEmail
+                      )}
+                    </td>
                     <td>{new Date(enrollment.enrollmentDate).toLocaleDateString()}</td>
                     <td>{enrollment.progressPercentage || 0}%</td>
                     <td style={{textAlign: 'center', padding: '1rem'}}>

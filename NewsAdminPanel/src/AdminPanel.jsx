@@ -1,10 +1,10 @@
-import  { useState, useEffect } from 'react'
-import { Plus, Eye, Edit, EyeOff, Trash, Upload, Star, Clock, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Eye, Edit, EyeOff, Trash, Upload, Star, Clock, X, LayoutDashboard, Image as ImageIcon, TrendingUp, Video, Newspaper, Briefcase, GraduationCap, Save, Menu, ArrowLeft, User, RefreshCw, Activity, CheckCircle, XCircle, BarChart2, FileText } from 'lucide-react'
 import NewsAdminAPI from './services/newsAdminApi'
 import io from 'socket.io-client'
 
 function AdminPanel({ onLogout }) {
-  const [activeSection, setActiveSection] = useState('staffinn')
+  const [activeSection, setActiveSection] = useState('dashboard')
   const [activeSubSection, setActiveSubSection] = useState('hero')
   const [heroSections, setHeroSections] = useState([])
   const [trendingTopics, setTrendingTopics] = useState([])
@@ -20,6 +20,7 @@ function AdminPanel({ onLogout }) {
   const [postedNews, setPostedNews] = useState([])
   const [viewingRecruiterNews, setViewingRecruiterNews] = useState(null)
   const [viewingInstituteNews, setViewingInstituteNews] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Initialize socket connection and load data on component mount
   useEffect(() => {
@@ -324,9 +325,10 @@ function AdminPanel({ onLogout }) {
       // Create FormData object for file uploads
       const submitData = new FormData()
       
-      // Add text fields
+      // Add all text fields except file fields
+      const fileKeys = ['banner', 'image', 'video', 'thumbnail']
       Object.keys(formData).forEach(key => {
-        if (key !== 'banner' && key !== 'image' && key !== 'video' && key !== 'thumbnail') {
+        if (!fileKeys.includes(key) && formData[key] !== null && formData[key] !== undefined) {
           submitData.append(key, formData[key])
         }
       })
@@ -381,37 +383,626 @@ function AdminPanel({ onLogout }) {
     }
   }
 
-  const getFormFields = () => {
-    if (activeSubSection === 'hero') {
-      return [
-        { name: 'title', type: 'text', placeholder: 'Hero Title', required: true },
-        { name: 'content', type: 'textarea', placeholder: 'Hero Content', required: true },
-        { name: 'tags', type: 'text', placeholder: 'Hero Tags (comma separated)', required: true },
-        { name: 'banner', type: 'file', placeholder: 'Hero Banner', required: true }
-      ]
-    } else if (activeSubSection === 'trending') {
-      return [
-        { name: 'title', type: 'text', placeholder: 'Topic Title', required: true },
-        { name: 'description', type: 'textarea', placeholder: 'Topic Description', required: true },
-        { name: 'image', type: 'file', placeholder: 'Banner Image', required: true }
-      ]
-    } else if (activeSubSection === 'insights') {
-      return [
-        { name: 'title', type: 'text', placeholder: 'Video Title', required: true },
-        { name: 'name', type: 'text', placeholder: 'Featured Name', required: true },
-        { name: 'designation', type: 'text', placeholder: 'Designation', required: true },
-        { name: 'video', type: 'file', placeholder: 'Upload Video (Optional)', required: false },
-        { name: 'thumbnail', type: 'file', placeholder: 'Video Thumbnail (Optional)', required: false }
-      ]
-    } else if (activeSubSection === 'posted') {
-      return [
-        { name: 'title', type: 'text', placeholder: 'News Title', required: true },
-        { name: 'description', type: 'textarea', placeholder: 'News Description', required: true },
-        { name: 'banner', type: 'file', placeholder: 'News Banner Image', required: true }
-      ]
+  // ── Dashboard ────────────────────────────────────────────────────────────────
+  const renderDashboard = () => {
+    const published = (arr, key) => (arr || []).filter(i => i.isVisible !== false && !i.isDeleted).length
+    const heroPublished    = published(heroSections)
+    const trendPublished   = published(trendingTopics)
+    const insightPublished = published(expertInsights)
+    const postedPublished  = published(postedNews)
+    const recruiterPublished = published(recruiterNews)
+    const institutePublished = published(instituteNews)
+
+    const totalArticles = heroSections.length + postedNews.length
+    const totalPublished = heroPublished + postedPublished
+    const totalHidden = (heroSections.length - heroPublished) + (postedNews.length - postedPublished)
+
+    // Combine all items for recent activity feed
+    const allItems = [
+      ...(heroSections || []).map(i => ({ ...i, _type: 'Hero', _id: i.newsherosection, _title: i.title, _date: i.createdAt, _visible: i.isActive !== false })),
+      ...(trendingTopics || []).map(i => ({ ...i, _type: 'Trending', _id: i.newstrendingtopics, _title: i.title, _date: i.createdAt, _visible: i.isVisible !== false })),
+      ...(expertInsights || []).map(i => ({ ...i, _type: 'Insight', _id: i.newsexpertinsights, _title: i.title, _date: i.createdAt, _visible: i.isVisible !== false })),
+      ...(postedNews || []).map(i => ({ ...i, _type: 'Posted', _id: i.staffinnpostednews, _title: i.title, _date: i.createdAt, _visible: i.isVisible !== false })),
+      ...(recruiterNews || []).filter(i => !i.isDeleted).map(i => ({ ...i, _type: 'Recruiter', _id: i.recruiterNewsID, _title: i.title, _date: i.createdAt, _visible: i.isVisible !== false })),
+      ...(instituteNews || []).filter(i => !i.isDeleted).map(i => ({ ...i, _type: 'Institute', _id: i.eventNewsId, _title: i.title, _date: i.createdAt, _visible: i.isVisible !== false })),
+    ].sort((a, b) => new Date(b._date) - new Date(a._date)).slice(0, 12)
+
+    const typeColor = {
+      Hero:      { bg: '#eff6ff', text: '#2563eb', dot: '#3b82f6' },
+      Trending:  { bg: '#fefce8', text: '#a16207', dot: '#eab308' },
+      Insight:   { bg: '#f5f3ff', text: '#7c3aed', dot: '#8b5cf6' },
+      Posted:    { bg: '#ecfdf5', text: '#065f46', dot: '#10b981' },
+      Recruiter: { bg: '#fff7ed', text: '#9a3412', dot: '#f97316' },
+      Institute: { bg: '#fdf2f8', text: '#9d174d', dot: '#ec4899' },
     }
-    return []
+
+    const statCards = [
+      { label: 'Total Articles',     value: totalArticles,          icon: FileText,   color: '#3b82f6', bg: '#eff6ff' },
+      { label: 'Published',          value: totalPublished,         icon: CheckCircle,color: '#10b981', bg: '#ecfdf5' },
+      { label: 'Hidden / Draft',     value: totalHidden,            icon: EyeOff,     color: '#f59e0b', bg: '#fefce8' },
+      { label: 'Trending Topics',    value: trendingTopics.length,  icon: TrendingUp, color: '#8b5cf6', bg: '#f5f3ff' },
+      { label: 'Expert Videos',      value: expertInsights.length,  icon: Video,      color: '#ef4444', bg: '#fef2f2' },
+      { label: 'Posted News',        value: postedNews.length,      icon: Newspaper,  color: '#0ea5e9', bg: '#f0f9ff' },
+      { label: 'Recruiter News',     value: recruiterNews.filter(i => !i.isDeleted).length, icon: Briefcase, color: '#f97316', bg: '#fff7ed' },
+      { label: 'Institute News',     value: instituteNews.filter(i => !i.isDeleted).length, icon: GraduationCap, color: '#ec4899', bg: '#fdf2f8' },
+    ]
+
+    const breakdownRows = [
+      { label: 'Hero Banners',    total: heroSections.length,  pub: heroPublished,     type: 'Hero' },
+      { label: 'Trending Topics', total: trendingTopics.length, pub: trendPublished,   type: 'Trending' },
+      { label: 'Expert Insights', total: expertInsights.length, pub: insightPublished, type: 'Insight' },
+      { label: 'Posted News',     total: postedNews.length,    pub: postedPublished,   type: 'Posted' },
+      { label: 'Recruiter News',  total: recruiterNews.filter(i=>!i.isDeleted).length, pub: recruiterPublished, type: 'Recruiter' },
+      { label: 'Institute News',  total: instituteNews.filter(i=>!i.isDeleted).length, pub: institutePublished, type: 'Institute' },
+    ]
+
+    return (
+      <div style={{ padding: '2rem', maxWidth: '1200px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.75rem' }}>
+          <div>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#111827', margin: 0 }}>Dashboard</h1>
+            <p style={{ color: '#6b7280', marginTop: '0.25rem', fontSize: '0.9rem' }}>Live overview of your newsroom · auto-updates via WebSocket</p>
+          </div>
+          <button
+            onClick={loadAllData}
+            disabled={loading}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: '#1f2937', color: '#fff', border: 'none', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.85rem', opacity: loading ? 0.6 : 1 }}
+          >
+            <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+
+        {/* Stat Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          {statCards.map(({ label, value, icon: Icon, color, bg }) => (
+            <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '12px', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon size={20} color={color} />
+              </div>
+              <div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#111827', lineHeight: 1 }}>{value}</div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px', fontWeight: 500 }}>{label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
+          {/* Breakdown table */}
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
+              <BarChart2 size={18} color='#6b7280' />
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Content Breakdown</h3>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <th style={{ textAlign: 'left', padding: '6px 0', color: '#9ca3af', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Section</th>
+                  <th style={{ textAlign: 'center', padding: '6px 0', color: '#9ca3af', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Total</th>
+                  <th style={{ textAlign: 'center', padding: '6px 0', color: '#9ca3af', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Visible</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', color: '#9ca3af', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase' }}>Coverage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {breakdownRows.map(({ label, total, pub, type }) => {
+                  const pct = total > 0 ? Math.round((pub / total) * 100) : 0
+                  const c = typeColor[type]
+                  return (
+                    <tr key={label} style={{ borderBottom: '1px solid #f9fafb' }}>
+                      <td style={{ padding: '9px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.dot, display: 'inline-block', flexShrink: 0 }} />
+                          <span style={{ color: '#374151', fontWeight: 500 }}>{label}</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'center', color: '#111827', fontWeight: 700 }}>{total}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span style={{ background: c.bg, color: c.text, padding: '2px 8px', borderRadius: '6px', fontWeight: 600, fontSize: '0.8rem' }}>{pub}</span>
+                      </td>
+                      <td style={{ padding: '9px 8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ flex: 1, height: 6, background: '#f3f4f6', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: c.dot, borderRadius: 4, transition: 'width 0.6s ease' }} />
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280', minWidth: 28 }}>{pct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Quick Actions */}
+          <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
+              <Activity size={18} color='#6b7280' />
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Quick Actions</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {[
+                { label: '+ Post Hero News',       section: 'staffinn', sub: 'hero',     color: '#3b82f6' },
+                { label: '+ Add Trending Topic',   section: 'staffinn', sub: 'trending', color: '#eab308' },
+                { label: '+ Upload Expert Insight',section: 'staffinn', sub: 'insights', color: '#8b5cf6' },
+                { label: '+ Post News Article',    section: 'staffinn', sub: 'posted',   color: '#10b981' },
+                { label: '→ Manage Recruiter News',section: 'recruiter',sub: null,       color: '#f97316' },
+                { label: '→ Manage Institute News',section: 'institute',sub: null,       color: '#ec4899' },
+              ].map(({ label, section, sub, color }) => (
+                <button key={label} onClick={() => {
+                  setActiveSection(section)
+                  if (sub) { setActiveSubSection(sub); setShowForm(true) }
+                }}
+                style={{ textAlign: 'left', padding: '10px 14px', background: '#f9fafb', border: `1.5px solid ${color}22`, borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', color, transition: 'all 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.background = color + '10'}
+                onMouseLeave={e => e.currentTarget.style.background = '#f9fafb'}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '1.5rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
+            <Clock size={18} color='#6b7280' />
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Recent Activity</h3>
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#9ca3af' }}>Latest {allItems.length} items across all sections</span>
+          </div>
+          {allItems.length === 0 ? (
+            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '2rem 0', fontSize: '0.9rem' }}>No content yet. Start by posting a Hero News or Trending Topic.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {allItems.map((item, i) => {
+                const c = typeColor[item._type] || { bg: '#f3f4f6', text: '#374151', dot: '#9ca3af' }
+                const dateStr = item._date ? new Date(item._date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
+                return (
+                  <div key={item._id || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '10px', background: i % 2 === 0 ? '#fafafa' : '#fff', transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
+                    onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#fafafa' : '#fff'}
+                  >
+                    <span style={{ background: c.bg, color: c.text, padding: '3px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.7rem', minWidth: 64, textAlign: 'center', flexShrink: 0 }}>{item._type}</span>
+                    <span style={{ flex: 1, fontSize: '0.875rem', color: '#374151', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item._title || '(Untitled)'}</span>
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af', flexShrink: 0 }}>{dateStr}</span>
+                    <span style={{ flexShrink: 0 }}>
+                      {item._visible
+                        ? <span style={{ background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700 }}>● Published</span>
+                        : <span style={{ background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700 }}>● Hidden</span>
+                      }
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
   }
+
+  // ── Render Rich Form ──────────────────────────────────────────────────────────
+  // Render the rich form inline (replaces modal form fields)
+  const renderRichForm = () => {
+    if (activeSubSection === 'hero') {
+      return (
+        <form onSubmit={handleSubmit} className="admin-rich-form">
+          <div className="admin-rich-form-header">
+            <div>
+              <h3 className="admin-rich-form-title">Hero News</h3>
+              <p className="admin-rich-form-subtitle">The featured story of the day on /news.</p>
+            </div>
+            <div className="admin-rich-form-actions">
+              <select
+                value={formData.status || 'Published'}
+                onChange={e => setFormData({ ...formData, status: e.target.value })}
+                className="admin-status-select"
+              >
+                <option value="Draft">Draft</option>
+                <option value="Published">Published</option>
+              </select>
+              <button type="submit" className="admin-save-publish-btn" disabled={loading}>
+                {loading ? 'Saving...' : 'Save & Publish'}
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-rich-form-grid">
+            <div className="admin-rich-form-left">
+              <div className="admin-form-group">
+                <label className="admin-form-label">Headline <span className="admin-form-label-required">*</span></label>
+                <input type="text" className="admin-input" placeholder="Your headline appears here"
+                  value={formData.title || ''} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Excerpt <span className="admin-form-label-required">*</span></label>
+                <textarea className="admin-textarea" rows={3} placeholder="Short excerpt shown under the headline..."
+                  value={formData.content || ''} onChange={e => setFormData({ ...formData, content: e.target.value })} required />
+              </div>
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Author Name</label>
+                  <input type="text" className="admin-input" placeholder="e.g. Rajesh Kumar"
+                    value={formData.author || ''} onChange={e => setFormData({ ...formData, author: e.target.value })} />
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Author Avatar URL</label>
+                  <input type="text" className="admin-input" placeholder="https://..."
+                    value={formData.authorAvatar || ''} onChange={e => setFormData({ ...formData, authorAvatar: e.target.value })} />
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Banner Image URL <span className="admin-form-label-required">*</span></label>
+                <div className="admin-file-upload-row">
+                  <input type="file" accept="image/*" className="admin-file-input"
+                    onChange={e => { const f = e.target.files[0]; if (f) setFormData({ ...formData, banner: f }) }}
+                    required={!editingItem} />
+                  {(formData.banner instanceof File) && (
+                    <img src={URL.createObjectURL(formData.banner)} alt="preview" className="admin-file-thumb" />
+                  )}
+                  {!(formData.banner instanceof File) && (formData.bannerImageUrl || editingItem?.bannerImageUrl) && (
+                    <img src={formData.bannerImageUrl || editingItem?.bannerImageUrl} alt="current" className="admin-file-thumb" />
+                  )}
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Full Article Content <span style={{fontWeight:400,color:'#6b7280'}}>(Markdown: use ## for headings, - for lists)</span></label>
+                <textarea className="admin-textarea" rows={6} placeholder="Full article body in markdown..."
+                  value={formData.fullContent || ''} onChange={e => setFormData({ ...formData, fullContent: e.target.value })} />
+              </div>
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Category</label>
+                  <select className="admin-input" value={formData.category || 'Editorial'}
+                    onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                    <option>Editorial</option>
+                    <option>Recruitment</option>
+                    <option>Education</option>
+                    <option>AI</option>
+                  </select>
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Read Time</label>
+                  <input type="text" className="admin-input" placeholder="e.g. 5 min read"
+                    value={formData.readTime || ''} onChange={e => setFormData({ ...formData, readTime: e.target.value })} />
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Tags (comma separated)</label>
+                <input type="text" className="admin-input" placeholder="AI, Hiring, Freshers"
+                  value={formData.tags || ''} onChange={e => setFormData({ ...formData, tags: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="admin-rich-form-right">
+              <div className="admin-live-preview">
+                <div className="admin-live-preview-label">Live Preview</div>
+                <div className="admin-hero-preview">
+                  {(formData.banner instanceof File || formData.bannerImageUrl || editingItem?.bannerImageUrl) && (
+                    <img src={formData.banner instanceof File ? URL.createObjectURL(formData.banner) : (formData.bannerImageUrl || editingItem?.bannerImageUrl)} alt="" className="admin-hero-preview-img" />
+                  )}
+                  <div className="admin-hero-preview-overlay">
+                    <span className="admin-featured-badge">● FEATURED TODAY</span>
+                    <h4 className="admin-hero-preview-title">{formData.title || 'Your headline appears here'}</h4>
+                  </div>
+                </div>
+              </div>
+              <div className="admin-form-group" style={{marginTop:'1rem'}}>
+                <label className="admin-form-label">Featured</label>
+                <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                  <input type="checkbox" checked={formData.isFeatured || false}
+                    onChange={e => setFormData({...formData, isFeatured: e.target.checked})} style={{width:'18px',height:'18px'}} />
+                  <span style={{fontSize:'0.875rem',color:'#374151'}}>Mark as Featured</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:'1rem',marginTop:'1.5rem'}}>
+            <button type="button" className="admin-cancel-btn" onClick={() => { setShowForm(false); setEditingItem(null); setFormData({}); }}>Cancel</button>
+          </div>
+        </form>
+      )
+    }
+
+    if (activeSubSection === 'trending') {
+      return (
+        <form onSubmit={handleSubmit} className="admin-rich-form">
+          <div className="admin-rich-form-header">
+            <div>
+              <h3 className="admin-rich-form-title">Trending Topics</h3>
+              <p className="admin-rich-form-subtitle">Short, snappy cards for the trending grid.</p>
+            </div>
+            <div className="admin-rich-form-actions">
+              <select value={formData.status || 'Published'} onChange={e => setFormData({ ...formData, status: e.target.value })} className="admin-status-select">
+                <option value="Draft">Draft</option>
+                <option value="Published">Published</option>
+              </select>
+              <button type="submit" className="admin-save-publish-btn" disabled={loading}>{loading ? 'Saving...' : 'Save & Publish'}</button>
+            </div>
+          </div>
+
+          <div className="admin-rich-form-grid">
+            <div className="admin-rich-form-left">
+              <div className="admin-form-group">
+                <label className="admin-form-label">Title <span className="admin-form-label-required">*</span></label>
+                <input type="text" className="admin-input" placeholder="Topic title..."
+                  value={formData.title || ''} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Image URL <span className="admin-form-label-required">*</span></label>
+                <div className="admin-file-upload-row">
+                  <input type="file" accept="image/*" className="admin-file-input"
+                    onChange={e => { const f = e.target.files[0]; if (f) setFormData({ ...formData, image: f }) }}
+                    required={!editingItem} />
+                  {(formData.image instanceof File) && (
+                    <img src={URL.createObjectURL(formData.image)} alt="preview" className="admin-file-thumb" />
+                  )}
+                  {!(formData.image instanceof File) && (formData.imageUrl || editingItem?.imageUrl) && (
+                    <img src={formData.imageUrl || editingItem?.imageUrl} alt="current" className="admin-file-thumb" />
+                  )}
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Description <span style={{fontWeight:400,color:'#6b7280'}}>(2 lines)</span></label>
+                <textarea className="admin-textarea" rows={3} placeholder="Short description shown on the card..."
+                  value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Tags (comma separated)</label>
+                <input type="text" className="admin-input" placeholder="#AI, #Hiring2025"
+                  value={formData.tags || ''} onChange={e => setFormData({ ...formData, tags: e.target.value })} />
+              </div>
+            </div>
+            <div className="admin-rich-form-right">
+              <div className="admin-live-preview">
+                <div className="admin-live-preview-label">Preview</div>
+                <div className="admin-trending-preview">
+                  {(formData.image instanceof File || formData.imageUrl || editingItem?.imageUrl) && (
+                    <img src={formData.image instanceof File ? URL.createObjectURL(formData.image) : (formData.imageUrl || editingItem?.imageUrl)} alt="" className="admin-trending-preview-img" />
+                  )}
+                  <div className="admin-trending-preview-overlay">
+                    <span className="admin-trending-preview-title">{formData.title || 'Title'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:'1rem',marginTop:'1.5rem'}}>
+            <button type="button" className="admin-cancel-btn" onClick={() => { setShowForm(false); setEditingItem(null); setFormData({}); }}>Cancel</button>
+          </div>
+        </form>
+      )
+    }
+
+    if (activeSubSection === 'insights') {
+      return (
+        <form onSubmit={handleSubmit} className="admin-rich-form">
+          <div className="admin-rich-form-header">
+            <div>
+              <h3 className="admin-rich-form-title">Expert Insights</h3>
+              <p className="admin-rich-form-subtitle">Curated videos from industry leaders.</p>
+            </div>
+            <div className="admin-rich-form-actions">
+              <select value={formData.status || 'Published'} onChange={e => setFormData({ ...formData, status: e.target.value })} className="admin-status-select">
+                <option value="Draft">Draft</option>
+                <option value="Published">Published</option>
+              </select>
+              <button type="submit" className="admin-save-publish-btn" disabled={loading}>{loading ? 'Saving...' : 'Save & Publish'}</button>
+            </div>
+          </div>
+
+          <div className="admin-rich-form-grid">
+            <div className="admin-rich-form-left">
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Expert Name <span className="admin-form-label-required">*</span></label>
+                  <input type="text" className="admin-input" placeholder="e.g. Anand Mehta"
+                    value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Avatar URL</label>
+                  <input type="text" className="admin-input" placeholder="https://..."
+                    value={formData.avatarUrl || ''} onChange={e => setFormData({ ...formData, avatarUrl: e.target.value })} />
+                </div>
+              </div>
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Designation <span className="admin-form-label-required">*</span></label>
+                  <input type="text" className="admin-input" placeholder="e.g. Head of Talent"
+                    value={formData.designation || ''} onChange={e => setFormData({ ...formData, designation: e.target.value })} required />
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Company</label>
+                  <input type="text" className="admin-input" placeholder="e.g. Infosys"
+                    value={formData.company || ''} onChange={e => setFormData({ ...formData, company: e.target.value })} />
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Video Title <span className="admin-form-label-required">*</span></label>
+                <input type="text" className="admin-input" placeholder="e.g. What Recruiters Really Look For in 2025"
+                  value={formData.title || ''} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">YouTube Embed URL <span className="admin-form-label-required">*</span></label>
+                <input type="text" className="admin-input" placeholder="https://www.youtube.com/embed/VIDEO_ID"
+                  value={formData.youtubeUrl || ''} onChange={e => setFormData({ ...formData, youtubeUrl: e.target.value })} required />
+                {formData.youtubeUrl && (
+                  <p className="admin-field-hint">Auto Thumbnail: paste a YouTube URL above and the thumbnail will be generated automatically.</p>
+                )}
+              </div>
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Duration</label>
+                  <input type="text" className="admin-input" placeholder="e.g. 12 min"
+                    value={formData.duration || ''} onChange={e => setFormData({ ...formData, duration: e.target.value })} />
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Views</label>
+                  <input type="text" className="admin-input" placeholder="e.g. 24.1k views"
+                    value={formData.views || ''} onChange={e => setFormData({ ...formData, views: e.target.value })} />
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Upload Video (Optional)</label>
+                <input type="file" accept="video/*" className="admin-file-input"
+                  onChange={e => { const f = e.target.files[0]; if (f) setFormData({ ...formData, video: f }) }} />
+              </div>
+            </div>
+            <div className="admin-rich-form-right">
+              <div className="admin-live-preview">
+                <div className="admin-live-preview-label">Preview</div>
+                <div className="admin-insight-preview">
+                  {formData.youtubeUrl ? (() => {
+                    const match = formData.youtubeUrl.match(/(?:embed\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+                    const vid = match ? match[1] : null;
+                    return vid ? (
+                      <div style={{position:'relative'}}>
+                        <img src={`https://img.youtube.com/vi/${vid}/hqdefault.jpg`} alt="thumb" style={{width:'100%',borderRadius:'8px'}} />
+                        <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',background:'rgba(255,255,255,0.9)',borderRadius:'50%',width:'48px',height:'48px',display:'flex',alignItems:'center',justifyContent:'center'}}>▶</div>
+                        {formData.duration && <span style={{position:'absolute',bottom:'8px',right:'8px',background:'rgba(0,0,0,0.7)',color:'white',fontSize:'11px',padding:'2px 6px',borderRadius:'4px'}}>{formData.duration}</span>}
+                      </div>
+                    ) : null
+                  })() : <div className="admin-insight-preview-placeholder">Video preview will appear when YouTube URL is set</div>}
+                  <div style={{padding:'0.75rem 0 0'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.5rem'}}>
+                      {formData.avatarUrl && <img src={formData.avatarUrl} alt="" style={{width:'32px',height:'32px',borderRadius:'50%',objectFit:'cover'}} />}
+                      <div>
+                        <div style={{fontSize:'13px',fontWeight:700}}>{formData.name || 'Expert Name'}</div>
+                        <div style={{fontSize:'11px',color:'#6b7280'}}>{formData.designation}{formData.company ? ` · ${formData.company}` : ''}</div>
+                      </div>
+                    </div>
+                    <div style={{fontSize:'13px',fontWeight:600}}>{formData.title || 'Video title here'}</div>
+                    {formData.views && <div style={{fontSize:'11px',color:'#6b7280',marginTop:'4px'}}>{formData.views}</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:'1rem',marginTop:'1.5rem'}}>
+            <button type="button" className="admin-cancel-btn" onClick={() => { setShowForm(false); setEditingItem(null); setFormData({}); }}>Cancel</button>
+          </div>
+        </form>
+      )
+    }
+
+    if (activeSubSection === 'posted') {
+      return (
+        <form onSubmit={handleSubmit} className="admin-rich-form">
+          <div className="admin-rich-form-header">
+            <div>
+              <h3 className="admin-rich-form-title">Posted News</h3>
+              <p className="admin-rich-form-subtitle">Editorial and general news articles.</p>
+            </div>
+            <div className="admin-rich-form-actions">
+              <select value={formData.status || 'Published'} onChange={e => setFormData({ ...formData, status: e.target.value })} className="admin-status-select">
+                <option value="Draft">Draft</option>
+                <option value="Published">Published</option>
+              </select>
+              <button type="submit" className="admin-save-publish-btn" disabled={loading}>{loading ? 'Saving...' : 'Save & Publish'}</button>
+            </div>
+          </div>
+
+          <div className="admin-rich-form-grid">
+            <div className="admin-rich-form-left">
+              <div className="admin-form-group">
+                <label className="admin-form-label">Title <span className="admin-form-label-required">*</span></label>
+                <input type="text" className="admin-input" placeholder="Article title..."
+                  value={formData.title || ''} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Category</label>
+                <select className="admin-input" value={formData.category || 'Editorial'}
+                  onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                  <option>Editorial</option>
+                  <option>General</option>
+                  <option>Recruitment</option>
+                  <option>Education</option>
+                  <option>AI</option>
+                </select>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Banner Image <span className="admin-form-label-required">*</span></label>
+                <div className="admin-file-upload-row">
+                  <input type="file" accept="image/*" className="admin-file-input"
+                    onChange={e => { const f = e.target.files[0]; if (f) setFormData({ ...formData, banner: f }) }}
+                    required={!editingItem} />
+                  {(formData.banner instanceof File) && (
+                    <img src={URL.createObjectURL(formData.banner)} alt="preview" className="admin-file-thumb" />
+                  )}
+                  {!(formData.banner instanceof File) && (formData.bannerImageUrl || editingItem?.bannerImageUrl) && (
+                    <img src={formData.bannerImageUrl || editingItem?.bannerImageUrl} alt="current" className="admin-file-thumb" />
+                  )}
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Excerpt <span className="admin-form-label-required">*</span></label>
+                <textarea className="admin-textarea" rows={2} placeholder="Short summary shown in the news feed..."
+                  value={formData.description || ''} onChange={e => setFormData({ ...formData, description: e.target.value })} required />
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Full Content</label>
+                <textarea className="admin-textarea" rows={6} placeholder="Full article text..."
+                  value={formData.content || ''} onChange={e => setFormData({ ...formData, content: e.target.value })} />
+              </div>
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Author</label>
+                  <input type="text" className="admin-input" placeholder="e.g. Staff Reporter"
+                    value={formData.author || ''} onChange={e => setFormData({ ...formData, author: e.target.value })} />
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Date</label>
+                  <input type="date" className="admin-input"
+                    value={formData.date || ''} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                </div>
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Read Time <span style={{fontWeight:400,color:'#6b7280'}}>(auto)</span></label>
+                <input type="text" className="admin-input" placeholder="e.g. 4 min read (leave blank to auto-calculate)"
+                  value={formData.readTime || ''} onChange={e => setFormData({ ...formData, readTime: e.target.value })} />
+              </div>
+            </div>
+            <div className="admin-rich-form-right">
+              <div className="admin-live-preview">
+                <div className="admin-live-preview-label">Preview</div>
+                <div className="admin-posted-preview">
+                  {(formData.banner instanceof File || formData.bannerImageUrl || editingItem?.bannerImageUrl) ? (
+                    <img src={formData.banner instanceof File ? URL.createObjectURL(formData.banner) : (formData.bannerImageUrl || editingItem?.bannerImageUrl)} alt="" className="admin-posted-preview-img" />
+                  ) : (
+                    <div className="admin-posted-preview-placeholder">Banner image preview</div>
+                  )}
+                  <div style={{padding:'0.75rem 0 0'}}>
+                    {formData.category && <span className="admin-preview-category-badge">{formData.category.toUpperCase()}</span>}
+                    <div style={{fontWeight:700,fontSize:'14px',margin:'0.4rem 0'}}>{formData.title || 'Article title here'}</div>
+                    <div style={{fontSize:'12px',color:'#6b7280'}}>{formData.description || 'Excerpt appears here...'}</div>
+                    <div style={{fontSize:'11px',color:'#9ca3af',marginTop:'0.5rem'}}>
+                      {formData.author || 'Author'} · {formData.date || new Date().toLocaleDateString()} · {formData.readTime || 'Read Time'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:'1rem',marginTop:'1.5rem'}}>
+            <button type="button" className="admin-cancel-btn" onClick={() => { setShowForm(false); setEditingItem(null); setFormData({}); }}>Cancel</button>
+          </div>
+        </form>
+      )
+    }
+    return null
+  }
+
+  // Keep getFormFields for legacy modal (won't be used when showForm + rich form replaces modal)
+  const getFormFields = () => []
 
   const ItemCard = ({ item, type, actions, showFullContent = false, isLatest = false }) => {
     if (type === 'hero' || type === 'posted') {
@@ -535,10 +1126,21 @@ function AdminPanel({ onLogout }) {
   }
 
   return (
+    <>
     <div className="admin-container">
-      <div className="admin-sidebar">
+      {/* Mobile overlay */}
+      <div 
+        className={`admin-mobile-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Dark Sidebar */}
+      <div className={`admin-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="admin-sidebar-header">
-          <h1 className="admin-sidebar-title">News Admin</h1>
+          <h1 className="admin-sidebar-title">
+            <span className="staff">Staff</span>
+            <span className="inn">inn</span>
+          </h1>
           <button 
             onClick={onLogout}
             className="admin-logout-btn"
@@ -547,26 +1149,42 @@ function AdminPanel({ onLogout }) {
             Logout
           </button>
         </div>
+        
         <nav className="admin-nav">
+          <div className="admin-nav-label">ADMIN PANEL</div>
           <div className="admin-nav-items">
+            <button
+              onClick={() => { setActiveSection('dashboard'); setMobileMenuOpen(false) }}
+              className={`admin-nav-btn ${activeSection === 'dashboard' ? 'active' : ''}`}
+            >
+              <LayoutDashboard size={18} />
+              Dashboard
+            </button>
             <div>
               <button
-                onClick={() => setActiveSection('staffinn')}
+                onClick={() => {
+                  setActiveSection('staffinn')
+                  setMobileMenuOpen(false)
+                }}
                 className={`admin-nav-btn ${activeSection === 'staffinn' ? 'active' : ''}`}
               >
+                <Newspaper size={18} />
                 Staffinn News
               </button>
               {activeSection === 'staffinn' && (
                 <div className="admin-nav-sub">
                   {[
-                    { id: 'hero', label: 'Hero Section' },
-                    { id: 'trending', label: 'Trending Topics' },
-                    { id: 'insights', label: 'Expert Insights' },
-                    { id: 'posted', label: 'Post News' }
+                    { id: 'hero', label: 'Hero Banner', icon: ImageIcon },
+                    { id: 'trending', label: 'Trending Topics', icon: TrendingUp },
+                    { id: 'insights', label: 'Expert Insights', icon: Video },
+                    { id: 'posted', label: 'Post News', icon: Newspaper }
                   ].map(sub => (
                     <button
                       key={sub.id}
-                      onClick={() => setActiveSubSection(sub.id)}
+                      onClick={() => {
+                        setActiveSubSection(sub.id)
+                        setMobileMenuOpen(false)
+                      }}
                       className={`admin-nav-sub-btn ${activeSubSection === sub.id ? 'active' : ''}`}
                     >
                       {sub.label}
@@ -576,265 +1194,371 @@ function AdminPanel({ onLogout }) {
               )}
             </div>
             <button
-              onClick={() => setActiveSection('recruiter')}
+              onClick={() => {
+                setActiveSection('recruiter')
+                setMobileMenuOpen(false)
+              }}
               className={`admin-nav-btn ${activeSection === 'recruiter' ? 'active' : ''}`}
             >
+              <Briefcase size={18} />
               Recruiter News
             </button>
             <button
-              onClick={() => setActiveSection('institute')}
+              onClick={() => {
+                setActiveSection('institute')
+                setMobileMenuOpen(false)
+              }}
               className={`admin-nav-btn ${activeSection === 'institute' ? 'active' : ''}`}
             >
+              <GraduationCap size={18} />
               Institute News
             </button>
           </div>
         </nav>
+
+        <div className="admin-sidebar-footer">
+          <a href="/news" target="_blank" className="admin-back-link">
+            <ArrowLeft size={16} />
+            Back to News
+          </a>
+          <div className="admin-user-block">
+            <div className="admin-user-avatar">
+              <User size={14} />
+            </div>
+            <div style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+              Admin User
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Main Content Area */}
       <div className="admin-main">
-        {activeSection === 'staffinn' && (
-          <div className="admin-section">
-            <div className="admin-section-header">
-              <h2 className="admin-section-title">
-                {activeSubSection === 'hero' && 'Hero Section'}
-                {activeSubSection === 'trending' && 'Trending Topics'}
-                {activeSubSection === 'insights' && 'Expert Insights & Interviews'}
-                {activeSubSection === 'posted' && 'Post News'}
-              </h2>
-              <button
-                onClick={() => setShowForm(true)}
-                className="admin-create-btn"
-              >
-                <Plus size={16} />
-                {activeSubSection === 'hero' && 'Create Hero Section'}
-                {activeSubSection === 'trending' && 'Add Topic'}
-                {activeSubSection === 'insights' && 'Add Insight'}
-                {activeSubSection === 'posted' && 'Post News'}
-              </button>
-            </div>
+        {/* Topbar */}
+        <div className="admin-topbar">
+          <button 
+            className="admin-mobile-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            <Menu size={20} />
+          </button>
+          
+          <div className="admin-topbar-left">
+            <h2 className="admin-topbar-title">
+              {activeSection === 'dashboard' && 'Dashboard'}
+              {activeSection === 'staffinn' && (
+                activeSubSection === 'hero' ? 'Hero Banner' :
+                activeSubSection === 'trending' ? 'Trending Topics' :
+                activeSubSection === 'insights' ? 'Expert Insights' :
+                'Post News'
+              )}
+              {activeSection === 'recruiter' && 'Recruiter News'}
+              {activeSection === 'institute' && 'Institute News'}
+              {activeSection === 'dashboard' && 'Dashboard'}
+            </h2>
+            <p className="admin-topbar-subtitle">
+              {activeSection === 'dashboard' && 'Live overview of your newsroom'}
+              {activeSection === 'staffinn' && activeSubSection === 'hero' && 'Manage your hero banners'}
+              {activeSection === 'staffinn' && activeSubSection === 'trending' && 'Manage trending topics'}
+              {activeSection === 'staffinn' && activeSubSection === 'insights' && 'Manage expert insights'}
+              {activeSection === 'staffinn' && activeSubSection === 'posted' && 'Post and manage news'}
+              {activeSection === 'recruiter' && 'Review recruiter news submissions'}
+              {activeSection === 'institute' && 'Review institute news submissions'}
+            </p>
+          </div>
+          
+          <div className="admin-topbar-right">
+            <button 
+              className="admin-save-btn"
+              disabled
+            >
+              <Save size={16} />
+              <span>Saved</span>
+            </button>
+          </div>
+        </div>
 
-            {showForm && (
-              <div className="admin-modal">
-                <div className="admin-modal-content">
-                  <h3 className="admin-modal-title">
-                    {activeSubSection === 'hero' && 'Create Hero Section'}
-                    {activeSubSection === 'trending' && 'Add Trending Topic'}
-                    {activeSubSection === 'insights' && 'Add Expert Insight'}
-                    {activeSubSection === 'posted' && 'Post News'}
-                  </h3>
-                  <form onSubmit={handleSubmit} className="admin-form">
-                    {getFormFields().map(field => (
-                      <div key={field.name}>
-                        {field.type === 'textarea' ? (
-                          <textarea
-                            placeholder={field.placeholder}
-                            value={formData[field.name] || ''}
-                            onChange={(e) => setFormData({...formData, [field.name]: e.target.value})}
-                            className="admin-textarea"
-                            required={field.required}
-                          />
-                        ) : field.type === 'file' ? (
-                          <input
-                            type="file"
-                            accept={field.name === 'video' ? 'video/*' : 'image/*'}
-                            onChange={(e) => {
-                              const file = e.target.files[0]
-                              if (file) {
-                                setFormData({...formData, [field.name]: file})
-                              }
-                            }}
-                            className="admin-file-input"
-                            required={field.required && !editingItem}
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            placeholder={field.placeholder}
-                            value={formData[field.name] || ''}
-                            onChange={(e) => setFormData({...formData, [field.name]: e.target.value})}
-                            className="admin-input"
-                            required={field.required}
-                          />
-                        )}
-                      </div>
-                    ))}
-                    <div className="admin-form-actions">
-                      <button type="submit" className="admin-submit-btn" disabled={loading}>
-                        {loading ? 'Saving...' : (editingItem ? 'Update' : 'Create')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowForm(false)
-                          setEditingItem(null)
-                          setFormData({})
-                        }}
-                        className="admin-cancel-btn"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                </div>
+        {/* Content */}
+        <div className="admin-content">
+          {activeSection === 'dashboard' && renderDashboard()}
+          {activeSection === 'staffinn' && (
+            <div className="admin-section">
+              <div className="admin-section-header">
+                <h2 className="admin-section-title">
+                  {activeSubSection === 'hero' && 'Hero Banner'}
+                  {activeSubSection === 'trending' && 'Trending Topics'}
+                  {activeSubSection === 'insights' && 'Expert Insights & Interviews'}
+                  {activeSubSection === 'posted' && 'Post News'}
+                  <span className="admin-section-count">
+                    {activeSubSection === 'hero' && `${heroSections.length} items`}
+                    {activeSubSection === 'trending' && `${trendingTopics.length} items`}
+                    {activeSubSection === 'insights' && `${expertInsights.length} items`}
+                    {activeSubSection === 'posted' && `${postedNews.length} items`}
+                  </span>
+                </h2>
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="admin-create-btn"
+                >
+                  <Plus size={18} />
+                  {activeSubSection === 'hero' && 'Create Hero Banner'}
+                  {activeSubSection === 'trending' && 'Add Topic'}
+                  {activeSubSection === 'insights' && 'Add Insight'}
+                  {activeSubSection === 'posted' && 'Post News'}
+                </button>
               </div>
-            )}
 
-            {viewingFullArticle && (
-              <div className="admin-modal">
-                <div className="admin-modal-large">
-                  <div className="admin-modal-header">
-                    <h3 className="admin-modal-header-title">Full Article</h3>
-                    <button 
-                      onClick={() => setViewingFullArticle(null)}
-                      className="admin-close-btn"
-                    >
-                      <X size={24} />
-                    </button>
-                  </div>
-                  <div className="admin-modal-body">
-                    <ItemCard
-                      item={viewingFullArticle}
-                      type={viewingFullArticle.name ? "insights" : viewingFullArticle.description ? "trending" : "hero"}
-                      showFullContent={true}
-                      actions={[]}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-
-
-            <div className="admin-content-grid">
-              {loading && (
-                <div className="admin-loading">
-                  <p>Loading...</p>
+              {showForm && (
+                <div className="admin-rich-form-wrapper">
+                  {renderRichForm()}
                 </div>
               )}
-              
-              {activeSubSection === 'hero' && heroSections
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
-                .map((hero, index) => (
-                <ItemCard
-                  key={hero.newsherosection}
-                  item={{
-                    ...hero,
-                    id: hero.newsherosection,
-                    banner: hero.bannerImageUrl,
-                    date: new Date(hero.createdAt).toLocaleDateString()
-                  }}
-                  type="hero"
-                  isLatest={index === 0 && heroSections.length > 0}
-                  actions={[
-                    { label: hero.isActive ? 'Hide' : 'Show', onClick: () => toggleVisibility(hero.newsherosection, 'hero'), className: 'hide' },
-                    { label: 'Delete', onClick: () => deleteItem(hero.newsherosection, 'hero'), className: 'delete' },
-                    { label: 'Edit', onClick: () => {
-                      setFormData({
-                        title: hero.title,
-                        content: hero.content,
-                        tags: hero.tags,
-                        bannerImageUrl: hero.bannerImageUrl
-                      })
-                      setEditingItem(hero)
-                      setShowForm(true)
-                    }, className: 'edit' }
-                  ]}
-                />
-              ))}
-              
-              {activeSubSection === 'trending' && trendingTopics.map(topic => (
-                <ItemCard
-                  key={topic.newstrendingtopics}
-                  item={{
-                    ...topic,
-                    id: topic.newstrendingtopics,
-                    image: topic.imageUrl,
-                    date: new Date(topic.createdAt).toLocaleDateString(),
-                    visible: topic.isVisible
-                  }}
-                  type="trending"
-                  actions={[
-                    { label: topic.isVisible ? 'Hide' : 'Show', onClick: () => toggleVisibility(topic.newstrendingtopics, 'trending'), className: 'hide' },
-                    { label: 'Delete', onClick: () => deleteItem(topic.newstrendingtopics, 'trending'), className: 'delete' },
-                    { label: 'Edit', onClick: () => {
-                      setFormData({
-                        title: topic.title,
-                        description: topic.description,
-                        imageUrl: topic.imageUrl
-                      })
-                      setEditingItem(topic)
-                      setShowForm(true)
-                    }, className: 'edit' }
-                  ]}
-                />
-              ))}
 
-              {activeSubSection === 'insights' && expertInsights.map(insight => (
-                <ItemCard
-                  key={insight.newsexpertinsights}
-                  item={{
-                    ...insight,
-                    id: insight.newsexpertinsights,
-                    name: insight.expertName,
-                    video: insight.videoUrl,
-                    thumbnail: insight.thumbnailUrl,
-                    date: new Date(insight.createdAt).toLocaleDateString(),
-                    visible: insight.isVisible
-                  }}
-                  type="insights"
-                  actions={[
-                    { label: insight.isVisible ? 'Hide' : 'Show', onClick: () => toggleVisibility(insight.newsexpertinsights, 'insights'), className: 'hide' },
-                    { label: 'Delete', onClick: () => deleteItem(insight.newsexpertinsights, 'insights'), className: 'delete' },
-                    { label: 'Edit', onClick: () => {
-                      setFormData({
-                        title: insight.title,
-                        name: insight.expertName,
-                        designation: insight.designation,
-                        videoUrl: insight.videoUrl,
-                        thumbnailUrl: insight.thumbnailUrl
-                      })
-                      setEditingItem(insight)
-                      setShowForm(true)
-                    }, className: 'edit' }
-                  ]}
-                />
-              ))}
-              
-              {activeSubSection === 'posted' && postedNews.map(news => (
-                <ItemCard
-                  key={news.staffinnpostednews}
-                  item={{
-                    ...news,
-                    id: news.staffinnpostednews,
-                    banner: news.bannerImageUrl,
-                    date: new Date(news.createdAt).toLocaleDateString(),
-                    visible: news.isVisible
-                  }}
-                  type="posted"
-                  actions={[
-                    { label: news.isVisible ? 'Hide' : 'Show', onClick: () => toggleVisibility(news.staffinnpostednews, 'posted'), className: 'hide' },
-                    { label: 'Delete', onClick: () => deleteItem(news.staffinnpostednews, 'posted'), className: 'delete' },
-                    { label: 'Edit', onClick: () => {
-                      setFormData({
-                        title: news.title,
-                        description: news.description,
-                        bannerImageUrl: news.bannerImageUrl
-                      })
-                      setEditingItem(news)
-                      setShowForm(true)
-                    }, className: 'edit' }
-                  ]}
-                />
-              ))}
+              {/* All Hero Posts Table */}
+              {activeSubSection === 'hero' && !showForm && (
+                <div className="admin-table-section">
+                  <h4 className="admin-table-title">All Hero Posts</h4>
+                  <div style={{overflowX:'auto'}}>
+                    <table className="admin-data-table">
+                      <thead>
+                        <tr>
+                          <th>Headline</th>
+                          <th>Category</th>
+                          <th>Date</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heroSections.sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)).map(hero => (
+                          <tr key={hero.newsherosection}>
+                            <td style={{maxWidth:'280px'}}>
+                              <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                                {hero.bannerImageUrl && <img src={hero.bannerImageUrl} alt="" style={{width:'48px',height:'32px',objectFit:'cover',borderRadius:'4px',flexShrink:0}} />}
+                                <span style={{fontWeight:600,fontSize:'13px'}}>{hero.title}</span>
+                              </div>
+                            </td>
+                            <td><span className="admin-table-badge">{hero.category || 'Editorial'}</span></td>
+                            <td style={{fontSize:'13px',color:'#6b7280'}}>{new Date(hero.createdAt).toLocaleDateString('en-IN')}</td>
+                            <td>
+                              <span className={`admin-status-badge ${hero.isActive ? 'published' : 'draft'}`}>
+                                {hero.isActive ? 'Published' : 'Draft'}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{display:'flex',gap:'0.5rem'}}>
+                                <button className="admin-table-btn edit" onClick={() => {
+                                  setFormData({
+                                    title: hero.title, content: hero.content,
+                                    excerpt: hero.excerpt, author: hero.author,
+                                    authorAvatar: hero.authorAvatar, category: hero.category,
+                                    readTime: hero.readTime, tags: hero.tags,
+                                    status: hero.isActive ? 'Published' : 'Draft',
+                                    bannerImageUrl: hero.bannerImageUrl
+                                  })
+                                  setEditingItem(hero); setShowForm(true)
+                                }}>Edit</button>
+                                <button className="admin-table-btn hide" onClick={() => toggleVisibility(hero.newsherosection, 'hero')}>
+                                  {hero.isActive ? 'Hide' : 'Show'}
+                                </button>
+                                <button className="admin-table-btn delete" onClick={() => deleteItem(hero.newsherosection, 'hero')}>Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {heroSections.length === 0 && <tr><td colSpan={5} style={{textAlign:'center',padding:'2rem',color:'#6b7280'}}>No hero posts yet. Click "Create Hero Banner" to add one.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* All Trending Topics Table */}
+              {activeSubSection === 'trending' && !showForm && (
+                <div className="admin-table-section">
+                  <h4 className="admin-table-title">All Trending Topics</h4>
+                  <div style={{overflowX:'auto'}}>
+                    <table className="admin-data-table">
+                      <thead>
+                        <tr>
+                          <th>Title</th>
+                          <th>Tags</th>
+                          <th>Date</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trendingTopics.map(topic => (
+                          <tr key={topic.newstrendingtopics}>
+                            <td style={{maxWidth:'240px'}}>
+                              <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                                {topic.imageUrl && <img src={topic.imageUrl} alt="" style={{width:'48px',height:'32px',objectFit:'cover',borderRadius:'4px',flexShrink:0}} />}
+                                <span style={{fontWeight:600,fontSize:'13px'}}>{topic.title}</span>
+                              </div>
+                            </td>
+                            <td style={{fontSize:'12px',color:'#6b7280'}}>{topic.tags || '—'}</td>
+                            <td style={{fontSize:'13px',color:'#6b7280'}}>{new Date(topic.createdAt).toLocaleDateString('en-IN')}</td>
+                            <td>
+                              <span className={`admin-status-badge ${topic.isVisible ? 'published' : 'draft'}`}>
+                                {topic.isVisible ? 'Published' : 'Draft'}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{display:'flex',gap:'0.5rem'}}>
+                                <button className="admin-table-btn edit" onClick={() => {
+                                  setFormData({
+                                    title: topic.title, description: topic.description,
+                                    tags: topic.tags, status: topic.isVisible ? 'Published' : 'Draft',
+                                    imageUrl: topic.imageUrl
+                                  })
+                                  setEditingItem(topic); setShowForm(true)
+                                }}>Edit</button>
+                                <button className="admin-table-btn hide" onClick={() => toggleVisibility(topic.newstrendingtopics, 'trending')}>
+                                  {topic.isVisible ? 'Hide' : 'Show'}
+                                </button>
+                                <button className="admin-table-btn delete" onClick={() => deleteItem(topic.newstrendingtopics, 'trending')}>Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {trendingTopics.length === 0 && <tr><td colSpan={5} style={{textAlign:'center',padding:'2rem',color:'#6b7280'}}>No trending topics yet. Click "Add Topic" to add one.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                  {trendingTopics.length >= 15 && <p className="admin-limit-warning">⚠️ Maximum 15 topics allowed</p>}
+                </div>
+              )}
+
+              {/* All Expert Videos Table */}
+              {activeSubSection === 'insights' && !showForm && (
+                <div className="admin-table-section">
+                  <h4 className="admin-table-title">All Expert Videos</h4>
+                  <div style={{overflowX:'auto'}}>
+                    <table className="admin-data-table">
+                      <thead>
+                        <tr>
+                          <th>Video</th>
+                          <th>Expert</th>
+                          <th>Duration</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {expertInsights.map(insight => {
+                          const ytMatch = (insight.youtubeUrl || '').match(/(?:embed\/|watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+                          const ytThumb = ytMatch ? `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg` : (insight.thumbnailUrl || null)
+                          return (
+                            <tr key={insight.newsexpertinsights}>
+                              <td style={{maxWidth:'220px'}}>
+                                <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                                  {ytThumb && <img src={ytThumb} alt="" style={{width:'64px',height:'36px',objectFit:'cover',borderRadius:'4px',flexShrink:0}} />}
+                                  <span style={{fontWeight:600,fontSize:'13px'}}>{insight.title}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{fontSize:'13px'}}>
+                                  <div style={{fontWeight:600}}>{insight.expertName}</div>
+                                  <div style={{color:'#6b7280',fontSize:'12px'}}>{insight.designation}{insight.company ? ` · ${insight.company}` : ''}</div>
+                                </div>
+                              </td>
+                              <td style={{fontSize:'13px',color:'#6b7280'}}>{insight.duration || '—'}</td>
+                              <td>
+                                <span className={`admin-status-badge ${insight.isVisible ? 'published' : 'draft'}`}>
+                                  {insight.isVisible ? 'Published' : 'Draft'}
+                                </span>
+                              </td>
+                              <td>
+                                <div style={{display:'flex',gap:'0.5rem'}}>
+                                  <button className="admin-table-btn edit" onClick={() => {
+                                    setFormData({
+                                      title: insight.title, name: insight.expertName,
+                                      designation: insight.designation, company: insight.company,
+                                      avatarUrl: insight.avatarUrl, youtubeUrl: insight.youtubeUrl,
+                                      duration: insight.duration, views: insight.views,
+                                      status: insight.isVisible ? 'Published' : 'Draft',
+                                      videoUrl: insight.videoUrl, thumbnailUrl: insight.thumbnailUrl
+                                    })
+                                    setEditingItem(insight); setShowForm(true)
+                                  }}>Edit</button>
+                                  <button className="admin-table-btn hide" onClick={() => toggleVisibility(insight.newsexpertinsights, 'insights')}>
+                                    {insight.isVisible ? 'Hide' : 'Show'}
+                                  </button>
+                                  <button className="admin-table-btn delete" onClick={() => deleteItem(insight.newsexpertinsights, 'insights')}>Delete</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        {expertInsights.length === 0 && <tr><td colSpan={5} style={{textAlign:'center',padding:'2rem',color:'#6b7280'}}>No expert videos yet. Click "Add Insight" to add one.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* All Posted News Table */}
+              {activeSubSection === 'posted' && !showForm && (
+                <div className="admin-table-section">
+                  <h4 className="admin-table-title">All Posted News</h4>
+                  <div style={{overflowX:'auto'}}>
+                    <table className="admin-data-table">
+                      <thead>
+                        <tr>
+                          <th>Title</th>
+                          <th>Category</th>
+                          <th>Date</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {postedNews.map(news => (
+                          <tr key={news.staffinnpostednews}>
+                            <td style={{maxWidth:'260px'}}>
+                              <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+                                {news.bannerImageUrl && <img src={news.bannerImageUrl} alt="" style={{width:'48px',height:'32px',objectFit:'cover',borderRadius:'4px',flexShrink:0}} />}
+                                <span style={{fontWeight:600,fontSize:'13px'}}>{news.title}</span>
+                              </div>
+                            </td>
+                            <td><span className="admin-table-badge">{news.category || 'Editorial'}</span></td>
+                            <td style={{fontSize:'13px',color:'#6b7280'}}>{new Date(news.createdAt).toLocaleDateString('en-IN')}</td>
+                            <td>
+                              <span className={`admin-status-badge ${news.isVisible ? 'published' : 'draft'}`}>
+                                {news.isVisible ? 'Published' : 'Draft'}
+                              </span>
+                            </td>
+                            <td>
+                              <div style={{display:'flex',gap:'0.5rem'}}>
+                                <button className="admin-table-btn edit" onClick={() => {
+                                  setFormData({
+                                    title: news.title, description: news.description,
+                                    excerpt: news.excerpt, content: news.content,
+                                    category: news.category, author: news.author,
+                                    readTime: news.readTime, status: news.isVisible ? 'Published' : 'Draft',
+                                    bannerImageUrl: news.bannerImageUrl
+                                  })
+                                  setEditingItem(news); setShowForm(true)
+                                }}>Edit</button>
+                                <button className="admin-table-btn hide" onClick={() => toggleVisibility(news.staffinnpostednews, 'posted')}>
+                                  {news.isVisible ? 'Hide' : 'Show'}
+                                </button>
+                                <button className="admin-table-btn delete" onClick={() => deleteItem(news.staffinnpostednews, 'posted')}>Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {postedNews.length === 0 && <tr><td colSpan={5} style={{textAlign:'center',padding:'2rem',color:'#6b7280'}}>No news posted yet. Click "Post News" to add one.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
 
-            {activeSubSection === 'trending' && trendingTopics.length >= 15 && (
-              <p className="admin-limit-warning">Maximum 15 topics allowed</p>
-            )}
-          </div>
-        )}
-
-        {activeSection === 'recruiter' && (
+          {activeSection === 'recruiter' && (
           <div className="admin-section">
             <h2 className="admin-section-title">Recruiter News</h2>
             {loading && (
@@ -954,9 +1678,9 @@ function AdminPanel({ onLogout }) {
               </div>
             )}
           </div>
-        )}
+          )}
 
-        {activeSection === 'institute' && (
+          {activeSection === 'institute' && (
           <div className="admin-section">
             <h2 className="admin-section-title">Institute News</h2>
             {loading && (
@@ -1085,8 +1809,10 @@ function AdminPanel({ onLogout }) {
               </div>
             )}
           </div>
-        )}
+          )}
+        </div>
       </div>
+    </div>
       
       {/* Global Recruiter News Modal */}
       {viewingRecruiterNews && (
@@ -1320,9 +2046,8 @@ function AdminPanel({ onLogout }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
 export default AdminPanel
- 

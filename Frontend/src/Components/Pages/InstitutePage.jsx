@@ -34,13 +34,14 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   const [loading, setLoading] = useState(true);
   const [selectedNewsItem, setSelectedNewsItem] = useState(null);
   const [showNewsModal, setShowNewsModal] = useState(false);
-  const [showReviewForm, setShowReviewForm] = useState(false);
+  // Update newReview state to use 'review' field (not 'comment') and add title
   const [newReview, setNewReview] = useState({
-    name: '',
-    role: 'Student',
+    userType: 'Student',
     rating: 5,
-    comment: ''
+    title: '',
+    review: ''
   });
+  const [showReviewForm, setShowReviewForm] = useState(false);
   const [courses, setCourses] = useState([]);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -57,6 +58,8 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   const [governmentSchemes, setGovernmentSchemes] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [awards, setAwards] = useState([]);
+  const [campusTour, setCampusTour] = useState([]);
+  const [campusTourLightbox, setCampusTourLightbox] = useState(null); // { type, url, fileName }
 
 
 
@@ -92,11 +95,13 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
     { id: 3, name: 'Admission Deadline', date: 'July 30, 2023', details: 'Last date for Fall 2023 batch registration' },
   ];
 
-  const [allReviews, setAllReviews] = useState([
-    { id: 1, name: 'Ankit Sharma', role: 'Student', rating: 5, comment: 'Excellent faculty and practical training. Got placed in my dream company!' },
-    { id: 2, name: 'Mittal Industries', role: 'Recruiter', rating: 4.5, comment: 'Students from this institute are well-prepared for industry challenges' },
-    { id: 3, name: 'Kiran Bedi', role: 'Alumni', rating: 4.8, comment: 'The skills I learned here are still relevant in my career 5 years later' },
-  ]);
+  const [allReviews, setAllReviews] = useState([]);
+  const [reviewsTotal, setReviewsTotal] = useState(0);
+  const [reviewsAverage, setReviewsAverage] = useState(0);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsOffset, setReviewsOffset] = useState(0);
+  const [reviewsHasMore, setReviewsHasMore] = useState(false);
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -130,6 +135,8 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
       fetchCourses();
       fetchGovernmentSchemes();
       fetchAwards();
+      fetchCampusTour();
+      loadInstituteReviews(0);
     }
   }, [id]);
   
@@ -137,7 +144,6 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   useEffect(() => {
     if (id && activeTab === 'placements') {
       const interval = setInterval(() => {
-        console.log('Refreshing placement data...');
         fetchPlacementData();
       }, 30000); // Refresh every 30 seconds when on placements tab
       
@@ -149,7 +155,6 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   useEffect(() => {
     if (id && activeTab === 'courses') {
       const interval = setInterval(() => {
-        console.log('Refreshing courses...');
         fetchCourses();
       }, 30000); // Refresh every 30 seconds when on courses tab
       
@@ -177,6 +182,7 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
           badges: response.data.badges || [],
           categories: response.data.categories || [], // Add categories from API
           profileImage: response.data.profileImage,
+          bannerImage: response.data.bannerImage || null,
           isBrainaryVerified: response.data.isLive || false
         };
         setInstituteData(transformedData);
@@ -217,13 +223,9 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
 
   const fetchPlacementData = async () => {
     try {
-      console.log('Fetching placement data for institute:', id);
       const response = await apiService.getPublicPlacementSection(id);
       if (response.success && response.data) {
-        console.log('Placement data fetched successfully:', response.data);
         setPlacementData(response.data);
-      } else {
-        console.log('No placement data found or API error:', response);
       }
     } catch (error) {
       console.error('Error fetching placement data:', error);
@@ -243,13 +245,9 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
 
   const fetchIndustryCollabData = async () => {
     try {
-      console.log('Fetching industry collaboration data for institute:', id);
       const response = await apiService.getPublicIndustryCollaborations(id);
       if (response.success && response.data) {
-        console.log('Industry collaboration data fetched successfully:', response.data);
         setIndustryCollabData(response.data);
-      } else {
-        console.log('No industry collaboration data found or API error:', response);
       }
     } catch (error) {
       console.error('Error fetching industry collaboration data:', error);
@@ -258,13 +256,9 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
 
   const fetchEventNewsData = async () => {
     try {
-      console.log('Fetching events/news data for institute:', id);
       const response = await apiService.getPublicEventNews(id);
       if (response.success && response.data) {
-        console.log('Events/news data fetched successfully:', response.data);
         setEventNewsData(response.data);
-      } else {
-        console.log('No events/news data found or API error:', response);
       }
     } catch (error) {
       console.error('Error fetching events/news data:', error);
@@ -273,20 +267,8 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
 
   const fetchCourses = async () => {
     try {
-      console.log('Fetching courses for institute:', id);
       const response = await apiService.getPublicCourses(id);
       if (response.success && response.data) {
-        console.log('Courses fetched successfully:', response.data);
-        console.log('Course data structure check:');
-        response.data.forEach((course, index) => {
-          console.log(`Course ${index}:`, {
-            coursesId: course.coursesId,
-            instituteCourseID: course.instituteCourseID,
-            name: course.courseName || course.name,
-            hasCoursesId: !!course.coursesId,
-            hasInstituteCourseID: !!course.instituteCourseID
-          });
-        });
         setCourses(response.data);
         
         // Check enrollment status for each course if user is logged in
@@ -309,7 +291,6 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
           setEnrollmentStatuses(statuses);
         }
       } else {
-        console.log('No courses found or API error:', response);
         setCourses([]);
       }
     } catch (error) {
@@ -320,13 +301,10 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
 
   const fetchGovernmentSchemes = async () => {
     try {
-      console.log('Fetching government schemes for institute:', id);
       const response = await apiService.getPublicInstituteGovtSchemes(id);
       if (response.success && response.data) {
-        console.log('Government schemes fetched successfully:', response.data);
         setGovernmentSchemes(response.data);
       } else {
-        console.log('No government schemes found or API error:', response);
         setGovernmentSchemes([]);
       }
     } catch (error) {
@@ -346,63 +324,36 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
     }
   };
 
-  const handleEnrollInCourse = async (courseId) => {
+  const fetchCampusTour = async () => {
     try {
-      console.log('🎯 Attempting to enroll in course:', courseId);
-      console.log('🎯 Course ID type:', typeof courseId);
-      console.log('🎯 Course ID value:', courseId);
-      
-      if (!courseId) {
-        console.error('❌ Course ID is undefined or null');
-        alert('Course ID is missing. Please try again.');
-        return;
-      }
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Please login to enroll in courses');
-        return;
-      }
-
-      console.log('🚀 Calling enrollInCourse API with courseId:', courseId);
-      const response = await apiService.enrollInCourse(courseId);
-      console.log('📊 Enrollment response:', response);
-      
-      if (response.success) {
-        console.log('✅ Enrollment successful');
-        // Show success animation
-        setShowEnrollmentSuccess(true);
-        
-        // Update enrollment status
-        setEnrollmentStatuses(prev => ({
-          ...prev,
-          [courseId]: {
-            enrolled: true,
-            hasStarted: false,
-            progressPercentage: 0
-          }
-        }));
-        
-        // Hide success message and redirect after 2 seconds
-        setTimeout(() => {
-          setShowEnrollmentSuccess(false);
-          setShowCourseModal(false);
-          navigate('/dashboard/staff');
-        }, 2000);
-      } else {
-        console.error('❌ Enrollment failed:', response.message);
-        alert(response.message || 'Failed to enroll in course');
+      const response = await apiService.getPublicCampusTour(id);
+      if (response.success && response.data) {
+        setCampusTour(response.data);
       }
     } catch (error) {
-      console.error('❌ Error enrolling in course:', error);
-      alert('Failed to enroll in course: ' + error.message);
+      console.error('Error fetching campus tour:', error);
     }
+  };
+
+  // Enroll Now — always redirect to CourseLearningPage which handles
+  // all payment gates (PaymentOptionModal, Razorpay, Pay at Institute, etc.)
+  const handleEnrollInCourse = (courseId) => {
+    if (!courseId) {
+      alert('Course ID is missing. Please try again.');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login to enroll in courses');
+      return;
+    }
+    navigate(`/course-learning/${courseId}`);
   };
 
   const handleAccessCourse = async (courseId) => {
     try {
       // Redirect to course learning page
-      navigate(`/course/${courseId}`);
+      navigate(`/course-learning/${courseId}`);
     } catch (error) {
       console.error('Error navigating to course:', error);
     }
@@ -470,25 +421,66 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
     );
   });
 
-  // Calculate average rating
-  const averageRating = allReviews.reduce((sum, review) => sum + review.rating, 0) / allReviews.length;
+  // Load reviews for this institute from the backend
+  const loadInstituteReviews = async (offset = 0) => {
+    if (!id) return;
+    try {
+      setReviewsLoading(true);
+      const response = await apiService.getInstituteReviews(id, 10, offset);
+      if (response.success && response.data) {
+        const { reviews, total, averageRating, hasMore } = response.data;
+        if (offset === 0) {
+          setAllReviews(reviews || []);
+        } else {
+          setAllReviews(prev => [...prev, ...(reviews || [])]);
+        }
+        setReviewsTotal(total || 0);
+        setReviewsAverage(averageRating || 0);
+        setReviewsHasMore(hasMore || false);
+        setReviewsOffset(offset);
+      }
+    } catch (error) {
+      console.error('Error loading institute reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
 
-  // Handle review submission
-  const handleReviewSubmit = (e) => {
+  // Real review submission — saves to DynamoDB
+  const handleReviewSubmit = async (e) => {
     e.preventDefault();
-    if (newReview.name.trim() && newReview.comment.trim()) {
-      const reviewToAdd = {
-        id: allReviews.length + 1,
-        ...newReview
-      };
-      setAllReviews([...allReviews, reviewToAdd]);
-      setNewReview({
-        name: '',
-        role: 'Student',
-        rating: 5,
-        comment: ''
-      });
-      setShowReviewForm(false);
+    if (!newReview.review.trim()) {
+      alert('Please write your review before submitting.');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login to submit a review.');
+      if (onShowLogin) onShowLogin();
+      return;
+    }
+    try {
+      setReviewSubmitting(true);
+      const response = await apiService.addInstituteReview(
+        id,
+        newReview.rating,
+        newReview.userType,
+        newReview.title,
+        newReview.review
+      );
+      if (response.success) {
+        setNewReview({ userType: 'Student', rating: 5, title: '', review: '' });
+        setShowReviewForm(false);
+        // Reload reviews from scratch to get fresh data + updated average
+        await loadInstituteReviews(0);
+      } else {
+        alert(response.message || 'Failed to submit review. Please try again.');
+      }
+    } catch (error) {
+      console.error('Review submit error:', error);
+      alert('Failed to submit review. Please try again.');
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -496,21 +488,18 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
   const renderStars = (rating) => {
     const stars = [];
     const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
+    const hasHalfStar = rating % 1 >= 0.25 && rating % 1 < 0.75;
 
     for (let i = 0; i < fullStars; i++) {
       stars.push(<FaStar key={`full-${i}`} className="star-filled" />);
     }
-    
     if (hasHalfStar) {
       stars.push(<FaStarHalfAlt key="half" className="star-filled" />);
     }
-    
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
     for (let i = 0; i < emptyStars; i++) {
       stars.push(<FaRegStar key={`empty-${i}`} className="star-empty" />);
     }
-    
     return stars;
   };
 
@@ -534,88 +523,108 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
     <div className="institute-page">
 
 
-      {/* Header Section */}
-      <header className="institute-header">
-        <div className="institute-header-row">
-          {/* Left - Logo + Name + Badges */}
-          <div className="institute-left-section">
-            <div className="institute-logo">
-              <img 
-                src={instituteData?.profileImage || `https://via.placeholder.com/150?text=${instituteData?.name.charAt(0)}`} 
+      {/* Premium Hero Section */}
+      <header
+        className={`ip-hero ${instituteData?.bannerImage ? 'ip-hero--has-banner' : 'ip-hero--no-banner'}`}
+        style={instituteData?.bannerImage ? { backgroundImage: `url(${instituteData.bannerImage})` } : {}}
+      >
+        {/* Gradient overlay */}
+        <div className="ip-hero-overlay" />
+
+        <div className="ip-hero-inner">
+          {/* Left: logo + name + pills */}
+          <div className="ip-hero-identity">
+            <div className="ip-hero-logo">
+              <img
+                src={instituteData?.profileImage || `https://via.placeholder.com/120?text=${encodeURIComponent(instituteData?.name?.charAt(0) || 'I')}`}
                 alt="Institute Logo"
                 data-institute-image
               />
             </div>
-            <div className="institute-name-badges-container">
-              <div className="institute-name-verified">
-                <h1>{instituteData?.name}</h1>
+            <div className="ip-hero-name-block">
+              <div className="ip-hero-name-row">
+                <h1 className="ip-hero-name">{instituteData?.name}</h1>
                 {instituteData?.isBrainaryVerified && (
-                  <div className="verified-badge">
+                  <span className="ip-hero-verified" title="Verified Institute">
                     <FaCheckCircle />
-                  </div>
+                  </span>
                 )}
               </div>
-              <div className="institute-badges-grid">
-                {instituteData?.badges && instituteData.badges.map((badge, index) => (
-                  <span key={index} className="badge-pill">{badge}</span>
-                ))}
-                {instituteData?.categories && instituteData.categories.map((category, index) => (
-                  <span key={`cat-${index}`} className="badge-pill category">{category}</span>
-                ))}
-              </div>
+              {/* Badges + Categories */}
+              {((instituteData?.badges?.length > 0) || (instituteData?.categories?.length > 0)) && (
+                <div className="ip-hero-pills">
+                  {instituteData?.badges?.map((badge, i) => (
+                    <span key={i} className="ip-pill ip-pill--badge">{badge}</span>
+                  ))}
+                  {instituteData?.categories?.map((cat, i) => (
+                    <span key={`c-${i}`} className="ip-pill ip-pill--category">{cat}</span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right - Contact Card */}
-          <div className="institute-contact-card">
-            <div className="contact-grid">
-              <div className="contact-item">
-                <FaMapMarkerAlt className="contact-icon" />
-                <div className="contact-content">
-                  <span className="contact-label">ADDRESS</span>
-                  <span className="contact-text">
-                    {instituteData?.address}
-                    {instituteData?.pincode && `, ${instituteData.pincode}`}
+          {/* Right: info card */}
+          <div className="ip-hero-card">
+            <div className="ip-hero-info-grid">
+              <div className="ip-hero-info-item">
+                <FaMapMarkerAlt className="ip-hero-info-icon" />
+                <div>
+                  <span className="ip-hero-info-label">Address</span>
+                  <span className="ip-hero-info-value">
+                    {instituteData?.address}{instituteData?.pincode ? `, ${instituteData.pincode}` : ''}
                   </span>
                 </div>
               </div>
-              
-              <div className="contact-item">
-                <FaPhone className="contact-icon" />
-                <div className="contact-content">
-                  <span className="contact-label">PHONE</span>
-                  <span className="contact-text">{instituteData?.phone}</span>
+              <div className="ip-hero-info-item">
+                <FaPhone className="ip-hero-info-icon" />
+                <div>
+                  <span className="ip-hero-info-label">Phone</span>
+                  <span className="ip-hero-info-value">{instituteData?.phone || 'Not Available'}</span>
                 </div>
               </div>
-              
-              <div className="contact-item">
-                <FaGlobe className="contact-icon" />
-                <div className="contact-content">
-                  <span className="contact-label">WEBSITE</span>
+              <div className="ip-hero-info-item">
+                <FaGlobe className="ip-hero-info-icon" />
+                <div>
+                  <span className="ip-hero-info-label">Website</span>
                   {instituteData?.website ? (
-                    <a href={instituteData.website.startsWith('http') ? instituteData.website : `https://${instituteData.website}`} target="_blank" rel="noopener noreferrer" className="contact-text link">
+                    <a
+                      href={instituteData.website.startsWith('http') ? instituteData.website : `https://${instituteData.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ip-hero-info-value ip-hero-info-link"
+                    >
                       {instituteData.website.replace(/^https?:\/\//, '').replace(/^www\./, '')}
                     </a>
                   ) : (
-                    <span className="contact-text">Not Available</span>
+                    <span className="ip-hero-info-value">Not Available</span>
                   )}
                 </div>
               </div>
-              
-              <div className="contact-item">
-                <FaBriefcase className="contact-icon" />
-                <div className="contact-content">
-                  <span className="contact-label">EXPERIENCE</span>
-                  <span className="contact-text">{instituteData?.experience ? `${instituteData.experience}+ Years Excellence` : 'Not Available'}</span>
+              <div className="ip-hero-info-item">
+                <FaBriefcase className="ip-hero-info-icon" />
+                <div>
+                  <span className="ip-hero-info-label">Experience</span>
+                  <span className="ip-hero-info-value">
+                    {instituteData?.experience ? `${instituteData.experience}+ Years` : 'Not Available'}
+                  </span>
                 </div>
               </div>
             </div>
-            
-            <div className="contact-buttons">
-              <button className="btn-primary" onClick={scrollToCourses}>
-                View Offered Courses
+            <div className="ip-hero-cta">
+              <button className="ip-hero-btn ip-hero-btn--primary" onClick={scrollToCourses}>
+                View Courses
               </button>
-              <button className="btn-secondary">
+              <button
+                className="ip-hero-btn ip-hero-btn--secondary"
+                onClick={() => {
+                  if (instituteData?.email) {
+                    window.open(`mailto:${instituteData.email}`, '_self');
+                  } else {
+                    alert('This institute has not provided an email address.');
+                  }
+                }}
+              >
                 Contact
               </button>
             </div>
@@ -662,6 +671,14 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
         >
           🏆 Awards and Recognition
         </button>
+        {campusTour.length > 0 && (
+          <button
+            className={`tab-button ${activeTab === 'campusTour' ? 'active' : ''}`}
+            onClick={() => setActiveTab('campusTour')}
+          >
+            🏫 Campus Tour
+          </button>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -848,11 +865,7 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                           <img 
                             src={validLogo || placeholderUrl} 
                             alt={company.name || 'Company Logo'}
-                            onError={(e) => {
-                              console.error('Company logo load error:', e.target.src);
-                              e.target.src = placeholderUrl;
-                            }}
-                            onLoad={() => validLogo && console.log('Company logo loaded successfully:', validLogo)}
+                            onError={(e) => e.target.src = placeholderUrl}
                           />
                           <span>{company.name}</span>
                         </div>
@@ -882,11 +895,7 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                               <img 
                                 src={validPhoto || placeholderUrl} 
                                 alt={placement.name || 'Student Photo'}
-                                onError={(e) => {
-                                  console.error('Student photo load error:', e.target.src);
-                                  e.target.src = placeholderUrl;
-                                }}
-                                onLoad={() => validPhoto && console.log('Student photo loaded successfully:', validPhoto)}
+                                onError={(e) => e.target.src = placeholderUrl}
                               />
                             </div>
                             <div className="student-details">
@@ -934,11 +943,7 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                         <img 
                           src={validImage || placeholderUrl} 
                           alt={card.company || 'Company Logo'}
-                          onError={(e) => {
-                            console.error('Collaboration image load error:', e.target.src);
-                            e.target.src = placeholderUrl;
-                          }}
-                          onLoad={() => validImage && console.log('Collaboration image loaded successfully:', validImage)}
+                          onError={(e) => e.target.src = placeholderUrl}
                         />
                       </div>
                       <div className="collaboration-details">
@@ -989,12 +994,7 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
                                 cursor: 'pointer'
                               }}
                               onClick={(e) => {
-                                console.log('PDF link clicked:', validPdf);
                                 // Let the default behavior handle the link
-                              }}
-                              onError={(e) => {
-                                console.error('PDF link error:', validPdf);
-                                e.target.style.display = 'none';
                               }}
                             >
                               📄 View MOU Document
@@ -1104,6 +1104,75 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
               )}
             </div>
           </section>
+        )}
+
+        {/* Campus Tour Tab */}
+        {activeTab === 'campusTour' && campusTour.length > 0 && (
+          <section className="ct-section">
+            <div className="section-header">
+              <h2>Campus Tour</h2>
+              <p>Explore our campus — facilities, labs, classrooms and more</p>
+            </div>
+
+            <div className="ct-gallery">
+              {campusTour.map((item) => (
+                <div
+                  key={item.id}
+                  className={`ct-card ${item.type === 'video' ? 'ct-card--video' : 'ct-card--image'}`}
+                  onClick={() => setCampusTourLightbox(item)}
+                >
+                  {item.type === 'video' ? (
+                    <video
+                      src={item.url}
+                      className="ct-media"
+                      muted
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img
+                      src={item.url}
+                      alt={item.fileName || 'Campus'}
+                      className="ct-media"
+                      loading="lazy"
+                    />
+                  )}
+                  <div className="ct-overlay">
+                    {item.type === 'video' ? (
+                      <div className="ct-play-btn">▶</div>
+                    ) : (
+                      <div className="ct-zoom-btn">🔍</div>
+                    )}
+                  </div>
+                  {item.type === 'video' && (
+                    <span className="ct-type-tag">🎬 Video</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Campus Tour Lightbox */}
+        {campusTourLightbox && (
+          <div className="ct-lightbox-overlay" onClick={() => setCampusTourLightbox(null)}>
+            <div className="ct-lightbox-box" onClick={(e) => e.stopPropagation()}>
+              <button className="ct-lightbox-close" onClick={() => setCampusTourLightbox(null)}>✕</button>
+              {campusTourLightbox.type === 'video' ? (
+                <video
+                  src={campusTourLightbox.url}
+                  className="ct-lightbox-media"
+                  controls
+                  autoPlay
+                />
+              ) : (
+                <img
+                  src={campusTourLightbox.url}
+                  alt={campusTourLightbox.fileName || 'Campus'}
+                  className="ct-lightbox-media"
+                />
+              )}
+            </div>
+          </div>
         )}
 
         {/* Events Tab */}
@@ -1242,105 +1311,208 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
         )}
       </main>
 
-      {/* Reviews Section */}
-      <section className="reviews-section">
-        <div className="section-header">
-          <h2>Reviews & Testimonials</h2>
-          <div className="overall-rating">
-            <div className="rating-number">{averageRating.toFixed(1)}</div>
-            <div className="stars">{renderStars(averageRating)}</div>
-            <div className="rating-count">Based on {allReviews.length} reviews</div>
+      {/* Reviews Section — Premium Redesign */}
+      <section className="ir-reviews-section">
+
+        {/* ── Header ── */}
+        <div className="ir-reviews-header">
+          <div className="ir-reviews-title-block">
+            <h2 className="ir-reviews-title">Reviews &amp; Testimonials</h2>
+            <p className="ir-reviews-subtitle">What students, alumni and recruiters say</p>
+          </div>
+
+          {/* Rating summary card */}
+          <div className="ir-rating-summary">
+            <div className="ir-rating-score">
+              {reviewsAverage > 0 ? reviewsAverage.toFixed(1) : '—'}
+            </div>
+            <div className="ir-rating-details">
+              <div className="ir-stars-row">
+                {renderStars(reviewsAverage > 0 ? reviewsAverage : 0)}
+              </div>
+              <div className="ir-rating-count">
+                {reviewsTotal > 0
+                  ? `Based on ${reviewsTotal} verified review${reviewsTotal !== 1 ? 's' : ''}`
+                  : 'No reviews yet'}
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="reviews-container">
-          {allReviews.map(review => (
-            <div key={review.id} className="review-card">
-              <div className="reviewer-info">
-                <div className="reviewer-avatar">
-                  <img src={`https://via.placeholder.com/60?text=${review.name.charAt(0)}`} alt={review.name} />
-                </div>
-                <div className="reviewer-details">
-                  <h4>{review.name}</h4>
-                  <p>{review.role}</p>
+        {/* ── Reviews grid ── */}
+        <div className="ir-reviews-grid">
+          {reviewsLoading && allReviews.length === 0 ? (
+            /* Loading skeleton */
+            [1, 2, 3].map(n => (
+              <div key={n} className="ir-review-skeleton">
+                <div className="ir-skeleton-avatar" />
+                <div className="ir-skeleton-lines">
+                  <div className="ir-skeleton-line ir-skeleton-line--wide" />
+                  <div className="ir-skeleton-line ir-skeleton-line--short" />
+                  <div className="ir-skeleton-line ir-skeleton-line--medium" />
                 </div>
               </div>
-              <div className="stars">{renderStars(review.rating)}</div>
-              <p className="review-text">{review.comment}</p>
+            ))
+          ) : allReviews.length === 0 ? (
+            /* Empty state */
+            <div className="ir-empty-state">
+              <div className="ir-empty-icon">💬</div>
+              <h3 className="ir-empty-title">No Reviews Yet</h3>
+              <p className="ir-empty-text">Be the first to share your experience with this institute.</p>
             </div>
-          ))}
+          ) : (
+            allReviews.map(review => (
+              <div key={review.reviewId} className="ir-review-card">
+                {/* Card top: avatar + meta + stars */}
+                <div className="ir-review-card-top">
+                  <div className="ir-review-avatar">
+                    {(review.userName || 'A').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="ir-review-meta">
+                    <span className="ir-review-name">{review.userName || 'Anonymous'}</span>
+                    <span className="ir-review-type-badge ir-type-{(review.userType || 'student').toLowerCase()}">
+                      {review.userType || 'Student'}
+                    </span>
+                  </div>
+                  <div className="ir-review-date">
+                    {review.createdAt
+                      ? new Date(review.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
+                      : ''}
+                  </div>
+                </div>
+
+                {/* Star rating */}
+                <div className="ir-review-stars">
+                  {renderStars(review.rating)}
+                  <span className="ir-review-rating-num">{Number(review.rating).toFixed(1)}</span>
+                </div>
+
+                {/* Title + body */}
+                {review.title && <p className="ir-review-title-text">"{review.title}"</p>}
+                <p className="ir-review-body">{review.review}</p>
+              </div>
+            ))
+          )}
         </div>
-        
-        <div className="write-review">
+
+        {/* ── Load more ── */}
+        {reviewsHasMore && (
+          <div className="ir-load-more">
+            <button
+              className="ir-load-more-btn"
+              onClick={() => loadInstituteReviews(reviewsOffset + 10)}
+              disabled={reviewsLoading}
+            >
+              {reviewsLoading ? 'Loading…' : 'Load More Reviews'}
+            </button>
+          </div>
+        )}
+
+        {/* ── Write a Review ── */}
+        <div className="ir-write-review">
           {!showReviewForm ? (
-            <button className="review-button" onClick={() => setShowReviewForm(true)}>
-              Write a Review
+            <button
+              className="ir-write-btn"
+              onClick={() => {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                  alert('Please login to write a review.');
+                  if (onShowLogin) onShowLogin();
+                  return;
+                }
+                setShowReviewForm(true);
+              }}
+            >
+              ✏️ Write a Review
             </button>
           ) : (
-            <div className="review-form">
-              <h3>Write Your Review</h3>
-              <form onSubmit={handleReviewSubmit}>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="reviewName">Your Name</label>
-                    <input
-                      type="text"
-                      id="reviewName"
-                      value={newReview.name}
-                      onChange={(e) => setNewReview({...newReview, name: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="reviewRole">Your Role</label>
+            <div className="ir-form-card">
+              <h3 className="ir-form-title">Share Your Experience</h3>
+              <p className="ir-form-subtitle">Your honest feedback helps future students make better decisions.</p>
+
+              <form onSubmit={handleReviewSubmit} className="ir-form">
+
+                {/* Role + Rating row */}
+                <div className="ir-form-row">
+                  <div className="ir-form-field">
+                    <label className="ir-form-label" htmlFor="reviewRole">Your Role</label>
                     <select
+                      className="ir-form-select"
                       id="reviewRole"
-                      value={newReview.role}
-                      onChange={(e) => setNewReview({...newReview, role: e.target.value})}
+                      value={newReview.userType}
+                      onChange={(e) => setNewReview({...newReview, userType: e.target.value})}
                     >
-                      <option value="Student">Student</option>
-                      <option value="Alumni">Alumni</option>
-                      <option value="Recruiter">Recruiter</option>
+                      <option value="Student">🎓 Student</option>
+                      <option value="Alumni">🏆 Alumni</option>
+                      <option value="Recruiter">💼 Recruiter</option>
+                      <option value="Other">👤 Other</option>
+                    </select>
+                  </div>
+
+                  <div className="ir-form-field">
+                    <label className="ir-form-label" htmlFor="reviewRating">Rating</label>
+                    <select
+                      className="ir-form-select"
+                      id="reviewRating"
+                      value={newReview.rating}
+                      onChange={(e) => setNewReview({...newReview, rating: parseFloat(e.target.value)})}
+                    >
+                      <option value={5}>★★★★★ — Excellent</option>
+                      <option value={4}>★★★★☆ — Good</option>
+                      <option value={3}>★★★☆☆ — Average</option>
+                      <option value={2}>★★☆☆☆ — Poor</option>
+                      <option value={1}>★☆☆☆☆ — Terrible</option>
                     </select>
                   </div>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="reviewRating">Rating</label>
-                  <select
-                    id="reviewRating"
-                    value={newReview.rating}
-                    onChange={(e) => setNewReview({...newReview, rating: parseFloat(e.target.value)})}
-                  >
-                    <option value={5}>5 Stars - Excellent</option>
-                    <option value={4.5}>4.5 Stars - Very Good</option>
-                    <option value={4}>4 Stars - Good</option>
-                    <option value={3.5}>3.5 Stars - Above Average</option>
-                    <option value={3}>3 Stars - Average</option>
-                    <option value={2.5}>2.5 Stars - Below Average</option>
-                    <option value={2}>2 Stars - Poor</option>
-                    <option value={1.5}>1.5 Stars - Very Poor</option>
-                    <option value={1}>1 Star - Terrible</option>
-                  </select>
+
+                {/* Title */}
+                <div className="ir-form-field">
+                  <label className="ir-form-label" htmlFor="reviewTitle">Headline <span className="ir-optional">(optional)</span></label>
+                  <input
+                    className="ir-form-input"
+                    type="text"
+                    id="reviewTitle"
+                    value={newReview.title}
+                    onChange={(e) => setNewReview({...newReview, title: e.target.value})}
+                    placeholder="Summarise your experience in one line"
+                    maxLength={120}
+                  />
                 </div>
-                <div className="form-group">
-                  <label htmlFor="reviewComment">Your Review</label>
+
+                {/* Review body */}
+                <div className="ir-form-field">
+                  <label className="ir-form-label" htmlFor="reviewComment">Your Review <span className="ir-required">*</span></label>
                   <textarea
+                    className="ir-form-textarea"
                     id="reviewComment"
-                    rows="4"
-                    value={newReview.comment}
-                    onChange={(e) => setNewReview({...newReview, comment: e.target.value})}
-                    placeholder="Share your experience..."
+                    rows="5"
+                    value={newReview.review}
+                    onChange={(e) => setNewReview({...newReview, review: e.target.value})}
+                    placeholder="Describe your experience — quality of teaching, placements, facilities…"
                     required
-                  ></textarea>
+                  />
                 </div>
-                <div className="form-buttons">
-                  <button type="submit" className="submit-review-btn">Submit Review</button>
-                  <button type="button" className="cancel-review-btn" onClick={() => setShowReviewForm(false)}>Cancel</button>
+
+                {/* Actions */}
+                <div className="ir-form-actions">
+                  <button type="submit" className="ir-submit-btn" disabled={reviewSubmitting}>
+                    {reviewSubmitting ? '⏳ Submitting…' : '🚀 Submit Review'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ir-cancel-btn"
+                    onClick={() => { setShowReviewForm(false); setNewReview({ userType: 'Student', rating: 5, title: '', review: '' }); }}
+                    disabled={reviewSubmitting}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </form>
             </div>
           )}
         </div>
+
       </section>
 
       {/* Event/News Details Modal */}
@@ -1656,89 +1828,6 @@ const InstitutePage = ({ isLoggedIn, onShowLogin }) => {
         </div>
       )}
 
-      {/* Contact & Inquiry Section */}
-      <section className="contact-section">
-        <div className="section-header">
-          <h2>Contact Us</h2>
-          <p>Have questions? We're here to help!</p>
-        </div>
-
-        <div className="contact-container">
-          <div className="contact-form">
-            <h3>Send us a message</h3>
-            <form>
-              <div className="form-group">
-                <label htmlFor="name">Full Name</label>
-                <input type="text" id="name" placeholder="Enter your full name" />
-              </div>
-              <div className="form-group">
-                <label htmlFor="email">Email Address</label>
-                <input type="email" id="email" placeholder="Enter your email address" />
-              </div>
-              <div className="form-group">
-                <label htmlFor="phone">Phone Number</label>
-                <input type="tel" id="phone" placeholder="Enter your phone number" />
-              </div>
-              <div className="form-group">
-                <label htmlFor="inquiry">Inquiry Type</label>
-                <select id="inquiry">
-                  <option value="">Select inquiry type</option>
-                  <option value="admission">Admission Query</option>
-                  <option value="course">Course Information</option>
-                  <option value="placement">Placement Services</option>
-                  <option value="partnership">Industry Partnership</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label htmlFor="message">Message</label>
-                <textarea id="message" rows="5" placeholder="Type your message here..."></textarea>
-              </div>
-              <button type="submit" className="submit-button">Submit Inquiry</button>
-            </form>
-          </div>
-
-          <div className="contact-info">
-            <div className="contact-map">
-              <img src="https://via.placeholder.com/500x300?text=Campus+Map" alt="Campus Map" />
-            </div>
-            <div className="contact-details">
-              <div className="contact-item">
-                <FaMapMarkerAlt className="contact-icon" />
-                <div>
-                  <h4>Address</h4>
-                  <p>{instituteData?.address}</p>
-                </div>
-              </div>
-              <div className="contact-item">
-                <FaPhone className="contact-icon" />
-                <div>
-                  <h4>Phone</h4>
-                  <p>{instituteData?.phone}</p>
-                </div>
-              </div>
-              <div className="contact-item">
-                <FaEnvelope className="contact-icon" />
-                <div>
-                  <h4>Email</h4>
-                  <p>{instituteData?.email}</p>
-                </div>
-              </div>
-            </div>
-            <div className="social-links">
-              <h4>Connect with us</h4>
-              <div className="social-icons">
-                <a href="#" className="social-icon">FB</a>
-                <a href="#" className="social-icon">TW</a>
-                <a href="#" className="social-icon">LI</a>
-                <a href="#" className="social-icon">IG</a>
-                <a href="#" className="social-icon">YT</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Video Modal */}
       {showVideoModal && selectedVideo && (
         <div className="modal-overlay" onClick={() => setShowVideoModal(false)}>
@@ -1891,9 +1980,6 @@ const markContentComplete = async (contentId) => {
       progressPercentage: 100,
       completed: true
     });
-    if (response.success) {
-      console.log('Content marked as complete');
-    }
   } catch (error) {
     console.error('Error marking content complete:', error);
   }

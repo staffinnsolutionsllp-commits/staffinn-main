@@ -49,15 +49,17 @@ const getDashboardStats = async (req, res) => {
 // Get My Attendance
 const getMyAttendance = async (req, res) => {
   try {
-    const { employeeId, companyId } = req.user;
+    const { employeeId } = req.user;
     const { month, year } = req.query;
 
-    let filterExpression = 'employeeId = :eid AND recruiterId = :rid';
-    let expressionValues = { ':eid': employeeId, ':rid': companyId };
+    // Filter only by employeeId — employees only ever see their own records
+    // (recruiterId filter removed as it caused mismatch between JWT companyId and stored recruiterId)
+    let filterExpression = 'employeeId = :eid';
+    let expressionValues = { ':eid': employeeId };
 
     if (month && year) {
       filterExpression += ' AND begins_with(#date, :yearMonth)';
-      expressionValues[':yearMonth'] = `${year}-${month.padStart(2, '0')}`;
+      expressionValues[':yearMonth'] = `${year}-${String(month).padStart(2, '0')}`;
     }
 
     const result = await dynamoClient.send(new ScanCommand({
@@ -346,7 +348,7 @@ const cancelLeave = async (req, res) => {
     const { employeeId } = req.user;
 
     const getResult = await dynamoClient.send(new GetCommand({
-      TableName: 'staffinn-hrms-leaves',
+      TableName: HRMS_LEAVES_TABLE || 'HRMS-Leaves-Table',
       Key: { leaveId: id }
     }));
 
@@ -363,7 +365,7 @@ const cancelLeave = async (req, res) => {
     }
 
     await dynamoClient.send(new UpdateCommand({
-      TableName: 'staffinn-hrms-leaves',
+      TableName: HRMS_LEAVES_TABLE || 'HRMS-Leaves-Table',
       Key: { leaveId: id },
       UpdateExpression: 'SET #status = :cancelled',
       ExpressionAttributeNames: { '#status': 'status' },
@@ -654,7 +656,16 @@ const getMyGrievances = async (req, res) => {
 const submitGrievance = async (req, res) => {
   try {
     const { employeeId, companyId, email } = req.user;
-    const { title, description, category, priority = 'medium', complaintAgainstEmployeeId } = req.body;
+    const {
+      title,
+      subject,
+      description,
+      category,
+      priority = 'medium',
+      dateOfGrievance,
+      complaintAgainstEmployeeId,
+      attachments = []
+    } = req.body;
 
     console.log('\n=== SUBMIT GRIEVANCE DEBUG ===');
     console.log('Submitter Employee ID:', employeeId);
@@ -805,22 +816,44 @@ const submitGrievance = async (req, res) => {
       });
     }
 
+    // Get employee profile for auto-filled fields
+    let employeeProfile = null;
+    try {
+      const empResult = await dynamoClient.send(new GetCommand({
+        TableName: HRMS_EMPLOYEES_TABLE,
+        Key: { employeeId }
+      }));
+      employeeProfile = empResult.Item || null;
+    } catch (e) {
+      console.warn('Could not fetch employee profile for auto-fill:', e.message);
+    }
+
     const grievanceId = generateId();
+    // Generate a human-readable ticket number: GRV-YYYYMMDD-XXXX
+    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const ticketNo = `GRV-${datePart}-${grievanceId.slice(0, 6).toUpperCase()}`;
     const now = getCurrentTimestamp();
     const escalationDeadline = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(); // 2 days from now
 
     const grievance = {
       grievanceId,
+      ticketNo,
       recruiterId: companyId,
       employeeId,
       employeeEmail: email,
-      employeeName: req.user.name || '',
-      subject: title,
-      title,
+      employeeName: employeeProfile?.fullName || req.user.name || '',
+      employeeDepartment: employeeProfile?.department || '',
+      employeeDesignation: employeeProfile?.designation || '',
+      reportingManager: assignedToName || '',
+      // Subject/title — accept either field name
+      subject: subject || title || '',
+      title: subject || title || '',
       description,
       category,
       priority,
       grievanceType,
+      dateOfGrievance: dateOfGrievance || now.split('T')[0],
+      attachments: Array.isArray(attachments) ? attachments : [],
       status: 'Open',
       submittedDate: now,
       assignedTo,
@@ -830,6 +863,8 @@ const submitGrievance = async (req, res) => {
       lastActionTime: now,
       escalationDeadline,
       resolvedDate: null,
+      dateOfClosure: null,
+      resolutionRemarks: '',
       remarks: [],
       complaintAgainstEmployeeId: complaintAgainstEmployeeId || null,
       complaintAgainstEmployeeName: complaintAgainstEmployeeName || null,
@@ -837,7 +872,7 @@ const submitGrievance = async (req, res) => {
       statusHistory: [{
         status: 'Open',
         changedBy: employeeId,
-        changedByName: req.user.name || '',
+        changedByName: employeeProfile?.fullName || req.user.name || '',
         timestamp: now,
         action: 'Submitted',
         assignedTo,
@@ -1227,7 +1262,7 @@ const updateGrievanceStatus = async (req, res) => {
   try {
     const { grievanceId } = req.params;
     const { employeeId, companyId } = req.user;
-    const { status, remark } = req.body;
+    const { status, remark, resolutionRemarks } = req.body;
 
     if (!status) {
       return res.status(400).json({ success: false, message: 'Status is required' });
@@ -1280,6 +1315,8 @@ const updateGrievanceStatus = async (req, res) => {
       lastActionTime: now,
       escalationDeadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Reset 2-day timer
       resolvedDate: (status === 'Resolved' || status === 'Closed') ? now : grievance.resolvedDate,
+      dateOfClosure: (status === 'Closed' || status === 'Resolved') ? now : grievance.dateOfClosure,
+      resolutionRemarks: resolutionRemarks || grievance.resolutionRemarks || remark || '',
       updatedAt: now
     };
 

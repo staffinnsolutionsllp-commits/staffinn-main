@@ -1,0 +1,15 @@
+node_modules/
+node_modules_backup/
+dist/
+build/
+.next/
+coverage/
+graphify-out/
+.git/
+*.min.js
+*.min.css
+*.map
+*.lock
+package-lock.json
+yarn.lock
+*.log

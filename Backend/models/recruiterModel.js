@@ -53,12 +53,13 @@ const getAllRecruiters = async () => {
         email: recruiter.email,
         phone: profile.phone || recruiter.phone,
         createdAt: recruiter.createdAt,
+        // GST and PAN are intentionally excluded from public view for privacy
         // Use live profile data if available, otherwise use default values
         perks: (profile.isLive !== false ? profile.perks : null) || [
-          { text: 'Health insurance' },
-          { text: 'Work from home options' },
-          { text: 'Learning & development budget' },
-          { text: 'Performance bonuses' }
+          { title: 'Health Insurance', description: 'Comprehensive health coverage for employees and their families', image: '' },
+          { title: 'Work From Home', description: 'Flexible remote work options available', image: '' },
+          { title: 'Learning Budget', description: 'Annual budget for professional development and courses', image: '' },
+          { title: 'Performance Bonus', description: 'Quarterly performance-based incentives', image: '' }
         ],
         hiringSteps: (profile.isLive !== false ? profile.hiringSteps : null) || [
           { title: 'Online Application', description: 'Submit your resume and complete a brief questionnaire.' },
@@ -119,12 +120,14 @@ const getRecruiterById = async (recruiterId) => {
       phone: profile.phone || recruiter.phone,
       profilePhoto: profile.profilePhoto,
       officeImages: profile.officeImages || [],
+      officeLocations: profile.officeLocations || [],
       createdAt: recruiter.createdAt,
+      // GST and PAN are intentionally excluded from public view for privacy
       perks: (profile.isLive !== false ? profile.perks : null) || [
-        { text: 'Health insurance' },
-        { text: 'Work from home options' },
-        { text: 'Learning & development budget' },
-        { text: 'Performance bonuses' }
+        { title: 'Health Insurance', description: 'Comprehensive health coverage for employees and their families', image: '' },
+        { title: 'Work From Home', description: 'Flexible remote work options available', image: '' },
+        { title: 'Learning Budget', description: 'Annual budget for professional development and courses', image: '' },
+        { title: 'Performance Bonus', description: 'Quarterly performance-based incentives', image: '' }
       ],
       hiringSteps: (profile.isLive !== false ? profile.hiringSteps : null) || [
         { title: 'Online Application', description: 'Submit your resume and complete a brief questionnaire.' },
@@ -249,12 +252,28 @@ const searchRecruiters = async (searchCriteria = {}) => {
 
 
 /**
+/**
+ * 60-second in-memory cache for the staff-profiles full-table scan.
+ * Key = recruiterId, value = { data, time }.
+ * Reduces DynamoDB scan cost significantly without affecting any feature —
+ * the candidate list is re-read fresh after every hire/reject action anyway.
+ */
+const _candidatesCache = new Map();
+const _CANDIDATES_CACHE_TTL = 60 * 1000; // 60 seconds
+
+/**
  * Get all candidates who applied to recruiter's jobs (regardless of status)
  * @param {string} recruiterId - Recruiter ID
  * @returns {Promise<Array>} - Array of all candidates
  */
 const getAllRecruiterCandidates = async (recruiterId) => {
   try {
+    // Return cached result if still fresh (within 60 seconds)
+    const cached = _candidatesCache.get(recruiterId);
+    if (cached && (Date.now() - cached.time) < _CANDIDATES_CACHE_TTL) {
+      return cached.data;
+    }
+
     const allStaffProfiles = await dynamoService.scanItems('staffinn-staff-profiles');
     const candidates = [];
     
@@ -275,13 +294,18 @@ const getAllRecruiterCandidates = async (recruiterId) => {
             phone: staff.phone,
             staffId: staff.userId,
             applicationId: application.applicationId,
-            jobId: application.jobId // Include jobId for filtering
+            jobId: application.jobId
           });
         }
       }
     }
     
-    return candidates.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const result = candidates.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Store in cache
+    _candidatesCache.set(recruiterId, { data: result, time: Date.now() });
+
+    return result;
   } catch (error) {
     console.error('Get all recruiter candidates error:', error);
     return [];
@@ -345,6 +369,9 @@ const getRecruiterCandidates = async (recruiterId, searchFilters = {}) => {
  * @returns {Promise<boolean>} - Success status
  */
 const updateCandidateStatus = async (recruiterId, staffId, applicationId, status) => {
+  // Invalidate the candidates cache for this recruiter so the next load
+  // shows the updated status immediately instead of waiting 60 seconds.
+  _candidatesCache.delete(recruiterId);
   try {
     const staffModel = require('./staffModel');
     const staff = await staffModel.getStaffProfile(staffId);
@@ -426,6 +453,16 @@ const getRecruiterStats = async (recruiterId) => {
       totalHires
     });
     
+    // Get campus invites count for this recruiter
+    let campusInvitesCount = 0;
+    try {
+      const campusRequestModel = require('./campusRequestModel');
+      const campusRequests = await campusRequestModel.getRequestsByRecruiter(recruiterId);
+      campusInvitesCount = campusRequests.length;
+    } catch (error) {
+      console.log('Campus invites count error (non-critical):', error.message);
+    }
+
     return {
       applications: totalApplications,
       totalApplications: totalApplications,
@@ -434,7 +471,8 @@ const getRecruiterStats = async (recruiterId) => {
       hires: totalHires,
       pending: pendingApplications,
       rejected: rejectedApplications,
-      followers: followersCount
+      followers: followersCount,
+      campusInvites: campusInvitesCount
     };
   } catch (error) {
     console.error('Get recruiter stats error:', error);
@@ -446,7 +484,8 @@ const getRecruiterStats = async (recruiterId) => {
       hires: 0, 
       pending: 0, 
       rejected: 0, 
-      followers: 0 
+      followers: 0,
+      campusInvites: 0
     };
   }
 };

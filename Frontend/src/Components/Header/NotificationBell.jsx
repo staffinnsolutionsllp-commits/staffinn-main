@@ -94,49 +94,14 @@ function NotificationBell({ isLoggedIn }) {
     return date.toLocaleDateString();
   };
 
-  // Fetch notifications on mount and set up real-time updates
+  // Fetch notifications on mount and set up polling
   useEffect(() => {
     if (isLoggedIn) {
       fetchNotifications();
       
-      // Set up Socket.IO for real-time notifications with error handling
-      if (window.io) {
-        const token = localStorage.getItem('token');
-        if (token) {
-          try {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001';
-            const socketUrl = API_URL.replace('/api/v1', '');
-            const socket = window.io(socketUrl, {
-              auth: { token },
-              timeout: 5000,
-              forceNew: true
-            });
-            
-            // Handle connection errors silently
-            socket.on('connect_error', () => {
-              // Silently handle connection errors
-            });
-            
-            // Listen for new notifications
-            socket.on('new_notification', (notification) => {
-              setNotifications(prev => [notification, ...prev]);
-              setUnreadCount(prev => prev + 1);
-            });
-            
-            return () => {
-              socket.disconnect();
-            };
-          } catch (error) {
-            // Fallback to polling if socket setup fails
-            const interval = setInterval(fetchNotifications, 60000);
-            return () => clearInterval(interval);
-          }
-        }
-      } else {
-        // Fallback to polling if Socket.IO is not available
-        const interval = setInterval(fetchNotifications, 60000);
-        return () => clearInterval(interval);
-      }
+      // Use polling instead of socket for notifications (more reliable)
+      const interval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
+      return () => clearInterval(interval);
     }
   }, [isLoggedIn]);
 
