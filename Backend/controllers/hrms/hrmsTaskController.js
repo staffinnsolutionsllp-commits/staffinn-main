@@ -210,7 +210,7 @@ const getTaskById = async (req, res) => {
 const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { status, completionPercentage, remarks } = req.body;
+    const { status, completionPercentage, remarks, title, description, priority, department, taskCategory, startDate, deadline } = req.body;
 
     let task;
     if (isUsingMockDB()) {
@@ -232,6 +232,13 @@ const updateTaskStatus = async (req, res) => {
       status: status || task.status,
       completionPercentage: completionPercentage !== undefined ? completionPercentage : task.completionPercentage,
       remarks: remarks || task.remarks,
+      title: title || task.title,
+      description: description !== undefined ? description : task.description,
+      priority: priority || task.priority,
+      department: department || task.department,
+      taskCategory: taskCategory || task.taskCategory,
+      startDate: startDate || task.startDate,
+      deadline: deadline || task.deadline,
       updatedAt: getCurrentTimestamp()
     };
 

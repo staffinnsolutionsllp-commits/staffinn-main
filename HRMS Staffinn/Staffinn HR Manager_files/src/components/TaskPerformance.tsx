@@ -14,6 +14,7 @@ export default function TaskPerformance() {
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showRatingModal, setShowRatingModal] = useState(false)
   const [selectedTask, setSelectedTask] = useState<any>(null)
+  const [editingTask, setEditingTask] = useState<any>(null)
   const [employeeSearch, setEmployeeSearch] = useState('')
   const [ratingEmployeeSearch, setRatingEmployeeSearch] = useState('')
   const [taskForm, setTaskForm] = useState({
@@ -126,14 +127,47 @@ export default function TaskPerformance() {
         alert('Please fill all required fields (Employee, Title, Department, Task Category, Deadline)')
         return
       }
-      await apiService.assignTask(taskForm)
+      if (editingTask) {
+        // Update existing task
+        await apiService.updateTaskStatus(editingTask.taskId, {
+          status: taskForm.status,
+          completionPercentage: taskForm.progress,
+          title: taskForm.title,
+          description: taskForm.description,
+          priority: taskForm.priority,
+          department: taskForm.department,
+          taskCategory: taskForm.taskCategory,
+          startDate: taskForm.startDate,
+          deadline: taskForm.deadline
+        })
+      } else {
+        await apiService.assignTask(taskForm)
+      }
       setShowTaskModal(false)
+      setEditingTask(null)
       setTaskForm({ employeeIds: [], title: '', description: '', priority: 'Medium', startDate: new Date().toISOString().split('T')[0], deadline: '', department: '', taskCategory: '', status: 'Assigned', progress: 0 })
       setEmployeeSearch('')
       loadData()
     } catch (error) {
-      alert('Failed to assign task')
+      alert(editingTask ? 'Failed to update task' : 'Failed to assign task')
     }
+  }
+
+  const handleEditTask = (task: any) => {
+    setEditingTask(task)
+    setTaskForm({
+      employeeIds: [task.employeeId],
+      title: task.title || '',
+      description: task.description || '',
+      priority: task.priority || 'Medium',
+      startDate: task.startDate ? task.startDate.split('T')[0] : '',
+      deadline: task.deadline ? task.deadline.split('T')[0] : '',
+      department: task.department || '',
+      taskCategory: task.taskCategory || task.category || '',
+      status: task.status || 'Assigned',
+      progress: task.completionPercentage || 0
+    })
+    setShowTaskModal(true)
   }
 
   const handleAddRating = async () => {
@@ -341,9 +375,14 @@ export default function TaskPerformance() {
                           </div>
                         </td>
                         <td className="px-4 py-4">
-                          <button onClick={() => setSelectedTask(task)} className="text-blue-600 hover:text-blue-800">
-                            <Eye size={18} />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleEditTask(task)} className="text-green-600 hover:text-green-800" title="Edit Task">
+                              <Edit2 size={16} />
+                            </button>
+                            <button onClick={() => setSelectedTask(task)} className="text-blue-600 hover:text-blue-800" title="View Details">
+                              <Eye size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -436,7 +475,7 @@ export default function TaskPerformance() {
       {showTaskModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold mb-4">Assign Task</h3>
+            <h3 className="text-xl font-semibold mb-4">{editingTask ? 'Edit Task' : 'Assign Task'}</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Employees *</label>
@@ -526,8 +565,8 @@ export default function TaskPerformance() {
               </div>
             </div>
             <div className="flex space-x-3 mt-6">
-              <button onClick={() => setShowTaskModal(false)} className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleAssignTask} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Assign Task</button>
+              <button onClick={() => { setShowTaskModal(false); setEditingTask(null); }} className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleAssignTask} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{editingTask ? 'Update Task' : 'Assign Task'}</button>
             </div>
           </div>
         </div>
@@ -622,22 +661,25 @@ export default function TaskPerformance() {
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-4">
                 <div><span className="font-medium">Title:</span> {selectedTask.title}</div>
-                <div><span className="font-medium">Employee Name:</span> {employees.find(e => (e.employeeId || e.id || e.userId) === selectedTask.employeeId)?.name || employees.find(e => (e.employeeId || e.id || e.userId) === selectedTask.employeeId)?.employeeName || employees.find(e => (e.employeeId || e.id || e.userId) === selectedTask.employeeId)?.fullName || '-'}</div>
-                <div><span className="font-medium">Employee ID:</span> {selectedTask.employeeId}</div>
+                <div><span className="font-medium">Employee:</span> {employees.find(e => (e.employeeId || e.id || e.userId) === selectedTask.employeeId)?.name || employees.find(e => (e.employeeId || e.id || e.userId) === selectedTask.employeeId)?.employeeName || employees.find(e => (e.employeeId || e.id || e.userId) === selectedTask.employeeId)?.fullName || '-'}</div>
+                <div><span className="font-medium">Department:</span> {selectedTask.department || '—'}</div>
+                <div><span className="font-medium">Task Category:</span> {selectedTask.taskCategory || selectedTask.category || '—'}</div>
                 <div><span className="font-medium">Priority:</span> {selectedTask.priority}</div>
                 <div><span className="font-medium">Status:</span> {selectedTask.status}</div>
-                <div><span className="font-medium">Deadline:</span> {new Date(selectedTask.deadline).toLocaleDateString()}</div>
-                <div><span className="font-medium">Category:</span> {selectedTask.category}</div>
+                <div><span className="font-medium">Start Date:</span> {selectedTask.startDate ? new Date(selectedTask.startDate).toLocaleDateString() : '—'}</div>
+                <div><span className="font-medium">Due Date:</span> {new Date(selectedTask.deadline).toLocaleDateString()}</div>
+                <div><span className="font-medium">Progress:</span> {selectedTask.completionPercentage || 0}%</div>
+                <div><span className="font-medium">Assigned By:</span> {selectedTask.assignedByName}</div>
               </div>
-              <div><span className="font-medium">Description:</span> {selectedTask.description}</div>
-              <div><span className="font-medium">Assigned By:</span> {selectedTask.assignedByName}</div>
+              {selectedTask.description && <div><span className="font-medium">Description:</span> {selectedTask.description}</div>}
             </div>
             <div className="flex space-x-3 mt-6">
               <button onClick={() => setSelectedTask(null)} className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50">Close</button>
+              <button onClick={() => { handleEditTask(selectedTask); setSelectedTask(null); }} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Edit Task</button>
               {selectedTask.status !== 'Completed' && (
                 <>
-                  <button onClick={() => { handleUpdateTaskStatus(selectedTask.taskId, 'In Progress'); setSelectedTask(null); }} className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">Mark In Progress</button>
-                  <button onClick={() => { handleUpdateTaskStatus(selectedTask.taskId, 'Completed'); setSelectedTask(null); }} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Mark Completed</button>
+                  <button onClick={() => { handleUpdateTaskStatus(selectedTask.taskId, 'In Progress'); setSelectedTask(null); }} className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">In Progress</button>
+                  <button onClick={() => { handleUpdateTaskStatus(selectedTask.taskId, 'Completed'); setSelectedTask(null); }} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Completed</button>
                 </>
               )}
             </div>
