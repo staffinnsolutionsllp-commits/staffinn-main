@@ -4,18 +4,9 @@ const newsController = require('../controllers/newsController');
 const recruiterNewsController = require('../controllers/recruiterNewsController');
 const { authenticate } = require('../middleware/auth');
 const multer = require('multer');
-const path = require('path');
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/')
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, 'recruiter-news-' + uniqueSuffix + path.extname(file.originalname))
-  }
-});
+// Configure multer for file uploads - use memoryStorage so file.buffer is available for S3 upload
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage: storage,
