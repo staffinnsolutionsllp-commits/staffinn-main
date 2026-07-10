@@ -30,23 +30,30 @@ const assignTask = async (req, res) => {
       allNodes = result.Items || [];
     }
     
-    // Find assigner's node
+    // Find assigner's node — if org chart is empty or assigner not in it, skip hierarchy check for admin/recruiter
     const assignerNode = allNodes.find(n => n.employeeId === assignerId);
     
-    if (!assignerNode) {
+    // If assigner is the recruiter/admin themselves (not in org chart), allow direct assignment
+    const isRecruiterOrAdmin = (req.user?.role === 'admin' || req.user?.role === 'hr' || req.user?.role === 'manager' || assignerId === recruiterId || !assignerNode);
+    
+    if (!assignerNode && !isRecruiterOrAdmin) {
       return res.status(403).json(errorResponse('You are not in the organization chart. Please contact HR.'));
     }
     
-    console.log('📋 Assigner node:', assignerNode.nodeId);
-    
-    // Check if assigner has any subordinates
-    const hasSubordinates = allNodes.some(n => n.parentId === assignerNode.nodeId);
-    
-    if (!hasSubordinates) {
-      return res.status(403).json(errorResponse('You do not have permission to assign tasks. Only employees with subordinates can assign tasks.'));
+    // Only enforce hierarchy check if assigner is in org chart
+    if (assignerNode) {
+      console.log('📋 Assigner node:', assignerNode.nodeId);
+      
+      const hasSubordinates = allNodes.some(n => n.parentId === assignerNode.nodeId);
+      
+      if (!hasSubordinates && !isRecruiterOrAdmin) {
+        return res.status(403).json(errorResponse('You do not have permission to assign tasks. Only employees with subordinates can assign tasks.'));
+      }
+      
+      console.log('✅ Assigner has subordinates or is admin/recruiter');
+    } else {
+      console.log('✅ Assigner is recruiter/admin — skipping hierarchy check');
     }
-    
-    console.log('✅ Assigner has subordinates');
 
     const targetEmployees = [];
     if (employeeIds && Array.isArray(employeeIds)) {
@@ -62,17 +69,20 @@ const assignTask = async (req, res) => {
       return res.status(400).json(errorResponse('Missing required fields'));
     }
     
-    // Validate each target employee is a subordinate
-    for (const target of targetEmployees) {
-      if (target.employeeId) {
-        const isSubordinate = checkIfSubordinate(assignerNode.nodeId, target.employeeId, allNodes);
-        if (!isSubordinate) {
-          return res.status(403).json(errorResponse(`You can only assign tasks to your direct or indirect subordinates. Employee ID ${target.employeeId} is not your subordinate.`));
+    // Validate each target employee is a subordinate (skip for recruiter/admin)
+    if (assignerNode && !isRecruiterOrAdmin) {
+      for (const target of targetEmployees) {
+        if (target.employeeId) {
+          const isSubordinate = checkIfSubordinate(assignerNode.nodeId, target.employeeId, allNodes);
+          if (!isSubordinate) {
+            return res.status(403).json(errorResponse(`You can only assign tasks to your direct or indirect subordinates. Employee ID ${target.employeeId} is not your subordinate.`));
+          }
         }
       }
+      console.log('✅ All target employees are subordinates');
+    } else {
+      console.log('✅ Skipping subordinate validation for admin/recruiter');
     }
-    
-    console.log('✅ All target employees are subordinates');
 
     const tasks = [];
     for (const target of targetEmployees) {
