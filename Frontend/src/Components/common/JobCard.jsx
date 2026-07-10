@@ -383,8 +383,8 @@ const JobCard = ({ job, onApply, showApplyButton = true, buttonText = "Apply Now
 
             {/* Modal Actions */}
             <div className="modern-modal-actions">
-              <button className="modal-view-job-btn" onClick={handleViewJob}>
-                View Job →
+              <button className="modal-view-job-btn" onClick={() => { closeModal(); if (onApply) onApply(job); }}>
+                Apply Now →
               </button>
             </div>
           </div>
