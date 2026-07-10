@@ -21,9 +21,12 @@ export default function TaskPerformance() {
     title: '',
     description: '',
     priority: 'Medium',
-    startDate: '',
+    startDate: new Date().toISOString().split('T')[0],
     deadline: '',
-    category: 'General'
+    department: '',
+    taskCategory: '',
+    status: 'Assigned',
+    progress: 0
   })
   const [ratingForm, setRatingForm] = useState({
     employeeId: '',
@@ -105,15 +108,27 @@ export default function TaskPerformance() {
     }
   }
 
+  const DEPARTMENT_CATEGORIES: Record<string, string[]> = {
+    'HR': ['Recruitment','Resume Screening','Interview Scheduling','Candidate Follow-up','Employee Onboarding','Attendance Management','Leave Management','Employee Documentation','Payroll Coordination','Training Coordination','Employee Engagement','Performance Review','Exit Formalities','HR Compliance','Policy Communication','Grievance Resolution','Employee Verification','HR Reports & MIS','Employee Record Update','Other'],
+    'Reception': ['Visitor Management','Call Management','Courier Management','Front Desk Support','Meeting Coordination','Appointment Scheduling','Record Maintenance','Inquiry Handling','Document Receiving','Gate Pass Management','Hospitality Arrangement','Other'],
+    'Accounts & Finance': ['Invoice Preparation','Payment Processing','Salary Processing','Reimbursement Processing','Expense Verification','Vendor Payment','Petty Cash Management','GST Filing','TDS Compliance','PF & ESI Compliance','Bank Reconciliation','Financial Reporting','Budget Preparation','Audit Support','Account Reconciliation','Collection Follow-up','Billing','Tax Compliance','Other'],
+    'Project / Operations': ['Project Planning','Batch Creation','Candidate Verification','Mobilization Support','Centre Coordination','Documentation','Government Portal Update','Assessment Coordination','Certification Follow-up','Client Coordination','Partner Coordination','Project Monitoring','Compliance Monitoring','MIS Preparation','Report Submission','Field Visit','Project Review','Project Closure','Issue Resolution','Other'],
+    'Administration / Office Management': ['Office Maintenance','Housekeeping Coordination','Asset Management','Asset Issue/Return','Inventory Management','Stationery Management','Procurement','Vendor Coordination','Facility Management','Meeting Arrangement','Conference Room Booking','Courier & Dispatch','Office Logistics','Vehicle Management','Utility Management','Event Arrangement','AMC Coordination','Security Coordination','Other'],
+    'Sales / Business Development': ['Lead Generation','Cold Calling','Client Follow-up','Client Meeting','Proposal Submission','Quotation Preparation','Business Presentation','College Visit','Corporate Visit','Partnership Development','MoU Discussion','CRM Update','Market Research','Payment Follow-up','Business Expansion','Customer Relationship','Sales Reporting','Other'],
+    'IT': ['User Account Management','Email Configuration','HRMS Support','Website Management','Software Installation','Hardware Installation','System Maintenance','Network Support','Printer Support','Data Backup','Data Recovery','Cyber Security','Bug Fixing','Software Development','Technical Support','Server Maintenance','System Upgrade','Other'],
+    'Media': ['Photography','Videography','Video Editing','Reel Creation','Social Media Management','Content Writing','Event Coverage','YouTube Management','Facebook Management','Instagram Management','LinkedIn Management','Campaign Management','Advertisement Management','Digital Marketing','SEO Activities','Content Planning','Media Coordination','Other'],
+    'Design': ['Logo Design','Banner Design','Brochure Design','Flyer Design','Social Media Creative','Presentation Design','Certificate Design','ID Card Design','Website Graphics','Print Design','Branding Material','Infographic Design','UI/UX Design','Packaging Design','Creative Revision','Artwork Finalization','Other'],
+  }
+
   const handleAssignTask = async () => {
     try {
-      if (!taskForm.employeeIds.length || !taskForm.title || !taskForm.deadline) {
-        alert('Please fill all required fields')
+      if (!taskForm.employeeIds.length || !taskForm.title || !taskForm.deadline || !taskForm.department || !taskForm.taskCategory) {
+        alert('Please fill all required fields (Employee, Title, Department, Task Category, Deadline)')
         return
       }
       await apiService.assignTask(taskForm)
       setShowTaskModal(false)
-      setTaskForm({ employeeIds: [], title: '', description: '', priority: 'Medium', startDate: '', deadline: '', category: 'General' })
+      setTaskForm({ employeeIds: [], title: '', description: '', priority: 'Medium', startDate: new Date().toISOString().split('T')[0], deadline: '', department: '', taskCategory: '', status: 'Assigned', progress: 0 })
       setEmployeeSearch('')
       loadData()
     } catch (error) {
@@ -275,41 +290,57 @@ export default function TaskPerformance() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">S.No</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Category</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task Title</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {tasks.map((task) => {
+                  {tasks.map((task, index) => {
                     const employee = employees.find(e => (e.employeeId || e.id || e.userId) === task.employeeId)
                     const empName = employee?.name || employee?.employeeName || employee?.fullName || '-'
                     return (
                       <tr key={task.taskId} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900">{task.title}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{empName}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{task.employeeId}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4 text-sm text-gray-700 font-medium">{index + 1}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{task.department || '—'}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{task.taskCategory || task.category || '—'}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900 font-medium">{task.title}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{empName}</td>
+                        <td className="px-4 py-4">
                           <span className={`px-2 py-1 text-xs rounded-full ${
-                            task.priority === 'Critical' ? 'bg-red-100 text-red-800' :
-                            task.priority === 'High' ? 'bg-orange-100 text-orange-800' :
+                            task.priority === 'Critical' ? 'bg-purple-100 text-purple-800' :
+                            task.priority === 'High' ? 'bg-red-100 text-red-800' :
                             task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-green-100 text-green-800'
                           }`}>{task.priority}</span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{new Date(task.deadline).toLocaleDateString()}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4 text-sm text-gray-700">{task.startDate ? new Date(task.startDate).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'}) : '—'}</td>
+                        <td className="px-4 py-4 text-sm text-gray-700">{new Date(task.deadline).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: '2-digit'})}</td>
+                        <td className="px-4 py-4">
                           <span className={`px-2 py-1 text-xs rounded-full ${
                             task.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                            task.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-orange-100 text-orange-800'
+                            task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                            task.status === 'Pending Review' ? 'bg-orange-100 text-orange-800' :
+                            'bg-gray-100 text-gray-800'
                           }`}>{task.status}</span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-14 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-blue-600 rounded-full" style={{ width: `${task.completionPercentage || 0}%` }}></div>
+                            </div>
+                            <span className="text-xs font-medium text-gray-600">{task.completionPercentage || 0}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
                           <button onClick={() => setSelectedTask(task)} className="text-blue-600 hover:text-blue-800">
                             <Eye size={18} />
                           </button>
@@ -422,7 +453,6 @@ export default function TaskPerformance() {
                       filteredEmployees.map(emp => {
                         const displayName = emp.name || emp.employeeName || emp.fullName || emp.email || 'Unknown'
                         const displayId = emp.employeeId || emp.id || emp.userId || ''
-                        console.log('Rendering employee option:', { displayName, displayId, emp })
                         return <option key={displayId} value={displayId}>{displayName} ({displayId})</option>
                       })
                     ) : (
@@ -436,17 +466,33 @@ export default function TaskPerformance() {
                   </div>
                 )}
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Department *</label>
+                  <select value={taskForm.department} onChange={(e) => setTaskForm({ ...taskForm, department: e.target.value, taskCategory: '' })} className="w-full px-3 py-2 border rounded-lg">
+                    <option value="">Select Department</option>
+                    {Object.keys(DEPARTMENT_CATEGORIES).map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Task Category *</label>
+                  <select value={taskForm.taskCategory} onChange={(e) => setTaskForm({ ...taskForm, taskCategory: e.target.value })} className="w-full px-3 py-2 border rounded-lg" disabled={!taskForm.department}>
+                    <option value="">Select Category</option>
+                    {taskForm.department && DEPARTMENT_CATEGORIES[taskForm.department]?.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Title *</label>
-                <input type="text" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                <label className="block text-sm font-medium mb-1">Task Title *</label>
+                <input type="text" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="e.g. Hire Project Coordinator" className="w-full px-3 py-2 border rounded-lg" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Description</label>
-                <textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="w-full px-3 py-2 border rounded-lg" rows={3} />
+                <textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="w-full px-3 py-2 border rounded-lg" rows={3} placeholder="Describe the task details..." />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Priority</label>
+                  <label className="block text-sm font-medium mb-1">Priority *</label>
                   <select value={taskForm.priority} onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })} className="w-full px-3 py-2 border rounded-lg">
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
@@ -455,18 +501,27 @@ export default function TaskPerformance() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Category</label>
-                  <input type="text" value={taskForm.category} onChange={(e) => setTaskForm({ ...taskForm, category: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                  <label className="block text-sm font-medium mb-1">Status</label>
+                  <select value={taskForm.status} onChange={(e) => setTaskForm({ ...taskForm, status: e.target.value })} className="w-full px-3 py-2 border rounded-lg">
+                    <option value="Assigned">Assigned</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Pending Review">Pending Review</option>
+                    <option value="Completed">Completed</option>
+                  </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Start Date</label>
+                  <label className="block text-sm font-medium mb-1">Start Date *</label>
                   <input type="date" value={taskForm.startDate} onChange={(e) => setTaskForm({ ...taskForm, startDate: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Deadline *</label>
-                  <input type="date" value={taskForm.deadline} onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })} className="w-full px-3 py-2 border rounded-lg" />
+                  <label className="block text-sm font-medium mb-1">Due Date *</label>
+                  <input type="date" value={taskForm.deadline} onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })} min={taskForm.startDate || undefined} className="w-full px-3 py-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Progress (%)</label>
+                  <input type="number" min="0" max="100" value={taskForm.progress} onChange={(e) => setTaskForm({ ...taskForm, progress: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 border rounded-lg" />
                 </div>
               </div>
             </div>
