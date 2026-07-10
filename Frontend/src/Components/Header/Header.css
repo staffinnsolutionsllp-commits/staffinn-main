@@ -372,83 +372,36 @@
   background-color: #fff5f5;
 }
 
-/* Dashboard Completion Message — tooltip below My Profile button */
+/* Dashboard Completion Message */
 .dashboard-message {
   position: fixed;
-  top: 68px;
+  bottom: 20px;
   right: 20px;
-  background: white;
-  color: #1e293b;
-  padding: 14px 18px;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(72, 99, 247, 0.12);
-  z-index: 999;
-  min-width: 240px;
-  max-width: 280px;
-  animation: dashboardMsgDrop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  border-left: 3px solid #4863f7;
-  pointer-events: none;
+  background-color: #4863f7;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  z-index: 12000;
+  max-width: 300px;
+  animation: slideInUp 0.4s ease;
 }
 
-/* Upward pointing arrow towards My Profile button */
-.dashboard-message-arrow {
-  position: absolute;
-  top: -8px;
-  right: 36px;
-  width: 0;
-  height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 8px solid white;
-  filter: drop-shadow(0 -2px 2px rgba(0,0,0,0.08));
-}
-
-.dashboard-message-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.dashboard-message-icon {
-  font-size: 1.3rem;
-  line-height: 1;
-  flex-shrink: 0;
-  margin-top: 2px;
-  animation: bounce 1s ease infinite;
-}
-
-.dashboard-message-title {
-  margin: 0 0 3px 0;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.dashboard-message-sub {
+.dashboard-message p {
   margin: 0;
-  font-size: 0.78rem;
-  color: #64748b;
-  line-height: 1.4;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
-.dashboard-message-sub strong {
-  color: #4863f7;
-}
-
-@keyframes dashboardMsgDrop {
+@keyframes slideInUp {
   from {
+    transform: translateY(100%);
     opacity: 0;
-    transform: translateY(-10px) scale(0.95);
   }
   to {
+    transform: translateY(0);
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
 }
 
 /* Responsive Design */
@@ -547,11 +500,8 @@
   
   .login-error-toast,
   .dashboard-message {
-    right: 10px;
     left: 10px;
-    min-width: unset;
-    max-width: unset;
-  }
+    right: 10px;
     max-width: none;
   }
 }

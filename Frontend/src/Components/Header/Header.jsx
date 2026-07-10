@@ -116,16 +116,19 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
 
     useEffect(() => {
         if (showLoginModal) {
-            // Lenis hides the native scrollbar so scrollbarWidth is 0 — use a fixed compensation
+            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
             document.body.style.overflow = 'hidden';
+            document.body.style.paddingRight = `${scrollbarWidth}px`;
             document.body.classList.add('modal-open');
         } else {
             document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
             document.body.classList.remove('modal-open');
         }
         
         return () => {
             document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
             document.body.classList.remove('modal-open');
         };
     }, [showLoginModal]);
@@ -716,14 +719,7 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                 
                 {isLoggedIn && showDashboardMessage && (
                     <div className="dashboard-message">
-                        <div className="dashboard-message-arrow"></div>
-                        <div className="dashboard-message-content">
-                            <span className="dashboard-message-icon">👆</span>
-                            <div>
-                                <p className="dashboard-message-title">Complete your profile</p>
-                                <p className="dashboard-message-sub">Click <strong>My Profile</strong> to set up your dashboard</p>
-                            </div>
-                        </div>
+                        <p>Complete your dashboard</p>
                     </div>
                 )}
             </header>
