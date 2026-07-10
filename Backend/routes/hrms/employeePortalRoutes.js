@@ -26,7 +26,13 @@ const {
   getFullOrganogram,
   getNodeDetails,
   getSubordinatesHierarchy,
-  assignTask
+  assignTask,
+  // Warning system
+  issueWarning,
+  getMyIssuedWarnings,
+  getMyReceivedWarnings,
+  getFlaggedEmployees,
+  getSubordinatesForWarning,
 } = require('../../controllers/hrms/employeePortalController');
 
 // Import grievance-specific controllers
@@ -259,6 +265,18 @@ router.get('/organogram', authenticateEmployee, getMyHierarchy);
 router.get('/organogram/subordinates', authenticateEmployee, getSubordinatesHierarchy);
 router.get('/organogram/full', authenticateEmployee, getFullOrganogram);
 router.get('/organogram/node/:nodeId', authenticateEmployee, getNodeDetails);
+
+// ── Warning system routes ────────────────────────────────────────────────────
+// GET  /employee/warnings/subordinates   — who can I warn?
+// POST /employee/warnings                — issue a warning
+// GET  /employee/warnings/issued         — warnings I have issued
+// GET  /employee/warnings/received       — warnings I have received
+// GET  /employee/warnings/flagged        — employees with 3+ warnings (HR admin)
+router.get ('/warnings/subordinates', authenticateEmployee, getSubordinatesForWarning);
+router.get ('/warnings/issued',       authenticateEmployee, getMyIssuedWarnings);
+router.get ('/warnings/received',     authenticateEmployee, getMyReceivedWarnings);
+router.get ('/warnings/flagged',      authenticateEmployee, getFlaggedEmployees);
+router.post('/warnings',              authenticateEmployee, issueWarning);
 
 // Notification routes
 router.get('/notifications', authenticateEmployee, getMyNotifications);

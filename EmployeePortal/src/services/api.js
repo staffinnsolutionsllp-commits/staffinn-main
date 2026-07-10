@@ -94,6 +94,19 @@ export const grievanceAPI = {
   )
 };
 
+export const warningAPI = {
+  // Who can I warn? (my subordinates in organogram)
+  getSubordinates:   ()     => api.get('/employee/warnings/subordinates'),
+  // Issue a warning
+  issueWarning:      (data) => api.post('/employee/warnings', data),
+  // Warnings I have issued to others
+  getIssuedWarnings: ()     => api.get('/employee/warnings/issued'),
+  // Warnings I have received
+  getReceivedWarnings: ()   => api.get('/employee/warnings/received'),
+  // Employees with 3+ warnings (HR admin view)
+  getFlaggedEmployees: ()   => api.get('/employee/warnings/flagged'),
+};
+
 export const organogramAPI = {
   getMyHierarchy: () => api.get('/employee/organogram'),
   getSubordinatesHierarchy: () => api.get('/employee/organogram/subordinates'),

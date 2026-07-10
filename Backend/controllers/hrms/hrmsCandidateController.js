@@ -579,13 +579,16 @@ const getCandidateStats = async (req, res) => {
     let candidates;
     if (isUsingMockDB()) {
       const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
-      candidates = allEmployees.filter(e => e.recruiterId === recruiterId);
+      // Exclude soft-deleted employees — same filter as getAllEmployees
+      candidates = allEmployees.filter(e => e.recruiterId === recruiterId && (!e.isDeleted || e.isDeleted === false));
     } else {
+      // Exclude soft-deleted employees — isDeleted flag is set on delete, not a hard delete
       const command = new ScanCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: 'recruiterId = :recruiterId',
+        FilterExpression: 'recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
         ExpressionAttributeValues: {
-          ':recruiterId': recruiterId
+          ':recruiterId': recruiterId,
+          ':false': false
         }
       });
       const result = await dynamoClient.send(command);

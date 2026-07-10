@@ -96,14 +96,21 @@ const createEmployee = async (req, res) => {
     let existingId;
     if (isUsingMockDB()) {
       const allEmployees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
-      existingId = allEmployees.find(e => e.employeeId === employeeId && e.recruiterId === recruiterId);
+      // Exclude soft-deleted employees — a deleted ID should be reusable
+      existingId = allEmployees.find(e => 
+        e.employeeId === employeeId && 
+        e.recruiterId === recruiterId && 
+        (!e.isDeleted || e.isDeleted === false)
+      );
     } else {
+      // Exclude soft-deleted employees — a deleted ID should be reusable
       const scanCommand = new ScanCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: 'employeeId = :employeeId AND recruiterId = :recruiterId',
+        FilterExpression: 'employeeId = :employeeId AND recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
         ExpressionAttributeValues: {
           ':employeeId': employeeId,
-          ':recruiterId': recruiterId
+          ':recruiterId': recruiterId,
+          ':false': false
         }
       });
       const result = await dynamoClient.send(scanCommand);
@@ -119,14 +126,21 @@ const createEmployee = async (req, res) => {
     let existingEmployee;
     if (isUsingMockDB()) {
       const employees = mockDB().scan(HRMS_EMPLOYEES_TABLE);
-      existingEmployee = employees.find(e => e.email === email && e.recruiterId === recruiterId);
+      // Exclude soft-deleted employees — deleted email should be reusable
+      existingEmployee = employees.find(e => 
+        e.email === email && 
+        e.recruiterId === recruiterId && 
+        (!e.isDeleted || e.isDeleted === false)
+      );
     } else {
+      // Exclude soft-deleted employees — deleted email should be reusable
       const command = new ScanCommand({
         TableName: HRMS_EMPLOYEES_TABLE,
-        FilterExpression: 'email = :email AND recruiterId = :recruiterId',
+        FilterExpression: 'email = :email AND recruiterId = :recruiterId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
         ExpressionAttributeValues: { 
           ':email': email,
-          ':recruiterId': recruiterId
+          ':recruiterId': recruiterId,
+          ':false': false
         }
       });
       const result = await dynamoClient.send(command);

@@ -1626,6 +1626,336 @@ const assignTask = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WARNING SYSTEM
+// Table: staffinn-hrms-warnings
+// ─────────────────────────────────────────────────────────────────────────────
+
+const WARNINGS_TABLE = 'staffinn-hrms-warnings';
+
+/**
+ * Helper: collect all descendant employeeIds below a given nodeId (inclusive of direct children, grandchildren, etc.)
+ * Uses the org-chart node map built from a flat scan.
+ */
+function collectAllDescendantIds(nodeId, nodeMap) {
+  const result = [];
+  const node = nodeMap[nodeId];
+  if (!node) return result;
+  for (const childId of (node.children || [])) {
+    const childNode = nodeMap[childId];
+    if (childNode && childNode.employeeId) result.push(childNode.employeeId);
+    result.push(...collectAllDescendantIds(childId, nodeMap));
+  }
+  return result;
+}
+
+/**
+ * GET /employee/warnings/subordinates
+ * Returns list of employees that report under the current user in the organogram.
+ * Only these employees can be warned by the current user.
+ */
+const getSubordinatesForWarning = async (req, res) => {
+  try {
+    const { employeeId, companyId } = req.user;
+
+    // Fetch all org nodes for this company
+    const orgResult = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_ORGANIZATION_CHART_TABLE,
+      FilterExpression: 'recruiterId = :rid',
+      ExpressionAttributeValues: { ':rid': companyId }
+    }));
+    const allNodes = orgResult.Items || [];
+
+    // Build nodeMap keyed by nodeId
+    const nodeMap = {};
+    allNodes.forEach(n => { nodeMap[n.nodeId] = { ...n, children: n.children || [] }; });
+
+    // Find current user's node
+    const myNode = allNodes.find(n => n.employeeId === employeeId);
+    if (!myNode) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Collect all descendant employeeIds
+    const subordinateIds = collectAllDescendantIds(myNode.nodeId, nodeMap);
+    if (subordinateIds.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Fetch employee details for each subordinate
+    const empResult = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_EMPLOYEES_TABLE,
+      FilterExpression: 'recruiterId = :rid AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
+      ExpressionAttributeValues: { ':rid': companyId, ':false': false }
+    }));
+    const allEmployees = empResult.Items || [];
+
+    const subordinates = allEmployees
+      .filter(e => subordinateIds.includes(e.employeeId))
+      .map(e => ({
+        employeeId:  e.employeeId,
+        fullName:    e.fullName || e.name || '',
+        email:       e.email || '',
+        designation: e.designation || '',
+        department:  e.department || ''
+      }));
+
+    res.json({ success: true, data: subordinates });
+  } catch (error) {
+    console.error('getSubordinatesForWarning error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * POST /employee/warnings
+ * Issue a warning to a direct/indirect subordinate.
+ * Security: issuer must be strictly above receiver in the org hierarchy.
+ */
+const issueWarning = async (req, res) => {
+  try {
+    const { employeeId: issuedByEmployeeId, companyId } = req.user;
+    const {
+      issuedToEmployeeId,
+      warningTitle,
+      warningDescription,
+      severity = 'Medium',   // Low | Medium | High
+      warningDate,
+      remarks = '',
+      attachments = []
+    } = req.body;
+
+    // ── Basic validation ──────────────────────────────────────────────────────
+    if (!issuedToEmployeeId || !warningTitle || !warningDescription) {
+      return res.status(400).json({ success: false, message: 'issuedToEmployeeId, warningTitle, and warningDescription are required' });
+    }
+    if (!['Low', 'Medium', 'High'].includes(severity)) {
+      return res.status(400).json({ success: false, message: 'severity must be Low, Medium, or High' });
+    }
+    if (issuedByEmployeeId === issuedToEmployeeId) {
+      return res.status(403).json({ success: false, message: 'You cannot issue a warning to yourself' });
+    }
+
+    // ── Org hierarchy security check ─────────────────────────────────────────
+    const orgResult = await dynamoClient.send(new ScanCommand({
+      TableName: HRMS_ORGANIZATION_CHART_TABLE,
+      FilterExpression: 'recruiterId = :rid',
+      ExpressionAttributeValues: { ':rid': companyId }
+    }));
+    const allNodes = orgResult.Items || [];
+    const nodeMap = {};
+    allNodes.forEach(n => { nodeMap[n.nodeId] = { ...n, children: n.children || [] }; });
+
+    const myNode = allNodes.find(n => n.employeeId === issuedByEmployeeId);
+    if (!myNode) {
+      return res.status(403).json({ success: false, message: 'You are not in the organization chart. Cannot issue warnings.' });
+    }
+
+    const allSubordinateIds = collectAllDescendantIds(myNode.nodeId, nodeMap);
+    if (!allSubordinateIds.includes(issuedToEmployeeId)) {
+      return res.status(403).json({ success: false, message: 'You can only issue warnings to employees who report under you in the organogram.' });
+    }
+
+    // ── Fetch both employee profiles ──────────────────────────────────────────
+    const [issuerResult, receiverResult] = await Promise.all([
+      dynamoClient.send(new GetCommand({ TableName: HRMS_EMPLOYEES_TABLE, Key: { employeeId: issuedByEmployeeId } })),
+      dynamoClient.send(new GetCommand({ TableName: HRMS_EMPLOYEES_TABLE, Key: { employeeId: issuedToEmployeeId } }))
+    ]);
+    const issuer   = issuerResult.Item;
+    const receiver = receiverResult.Item;
+    if (!receiver || receiver.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Target employee not found' });
+    }
+
+    // ── Save warning ──────────────────────────────────────────────────────────
+    const warningId  = `WARN_${Date.now()}_${generateId().slice(0, 8)}`;
+    const now        = getCurrentTimestamp();
+
+    const warning = {
+      warningId,
+      companyId,
+      issuedByEmployeeId,
+      issuedByName:  issuer?.fullName || issuer?.name || '',
+      issuedToEmployeeId,
+      issuedToName:  receiver.fullName || receiver.name || '',
+      warningTitle,
+      warningDescription,
+      severity,
+      warningDate:   warningDate || now.split('T')[0],
+      remarks,
+      attachments:   Array.isArray(attachments) ? attachments : [],
+      status:        'Active',
+      createdAt:     now,
+      updatedAt:     now
+    };
+
+    await dynamoClient.send(new PutCommand({ TableName: WARNINGS_TABLE, Item: warning }));
+
+    // ── Update warning count on receiver's employee record ────────────────────
+    try {
+      const countResult = await dynamoClient.send(new ScanCommand({
+        TableName: WARNINGS_TABLE,
+        FilterExpression: 'companyId = :cid AND issuedToEmployeeId = :eid AND #st = :active',
+        ExpressionAttributeNames: { '#st': 'status' },
+        ExpressionAttributeValues: { ':cid': companyId, ':eid': issuedToEmployeeId, ':active': 'Active' }
+      }));
+      const warningCount = countResult.Items?.length || 0;
+
+      await dynamoClient.send(new UpdateCommand({
+        TableName: HRMS_EMPLOYEES_TABLE,
+        Key: { employeeId: issuedToEmployeeId },
+        UpdateExpression: 'SET warningCount = :count, isFlagged = :flagged, updatedAt = :now',
+        ExpressionAttributeValues: {
+          ':count':   warningCount,
+          ':flagged': warningCount >= 3,
+          ':now':     now
+        }
+      }));
+    } catch (countErr) {
+      console.error('⚠️ Warning count update failed (non-fatal):', countErr.message);
+    }
+
+    // ── Send notification to the receiver ─────────────────────────────────────
+    try {
+      const { createNotification, NOTIFICATION_TYPES, PRIORITY } = require('../../services/hrmsNotificationService');
+      await createNotification({
+        employeeId:        issuedToEmployeeId,
+        recruiterId:       companyId,
+        type:              'WARNING_ISSUED',
+        title:             'Warning Issued',
+        message:           `You have received a ${severity} severity warning: "${warningTitle}" from ${issuer?.fullName || 'your manager'}.`,
+        relatedEntityId:   warningId,
+        relatedEntityType: 'WARNING',
+        actionUrl:         '/grievances',
+        priority:          severity === 'High' ? PRIORITY.URGENT : severity === 'Medium' ? PRIORITY.HIGH : PRIORITY.MEDIUM
+      });
+    } catch (notifErr) {
+      console.error('⚠️ Warning notification failed (non-fatal):', notifErr.message);
+    }
+
+    console.log(`✅ Warning ${warningId} issued by ${issuedByEmployeeId} to ${issuedToEmployeeId} (severity: ${severity})`);
+    res.status(201).json({ success: true, message: 'Warning issued successfully', data: warning });
+  } catch (error) {
+    console.error('issueWarning error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * GET /employee/warnings/issued
+ * Warnings issued by the current employee to their subordinates.
+ */
+const getMyIssuedWarnings = async (req, res) => {
+  try {
+    const { employeeId, companyId } = req.user;
+
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: WARNINGS_TABLE,
+      FilterExpression: 'companyId = :cid AND issuedByEmployeeId = :eid',
+      ExpressionAttributeValues: { ':cid': companyId, ':eid': employeeId }
+    }));
+
+    const warnings = (result.Items || []).sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    res.json({ success: true, data: warnings });
+  } catch (error) {
+    console.error('getMyIssuedWarnings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * GET /employee/warnings/received
+ * Warnings received by the current employee.
+ */
+const getMyReceivedWarnings = async (req, res) => {
+  try {
+    const { employeeId, companyId } = req.user;
+
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: WARNINGS_TABLE,
+      FilterExpression: 'companyId = :cid AND issuedToEmployeeId = :eid',
+      ExpressionAttributeValues: { ':cid': companyId, ':eid': employeeId }
+    }));
+
+    const warnings = (result.Items || []).sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    res.json({ success: true, data: warnings });
+  } catch (error) {
+    console.error('getMyReceivedWarnings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * GET /employee/warnings/flagged  (HR Admin use)
+ * Returns all employees with 3 or more active warnings in this company.
+ * Used in HRMS HR Admin Panel.
+ */
+const getFlaggedEmployees = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+
+    // Get all active warnings for this company
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: WARNINGS_TABLE,
+      FilterExpression: 'companyId = :cid AND #st = :active',
+      ExpressionAttributeNames: { '#st': 'status' },
+      ExpressionAttributeValues: { ':cid': companyId, ':active': 'Active' }
+    }));
+    const allWarnings = result.Items || [];
+
+    // Group by issuedToEmployeeId
+    const byEmployee = {};
+    allWarnings.forEach(w => {
+      if (!byEmployee[w.issuedToEmployeeId]) {
+        byEmployee[w.issuedToEmployeeId] = {
+          employeeId:   w.issuedToEmployeeId,
+          employeeName: w.issuedToName,
+          warningCount: 0,
+          warnings:     []
+        };
+      }
+      byEmployee[w.issuedToEmployeeId].warningCount++;
+      byEmployee[w.issuedToEmployeeId].warnings.push(w);
+    });
+
+    // Keep only employees with 3+ warnings (flagged)
+    const flagged = Object.values(byEmployee).filter(e => e.warningCount >= 3);
+
+    // Enrich with employee profile (department, designation, reporting manager)
+    if (flagged.length > 0) {
+      const empIds = flagged.map(f => f.employeeId);
+      const empResult = await dynamoClient.send(new ScanCommand({
+        TableName: HRMS_EMPLOYEES_TABLE,
+        FilterExpression: 'recruiterId = :rid',
+        ExpressionAttributeValues: { ':rid': companyId }
+      }));
+      const empMap = {};
+      (empResult.Items || []).forEach(e => { empMap[e.employeeId] = e; });
+
+      flagged.forEach(f => {
+        const emp = empMap[f.employeeId];
+        if (emp) {
+          f.department        = emp.department || '';
+          f.designation       = emp.designation || '';
+          f.reportingManager  = emp.reportingManagerId || '';
+          f.isFlagged         = true;
+        }
+        // Sort warnings newest-first
+        f.warnings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      });
+    }
+
+    res.json({ success: true, data: flagged });
+  } catch (error) {
+    console.error('getFlaggedEmployees error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getMyAttendance,
@@ -1652,5 +1982,11 @@ module.exports = {
   getFullOrganogram,
   getNodeDetails,
   getSubordinatesHierarchy,
-  assignTask
+  assignTask,
+  // Warning system
+  issueWarning,
+  getMyIssuedWarnings,
+  getMyReceivedWarnings,
+  getFlaggedEmployees,
+  getSubordinatesForWarning,
 };

@@ -1,7 +1,7 @@
 ﻿import  { Users, Clock, CreditCard, TrendingUp, Calendar, CheckCircle } from 'lucide-react'
 import { database } from '../store/database'
 import { apiService } from '../services/api'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAttendance } from '../contexts/AttendanceContext'
 
 export default function Dashboard() {
@@ -9,72 +9,61 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ ...database.getStats(), totalEmployees: 0 })
   const [recentActivities, setRecentActivities] = useState<string[]>([])
 
-  useEffect(() => {
-    const updateStats = async () => {
-      try {
-        // Get real-time candidate count from API
-        const candidateStatsResponse = await apiService.getCandidateStats()
-        console.log('Dashboard: Candidate stats response:', candidateStatsResponse)
-        
-        if (candidateStatsResponse.success) {
-          const candidateCount = candidateStatsResponse.data.total || 0
-          const localStats = database.getStats()
-          const newStats = {
-            ...localStats,
-            totalEmployees: candidateCount,
-            // Use real-time attendance data
-            presentToday: attendanceStats.presentToday,
-            lateArrivals: attendanceStats.lateArrivals,
-            avgHours: parseFloat(attendanceStats.avgHours)
-          }
-          setStats(newStats)
-        } else {
-          console.error('API call failed:', candidateStatsResponse)
-          const localStats = database.getStats()
-          setStats({ 
-            ...localStats, 
-            totalEmployees: 0,
-            presentToday: attendanceStats.presentToday,
-            lateArrivals: attendanceStats.lateArrivals,
-            avgHours: parseFloat(attendanceStats.avgHours)
-          })
-        }
-        
-        // Generate recent activities based on current stats
-        const currentStats = {
-          ...stats,
-          presentToday: attendanceStats.presentToday,
-          lateArrivals: attendanceStats.lateArrivals,
-          avgHours: parseFloat(attendanceStats.avgHours)
-        }
-        const activities = [
-          `${stats.totalEmployees} total candidates in system`,
-          `${attendanceStats.presentToday} employees marked present today`,
-          `${currentStats.pendingLeaves} leave requests pending approval`,
-          `${currentStats.activeCandidates} candidates in recruitment pipeline`,
-          `Total payroll: ₹${(currentStats.totalPayroll / 100000).toFixed(1)}L monthly`,
-          `${attendanceStats.lateArrivals} late arrivals today`
-        ]
-        setRecentActivities(activities)
+  // Core stat fetcher — uses /employees endpoint which already excludes soft-deleted records
+  const updateStats = useCallback(async () => {
+    try {
+      const employeesResponse = await apiService.getEmployees()
+      const activeCount = employeesResponse.success
+        ? (employeesResponse.data as any[]).length
+        : 0
 
-      } catch (error) {
-        console.error('Error updating stats:', error)
-        // Fallback: set totalEmployees to 0 if API fails
-        const localStats = database.getStats()
-        setStats({ 
-          ...localStats, 
-          totalEmployees: 0,
-          presentToday: attendanceStats.presentToday,
-          lateArrivals: attendanceStats.lateArrivals,
-          avgHours: parseFloat(attendanceStats.avgHours)
-        })
+      const localStats = database.getStats()
+      const newStats = {
+        ...localStats,
+        totalEmployees: activeCount,
+        presentToday: attendanceStats.presentToday,
+        lateArrivals: attendanceStats.lateArrivals,
+        avgHours: parseFloat(attendanceStats.avgHours)
       }
+      setStats(newStats)
+
+      const activities = [
+        `${activeCount} active employees in system`,
+        `${attendanceStats.presentToday} employees marked present today`,
+        `${localStats.pendingLeaves} leave requests pending approval`,
+        `${localStats.activeCandidates} candidates in recruitment pipeline`,
+        `Total payroll: ₹${(localStats.totalPayroll / 100000).toFixed(1)}L monthly`,
+        `${attendanceStats.lateArrivals} late arrivals today`
+      ]
+      setRecentActivities(activities)
+    } catch (error) {
+      console.error('Error updating dashboard stats:', error)
+      const localStats = database.getStats()
+      setStats({
+        ...localStats,
+        totalEmployees: 0,
+        presentToday: attendanceStats.presentToday,
+        lateArrivals: attendanceStats.lateArrivals,
+        avgHours: parseFloat(attendanceStats.avgHours)
+      })
     }
-    
+  }, [attendanceStats])
+
+  useEffect(() => {
     updateStats()
-    const interval = setInterval(updateStats, 5000) // Update every 5 seconds for real-time
-    return () => clearInterval(interval)
-  }, [attendanceStats]) // Re-run when attendance stats change
+    // Poll every 10 seconds for real-time updates
+    const interval = setInterval(updateStats, 10000)
+
+    // Also re-fetch immediately whenever Onboarding fires a custom event
+    // (add / edit / delete employee triggers window.dispatchEvent(new Event('employee-list-changed')))
+    const onEmployeeChange = () => updateStats()
+    window.addEventListener('employee-list-changed', onEmployeeChange)
+
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('employee-list-changed', onEmployeeChange)
+    }
+  }, [updateStats])
 
   const statCards = [
     { 

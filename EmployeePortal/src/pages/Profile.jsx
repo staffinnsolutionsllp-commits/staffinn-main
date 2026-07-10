@@ -3,12 +3,60 @@ import { useAuth } from '../context/AuthContext';
 import { profileAPI } from '../services/api';
 import { User, Briefcase, Phone, Edit2, Save, X } from 'lucide-react';
 
+// ── These must be defined OUTSIDE the component so React does not treat them
+// ── as new component types on every render (which would unmount/remount inputs,
+// ── causing focus loss and one-character-at-a-time typing behaviour).
+
+function InfoRow({ label, value }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-sm font-semibold text-slate-800">
+        {value || <span className="text-slate-300 font-normal">—</span>}
+      </p>
+    </div>
+  );
+}
+
+function InputField({ label, type = 'text', value, onChange, textarea }) {
+  const cls = 'w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white';
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+        {label}
+      </label>
+      {textarea ? (
+        <textarea value={value} onChange={onChange} rows={3} className={`${cls} resize-none`} />
+      ) : (
+        <input type={type} value={value} onChange={onChange} className={cls} />
+      )}
+    </div>
+  );
+}
+
+function Section({ icon, title, children }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 card-hover">
+      <div className="flex items-center gap-2 mb-5 pb-4 border-b border-slate-100">
+        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">{icon}</div>
+        <h2 className="font-bold text-slate-800 text-sm">{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function Profile() {
-  const { user }  = useAuth();
-  const [editing, setEditing] = useState(false);
+  const { user } = useAuth();
+  const [editing,  setEditing]  = useState(false);
   const [formData, setFormData] = useState({
-    phone: '', currentAddress: '',
-    emergencyContactName: '', emergencyContactNumber: '', emergencyContactRelation: ''
+    phone: '',
+    currentAddress: '',
+    emergencyContactName: '',
+    emergencyContactNumber: '',
+    emergencyContactRelation: '',
   });
 
   useEffect(() => {
@@ -18,10 +66,14 @@ export default function Profile() {
         currentAddress:           user.employee.currentAddress || '',
         emergencyContactName:     user.employee.emergencyContactName || '',
         emergencyContactNumber:   user.employee.emergencyContactNumber || '',
-        emergencyContactRelation: user.employee.emergencyContactRelation || ''
+        emergencyContactRelation: user.employee.emergencyContactRelation || '',
       });
     }
   }, [user]);
+
+  // Individual field setter — avoids spreading the whole object on every change
+  const setField = (field) => (e) =>
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,29 +87,9 @@ export default function Profile() {
   };
 
   const employee = user?.employee || {};
-  const initials = employee.fullName
-    ? employee.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  const initials  = employee.fullName
+    ? employee.fullName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : 'E';
-
-  const InfoRow = ({ label, value }) => (
-    <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
-      <p className="text-sm font-semibold text-slate-800">{value || <span className="text-slate-300 font-normal">—</span>}</p>
-    </div>
-  );
-
-  const InputField = ({ label, type = 'text', value, onChange, textarea }) => (
-    <div>
-      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">{label}</label>
-      {textarea ? (
-        <textarea value={value} onChange={onChange} rows="3"
-          className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white resize-none" />
-      ) : (
-        <input type={type} value={value} onChange={onChange}
-          className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white" />
-      )}
-    </div>
-  );
 
   return (
     <div className="p-8 space-y-6 animate-fadeIn max-w-4xl">
@@ -75,41 +107,39 @@ export default function Profile() {
           <p className="text-indigo-300 text-xs mt-1">{employee.employeeId}</p>
         </div>
         <button
-          onClick={() => setEditing(!editing)}
+          onClick={() => setEditing((v) => !v)}
           className="flex items-center gap-2 px-4 py-2 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-sm font-semibold transition-all"
         >
           {editing ? <><X size={14} /> Cancel</> : <><Edit2 size={14} /> Edit Profile</>}
         </button>
       </div>
 
-      {!editing ? (
+      {/* ── Read mode ── */}
+      {!editing && (
         <div className="space-y-5">
-          {/* Personal */}
           <Section icon={<User size={16} className="text-indigo-500" />} title="Personal Information">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <InfoRow label="Full Name"    value={employee.fullName} />
-              <InfoRow label="Employee ID"  value={employee.employeeId} />
-              <InfoRow label="Email"        value={employee.email} />
+              <InfoRow label="Full Name"     value={employee.fullName} />
+              <InfoRow label="Employee ID"   value={employee.employeeId} />
+              <InfoRow label="Email"         value={employee.email} />
               <InfoRow label="Date of Birth" value={employee.dateOfBirth} />
-              <InfoRow label="Blood Group"  value={employee.bloodGroup} />
-              <InfoRow label="Phone"        value={employee.emergencyContactNumber} />
+              <InfoRow label="Blood Group"   value={employee.bloodGroup} />
+              <InfoRow label="Phone"         value={employee.emergencyContactNumber} />
               <div className="sm:col-span-2">
                 <InfoRow label="Address" value={employee.currentAddress} />
               </div>
             </div>
           </Section>
 
-          {/* Employment */}
           <Section icon={<Briefcase size={16} className="text-indigo-500" />} title="Employment Details">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <InfoRow label="Designation"      value={employee.designation} />
-              <InfoRow label="Department"       value={employee.department} />
-              <InfoRow label="Date of Joining"  value={employee.dateOfJoining} />
-              <InfoRow label="Employment Type"  value={employee.employmentType} />
+              <InfoRow label="Designation"     value={employee.designation} />
+              <InfoRow label="Department"      value={employee.department} />
+              <InfoRow label="Date of Joining" value={employee.dateOfJoining} />
+              <InfoRow label="Employment Type" value={employee.employmentType} />
             </div>
           </Section>
 
-          {/* Emergency */}
           <Section icon={<Phone size={16} className="text-indigo-500" />} title="Emergency Contact">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <InfoRow label="Name"     value={employee.emergencyContactName} />
@@ -118,47 +148,61 @@ export default function Profile() {
             </div>
           </Section>
         </div>
-      ) : (
+      )}
+
+      {/* ── Edit mode ── */}
+      {editing && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
           <h2 className="font-bold text-slate-900 mb-5">Edit Profile</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField label="Phone" type="tel" value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
-              <InputField label="Emergency Contact Name" value={formData.emergencyContactName}
-                onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} />
-              <InputField label="Emergency Contact Number" type="tel" value={formData.emergencyContactNumber}
-                onChange={(e) => setFormData({ ...formData, emergencyContactNumber: e.target.value })} />
-              <InputField label="Relation" value={formData.emergencyContactRelation}
-                onChange={(e) => setFormData({ ...formData, emergencyContactRelation: e.target.value })} />
+              <InputField
+                label="Phone"
+                type="tel"
+                value={formData.phone}
+                onChange={setField('phone')}
+              />
+              <InputField
+                label="Emergency Contact Name"
+                value={formData.emergencyContactName}
+                onChange={setField('emergencyContactName')}
+              />
+              <InputField
+                label="Emergency Contact Number"
+                type="tel"
+                value={formData.emergencyContactNumber}
+                onChange={setField('emergencyContactNumber')}
+              />
+              <InputField
+                label="Relation"
+                value={formData.emergencyContactRelation}
+                onChange={setField('emergencyContactRelation')}
+              />
             </div>
-            <InputField label="Current Address" value={formData.currentAddress}
-              onChange={(e) => setFormData({ ...formData, currentAddress: e.target.value })} textarea />
+            <InputField
+              label="Current Address"
+              value={formData.currentAddress}
+              onChange={setField('currentAddress')}
+              textarea
+            />
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => setEditing(false)}
-                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+              <button
+                type="button"
+                onClick={() => setEditing(false)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
                 Cancel
               </button>
-              <button type="submit"
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              >
                 <Save size={14} /> Save Changes
               </button>
             </div>
           </form>
         </div>
       )}
-    </div>
-  );
-}
-
-function Section({ icon, title, children }) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 card-hover">
-      <div className="flex items-center gap-2 mb-5 pb-4 border-b border-slate-100">
-        <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center">{icon}</div>
-        <h2 className="font-bold text-slate-800 text-sm">{title}</h2>
-      </div>
-      {children}
     </div>
   );
 }

@@ -153,8 +153,8 @@ export default function Onboarding() {
       }
       
       await loadEmployees()
-      // Refresh dashboard stats immediately so Total Candidates updates in real-time
-      await refreshAttendanceStats()
+      // Notify Dashboard to re-fetch employee count immediately
+      window.dispatchEvent(new Event('employee-list-changed'))
     } catch (error) {
       console.error('Error deleting employee:', error)
       alert('Failed to delete employee')
@@ -507,6 +507,8 @@ export default function Onboarding() {
         setShowForm(false)
         setEditingEmployee(null)
         setCurrentStep(1)
+        // Notify Dashboard to re-fetch employee count immediately
+        window.dispatchEvent(new Event('employee-list-changed'))
         setFormData({
           employeeId: '',
           fullName: '', preferredName: '', gender: '', dateOfBirth: '', maritalStatus: '', bloodGroup: '',
