@@ -1992,8 +1992,8 @@ const RecruiterDashboard = () => {
 
                 {/* Job Form Modal */}
                 {showJobForm && (
-                    <div className="recruiter-modal-overlay">
-                        <div className="recruiter-job-form-modal">
+                    <div className="recruiter-modal-overlay" data-lenis-prevent>
+                        <div className="recruiter-job-form-modal" data-lenis-prevent>
                             <div className="recruiter-modal-header">
                                 <h2>{editingJob ? 'Edit Job' : 'Post a New Job'}</h2>
                                 <button 
@@ -2020,7 +2020,7 @@ const RecruiterDashboard = () => {
                                 </button>
                             </div>
                             
-                            <form onSubmit={handleJobSubmit} className="recruiter-job-form">
+                            <form onSubmit={handleJobSubmit} className="recruiter-job-form" data-lenis-prevent>
                                 <div className="recruiter-form-row">
                                     <div className="recruiter-form-group">
                                         <label>Job Title *</label>
@@ -2032,6 +2032,7 @@ const RecruiterDashboard = () => {
                                             required
                                             placeholder="e.g. Senior Frontend Developer"
                                         />
+                                        <span className="recruiter-field-hint">Full job designation as it should appear to candidates</span>
                                     </div>
                                     <div className="recruiter-form-group">
                                         <label>Department *</label>
@@ -2051,6 +2052,7 @@ const RecruiterDashboard = () => {
                                             <option value="HR">HR</option>
                                             <option value="Finance">Finance</option>
                                         </select>
+                                        <span className="recruiter-field-hint">Select the team this role belongs to</span>
                                     </div>
                                 </div>
 
@@ -2069,6 +2071,7 @@ const RecruiterDashboard = () => {
                                             <option value="Freelance">Freelance</option>
                                             <option value="Internship">Internship</option>
                                         </select>
+                                        <span className="recruiter-field-hint">Employment nature of this role</span>
                                     </div>
                                     <div className="recruiter-form-group">
                                         <label>Experience Required *</label>
@@ -2078,9 +2081,9 @@ const RecruiterDashboard = () => {
                                             value={jobForm.experience}
                                             onChange={handleInputChange}
                                             required
-                                            placeholder="e.g. 3-5 or 2 (years)"
-                                            title="Enter experience as a single number (e.g., 2) or range (e.g., 3-5)"
+                                            placeholder="e.g. 2 or 3-5"
                                         />
+                                        <span className="recruiter-field-hint">Enter years as a number (e.g. <strong>2</strong>) or range (e.g. <strong>3-5</strong>). Use <strong>0</strong> for fresher roles.</span>
                                     </div>
                                 </div>
 
@@ -2095,6 +2098,7 @@ const RecruiterDashboard = () => {
                                             required
                                             placeholder="e.g. ₹12-18 LPA"
                                         />
+                                        <span className="recruiter-field-hint">Format: <strong>₹[min]-[max] LPA</strong> for annual (e.g. ₹8-12 LPA) or <strong>₹[amount]/month</strong> for monthly (e.g. ₹25,000/month)</span>
                                     </div>
                                     <div className="recruiter-form-group">
                                         <label>Location *</label>
@@ -2106,6 +2110,7 @@ const RecruiterDashboard = () => {
                                             required
                                             placeholder="e.g. Bangalore (Hybrid)"
                                         />
+                                        <span className="recruiter-field-hint">City name followed by work mode in brackets — <strong>Remote</strong>, <strong>Hybrid</strong>, or <strong>On-site</strong></span>
                                     </div>
                                 </div>
 
@@ -2117,15 +2122,10 @@ const RecruiterDashboard = () => {
                                             name="graduationYear"
                                             value={jobForm.graduationYear}
                                             onChange={handleInputChange}
-                                            placeholder="e.g. 2024, 2025 or 2023-2025"
+                                            placeholder="e.g. 2025 or 2023-2025"
                                         />
+                                        <span className="recruiter-field-hint">Single year (e.g. <strong>2025</strong>) or batch range (e.g. <strong>2023-2025</strong>). Leave blank if not applicable.</span>
                                     </div>
-                                    <div className="recruiter-form-group">
-                                        {/* Empty div for spacing */}
-                                    </div>
-                                </div>
-
-                                <div className="recruiter-form-row">
                                     <div className="recruiter-form-group">
                                         <label>Date Posted *</label>
                                         <input
@@ -2135,7 +2135,11 @@ const RecruiterDashboard = () => {
                                             onChange={handleInputChange}
                                             required
                                         />
+                                        <span className="recruiter-field-hint">Date the job listing goes live (defaults to today)</span>
                                     </div>
+                                </div>
+
+                                <div className="recruiter-form-row">
                                     <div className="recruiter-form-group">
                                         <label>Status *</label>
                                         <select
@@ -2144,10 +2148,14 @@ const RecruiterDashboard = () => {
                                             onChange={handleInputChange}
                                             required
                                         >
-                                            <option value="Active">Active</option>
-                                            <option value="Closed">Closed</option>
-                                            <option value="Draft">Draft</option>
+                                            <option value="Active">Active — visible to candidates</option>
+                                            <option value="Closed">Closed — no longer accepting applications</option>
+                                            <option value="Draft">Draft — saved but not yet published</option>
                                         </select>
+                                        <span className="recruiter-field-hint">Controls whether this job is visible on your public profile</span>
+                                    </div>
+                                    <div className="recruiter-form-group">
+                                        {/* Empty div for spacing */}
                                     </div>
                                 </div>
 
@@ -2159,8 +2167,9 @@ const RecruiterDashboard = () => {
                                         value={jobForm.skills}
                                         onChange={handleInputChange}
                                         required
-                                        placeholder="e.g. React, Node.js, MongoDB (comma separated)"
+                                        placeholder="e.g. React, Node.js, MongoDB"
                                     />
+                                    <span className="recruiter-field-hint">Enter skills separated by commas. These are used for candidate matching (e.g. <strong>Python, Django, PostgreSQL, Docker</strong>)</span>
                                 </div>
 
                                 <div className="recruiter-form-group">
@@ -2170,9 +2179,14 @@ const RecruiterDashboard = () => {
                                         value={jobForm.description}
                                         onChange={handleInputChange}
                                         required
-                                        rows="4"
-                                        placeholder="Describe the role, responsibilities, and requirements..."
+                                        rows="6"
+                                        placeholder="Describe the role, key responsibilities, and what you're looking for in a candidate..."
+                                        maxLength={2000}
                                     />
+                                    <span className="recruiter-field-hint">
+                                        Min 100 characters · Max 2000 characters · {jobForm.description.length}/2000 used.
+                                        Cover: role overview, day-to-day responsibilities, must-have qualifications, and nice-to-haves.
+                                    </span>
                                 </div>
 
                                 <div className="recruiter-form-actions">

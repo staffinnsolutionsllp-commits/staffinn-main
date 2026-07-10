@@ -316,6 +316,19 @@
     min-height: 100px;
 }
 
+/* Field hint text below inputs */
+.recruiter-field-hint {
+    margin-top: 5px;
+    font-size: 0.78rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+.recruiter-field-hint strong {
+    color: #374151;
+    font-weight: 600;
+}
+
 .recruiter-form-actions {
     display: flex;
     gap: 15px;

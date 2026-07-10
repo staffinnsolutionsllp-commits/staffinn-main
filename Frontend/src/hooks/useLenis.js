@@ -40,7 +40,10 @@ export const useLenis = () => {
       '.modal-overlay',
       '.student-selection-modal',
       '.pom-overlay',
-      '.pom-box'
+      '.pom-box',
+      '.recruiter-modal-overlay',
+      '.recruiter-job-form-modal',
+      '.recruiter-job-form'
     ];
 
     const handleWheel = (e) => {
