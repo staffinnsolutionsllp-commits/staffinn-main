@@ -89,12 +89,8 @@ export const useLenis = () => {
 
     // Watch body class changes (modal-open) only
     const classObserver = new MutationObserver(() => {
-      const isModalOpen = document.body.classList.contains('modal-open');
-      if (isModalOpen) {
-        lenis.stop();
-      } else {
-        lenis.start();
-      }
+      // Do NOT stop Lenis on modal-open — modals use data-lenis-prevent internally
+      // Lenis stopping was breaking click events on portaled modals
     });
 
     classObserver.observe(document.body, {

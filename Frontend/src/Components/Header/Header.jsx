@@ -116,19 +116,16 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
 
     useEffect(() => {
         if (showLoginModal) {
-            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+            // Lenis hides the native scrollbar so scrollbarWidth is 0 — use a fixed compensation
             document.body.style.overflow = 'hidden';
-            document.body.style.paddingRight = `${scrollbarWidth}px`;
             document.body.classList.add('modal-open');
         } else {
             document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
             document.body.classList.remove('modal-open');
         }
         
         return () => {
             document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
             document.body.classList.remove('modal-open');
         };
     }, [showLoginModal]);
