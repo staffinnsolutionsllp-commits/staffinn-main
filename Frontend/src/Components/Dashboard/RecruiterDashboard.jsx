@@ -2225,8 +2225,8 @@ const RecruiterDashboard = () => {
 
                 {/* News Form Modal */}
                 {showNewsForm && (
-                    <div className="recruiter-modal-overlay">
-                        <div className="recruiter-job-form-modal">
+                    <div className="recruiter-modal-overlay" data-lenis-prevent>
+                        <div className="recruiter-job-form-modal" data-lenis-prevent>
                             <div className="recruiter-modal-header">
                                 <h2>{editingNews ? 'Edit News' : 'Add News'}</h2>
                                 <button 
@@ -4146,8 +4146,8 @@ const RecruiterDashboard = () => {
                 
                 {/* Students Modal */}
                 {showStudentsModal && selectedInstitute && (
-                    <div className="recruiter-modal-overlay">
-                        <div className="recruiter-students-modal">
+                    <div className="recruiter-modal-overlay" data-lenis-prevent>
+                        <div className="recruiter-students-modal" data-lenis-prevent>
                             <div className="recruiter-modal-header">
                                 <h2>Students from {selectedInstitute.instituteName}</h2>
                                 <button 
@@ -4183,22 +4183,13 @@ const RecruiterDashboard = () => {
                                                     {selectedInstituteStudents.map((student) => (
                                                         <tr key={student.instituteStudntsID}>
                                                             <td>
-                                                                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                                                                <div className="student-name-cell">
                                                                     {student.isMisStudent && (
-                                                                        <div className="staffinn-verified-badge" style={{
-                                                                            background: '#28a745',
-                                                                            color: 'white',
-                                                                            padding: '2px 6px',
-                                                                            borderRadius: '4px',
-                                                                            fontSize: '10px',
-                                                                            fontWeight: 'bold',
-                                                                            marginBottom: '4px',
-                                                                            display: 'inline-block'
-                                                                        }}>
+                                                                        <span className="staffinn-verified-badge-pill">
                                                                             ✓ Staffinn Verified
-                                                                        </div>
+                                                                        </span>
                                                                     )}
-                                                                    <span style={{fontWeight: student.isMisStudent ? 'bold' : 'normal'}}>{student.fullName}</span>
+                                                                    <span className={student.isMisStudent ? 'student-name-bold' : ''}>{student.fullName}</span>
                                                                 </div>
                                                             </td>
                                                             <td>{student.email}</td>
@@ -4206,38 +4197,20 @@ const RecruiterDashboard = () => {
                                                             <td>{student.isMisStudent ? (student.trainingCenter || 'MIS Center') : (student.specialization || 'N/A')}</td>
                                                             <td>{student.isMisStudent ? (student.course || 'N/A') : (student.expectedYearOfPassing || 'N/A')}</td>
                                                             <td>
-                                                                <div className="hiring-buttons" style={{display: 'flex', gap: '5px'}}>
+                                                                <div className="hiring-action-btns">
                                                                     <button 
-                                                                        className="hire-btn"
+                                                                        className="hire-action-btn hired"
                                                                         onClick={() => handleHireInstituteStudent(student, 'Hired')}
                                                                         disabled={loading}
-                                                                        style={{
-                                                                            backgroundColor: '#28a745',
-                                                                            color: 'white',
-                                                                            border: 'none',
-                                                                            padding: '6px 12px',
-                                                                            borderRadius: '4px',
-                                                                            cursor: 'pointer',
-                                                                            fontSize: '12px'
-                                                                        }}
                                                                     >
-                                                                        ✅ Hired
+                                                                        ✓ Hire
                                                                     </button>
                                                                     <button 
-                                                                        className="reject-btn"
+                                                                        className="hire-action-btn rejected"
                                                                         onClick={() => handleHireInstituteStudent(student, 'Rejected')}
                                                                         disabled={loading}
-                                                                        style={{
-                                                                            backgroundColor: '#dc3545',
-                                                                            color: 'white',
-                                                                            border: 'none',
-                                                                            padding: '6px 12px',
-                                                                            borderRadius: '4px',
-                                                                            cursor: 'pointer',
-                                                                            fontSize: '12px'
-                                                                        }}
                                                                     >
-                                                                        ❌ Rejected
+                                                                        ✕ Reject
                                                                     </button>
                                                                 </div>
                                                             </td>

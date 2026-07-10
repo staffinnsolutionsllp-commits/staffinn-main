@@ -226,8 +226,8 @@ const JobCard = ({ job, onApply, showApplyButton = true, buttonText = "Apply Now
 
       {/* Job Details Modal - New Design */}
       {showModal && (
-        <div className="modern-job-modal-overlay" onClick={closeModal}>
-          <div className="modern-job-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modern-job-modal-overlay" onClick={closeModal} data-lenis-prevent>
+          <div className="modern-job-modal" onClick={(e) => e.stopPropagation()} data-lenis-prevent>
             {/* Modal Header */}
             <div className="modern-modal-header">
               <div className="modal-header-left">

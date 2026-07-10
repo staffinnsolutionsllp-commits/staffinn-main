@@ -785,7 +785,12 @@ const NewsPage = ({ isLoggedIn, onShowLogin }) => {
               eventType: news.eventType || 'Company Update',
               location: news.location,
               date: news.date || new Date(news.createdAt).toLocaleDateString(),
-              bannerImage: news.bannerImage || news.image,
+              bannerImage: (() => {
+                const img = news.bannerImage || news.image;
+                if (!img) return null;
+                if (img.startsWith('http')) return img;
+                return `https://s3.ap-south-1.amazonaws.com/staffinn-files/${img}`;
+              })(),
               expectedHires: news.expectedHires
             }))}
         />

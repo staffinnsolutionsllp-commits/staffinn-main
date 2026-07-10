@@ -43,7 +43,9 @@ export const useLenis = () => {
       '.pom-box',
       '.recruiter-modal-overlay',
       '.recruiter-job-form-modal',
-      '.recruiter-job-form'
+      '.recruiter-job-form',
+      '.modern-job-modal-overlay',
+      '.modern-job-modal'
     ];
 
     const handleWheel = (e) => {

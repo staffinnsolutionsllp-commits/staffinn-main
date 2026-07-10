@@ -1504,16 +1504,26 @@
 /* Students Modal Styles */
 .recruiter-students-modal {
     background: white;
-    border-radius: 15px;
+    border-radius: 20px;
     width: 95%;
-    max-width: 1200px;
-    max-height: 90vh;
+    max-width: 1100px;
+    max-height: 88vh;
     overflow-y: auto;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.05);
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+}
+
+.recruiter-students-modal::-webkit-scrollbar {
+    width: 4px;
+}
+.recruiter-students-modal::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 4px;
 }
 
 .students-modal-content {
-    padding: 30px;
+    padding: 28px 32px 32px 32px;
 }
 
 .students-grid {
@@ -1904,36 +1914,56 @@
 .students-table-container {
     overflow-x: auto;
     margin-top: 20px;
+    border-radius: 12px;
+    border: 1px solid #e8ecf0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
 }
 
 .students-table {
     width: 100%;
     border-collapse: collapse;
     background: white;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .students-table th {
-    background-color: #f8fafc;
-    color: #374151;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
     font-weight: 600;
-    padding: 12px 15px;
+    padding: 14px 16px;
     text-align: left;
-    border-bottom: 2px solid #e2e8f0;
-    font-size: 0.85rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    border: none;
+}
+
+.students-table th:first-child {
+    border-radius: 12px 0 0 0;
+}
+.students-table th:last-child {
+    border-radius: 0 12px 0 0;
 }
 
 .students-table td {
-    padding: 12px 15px;
+    padding: 14px 16px;
     border-bottom: 1px solid #f1f5f9;
     font-size: 0.85rem;
-    color: #64748b;
+    color: #475569;
+    vertical-align: middle;
 }
 
-.students-table tr:hover {
-    background-color: #f8fafc;
+.students-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.students-table tbody tr:hover {
+    background-color: #f8faff;
+}
+
+.students-table tbody tr:hover td {
+    color: #1e293b;
 }
 
 .status-badge {
@@ -1982,19 +2012,82 @@
 }
 
 .view-profile-btn-small {
-    padding: 6px 12px;
-    background-color: #4863f7;
+    padding: 7px 14px;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     color: white;
     border: none;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 500;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.25);
 }
 
 .view-profile-btn-small:hover {
-    background-color: #3a4fd8;
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(37,99,235,0.35);
+}
+
+/* Students modal hire/reject buttons */
+.hire-action-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.hire-action-btn.hired {
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+.hire-action-btn.hired:hover {
+    background: #16a34a;
+    color: white;
+    border-color: #16a34a;
+}
+.hire-action-btn.rejected {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+.hire-action-btn.rejected:hover {
+    background: #dc2626;
+    color: white;
+    border-color: #dc2626;
+}
+
+/* Students table name cell */
+.student-name-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+.staffinn-verified-badge-pill {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    display: inline-block;
+}
+.student-name-bold {
+    font-weight: 700;
+    color: #0f172a;
+}
+.hiring-action-btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: nowrap;
 }
 
 /* Student Profile Modal */
