@@ -15,9 +15,12 @@ export const useLenis = () => {
       infinite: false,
     });
 
-    // All modal/overlay selectors that should block Lenis
-    const modalSelectors = [
+    // Selectors inside which Lenis scroll should be blocked
+    const preventLenisElements = [
       '.clean-modal-content',
+      '.staff-dashboard-sidebar',
+      '.recruiter-dashboard-sidebar',
+      '.institute-dashboard-sidebar',
       '.institute-modal-content',
       '.institute-modal-overlay',
       '.institute-modal-form',
@@ -45,84 +48,73 @@ export const useLenis = () => {
       '.modern-job-modal',
     ];
 
-    // Sidebars — should NOT stop lenis (they scroll independently but don't need lenis stopped)
-    const sidebarSelectors = [
-      '.staff-dashboard-sidebar',
-      '.recruiter-dashboard-sidebar',
-      '.institute-dashboard-sidebar',
-    ];
+    const selectorString = preventLenisElements.join(',');
 
-    const allPreventSelectors = [...modalSelectors, ...sidebarSelectors];
-
-    /** Check if any modal is currently open in the DOM */
-    const isAnyModalOpen = () => {
-      return modalSelectors.some(sel => document.querySelector(sel) !== null)
-        || document.body.classList.contains('modal-open')
-        || document.querySelector('[data-lenis-prevent]') !== null;
-    };
-
-    /** Safely start Lenis only if no modal is open */
-    const tryStartLenis = () => {
-      if (!isAnyModalOpen()) {
-        lenis.start();
-      }
-    };
-
-    // --- Wheel handler ---
     const handleWheel = (e) => {
-      const onPreventEl = e.target.closest(allPreventSelectors.join(','));
+      const onModal = e.target.closest(selectorString);
       const onLenisPrevent = e.target.closest('[data-lenis-prevent]');
+      const isModalOpen = document.body.classList.contains('modal-open');
 
-      if (onPreventEl || onLenisPrevent || document.body.classList.contains('modal-open')) {
+      if (onModal || onLenisPrevent || isModalOpen) {
         e.stopPropagation();
         lenis.stop();
+        // Restart after a short delay only when scrolled outside a modal
+        setTimeout(() => {
+          const stillOnModal = document.querySelector(selectorString);
+          const stillModalOpen = document.body.classList.contains('modal-open');
+          if (!stillOnModal && !stillModalOpen) {
+            lenis.start();
+          }
+        }, 200);
       }
     };
 
-    // --- Touch handler ---
     const handleTouchMove = (e) => {
-      const onPreventEl = e.target.closest(allPreventSelectors.join(','));
+      const onModal = e.target.closest(selectorString);
       const onLenisPrevent = e.target.closest('[data-lenis-prevent]');
+      const isModalOpen = document.body.classList.contains('modal-open');
 
-      if (onPreventEl || onLenisPrevent || document.body.classList.contains('modal-open')) {
+      if (onModal || onLenisPrevent || isModalOpen) {
         e.stopPropagation();
         lenis.stop();
+        setTimeout(() => {
+          const stillOnModal = document.querySelector(selectorString);
+          const stillModalOpen = document.body.classList.contains('modal-open');
+          if (!stillOnModal && !stillModalOpen) {
+            lenis.start();
+          }
+        }, 200);
       }
     };
 
-    // --- MutationObserver: watch entire document for modal nodes being added/removed ---
-    const domObserver = new MutationObserver(() => {
-      if (isAnyModalOpen()) {
+    // Watch body class changes (modal-open) only
+    const classObserver = new MutationObserver(() => {
+      const isModalOpen = document.body.classList.contains('modal-open');
+      if (isModalOpen) {
         lenis.stop();
       } else {
-        // Small delay to let React finish unmounting
-        setTimeout(tryStartLenis, 50);
+        lenis.start();
       }
     });
 
-    domObserver.observe(document.body, {
-      childList: true,      // modal added/removed from DOM
-      subtree: true,        // deep — catch nested portal renders
-      attributes: true,     // class changes on body (modal-open)
-      attributeFilter: ['class', 'data-lenis-prevent'],
+    classObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
     });
 
     document.addEventListener('wheel', handleWheel, { capture: true });
     document.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false });
 
-    // RAF loop
-    let rafId;
     function raf(time) {
       lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
+      requestAnimationFrame(raf);
     }
-    rafId = requestAnimationFrame(raf);
+    requestAnimationFrame(raf);
 
     return () => {
-      cancelAnimationFrame(rafId);
       document.removeEventListener('wheel', handleWheel, { capture: true });
       document.removeEventListener('touchmove', handleTouchMove, { capture: true });
-      domObserver.disconnect();
+      classObserver.disconnect();
       lenis.destroy();
     };
   }, []);
