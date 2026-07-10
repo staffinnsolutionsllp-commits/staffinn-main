@@ -719,7 +719,14 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                 
                 {isLoggedIn && showDashboardMessage && (
                     <div className="dashboard-message">
-                        <p>Complete your dashboard</p>
+                        <div className="dashboard-message-arrow"></div>
+                        <div className="dashboard-message-content">
+                            <span className="dashboard-message-icon">👆</span>
+                            <div>
+                                <p className="dashboard-message-title">Complete your profile</p>
+                                <p className="dashboard-message-sub">Click <strong>My Profile</strong> to set up your dashboard</p>
+                            </div>
+                        </div>
                     </div>
                 )}
             </header>
