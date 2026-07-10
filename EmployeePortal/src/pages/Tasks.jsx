@@ -16,7 +16,7 @@ export default function Tasks() {
   const [activeTab,       setActiveTab]       = useState('tasks');
   const [showAssignForm,  setShowAssignForm]  = useState(false);
   const [assignFormData,  setAssignFormData]  = useState({
-    employeeId: '', title: '', description: '', priority: 'Medium', deadline: '', category: 'General'
+    employeeId: '', title: '', description: '', priority: 'Medium', deadline: '', startDate: new Date().toISOString().split('T')[0], department: '', taskCategory: '', status: 'Assigned', progress: 0
   });
 
   useEffect(() => { fetchTasks(); fetchRatings(); fetchSubordinates(); }, []);
@@ -41,10 +41,24 @@ export default function Tasks() {
     } catch {}
   };
 
+  const DEPARTMENT_CATEGORIES = {
+    'HR': ['Recruitment','Resume Screening','Interview Scheduling','Candidate Follow-up','Employee Onboarding','Attendance Management','Leave Management','Employee Documentation','Payroll Coordination','Training Coordination','Employee Engagement','Performance Review','Exit Formalities','HR Compliance','Policy Communication','Grievance Resolution','Employee Verification','HR Reports & MIS','Employee Record Update','Other'],
+    'Reception': ['Visitor Management','Call Management','Courier Management','Front Desk Support','Meeting Coordination','Appointment Scheduling','Record Maintenance','Inquiry Handling','Document Receiving','Gate Pass Management','Hospitality Arrangement','Other'],
+    'Accounts & Finance': ['Invoice Preparation','Payment Processing','Salary Processing','Reimbursement Processing','Expense Verification','Vendor Payment','Petty Cash Management','GST Filing','TDS Compliance','PF & ESI Compliance','Bank Reconciliation','Financial Reporting','Budget Preparation','Audit Support','Account Reconciliation','Collection Follow-up','Billing','Tax Compliance','Other'],
+    'Project / Operations': ['Project Planning','Batch Creation','Candidate Verification','Mobilization Support','Centre Coordination','Documentation','Government Portal Update','Assessment Coordination','Certification Follow-up','Client Coordination','Partner Coordination','Project Monitoring','Compliance Monitoring','MIS Preparation','Report Submission','Field Visit','Project Review','Project Closure','Issue Resolution','Other'],
+    'Administration / Office Management': ['Office Maintenance','Housekeeping Coordination','Asset Management','Asset Issue/Return','Inventory Management','Stationery Management','Procurement','Vendor Coordination','Facility Management','Meeting Arrangement','Conference Room Booking','Courier & Dispatch','Office Logistics','Vehicle Management','Utility Management','Event Arrangement','AMC Coordination','Security Coordination','Other'],
+    'Sales / Business Development': ['Lead Generation','Cold Calling','Client Follow-up','Client Meeting','Proposal Submission','Quotation Preparation','Business Presentation','College Visit','Corporate Visit','Partnership Development','MoU Discussion','CRM Update','Market Research','Payment Follow-up','Business Expansion','Customer Relationship','Sales Reporting','Other'],
+    'IT': ['User Account Management','Email Configuration','HRMS Support','Website Management','Software Installation','Hardware Installation','System Maintenance','Network Support','Printer Support','Data Backup','Data Recovery','Cyber Security','Bug Fixing','Software Development','Technical Support','Server Maintenance','System Upgrade','Other'],
+    'Media': ['Photography','Videography','Video Editing','Reel Creation','Social Media Management','Content Writing','Event Coverage','YouTube Management','Facebook Management','Instagram Management','LinkedIn Management','Campaign Management','Advertisement Management','Digital Marketing','SEO Activities','Content Planning','Media Coordination','Other'],
+    'Design': ['Logo Design','Banner Design','Brochure Design','Flyer Design','Social Media Creative','Presentation Design','Certificate Design','ID Card Design','Website Graphics','Print Design','Branding Material','Infographic Design','UI/UX Design','Packaging Design','Creative Revision','Artwork Finalization','Other'],
+  };
+
+  const DEPARTMENTS = Object.keys(DEPARTMENT_CATEGORIES);
+
   const handleAssignTask = async (e) => {
     e.preventDefault();
-    if (!assignFormData.employeeId || !assignFormData.title || !assignFormData.deadline) {
-      alert('Please fill in all required fields'); return;
+    if (!assignFormData.employeeId || !assignFormData.title || !assignFormData.deadline || !assignFormData.department || !assignFormData.taskCategory) {
+      alert('Please fill in all required fields (Employee, Title, Department, Task Category, Deadline)'); return;
     }
     try {
       await api.post('/employee/tasks/assign', {
@@ -53,12 +67,15 @@ export default function Tasks() {
         description:  assignFormData.description,
         priority:     assignFormData.priority,
         deadline:     assignFormData.deadline,
-        category:     assignFormData.category,
-        startDate:    new Date().toISOString()
+        startDate:    assignFormData.startDate,
+        department:   assignFormData.department,
+        taskCategory: assignFormData.taskCategory,
+        status:       assignFormData.status,
+        progress:     assignFormData.progress
       });
       alert('Task assigned successfully!');
       setShowAssignForm(false);
-      setAssignFormData({ employeeId: '', title: '', description: '', priority: 'Medium', deadline: '', category: 'General' });
+      setAssignFormData({ employeeId: '', title: '', description: '', priority: 'Medium', deadline: '', startDate: new Date().toISOString().split('T')[0], department: '', taskCategory: '', status: 'Assigned', progress: 0 });
       fetchTasks();
     } catch (error) {
       alert('Error: ' + (error.response?.data?.message || error.message));
@@ -155,8 +172,8 @@ export default function Tasks() {
                     {[
                       { icon: CalendarDays, label: 'Start', value: new Date(task.startDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }), color: 'text-emerald-600', bg: 'bg-emerald-50' },
                       { icon: Clock,        label: 'Deadline', value: new Date(task.deadline).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }), color: 'text-red-500', bg: 'bg-red-50' },
-                      { icon: Tag,          label: 'Category', value: task.category, color: 'text-violet-600', bg: 'bg-violet-50' },
-                      { icon: User,         label: 'Assigned By', value: task.assignedByName || '—', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                      { icon: Tag,          label: 'Department', value: task.department || task.category || '—', color: 'text-violet-600', bg: 'bg-violet-50' },
+                      { icon: User,         label: 'Task Category', value: task.taskCategory || task.category || '—', color: 'text-indigo-600', bg: 'bg-indigo-50' },
                     ].map(({ icon: Icon, label, value, color, bg }) => (
                       <div key={label} className="flex items-start gap-2.5">
                         <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
@@ -259,6 +276,27 @@ export default function Tasks() {
               </button>
             </div>
             <form onSubmit={handleAssignTask} className="p-6 space-y-4">
+              {/* Department + Task Category */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Department *</label>
+                  <select value={assignFormData.department}
+                    onChange={(e) => setAssignFormData({ ...assignFormData, department: e.target.value, taskCategory: '' })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white" required>
+                    <option value="">Select Department</option>
+                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Task Category *</label>
+                  <select value={assignFormData.taskCategory}
+                    onChange={(e) => setAssignFormData({ ...assignFormData, taskCategory: e.target.value })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white" required disabled={!assignFormData.department}>
+                    <option value="">Select Category</option>
+                    {assignFormData.department && DEPARTMENT_CATEGORIES[assignFormData.department]?.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
               {[
                 { label: 'Assign To *', node: (
                   <select value={assignFormData.employeeId}
@@ -273,13 +311,13 @@ export default function Tasks() {
                 { label: 'Task Title *', node: (
                   <input type="text" value={assignFormData.title}
                     onChange={(e) => setAssignFormData({ ...assignFormData, title: e.target.value })}
-                    placeholder="Enter task title"
+                    placeholder="e.g. Hire Project Coordinator"
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white" required />
                 )},
                 { label: 'Description', node: (
                   <textarea value={assignFormData.description}
                     onChange={(e) => setAssignFormData({ ...assignFormData, description: e.target.value })}
-                    rows="3" placeholder="Enter task description"
+                    rows="3" placeholder="Describe the task details..."
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white resize-none" />
                 )},
               ].map(({ label, node }) => (
@@ -290,26 +328,33 @@ export default function Tasks() {
               ))}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Priority</label>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Priority *</label>
                   <select value={assignFormData.priority} onChange={(e) => setAssignFormData({ ...assignFormData, priority: e.target.value })}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white">
-                    <option>Low</option><option>Medium</option><option>High</option>
+                    <option>Low</option><option>Medium</option><option>High</option><option>Critical</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Deadline *</label>
-                  <input type="date" value={assignFormData.deadline}
-                    onChange={(e) => setAssignFormData({ ...assignFormData, deadline: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Start Date *</label>
+                  <input type="date" value={assignFormData.startDate}
+                    onChange={(e) => setAssignFormData({ ...assignFormData, startDate: e.target.value })}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white" required />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Category</label>
-                <select value={assignFormData.category} onChange={(e) => setAssignFormData({ ...assignFormData, category: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white">
-                  {['General','Development','Design','Testing','Documentation','Meeting','Other'].map(c => <option key={c}>{c}</option>)}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Due Date *</label>
+                  <input type="date" value={assignFormData.deadline}
+                    onChange={(e) => setAssignFormData({ ...assignFormData, deadline: e.target.value })}
+                    min={assignFormData.startDate || new Date().toISOString().split('T')[0]}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white" required />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Progress (%)</label>
+                  <input type="number" min="0" max="100" value={assignFormData.progress}
+                    onChange={(e) => setAssignFormData({ ...assignFormData, progress: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white" />
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAssignForm(false)}

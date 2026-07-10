@@ -16,7 +16,7 @@ const assignTask = async (req, res) => {
     console.log('Assigner ID:', assignerId);
     console.log('Request body:', req.body);
 
-    const { employeeIds, employeeEmails, title, description, priority, startDate, deadline, category, attachments } = req.body;
+    const { employeeIds, employeeEmails, title, description, priority, startDate, deadline, category, attachments, department, taskCategory, progress, status } = req.body;
 
     // Get all org nodes for hierarchy validation
     let allNodes;
@@ -85,12 +85,14 @@ const assignTask = async (req, res) => {
         title,
         description: description || '',
         priority: priority || 'Medium',
-        status: 'Pending',
+        status: status || 'Assigned',
         startDate: startDate || getCurrentTimestamp(),
         deadline,
         category: category || 'General',
+        department: department || '',
+        taskCategory: taskCategory || category || 'General',
         attachments: attachments || [],
-        completionPercentage: 0,
+        completionPercentage: progress !== undefined ? progress : 0,
         assignedBy: req.user.userId,
         assignedByName: req.user.name,
         createdAt: getCurrentTimestamp(),

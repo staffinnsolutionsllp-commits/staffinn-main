@@ -60,9 +60,13 @@ export interface Task {
   title: string
   description?: string
   assignedTo: string
-  status: 'pending' | 'in-progress' | 'completed'
-  priority: 'low' | 'medium' | 'high'
+  status: 'pending' | 'in-progress' | 'completed' | 'assigned' | 'pending-review'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  department: string
+  taskCategory: string
+  startDate: string
   dueDate: string
+  progress: number
   createdAt: string
   createdBy: string
 }
