@@ -56,9 +56,9 @@ export const useLenis = () => {
       const isModalOpen = document.body.classList.contains('modal-open');
 
       if (onModal || onLenisPrevent || isModalOpen) {
-        e.stopPropagation();
+        // Do NOT stopPropagation — just stop lenis smooth scroll
         lenis.stop();
-        // Restart after a short delay only when scrolled outside a modal
+        // Restart after a short delay only when no modal is present in DOM
         setTimeout(() => {
           const stillOnModal = document.querySelector(selectorString);
           const stillModalOpen = document.body.classList.contains('modal-open');
@@ -75,7 +75,6 @@ export const useLenis = () => {
       const isModalOpen = document.body.classList.contains('modal-open');
 
       if (onModal || onLenisPrevent || isModalOpen) {
-        e.stopPropagation();
         lenis.stop();
         setTimeout(() => {
           const stillOnModal = document.querySelector(selectorString);

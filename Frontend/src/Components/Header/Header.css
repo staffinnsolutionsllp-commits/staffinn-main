@@ -382,11 +382,12 @@
   padding: 14px 18px;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(72, 99, 247, 0.12);
-  z-index: 12000;
+  z-index: 999;
   min-width: 240px;
   max-width: 280px;
   animation: dashboardMsgDrop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-left: 3px solid #4863f7;
+  pointer-events: none;
 }
 
 /* Upward pointing arrow towards My Profile button */
