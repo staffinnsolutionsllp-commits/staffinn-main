@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import api, { organogramAPI, dtrAPI } from '../services/api';
+import api, { organogramAPI } from '../services/api';
 import {
   ClipboardList, Plus, X, Play, CheckCircle2, Star,
-  CalendarDays, Clock, Tag, User, Send, FileText, Upload,
-  AlertTriangle, Timer
+  CalendarDays, Clock, Tag, User, Send, FileText
 } from 'lucide-react';
 
 export default function Tasks() {
   const { user }         = useAuth();
+  const navigate         = useNavigate();
   const [tasks,           setTasks]           = useState([]);
   const [assignedByMe,    setAssignedByMe]    = useState([]);
   const [ratings,         setRatings]         = useState([]);
@@ -25,56 +26,6 @@ export default function Tasks() {
   });
 
   useEffect(() => { fetchTasks(); fetchRatings(); fetchSubordinates(); fetchAssignedByMe(); }, []);
-
-  // DTR state
-  const [dtrFormOpen, setDtrFormOpen] = useState(null); // taskId or null
-  const [dtrSubmitting, setDtrSubmitting] = useState(false);
-  const [dtrUploadFile, setDtrUploadFile] = useState(null);
-  const [dtrForm, setDtrForm] = useState({
-    workDescription: '', hoursSpent: '', completionPercentage: '',
-    status: 'In Progress', challengesFaced: '', plannedForTomorrow: '', remarks: ''
-  });
-
-  const today = new Date().toISOString().split('T')[0];
-
-  const handleSubmitDTR = async (task) => {
-    if (!dtrForm.workDescription.trim()) { alert('Please describe the work you did today'); return; }
-    if (!dtrForm.hoursSpent || parseFloat(dtrForm.hoursSpent) <= 0) { alert('Please enter valid hours spent'); return; }
-
-    setDtrSubmitting(true);
-    try {
-      const payload = {
-        taskId: task.taskId,
-        date: today,
-        workDescription: dtrForm.workDescription.trim(),
-        hoursSpent: parseFloat(dtrForm.hoursSpent),
-        completionPercentage: dtrForm.completionPercentage ? parseInt(dtrForm.completionPercentage) : undefined,
-        status: dtrForm.status,
-        challengesFaced: dtrForm.challengesFaced.trim(),
-        plannedForTomorrow: dtrForm.plannedForTomorrow.trim(),
-        remarks: dtrForm.remarks.trim()
-      };
-
-      const res = await dtrAPI.submitDTR(payload);
-
-      // Upload attachment if present
-      if (dtrUploadFile && res.data.data?.reportId) {
-        const fd = new FormData();
-        fd.append('file', dtrUploadFile);
-        try { await dtrAPI.uploadAttachment(res.data.data.reportId, fd); } catch (e) { console.error('Upload failed:', e); }
-      }
-
-      alert(res.data.message || 'DTR submitted successfully!');
-      setDtrFormOpen(null);
-      setDtrForm({ workDescription: '', hoursSpent: '', completionPercentage: '', status: 'In Progress', challengesFaced: '', plannedForTomorrow: '', remarks: '' });
-      setDtrUploadFile(null);
-      fetchTasks();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit DTR');
-    } finally {
-      setDtrSubmitting(false);
-    }
-  };
 
   const fetchTasks = async () => {
     try {
@@ -292,7 +243,7 @@ export default function Tasks() {
                         className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl transition-colors">
                         <CheckCircle2 size={12} /> Mark Complete
                       </button>
-                      <button onClick={() => { setDtrFormOpen(dtrFormOpen === task.taskId ? null : task.taskId); setDtrForm({ workDescription: '', hoursSpent: '', completionPercentage: '', status: 'In Progress', challengesFaced: '', plannedForTomorrow: '', remarks: '' }); setDtrUploadFile(null); }}
+                      <button onClick={() => navigate('/dtr')}
                         className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-xl transition-colors">
                         <FileText size={12} /> Fill DTR
                       </button>
@@ -302,121 +253,10 @@ export default function Tasks() {
                       <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-xl border border-emerald-200">
                         <CheckCircle2 size={13} /> Task Completed
                       </div>
-                      <button onClick={() => { setDtrFormOpen(dtrFormOpen === task.taskId ? null : task.taskId); setDtrForm({ workDescription: '', hoursSpent: '', completionPercentage: '100', status: 'Completed', challengesFaced: '', plannedForTomorrow: '', remarks: '' }); setDtrUploadFile(null); }}
+                      <button onClick={() => navigate('/dtr')}
                         className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-xl transition-colors">
                         <FileText size={12} /> Fill DTR
                       </button>
-                    </div>
-                  )}
-
-                  {/* Inline DTR Form */}
-                  {dtrFormOpen === task.taskId && (
-                    <div className="mt-4 p-5 bg-orange-50 border border-orange-200 rounded-xl space-y-4 animate-fadeIn">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-orange-800 flex items-center gap-2">
-                          <FileText size={14} /> Daily Task Report — {today}
-                        </h4>
-                        <button onClick={() => setDtrFormOpen(null)} className="text-orange-400 hover:text-orange-600">
-                          <X size={16} />
-                        </button>
-                      </div>
-
-                      {/* Work Description */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Work Done Today <span className="text-red-500">*</span></label>
-                        <textarea value={dtrForm.workDescription}
-                          onChange={e => setDtrForm(p => ({...p, workDescription: e.target.value}))}
-                          placeholder="Describe in detail what work you completed today..."
-                          rows={3}
-                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" required />
-                      </div>
-
-                      {/* Hours + Completion + Status */}
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Hours Spent <span className="text-red-500">*</span></label>
-                          <input type="number" step="0.5" min="0.5" max="24"
-                            value={dtrForm.hoursSpent}
-                            onChange={e => setDtrForm(p => ({...p, hoursSpent: e.target.value}))}
-                            placeholder="e.g. 4.5"
-                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" required />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Completion %</label>
-                          <input type="number" min="0" max="100"
-                            value={dtrForm.completionPercentage}
-                            onChange={e => setDtrForm(p => ({...p, completionPercentage: e.target.value}))}
-                            placeholder="e.g. 75"
-                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Status <span className="text-red-500">*</span></label>
-                          <select value={dtrForm.status}
-                            onChange={e => setDtrForm(p => ({...p, status: e.target.value}))}
-                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
-                            <option value="In Progress">In Progress</option>
-                            <option value="Completed">Completed</option>
-                            <option value="Blocked">Blocked</option>
-                            <option value="On Hold">On Hold</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Challenges + Plan */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Challenges / Blockers</label>
-                          <textarea value={dtrForm.challengesFaced}
-                            onChange={e => setDtrForm(p => ({...p, challengesFaced: e.target.value}))}
-                            placeholder="Any issues faced? (optional)"
-                            rows={2}
-                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Plan for Tomorrow</label>
-                          <textarea value={dtrForm.plannedForTomorrow}
-                            onChange={e => setDtrForm(p => ({...p, plannedForTomorrow: e.target.value}))}
-                            placeholder="What next? (optional)"
-                            rows={2}
-                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
-                        </div>
-                      </div>
-
-                      {/* Attachment + Remarks */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Attachment (Optional)</label>
-                          <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-orange-400 hover:bg-white transition-colors">
-                            <Upload size={12} className="text-slate-400" />
-                            <span className="text-xs text-slate-500 truncate">{dtrUploadFile ? dtrUploadFile.name : 'Choose file'}</span>
-                            <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,.gif"
-                              onChange={e => setDtrUploadFile(e.target.files?.[0] || null)}
-                              className="hidden" />
-                          </label>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-slate-700 mb-1">Remarks</label>
-                          <input type="text" value={dtrForm.remarks}
-                            onChange={e => setDtrForm(p => ({...p, remarks: e.target.value}))}
-                            placeholder="Additional notes (optional)"
-                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                        </div>
-                      </div>
-
-                      {/* Submit */}
-                      <div className="flex items-center justify-between pt-1">
-                        <p className="text-xs text-orange-600 flex items-center gap-1">
-                          <AlertTriangle size={11} /> Submit within 30 mins of checkout
-                        </p>
-                        <button onClick={() => handleSubmitDTR(task)} disabled={dtrSubmitting}
-                          className="flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50">
-                          {dtrSubmitting ? (
-                            <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting...</>
-                          ) : (
-                            <><Send size={12} /> Submit DTR</>
-                          )}
-                        </button>
-                      </div>
                     </div>
                   )}
                 </div>
