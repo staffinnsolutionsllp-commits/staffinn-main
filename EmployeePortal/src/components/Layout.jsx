@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, CalendarDays, PlaneTakeoff, IndianRupee,
   CreditCard, ClipboardList, MessageSquare, Network, User,
-  LogOut, ChevronRight, Building2
+  LogOut, ChevronRight, Building2, FileText
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -14,6 +14,7 @@ const PAGE_TITLES = {
   '/payroll':    'Payroll & Payslips',
   '/claims':     'Claim Management',
   '/tasks':      'Tasks & Performance',
+  '/dtr':        'Daily Task Report',
   '/grievances': 'Grievances',
   '/organogram': 'Organization Chart',
   '/profile':    'My Profile',
@@ -27,7 +28,8 @@ const NAV = [
   { path: '/payroll',    icon: IndianRupee,      label: 'Payroll' },
   { path: '/claims',     icon: CreditCard,       label: 'Claims' },
   { path: '/tasks',      icon: ClipboardList,    label: 'Tasks' },
-  { path: '/grievances', icon: MessageSquare,    label: 'Grievances' },
+  { path: '/dtr',        icon: FileText,         label: 'Daily Task Report' },
+  { path: '/grievances', icon: MessageSquare,    label: 'Grievances & Warnings' },
   { path: '/organogram', icon: Network,          label: 'Organogram' },
   { path: '/resignation',icon: LogOut,           label: 'Resignation' },
   { path: '/profile',    icon: User,             label: 'Profile' },

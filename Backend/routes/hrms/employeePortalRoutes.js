@@ -27,12 +27,14 @@ const {
   getNodeDetails,
   getSubordinatesHierarchy,
   assignTask,
+  getTasksAssignedByMe,
   // Warning system
   issueWarning,
   getMyIssuedWarnings,
   getMyReceivedWarnings,
   getFlaggedEmployees,
   getSubordinatesForWarning,
+  getAllWarnings,
 } = require('../../controllers/hrms/employeePortalController');
 
 // Import grievance-specific controllers
@@ -182,9 +184,45 @@ router.post(
 
 // Task routes
 router.get('/tasks', authenticateEmployee, getMyTasks);
+router.get('/tasks/assigned-by-me', authenticateEmployee, getTasksAssignedByMe);
 router.put('/tasks/:taskId', authenticateEmployee, updateMyTask);
 router.post('/tasks/assign', authenticateEmployee, assignTask);
 router.get('/performance/ratings', authenticateEmployee, getMyRatings);
+
+// ── Daily Task Report (DTR) routes ──────────────────────────────────────────
+const {
+  submitDTR,
+  updateDTR,
+  getMyDTRs,
+  getDTRStatus,
+  uploadDTRAttachment,
+  getMyMissingDTRs
+} = require('../../controllers/hrms/dtrController');
+const multerDTR = require('multer');
+
+const MAX_MB_DTR = 10;
+const ALLOWED_MIME_DTR = new Set(['image/jpeg','image/jpg','image/png','image/webp','application/pdf','image/gif']);
+const ALLOWED_EXT_DTR = new Set(['.jpg','.jpeg','.png','.webp','.pdf','.gif']);
+
+const uploadDTRMiddleware = multerDTR({
+  storage: multerDTR.memoryStorage(),
+  limits: { fileSize: MAX_MB_DTR * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = require('path').extname(file.originalname).toLowerCase();
+    if (ALLOWED_MIME_DTR.has(file.mimetype) && ALLOWED_EXT_DTR.has(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('File type not allowed. Allowed: PDF, JPG, JPEG, PNG, WEBP, GIF'));
+    }
+  }
+});
+
+router.get('/dtr/status', authenticateEmployee, getDTRStatus);
+router.get('/dtr/missing', authenticateEmployee, getMyMissingDTRs);
+router.get('/dtr', authenticateEmployee, getMyDTRs);
+router.post('/dtr', authenticateEmployee, submitDTR);
+router.put('/dtr/:reportId', authenticateEmployee, updateDTR);
+router.post('/dtr/:reportId/upload', authenticateEmployee, uploadDTRMiddleware.single('file'), uploadDTRAttachment);
 
 // Grievance routes
 router.get('/grievances', authenticateEmployee, getMyGrievances);
@@ -276,6 +314,7 @@ router.get ('/warnings/subordinates', authenticateEmployee, getSubordinatesForWa
 router.get ('/warnings/issued',       authenticateEmployee, getMyIssuedWarnings);
 router.get ('/warnings/received',     authenticateEmployee, getMyReceivedWarnings);
 router.get ('/warnings/flagged',      authenticateEmployee, getFlaggedEmployees);
+router.get ('/warnings/all',          authenticateEmployee, getAllWarnings);
 router.post('/warnings',              authenticateEmployee, issueWarning);
 
 // Notification routes

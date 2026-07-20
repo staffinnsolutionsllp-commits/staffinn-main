@@ -137,6 +137,17 @@ const markAttendance = async (req, res) => {
         }
         
         console.log(`✅ Check-out recorded for employee ${employeeId}: ${existingAttendance.checkIn} → ${checkIn} (${hours.toFixed(2)} hours)`);
+        
+        // Send DTR reminder notification after biometric checkout
+        try {
+          const { sendDTRReminder } = require('./dtrController');
+          const recruiterId = req.user?.recruiterId || existingAttendance.recruiterId;
+          if (recruiterId) {
+            await sendDTRReminder(employeeId, recruiterId);
+          }
+        } catch (dtrErr) {
+          console.error('DTR reminder error (non-blocking):', dtrErr.message);
+        }
       } else if (existingAttendance.checkOut) {
         // Already has check-out, ignore third+ punch
         console.log(`⚠️ Ignoring third punch for employee ${employeeId} - already checked out`);

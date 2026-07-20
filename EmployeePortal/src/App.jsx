@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import ChangePassword from './pages/ChangePassword';
 import Claims from './pages/Claims';
 import Tasks from './pages/Tasks';
+import DailyTaskReport from './pages/DailyTaskReport';
 import Grievances from './pages/Grievances';
 import Organogram from './pages/Organogram';
 import Resignation from './pages/Resignation';
@@ -37,6 +38,7 @@ function App() {
           <Route path="/payroll" element={<ProtectedRoute><Payroll /></ProtectedRoute>} />
           <Route path="/claims" element={<ProtectedRoute><Claims /></ProtectedRoute>} />
           <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+          <Route path="/dtr" element={<ProtectedRoute><DailyTaskReport /></ProtectedRoute>} />
           <Route path="/grievances" element={<ProtectedRoute><Grievances /></ProtectedRoute>} />
           <Route path="/organogram" element={<ProtectedRoute><Organogram /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

@@ -503,6 +503,33 @@ class ApiService {
     return this.request(`/tasks/ratings/list${params ? `?${params}` : ''}`);
   }
 
+  // ── Daily Task Report (DTR) methods ─────────────────────────────────────
+  async getDTRReports(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.request(`/dtr/reports${params ? `?${params}` : ''}`);
+  }
+
+  async getDTRStats(filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.request(`/dtr/stats${params ? `?${params}` : ''}`);
+  }
+
+  async getDTRByTask(taskId) {
+    return this.request(`/dtr/task/${taskId}`);
+  }
+
+  async getEmployeeDTRHistory(employeeId, filters = {}) {
+    const params = new URLSearchParams(filters).toString();
+    return this.request(`/dtr/employee/${employeeId}${params ? `?${params}` : ''}`);
+  }
+
+  async runDTRCompliance(date = null) {
+    return this.request('/dtr/check-compliance', {
+      method: 'POST',
+      body: JSON.stringify({ date }),
+    });
+  }
+
   // Grievance Management methods
   async createGrievance(grievanceData) {
     return this.request('/grievance-management', {
@@ -642,10 +669,13 @@ class ApiService {
   }
 
   // Payroll methods — enhanced with date range, snapshots, runs
-  async runPayroll(startDate, endDate, employeeId = null) {
+  async runPayroll(startDate, endDate, employeeId = null, adjustments = null) {
+    const body = { startDate, endDate };
+    if (employeeId) body.employeeId = employeeId;
+    if (adjustments) body.adjustments = adjustments;
     return this.request('/payroll/run', {
       method: 'POST',
-      body: JSON.stringify({ startDate, endDate, employeeId }),
+      body: JSON.stringify(body),
     });
   }
 

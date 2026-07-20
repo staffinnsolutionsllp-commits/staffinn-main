@@ -80,6 +80,7 @@ export default function NotificationBell() {
   const TYPE_ICON_MAP = {
     TASK_ASSIGNED:       { icon: ClipboardList, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     TASK_UPDATED:        { icon: ClipboardList, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    ATTENDANCE_ALERT:    { icon: BellRing,      color: 'text-red-600',    bg: 'bg-red-50' },
     LEAVE_APPROVED:      { icon: PlaneTakeoff,  color: 'text-emerald-600', bg: 'bg-emerald-50' },
     LEAVE_REJECTED:      { icon: PlaneTakeoff,  color: 'text-red-500',    bg: 'bg-red-50' },
     CLAIM_APPROVED:      { icon: Wallet,        color: 'text-emerald-600', bg: 'bg-emerald-50' },

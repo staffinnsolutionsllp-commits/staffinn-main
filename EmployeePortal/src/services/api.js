@@ -80,6 +80,19 @@ export const taskAPI = {
   getMyRatings: () => api.get('/employee/tasks/ratings')
 };
 
+export const dtrAPI = {
+  submitDTR: (data) => api.post('/employee/dtr', data),
+  updateDTR: (reportId, data) => api.put(`/employee/dtr/${reportId}`, data),
+  getMyDTRs: (params = {}) => api.get('/employee/dtr', { params }),
+  getDTRStatus: () => api.get('/employee/dtr/status'),
+  getMissingDTRs: (month, year) => api.get('/employee/dtr/missing', { params: { month, year } }),
+  uploadAttachment: (reportId, formData) => api.post(
+    `/employee/dtr/${reportId}/upload`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
+};
+
 export const grievanceAPI = {
   getMyGrievances: () => api.get('/employee/grievances'),
   submitGrievance: (data) => api.post('/employee/grievances', data),

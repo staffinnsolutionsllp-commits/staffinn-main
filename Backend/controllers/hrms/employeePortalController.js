@@ -112,6 +112,15 @@ const markAttendance = async (req, res) => {
           TableName: 'staffinn-hrms-attendance',
           Item: { ...getResult.Item, checkOutTime: now }
         }));
+
+        // Send DTR reminder notification after checkout
+        try {
+          const { sendDTRReminder } = require('./dtrController');
+          await sendDTRReminder(employeeId, companyId);
+        } catch (dtrErr) {
+          console.error('DTR reminder error (non-blocking):', dtrErr.message);
+        }
+
         res.json({ success: true, message: 'Checked out successfully' });
       } else {
         res.status(400).json({ success: false, message: 'No check-in found for today' });
@@ -574,7 +583,7 @@ const updateMyTask = async (req, res) => {
   try {
     const { taskId } = req.params;
     const { employeeId } = req.user;
-    const { status, completionPercentage, remarks } = req.body;
+    const { status, completionPercentage, remarks, performedValue, performedUnit } = req.body;
 
     const getResult = await dynamoClient.send(new ScanCommand({
       TableName: 'HRMS-Task-Management',
@@ -595,6 +604,8 @@ const updateMyTask = async (req, res) => {
       ...task,
       status: status || task.status,
       completionPercentage: completionPercentage !== undefined ? completionPercentage : task.completionPercentage,
+      performedValue: performedValue !== undefined ? performedValue : task.performedValue,
+      performedUnit: performedUnit || task.performedUnit,
       remarks: remarks || task.remarks,
       updatedAt: getCurrentTimestamp()
     };
@@ -1516,7 +1527,7 @@ const checkAndEscalateGrievances = async () => {
 const assignTask = async (req, res) => {
   try {
     const { employeeId, companyId } = req.user;
-    const { employeeIds, title, description, priority, startDate, deadline, category } = req.body;
+    const { employeeIds, title, description, priority, startDate, endDate, deadline, category, taskType, department, taskCategory, customCategory, status, progress, performedValue, performedUnit } = req.body;
 
     if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0 || !title || !deadline) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -1592,11 +1603,18 @@ const assignTask = async (req, res) => {
         title,
         description: description || '',
         priority: priority || 'Medium',
-        status: 'Pending',
+        status: status || 'Yet-to-Start',
         startDate: startDate || now,
+        endDate: endDate || '',
         deadline,
+        taskType: taskType || 'One-Time',
         category: category || 'General',
-        completionPercentage: 0,
+        department: department || '',
+        taskCategory: taskCategory || category || 'General',
+        customCategory: customCategory || '',
+        performedValue: performedValue !== undefined ? performedValue : 0,
+        performedUnit: performedUnit || '%age',
+        completionPercentage: progress !== undefined ? progress : 0,
         assignedBy: employeeId,
         assignedByName: assignerName,
         createdAt: now,
@@ -1622,6 +1640,29 @@ const assignTask = async (req, res) => {
     res.status(201).json({ success: true, message: 'Task(s) assigned successfully', data: tasks });
   } catch (error) {
     console.error('Assign task error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Get Tasks Assigned By Me
+const getTasksAssignedByMe = async (req, res) => {
+  try {
+    const { employeeId, companyId } = req.user;
+
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: 'HRMS-Task-Management',
+      FilterExpression: 'recruiterId = :rid AND assignedBy = :eid AND (attribute_not_exists(#type) OR #type <> :ratingType)',
+      ExpressionAttributeNames: { '#type': 'type' },
+      ExpressionAttributeValues: { ':rid': companyId, ':eid': employeeId, ':ratingType': 'RATING' }
+    }));
+
+    const tasks = (result.Items || []).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    res.json({ success: true, data: tasks });
+  } catch (error) {
+    console.error('Get tasks assigned by me error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -1834,6 +1875,21 @@ const issueWarning = async (req, res) => {
     }
 
     console.log(`✅ Warning ${warningId} issued by ${issuedByEmployeeId} to ${issuedToEmployeeId} (severity: ${severity})`);
+
+    // ── Emit real-time WebSocket event to HR Admin ────────────────────────────
+    if (global.io) {
+      global.io.to(`recruiter-${companyId}`).emit('warning-issued', {
+        warningId,
+        warningTitle,
+        severity,
+        issuedByName: issuer?.fullName || issuer?.name || '',
+        issuedToName: receiver.fullName || receiver.name || '',
+        issuedToEmployeeId,
+        warningDate: warningDate || now.split('T')[0],
+        createdAt: now
+      });
+    }
+
     res.status(201).json({ success: true, message: 'Warning issued successfully', data: warning });
   } catch (error) {
     console.error('issueWarning error:', error);
@@ -1956,6 +2012,30 @@ const getFlaggedEmployees = async (req, res) => {
   }
 };
 
+/**
+ * GET /employee/warnings/all
+ * All warnings for the company — used by HR Admin to see all warnings in real-time.
+ */
+const getAllWarnings = async (req, res) => {
+  try {
+    const { companyId } = req.user;
+
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: WARNINGS_TABLE,
+      FilterExpression: 'companyId = :cid',
+      ExpressionAttributeValues: { ':cid': companyId }
+    }));
+    const allWarnings = (result.Items || []).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    res.json({ success: true, data: allWarnings });
+  } catch (error) {
+    console.error('getAllWarnings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getMyAttendance,
@@ -1983,10 +2063,12 @@ module.exports = {
   getNodeDetails,
   getSubordinatesHierarchy,
   assignTask,
+  getTasksAssignedByMe,
   // Warning system
   issueWarning,
   getMyIssuedWarnings,
   getMyReceivedWarnings,
   getFlaggedEmployees,
   getSubordinatesForWarning,
+  getAllWarnings,
 };

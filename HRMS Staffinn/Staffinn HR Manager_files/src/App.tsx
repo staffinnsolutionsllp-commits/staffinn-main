@@ -11,6 +11,7 @@ import Payroll from './components/Payroll'
 import ClaimManagement from './components/ClaimManagement'
 import ClaimApprovals from './components/ClaimApprovals'
 import TaskPerformance from './components/TaskPerformance'
+import DTRReports from './components/DTRReports'
 import GrievanceManagement from './components/GrievanceManagement'
 import SeparationManagement from './components/SeparationManagement'
 import Onboarding from './components/Onboarding'
@@ -48,6 +49,7 @@ function AppContent() {
       case 'claims': return <ClaimManagement />
       case 'claim-approvals': return <ClaimApprovals />
       case 'tasks-performance': return <TaskPerformance />
+      case 'dtr-reports': return <DTRReports />
       case 'grievance-management': return <GrievanceManagement />
       case 'separation': return <SeparationManagement />
       case 'onboarding': return <Onboarding />

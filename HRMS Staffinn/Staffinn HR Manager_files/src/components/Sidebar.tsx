@@ -1,4 +1,4 @@
-import  { Home, Users, Clock, CreditCard, UserPlus, TrendingUp, CheckCircle, LogOut, MessageSquare, Network, Calendar, ShieldCheck } from 'lucide-react'
+import  { Home, Users, Clock, CreditCard, UserPlus, TrendingUp, CheckCircle, LogOut, MessageSquare, Network, Calendar, ShieldCheck, FileText } from 'lucide-react'
 
 interface SidebarProps {
   activeTab: string
@@ -14,7 +14,8 @@ const menuItems = [
   { id: 'claims',               label: 'Claim Management',      icon: CreditCard },
   { id: 'claim-approvals',      label: 'Claim Approvals',       icon: ShieldCheck },
   { id: 'tasks-performance',    label: 'Task & Performance',    icon: TrendingUp },
-  { id: 'grievance-management', label: 'Grievance Management',  icon: MessageSquare },
+  { id: 'dtr-reports',          label: 'Daily Task Reports',    icon: FileText },
+  { id: 'grievance-management', label: 'Grievances & Warnings',  icon: MessageSquare },
   { id: 'separation',           label: 'Separation Management', icon: LogOut },
   { id: 'payroll',              label: 'Payroll',               icon: CreditCard },
 ]
