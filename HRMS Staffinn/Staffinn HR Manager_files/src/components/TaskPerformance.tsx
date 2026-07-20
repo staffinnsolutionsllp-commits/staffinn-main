@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CheckSquare, TrendingUp, Filter, Plus, Eye, Edit2, Calendar, AlertCircle, Star } from 'lucide-react'
+import { CheckSquare, TrendingUp, Filter, Plus, Eye, Edit2, Calendar, AlertCircle, Star, FileText } from 'lucide-react'
 import { apiService } from '../services/api'
 
 export default function TaskPerformance() {
@@ -45,6 +45,38 @@ export default function TaskPerformance() {
     loadData()
   }, [activeView, filters])
 
+  // DTR state
+  const [dtrReports, setDtrReports] = useState<any[]>([])
+  const [dtrDate, setDtrDate] = useState(new Date().toISOString().split('T')[0])
+  const [dtrEmployeeFilter, setDtrEmployeeFilter] = useState('')
+  const [dtrSelectedEmployee, setDtrSelectedEmployee] = useState<any>(null)
+  const [dtrLoading, setDtrLoading] = useState(false)
+  const [dtrExpandedId, setDtrExpandedId] = useState<string | null>(null)
+
+  const loadDTRReports = async () => {
+    setDtrLoading(true)
+    try {
+      const filters: Record<string, string> = { date: dtrDate }
+      if (dtrEmployeeFilter) filters.employeeId = dtrEmployeeFilter
+      const res = await apiService.getDTRReports(filters)
+      setDtrReports(res.data || [])
+    } catch (e) { console.error('DTR load error:', e) }
+    finally { setDtrLoading(false) }
+  }
+
+  const loadEmployeeDTR = async (empId: string) => {
+    setDtrLoading(true)
+    try {
+      const res = await apiService.getEmployeeDTRHistory(empId)
+      setDtrSelectedEmployee(res.data || null)
+    } catch (e) { console.error('Employee DTR error:', e) }
+    finally { setDtrLoading(false) }
+  }
+
+  useEffect(() => {
+    if (activeView === 'dtr') loadDTRReports()
+  }, [activeView, dtrDate, dtrEmployeeFilter])
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -53,7 +85,9 @@ export default function TaskPerformance() {
       } else if (activeView === 'performance') {
         await loadPerformanceData()
       } else if (activeView === 'ratings') {
-        await loadRatings()
+        await Promise.all([loadRatings(), loadEmployees()])
+      } else if (activeView === 'dtr') {
+        await loadEmployees()
       }
     } finally {
       setLoading(false)
@@ -219,15 +253,9 @@ export default function TaskPerformance() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Task & Performance</h1>
-          <p className="text-gray-600">Manage tasks and track employee performance</p>
+          <p className="text-gray-600">Manage tasks and track employee performance (Task assignment is done by TL/RM from Employee Portal)</p>
         </div>
         <div className="flex space-x-3">
-          {activeView === 'tasks' && (
-            <button onClick={() => setShowTaskModal(true)} className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus size={18} />
-              <span>Assign Task</span>
-            </button>
-          )}
           {activeView === 'ratings' && (
             <button onClick={() => setShowRatingModal(true)} className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Star size={18} />
@@ -249,6 +277,10 @@ export default function TaskPerformance() {
         <button onClick={() => setActiveView('ratings')} className={`px-4 py-2 ${activeView === 'ratings' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}>
           <Star className="inline mr-2" size={18} />
           ACR / Ratings
+        </button>
+        <button onClick={() => setActiveView('dtr')} className={`px-4 py-2 ${activeView === 'dtr' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}>
+          <FileText className="inline mr-2" size={18} />
+          Daily Task Reports
         </button>
       </div>
 
@@ -469,6 +501,141 @@ export default function TaskPerformance() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {activeView === 'dtr' && (
+        <div className="space-y-6">
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow p-4 flex flex-wrap items-end gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+              <input type="date" value={dtrDate} onChange={e => setDtrDate(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Employee</label>
+              <select value={dtrEmployeeFilter} onChange={e => { setDtrEmployeeFilter(e.target.value); setDtrSelectedEmployee(null) }}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
+                <option value="">All Employees</option>
+                {employees.map((emp: any) => (
+                  <option key={emp.employeeId || emp.id} value={emp.employeeId || emp.id}>
+                    {emp.fullName || emp.name || emp.employeeName} ({emp.employeeId || emp.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button onClick={() => { if (dtrEmployeeFilter) loadEmployeeDTR(dtrEmployeeFilter) }}
+              disabled={!dtrEmployeeFilter}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">
+              View Full History
+            </button>
+          </div>
+
+          {/* Employee Summary (when selected) */}
+          {dtrSelectedEmployee?.summary && (
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              {[
+                { label: 'Total Reports', val: dtrSelectedEmployee.summary.totalReports },
+                { label: 'On-Time', val: dtrSelectedEmployee.summary.onTimeSubmissions },
+                { label: 'Late', val: dtrSelectedEmployee.summary.lateSubmissions },
+                { label: 'Hours Logged', val: `${dtrSelectedEmployee.summary.totalHoursLogged}h` },
+                { label: 'Tasks Worked', val: dtrSelectedEmployee.summary.uniqueTasksWorkedOn },
+                { label: 'Compliance', val: `${dtrSelectedEmployee.summary.complianceRate}%` },
+              ].map(item => (
+                <div key={item.label} className="bg-white rounded-lg border p-3 text-center shadow-sm">
+                  <p className="text-xs text-gray-500">{item.label}</p>
+                  <p className="text-lg font-bold text-gray-800 mt-0.5">{item.val}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Reports Table */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-800">
+                {dtrSelectedEmployee ? `DTR History — ${employees.find((e: any) => (e.employeeId || e.id) === dtrEmployeeFilter)?.fullName || dtrEmployeeFilter}` : `Daily Task Reports — ${new Date(dtrDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`}
+              </h3>
+              <span className="text-xs text-gray-400">{(dtrSelectedEmployee?.reports || dtrReports).length} records</span>
+            </div>
+
+            {dtrLoading ? (
+              <div className="flex items-center justify-center py-16 gap-3 text-gray-400">
+                <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Loading...</span>
+              </div>
+            ) : (dtrSelectedEmployee?.reports || dtrReports).length === 0 ? (
+              <div className="flex flex-col items-center py-16 gap-3">
+                <FileText size={36} className="text-gray-200" />
+                <p className="text-sm font-medium text-gray-500">No DTR reports found</p>
+                <p className="text-xs text-gray-400">Try selecting a different date or employee</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {['Date', 'Employee', 'Task', 'Work Done', 'Hours', 'Completion', 'Status', 'Submitted', 'Late'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(dtrSelectedEmployee?.reports || dtrReports).map((r: any) => {
+                      const empName = employees.find((e: any) => (e.employeeId || e.id) === r.employeeId)?.fullName || employees.find((e: any) => (e.employeeId || e.id) === r.employeeId)?.name || r.employeeId
+                      return (
+                        <tr key={r.reportId} className="hover:bg-gray-50 cursor-pointer" onClick={() => setDtrExpandedId(dtrExpandedId === r.reportId ? null : r.reportId)}>
+                          <td className="px-4 py-3 text-xs font-medium text-gray-800 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+                          <td className="px-4 py-3 text-xs text-gray-700">{empName}</td>
+                          <td className="px-4 py-3 text-xs text-gray-700 max-w-[140px] truncate">{r.taskTitle}</td>
+                          <td className="px-4 py-3 text-xs text-gray-600 max-w-[180px] truncate">{r.workDescription}</td>
+                          <td className="px-4 py-3 text-xs font-medium">{r.hoursSpent}h</td>
+                          <td className="px-4 py-3 text-xs">{r.completionPercentage != null ? `${r.completionPercentage}%` : '—'}</td>
+                          <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === 'Completed' ? 'bg-green-50 text-green-700' : r.status === 'Blocked' ? 'bg-red-50 text-red-700' : r.status === 'On Hold' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>{r.status}</span></td>
+                          <td className="px-4 py-3 text-xs text-gray-400">{new Date(r.submittedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</td>
+                          <td className="px-4 py-3">{r.isLate ? <span className="text-xs text-red-600 font-medium">Yes</span> : <span className="text-xs text-green-600">No</span>}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Expanded Detail */}
+          {dtrExpandedId && (() => {
+            const r = (dtrSelectedEmployee?.reports || dtrReports).find((rep: any) => rep.reportId === dtrExpandedId)
+            if (!r) return null
+            const empName = employees.find((e: any) => (e.employeeId || e.id) === r.employeeId)?.fullName || r.employeeId
+            return (
+              <div className="bg-white rounded-lg shadow p-6 space-y-4 border-l-4 border-blue-500">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-bold text-gray-900">{r.taskTitle}</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">Employee: {empName} | Date: {r.date} | Category: {r.category || '—'}</p>
+                  </div>
+                  <button onClick={() => setDtrExpandedId(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+                </div>
+                <div className="grid grid-cols-4 gap-3 text-center">
+                  <div className="bg-gray-50 rounded-lg p-3"><p className="text-xs text-gray-500">Hours</p><p className="font-bold">{r.hoursSpent}h</p></div>
+                  <div className="bg-gray-50 rounded-lg p-3"><p className="text-xs text-gray-500">Status</p><p className="font-bold">{r.status}</p></div>
+                  <div className="bg-gray-50 rounded-lg p-3"><p className="text-xs text-gray-500">Completion</p><p className="font-bold">{r.completionPercentage ?? '—'}%</p></div>
+                  <div className="bg-gray-50 rounded-lg p-3"><p className="text-xs text-gray-500">Priority</p><p className="font-bold">{r.priority}</p></div>
+                </div>
+                <div><p className="text-xs font-semibold text-gray-700 mb-1">Work Description</p><p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{r.workDescription}</p></div>
+                {r.challengesFaced && <div><p className="text-xs font-semibold text-red-600 mb-1">Challenges Faced</p><p className="text-sm text-gray-600 bg-red-50 p-3 rounded-lg">{r.challengesFaced}</p></div>}
+                {r.plannedForTomorrow && <div><p className="text-xs font-semibold text-green-600 mb-1">Plan for Tomorrow</p><p className="text-sm text-gray-600 bg-green-50 p-3 rounded-lg">{r.plannedForTomorrow}</p></div>}
+                {r.remarks && <div><p className="text-xs font-semibold text-gray-600 mb-1">Remarks</p><p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{r.remarks}</p></div>}
+                {r.attachmentUrl && <a href={r.attachmentUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline">📎 View Attachment</a>}
+                <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t">
+                  <span>Submitted: {new Date(r.submittedAt).toLocaleString('en-IN')}</span>
+                  <span className={r.isLate ? 'text-red-500 font-medium' : 'text-green-500'}>{r.isLate ? '⚠️ Late Submission' : '✅ On Time'}</span>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
