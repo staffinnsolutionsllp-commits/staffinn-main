@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, CalendarDays, PlaneTakeoff, IndianRupee,
   CreditCard, ClipboardList, MessageSquare, Network, User,
-  LogOut, ChevronRight, Building2, FileText, Menu, X
+  LogOut, Building2, FileText, Menu, X
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -30,7 +30,7 @@ const NAV = [
   { path: '/claims',     icon: CreditCard,       label: 'Claims' },
   { path: '/tasks',      icon: ClipboardList,    label: 'Tasks' },
   { path: '/dtr',        icon: FileText,         label: 'Daily Task Report' },
-  { path: '/grievances', icon: MessageSquare,    label: 'Grievances & Warnings' },
+  { path: '/grievances', icon: MessageSquare,    label: 'Grievances' },
   { path: '/organogram', icon: Network,          label: 'Organogram' },
   { path: '/resignation',icon: LogOut,           label: 'Resignation' },
   { path: '/profile',    icon: User,             label: 'Profile' },
@@ -60,111 +60,94 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-slate-50">
+    <div className="h-screen flex overflow-hidden bg-gray-50">
 
-      {/* ── Mobile overlay ── */}
+      {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* ── Sidebar ── */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col flex-shrink-0 select-none transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        style={{ background: '#0f172a' }}
-      >
+      {/* Sidebar - Light theme */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-60 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+
         {/* Brand */}
-        <div className="px-5 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,.07)' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
-              <Building2 size={16} className="text-white" />
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Building2 size={14} className="text-white" />
             </div>
             <div>
-              <p className="text-white font-bold text-sm leading-none">StaffInn</p>
-              <p className="text-xs mt-0.5 font-medium" style={{ color: '#64748b' }}>Employee Portal</p>
+              <p className="text-sm font-bold text-blue-600 leading-none">StaffInn</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Employee Portal</p>
             </div>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700">
-            <X size={18} />
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+            <X size={16} />
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">
           {NAV.map(({ path, icon: Icon, label }) => {
             const active = isActive(path);
             return (
-              <button
-                key={path}
-                onClick={() => handleNav(path)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
-                  active ? 'nav-active text-white' : 'text-slate-400 hover:text-white hover:bg-[#1e293b]'
+              <button key={path} onClick={() => handleNav(path)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+                  active
+                    ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <Icon size={16} className={active ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'} />
-                <span className="flex-1 text-left">{label}</span>
-                {active && <ChevronRight size={13} style={{ color: 'rgba(255,255,255,.5)' }} />}
+                <Icon size={16} className={active ? 'text-blue-600' : 'text-gray-400'} />
+                <span>{label}</span>
               </button>
             );
           })}
         </nav>
 
         {/* User footer */}
-        <div className="px-3 pb-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,.07)' }}>
-          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-1" style={{ background: '#1e293b' }}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
-              style={{ background: 'linear-gradient(135deg,#818cf8,#6366f1)' }}>
+        <div className="px-3 py-3 border-t border-gray-100">
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-gray-50">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold bg-blue-600 flex-shrink-0">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{employee.fullName || user?.email || 'Employee'}</p>
-              <p className="text-xs truncate" style={{ color:'#64748b' }}>{employee.designation || employee.employeeId || ''}</p>
+              <p className="text-xs font-semibold text-gray-800 truncate">{employee.fullName || user?.email || 'Employee'}</p>
+              <p className="text-[10px] text-gray-400 truncate">{employee.designation || employee.employeeId || ''}</p>
             </div>
           </div>
-          <button
-            onClick={() => { logout(); navigate('/login'); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-red-400 hover:bg-[#1e293b] transition-all"
-          >
+          <button onClick={() => { logout(); navigate('/login'); }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 mt-1 rounded-lg text-[13px] font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors">
             <LogOut size={15} />
             <span>Sign Out</span>
           </button>
         </div>
       </aside>
 
-      {/* ── Main ── */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden w-full">
-
         {/* Topbar */}
-        <header className="bg-white border-b border-slate-100 px-4 sm:px-7 h-14 flex items-center justify-between flex-shrink-0 shadow-sm">
+        <header className="bg-white border-b border-gray-200 px-4 sm:px-6 h-12 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-3">
-            {/* Hamburger menu - mobile only */}
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100">
-              <Menu size={20} />
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded text-gray-500 hover:text-gray-700 hover:bg-gray-100">
+              <Menu size={18} />
             </button>
-            <h1 className="text-sm font-bold text-slate-900 truncate">{pageTitle}</h1>
+            <h1 className="text-[13px] font-semibold text-gray-800">{pageTitle}</h1>
             {employee.department && (
-              <span className="hidden sm:inline-flex items-center gap-2">
-                <span className="w-1 h-1 rounded-full bg-slate-300" />
-                <span className="text-xs text-slate-500">{employee.department}</span>
-              </span>
+              <span className="hidden sm:inline text-[11px] text-gray-400 ml-1">· {employee.department}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell />
             <button onClick={() => navigate('/profile')}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold hover:opacity-90 transition-opacity"
-              style={{ background: 'linear-gradient(135deg,#818cf8,#6366f1)' }}>
+              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold bg-blue-600 hover:bg-blue-700 transition-colors">
               {initials}
             </button>
           </div>
         </header>
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

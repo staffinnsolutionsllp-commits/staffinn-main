@@ -1,143 +1,189 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { dashboardAPI } from '../services/api';
+import { dashboardAPI, attendanceAPI, leaveAPI, taskAPI, grievanceAPI, dtrAPI } from '../services/api';
 import {
   CalendarDays, CheckCircle, XCircle, Clock, FileText,
-  IndianRupee, User, TrendingUp, ArrowRight, Briefcase,
-  MessageSquare, CreditCard
+  IndianRupee, TrendingUp, Briefcase, MessageSquare,
+  CreditCard, ClipboardList, PlaneTakeoff, Network
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { user }      = useAuth();
-  const navigate      = useNavigate();
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
+  const [time, setTime] = useState(new Date());
 
   useEffect(() => { loadStats(); }, []);
+
+  // Real-time clock
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const loadStats = async () => {
     try { const r = await dashboardAPI.getStats(); setStats(r.data.data); } catch {}
   };
 
   const employee = user?.employee || {};
   const firstName = employee.fullName?.split(' ')[0] || 'Employee';
-  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const quickActions = [
-    { path:'/leave',      icon:FileText,     label:'Apply Leave',    desc:'Request time off',       color:'text-emerald-600', bg:'bg-emerald-50', border:'hover:border-emerald-200' },
-    { path:'/payroll',    icon:IndianRupee,  label:'View Payslips',  desc:'Check salary details',   color:'text-violet-600',  bg:'bg-violet-50',  border:'hover:border-violet-200' },
-    { path:'/claims',     icon:CreditCard,   label:'File a Claim',   desc:'Submit expense claim',   color:'text-amber-600',   bg:'bg-amber-50',   border:'hover:border-amber-200' },
-    { path:'/tasks',      icon:TrendingUp,   label:'My Tasks',       desc:'Track your work',        color:'text-indigo-600',  bg:'bg-indigo-50',  border:'hover:border-indigo-200' },
-    { path:'/grievances', icon:MessageSquare,label:'Grievances',     desc:'Submit or track',        color:'text-rose-600',    bg:'bg-rose-50',    border:'hover:border-rose-200' },
-    { path:'/profile',    icon:User,         label:'My Profile',     desc:'Update your info',       color:'text-slate-600',   bg:'bg-slate-100',  border:'hover:border-slate-200' },
+  const statCards = [
+    { icon: CalendarDays, label: 'Days Present', value: stats?.attendanceThisMonth ?? '—', color: 'text-blue-600', bg: 'bg-blue-50' },
+    { icon: stats?.todayAttendance ? CheckCircle : XCircle, label: "Today's Status", value: stats?.todayAttendance ? 'Present' : 'Absent', color: stats?.todayAttendance ? 'text-green-600' : 'text-red-500', bg: stats?.todayAttendance ? 'bg-green-50' : 'bg-red-50' },
+    { icon: PlaneTakeoff, label: 'Pending Leaves', value: stats?.pendingLeaves ?? '—', color: 'text-orange-600', bg: 'bg-orange-50' },
+    { icon: ClipboardList, label: 'Active Tasks', value: stats?.activeTasks ?? '—', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { icon: FileText, label: 'DTR Today', value: stats?.dtrSubmittedToday ? 'Submitted' : 'Pending', color: stats?.dtrSubmittedToday ? 'text-green-600' : 'text-amber-600', bg: stats?.dtrSubmittedToday ? 'bg-green-50' : 'bg-amber-50' },
+    { icon: CreditCard, label: 'Pending Claims', value: stats?.pendingClaims ?? '—', color: 'text-purple-600', bg: 'bg-purple-50' },
+    { icon: MessageSquare, label: 'Grievances', value: stats?.openGrievances ?? '—', color: 'text-rose-600', bg: 'bg-rose-50' },
+    { icon: IndianRupee, label: 'Last Salary', value: stats?.lastSalary ? `₹${Number(stats.lastSalary).toLocaleString('en-IN')}` : '—', color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
   return (
-    <div className="p-7 space-y-6 animate-fadeIn">
+    <div className="p-4 sm:p-6 space-y-5">
 
-      {/* Welcome Banner */}
-      <div className="rounded-2xl p-6 text-white relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg,#4f46e5 0%,#6366f1 50%,#818cf8 100%)' }}>
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: 'radial-gradient(circle at 80% 50%, white 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
-        }} />
-        <div className="relative">
-          <p className="text-indigo-200 text-sm font-medium">{getGreeting()}</p>
-          <h1 className="text-2xl font-bold mt-0.5">{firstName} 👋</h1>
-          <p className="text-indigo-200 text-xs mt-1">{today}</p>
+      {/* Welcome Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-gray-500 text-xs">{getGreeting()}</p>
+          <h1 className="text-lg font-semibold text-gray-900 mt-0.5">{employee.fullName || firstName}</h1>
           {employee.designation && (
-            <div className="flex items-center gap-2 mt-3">
-              <Briefcase size={13} className="text-indigo-300" />
-              <span className="text-indigo-100 text-xs font-medium">{employee.designation} · {employee.department}</span>
+            <div className="flex items-center gap-1.5 mt-1">
+              <Briefcase size={12} className="text-gray-400" />
+              <span className="text-xs text-gray-500">{employee.designation} · {employee.department}</span>
             </div>
           )}
         </div>
         {employee.employeeId && (
-          <div className="absolute top-5 right-5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
-            style={{ background: 'rgba(255,255,255,.15)' }}>
-            ID: {employee.employeeId}
-          </div>
+          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">ID: {employee.employeeId}</span>
         )}
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            icon={<CalendarDays size={18} />}
-            label="Days Present"
-            value={stats.attendanceThisMonth}
-            sub="This month"
-            color="text-indigo-600" bg="bg-indigo-50" accent="border-l-indigo-500"
-          />
-          <StatCard
-            icon={<Clock size={18} />}
-            label="Pending Leaves"
-            value={stats.pendingLeaves}
-            sub="Awaiting approval"
-            color="text-amber-600" bg="bg-amber-50" accent="border-l-amber-500"
-          />
-          <StatCard
-            icon={stats.todayAttendance ? <CheckCircle size={18}/> : <XCircle size={18}/>}
-            label="Today"
-            value={stats.todayAttendance ? 'Present' : 'Absent'}
-            sub={stats.todayAttendance ? 'Biometric checked in' : 'Not yet recorded'}
-            color={stats.todayAttendance ? 'text-emerald-600' : 'text-red-500'}
-            bg={stats.todayAttendance ? 'bg-emerald-50' : 'bg-red-50'}
-            accent={stats.todayAttendance ? 'border-l-emerald-500' : 'border-l-red-500'}
-          />
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-4">Quick Actions</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {quickActions.map(({ path, icon: Icon, label, desc, color, bg, border }) => (
-            <button key={path} onClick={() => navigate(path)}
-              className={`group flex items-center gap-3 p-3.5 rounded-xl border border-slate-100 ${border} hover:shadow-sm transition-all duration-150 text-left`}>
-              <div className={`w-9 h-9 ${bg} rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform`}>
-                <Icon size={17} className={color} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 leading-tight">{label}</p>
-                <p className="text-xs text-slate-400 mt-0.5 truncate">{desc}</p>
-              </div>
-              <ArrowRight size={13} className="text-slate-300 group-hover:text-slate-500 transition-colors flex-shrink-0" />
-            </button>
-          ))}
+      {/* Analog Clock + Date */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col sm:flex-row items-center gap-5">
+        <AnalogClock time={time} />
+        <div className="text-center sm:text-left">
+          <p className="text-2xl font-bold text-gray-900 tabular-nums">
+            {time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            {time.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
         </div>
       </div>
 
-      {/* Leave balance hint */}
-      {stats && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">
-          <div className="w-8 h-8 bg-white rounded-lg border border-slate-200 flex items-center justify-center flex-shrink-0">
-            <TrendingUp size={14} className="text-indigo-500" />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {statCards.map(({ icon: Icon, label, value, color, bg }) => (
+          <div key={label} className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-sm transition-shadow">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 ${bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                <Icon size={15} className={color} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] text-gray-500 font-medium truncate">{label}</p>
+                <p className={`text-sm font-bold ${color} leading-tight mt-0.5`}>{value}</p>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-slate-600">
-            You have <strong className="text-slate-900">{stats.pendingLeaves}</strong> pending leave request{stats.pendingLeaves !== 1 ? 's' : ''}.
-            {stats.pendingLeaves > 0 ? ' Your manager will review them shortly.' : ' All clear!'}
-          </p>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
 
-function StatCard({ icon, label, value, sub, color, bg, accent }) {
-  return (
-    <div className={`bg-white rounded-xl border border-slate-200 border-l-4 ${accent} shadow-sm p-4 flex items-center gap-3 card-hover`}>
-      <div className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
-        {icon}
-      </div>
-      <div>
-        <p className="text-xs font-medium text-slate-500">{label}</p>
-        <p className={`text-xl font-bold ${color} leading-tight mt-0.5`}>{value}</p>
-        <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
-      </div>
-    </div>
-  );
+/* ── Analog Clock Component ── */
+function AnalogClock({ time }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const size = canvas.width;
+    const center = size / 2;
+    const radius = center - 8;
+
+    ctx.clearRect(0, 0, size, size);
+
+    // Clock face
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Hour markers
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * Math.PI) / 6 - Math.PI / 2;
+      const innerR = radius - 10;
+      const outerR = radius - 3;
+      ctx.beginPath();
+      ctx.moveTo(center + innerR * Math.cos(angle), center + innerR * Math.sin(angle));
+      ctx.lineTo(center + outerR * Math.cos(angle), center + outerR * Math.sin(angle));
+      ctx.strokeStyle = '#374151';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Minute markers
+    for (let i = 0; i < 60; i++) {
+      if (i % 5 !== 0) {
+        const angle = (i * Math.PI) / 30 - Math.PI / 2;
+        const innerR = radius - 5;
+        const outerR = radius - 3;
+        ctx.beginPath();
+        ctx.moveTo(center + innerR * Math.cos(angle), center + innerR * Math.sin(angle));
+        ctx.lineTo(center + outerR * Math.cos(angle), center + outerR * Math.sin(angle));
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    const hours = time.getHours() % 12;
+    const minutes = time.getMinutes();
+    const seconds = time.getSeconds();
+
+    // Hour hand
+    const hourAngle = ((hours + minutes / 60) * Math.PI) / 6 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.lineTo(center + (radius * 0.5) * Math.cos(hourAngle), center + (radius * 0.5) * Math.sin(hourAngle));
+    ctx.strokeStyle = '#1f2937';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Minute hand
+    const minAngle = ((minutes + seconds / 60) * Math.PI) / 30 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.lineTo(center + (radius * 0.7) * Math.cos(minAngle), center + (radius * 0.7) * Math.sin(minAngle));
+    ctx.strokeStyle = '#374151';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Second hand
+    const secAngle = (seconds * Math.PI) / 30 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(center, center);
+    ctx.lineTo(center + (radius * 0.75) * Math.cos(secAngle), center + (radius * 0.75) * Math.sin(secAngle));
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Center dot
+    ctx.beginPath();
+    ctx.arc(center, center, 3, 0, 2 * Math.PI);
+    ctx.fillStyle = '#1f2937';
+    ctx.fill();
+  }, [time]);
+
+  return <canvas ref={canvasRef} width={140} height={140} className="flex-shrink-0" />;
 }
 
 function getGreeting() {
