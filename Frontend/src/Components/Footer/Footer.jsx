@@ -56,7 +56,7 @@ const Footer = () => {
             </div>
         </div>    
         <hr />
-        <p className="footer-copyright"> Copyright 2025 © Staffinn.com - All Right Reserved. </p> 
+        <p className="footer-copyright"> Copyright © 2025 Staffinn Solutions LLP. All Rights Reserved. </p> 
     </div>
   )
 }
