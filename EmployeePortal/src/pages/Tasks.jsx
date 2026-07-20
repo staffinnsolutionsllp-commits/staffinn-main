@@ -180,7 +180,7 @@ export default function Tasks() {
             tasks.map((task) => (
               <div key={task.taskId} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden card-hover">
                 {/* Card header */}
-                <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-start justify-between gap-4">
+                <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center flex-wrap gap-2 mb-1">
                       <h3 className="font-bold text-slate-900">{task.title}</h3>
@@ -196,7 +196,7 @@ export default function Tasks() {
                 </div>
 
                 {/* Details */}
-                <div className="px-6 py-4 space-y-4">
+                <div className="px-4 sm:px-6 py-4 space-y-4">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {[
                       { icon: CalendarDays, label: 'Start', value: new Date(task.startDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }), color: 'text-emerald-600', bg: 'bg-emerald-50' },
@@ -455,7 +455,7 @@ export default function Tasks() {
                 </div>
               </div>
               {/* 3 Dates: Start, End, Deadline */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Start Date *</label>
                   <input type="date" value={assignFormData.startDate}
@@ -478,7 +478,7 @@ export default function Tasks() {
                 </div>
               </div>
               {/* Performed + Unit */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Task Performed</label>
                   <input type="number" min="0" value={assignFormData.performedValue}

@@ -253,7 +253,7 @@ export default function Grievances() {
 
       {/* Warning stats */}
       {(activeTab==='warnings-issued'||activeTab==='warnings-received') && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {(activeTab==='warnings-issued' ? [
             {label:'Total Issued',  val:issuedWarnings.length,  color:'text-orange-600', bg:'bg-orange-50'},
             {label:'High Severity', val:issuedWarnings.filter(w=>w.severity==='High').length,  color:'text-red-600', bg:'bg-red-50'},
@@ -277,7 +277,7 @@ export default function Grievances() {
           <h2 className="font-bold text-slate-900 text-lg">Submit New Grievance</h2>
 
           {/* Type selector — 3 options */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               {type:'general',  icon:MessageSquare, label:'General Grievance',        desc:'Assigned to your reporting manager', border:'border-indigo-600', bg:'bg-indigo-50', textColor:'text-indigo-700', iconColor:'text-indigo-600'},
               {type:'complaint',icon:UserX,         label:'Complaint Against Employee',desc:"Assigned to employee's manager",     border:'border-red-500',    bg:'bg-red-50',    textColor:'text-red-700',    iconColor:'text-red-600'},

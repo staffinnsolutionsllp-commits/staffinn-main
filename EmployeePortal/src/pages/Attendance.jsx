@@ -78,7 +78,7 @@ export default function Attendance() {
 
       {/* Summary stats */}
       {attendance.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { icon: CheckCircle, label: 'Present Days',    val: present.length,          color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-l-emerald-500' },
             { icon: XCircle,     label: 'Absent Days',     val: absent.length,           color: 'text-red-500',     bg: 'bg-red-50',     border: 'border-l-red-500' },

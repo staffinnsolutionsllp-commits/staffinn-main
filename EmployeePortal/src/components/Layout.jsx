@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, CalendarDays, PlaneTakeoff, IndianRupee,
   CreditCard, ClipboardList, MessageSquare, Network, User,
-  LogOut, ChevronRight, Building2, FileText
+  LogOut, ChevronRight, Building2, FileText, Menu, X
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -39,6 +40,7 @@ export default function Layout({ children }) {
   const navigate  = useNavigate();
   const location  = useLocation();
   const { user, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const employee  = user?.employee || {};
   const initials  = employee.fullName
@@ -52,16 +54,28 @@ export default function Layout({ children }) {
     location.pathname === path ||
     (path === '/resignation' && location.pathname.startsWith('/separation'));
 
+  const handleNav = (path) => {
+    navigate(path);
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="h-screen flex overflow-hidden bg-slate-50">
 
+      {/* ── Mobile overlay ── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
       {/* ── Sidebar ── */}
       <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 flex flex-col flex-shrink-0 select-none transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
         style={{ background: '#0f172a' }}
-        className="w-64 flex flex-col flex-shrink-0 select-none"
       >
         {/* Brand */}
-        <div className="px-5 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+        <div className="px-5 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,.07)' }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>
@@ -72,6 +86,9 @@ export default function Layout({ children }) {
               <p className="text-xs mt-0.5 font-medium" style={{ color: '#64748b' }}>Employee Portal</p>
             </div>
           </div>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700">
+            <X size={18} />
+          </button>
         </div>
 
         {/* Nav */}
@@ -81,13 +98,10 @@ export default function Layout({ children }) {
             return (
               <button
                 key={path}
-                onClick={() => navigate(path)}
+                onClick={() => handleNav(path)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
-                  active ? 'nav-active text-white' : 'text-slate-400 hover:text-white'
+                  active ? 'nav-active text-white' : 'text-slate-400 hover:text-white hover:bg-[#1e293b]'
                 }`}
-                style={!active ? undefined : undefined}
-                onMouseEnter={e => { if(!active) e.currentTarget.style.background='#1e293b'; }}
-                onMouseLeave={e => { if(!active) e.currentTarget.style.background=''; }}
               >
                 <Icon size={16} className={active ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'} />
                 <span className="flex-1 text-left">{label}</span>
@@ -99,26 +113,19 @@ export default function Layout({ children }) {
 
         {/* User footer */}
         <div className="px-3 pb-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,.07)' }}>
-          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-1"
-            style={{ background: '#1e293b' }}>
+          <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-1" style={{ background: '#1e293b' }}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
               style={{ background: 'linear-gradient(135deg,#818cf8,#6366f1)' }}>
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-semibold truncate">
-                {employee.fullName || user?.email || 'Employee'}
-              </p>
-              <p className="text-xs truncate" style={{ color:'#64748b' }}>
-                {employee.designation || employee.employeeId || ''}
-              </p>
+              <p className="text-white text-xs font-semibold truncate">{employee.fullName || user?.email || 'Employee'}</p>
+              <p className="text-xs truncate" style={{ color:'#64748b' }}>{employee.designation || employee.employeeId || ''}</p>
             </div>
           </div>
           <button
             onClick={() => { logout(); navigate('/login'); }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-red-400 transition-all"
-            onMouseEnter={e => e.currentTarget.style.background='#1e293b'}
-            onMouseLeave={e => e.currentTarget.style.background=''}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 hover:text-red-400 hover:bg-[#1e293b] transition-all"
           >
             <LogOut size={15} />
             <span>Sign Out</span>
@@ -127,17 +134,21 @@ export default function Layout({ children }) {
       </aside>
 
       {/* ── Main ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden w-full">
 
         {/* Topbar */}
-        <header className="bg-white border-b border-slate-100 px-7 h-14 flex items-center justify-between flex-shrink-0 shadow-sm">
+        <header className="bg-white border-b border-slate-100 px-4 sm:px-7 h-14 flex items-center justify-between flex-shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
-            <h1 className="text-sm font-bold text-slate-900">{pageTitle}</h1>
+            {/* Hamburger menu - mobile only */}
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100">
+              <Menu size={20} />
+            </button>
+            <h1 className="text-sm font-bold text-slate-900 truncate">{pageTitle}</h1>
             {employee.department && (
-              <>
+              <span className="hidden sm:inline-flex items-center gap-2">
                 <span className="w-1 h-1 rounded-full bg-slate-300" />
                 <span className="text-xs text-slate-500">{employee.department}</span>
-              </>
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2">

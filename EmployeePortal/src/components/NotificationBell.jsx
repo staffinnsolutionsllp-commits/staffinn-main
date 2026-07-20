@@ -124,7 +124,7 @@ export default function NotificationBell() {
       {showDropdown && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-          <div className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-20 flex flex-col max-h-[520px] overflow-hidden animate-scaleIn">
+          <div className="fixed inset-x-3 top-14 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-20 flex flex-col max-h-[520px] overflow-hidden animate-scaleIn">
 
             {/* Header */}
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-shrink-0">

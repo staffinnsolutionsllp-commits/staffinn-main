@@ -525,7 +525,7 @@ export default function Claims() {
           </div>
 
           {/* Business Purpose */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Business Purpose *</label>
               <select value={businessPurpose} onChange={e => setBusinessPurpose(e.target.value)}
@@ -618,7 +618,7 @@ export default function Claims() {
 
               {/* Conveyance-specific fields */}
               {selectedType.name === 'Conveyance' && (
-                <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                   <div><label className="block text-xs font-semibold text-slate-500 mb-1">From Address</label>
                     <input value={item.subTypeFields?.fromAddress||''} onChange={e=>updateSubField(idx,'fromAddress',e.target.value)} placeholder="Starting point" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"/></div>
                   <div><label className="block text-xs font-semibold text-slate-500 mb-1">To Address</label>
