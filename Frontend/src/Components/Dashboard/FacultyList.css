@@ -144,15 +144,15 @@
 
 .tabs {
   display: flex;
-  gap: 6px;
+  gap: 0;
   border-bottom: 2px solid #e9ecef;
   background: #f8f9fa;
-  padding: 8px 12px 0;
+  padding: 0;
   flex-wrap: wrap;
 }
 
 .tab {
-  padding: 10px 20px;
+  padding: 12px 0;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -161,9 +161,10 @@
   color: #6c757d;
   border-bottom: 2px solid transparent;
   transition: all 0.2s;
-  border-radius: 6px 6px 0 0;
   white-space: nowrap;
   margin-bottom: -2px;
+  flex: 1;
+  text-align: center;
 }
 
 .tab:hover {
