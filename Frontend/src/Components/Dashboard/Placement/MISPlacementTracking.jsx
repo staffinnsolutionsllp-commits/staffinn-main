@@ -148,8 +148,8 @@ const MISPlacementTracking = () => {
   return (
     <div className="placement-tracking">
       <div className="tracking-header">
-        <h3>📋 MIS Student Placement Tracking</h3>
-        <p>Real-time tracking of MIS student applications and placement status</p>
+        <h3>📋 Staffinn Partner Student Placement Tracking</h3>
+        <p>Real-time tracking of Staffinn Partner student applications and placement status</p>
       </div>
 
       {/* Filters Section */}

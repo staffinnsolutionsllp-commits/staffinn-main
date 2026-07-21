@@ -39,8 +39,8 @@ const MISPlacementSection = () => {
   return (
     <div className="placement-section">
       <div className="placement-header">
-        <h2>💼 MIS Student Placement Analytics</h2>
-        <p>Track and analyze MIS student placement performance</p>
+        <h2>💼 Staffinn Partner Placement Analytics</h2>
+        <p>Track and analyze Staffinn Partner student placement performance</p>
       </div>
 
       {/* Dashboard Summary Cards */}
@@ -115,7 +115,7 @@ const MISPlacementSection = () => {
         {activeTab === 'dashboard' && (
           <div className="placement-dashboard">
             <div className="placement-dashboard-header">
-              <h3>MIS Placement Overview</h3>
+              <h3>Staffinn Partner Placement Overview</h3>
               <button 
                 className="placement-action-btn view"
                 onClick={loadMISDashboardSummary}
@@ -149,9 +149,9 @@ const MISPlacementSection = () => {
               <div className="info-section">
                 <h4>📋 Quick Stats</h4>
                 <ul>
-                  <li>Track MIS student placement success across all programs</li>
+                  <li>Track Staffinn Partner student placement success across all programs</li>
                   <li>Monitor salary trends and industry demands</li>
-                  <li>Analyze MIS student performance by various metrics</li>
+                  <li>Analyze Staffinn Partner student performance by various metrics</li>
                   <li>Generate comprehensive placement reports</li>
                 </ul>
               </div>
@@ -159,9 +159,9 @@ const MISPlacementSection = () => {
               <div className="info-section">
                 <h4>🎯 Key Features</h4>
                 <ul>
-                  <li><strong>Center Wise:</strong> Compare MIS student performance across training centers</li>
-                  <li><strong>Sector Wise:</strong> Analyze MIS placements by industry sectors</li>
-                  <li><strong>Student Wise:</strong> Individual MIS student placement tracking</li>
+                  <li><strong>Center Wise:</strong> Compare Staffinn Partner student performance across training centers</li>
+                  <li><strong>Sector Wise:</strong> Analyze Staffinn Partner placements by industry sectors</li>
+                  <li><strong>Student Wise:</strong> Individual Staffinn Partner student placement tracking</li>
                   <li><strong>Real-time Updates:</strong> Live placement status monitoring</li>
                 </ul>
               </div>
