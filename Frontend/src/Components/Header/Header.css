@@ -422,13 +422,15 @@
     position: relative;
     display: flex;
     align-items: center;
+    justify-content: flex-start;
+    max-width: 100%;
   }
 
   .logo-image {
     height: 28px;
   }
 
-  .header-container .logo {
+  .header .header-container .logo {
     margin-left: 0 !important;
     flex: 1;
     order: 1;
@@ -449,14 +451,14 @@
     display: none;
   }
 
-  .header-container .mobile-menu-toggle {
+  .header .header-container .mobile-menu-toggle {
     display: flex !important;
     position: static !important;
     left: auto !important;
     top: auto !important;
     transform: none !important;
     order: 3;
-    z-index: 1002;
+    z-index: 1002 !important;
     padding: 8px;
     cursor: pointer;
     touch-action: manipulation;
