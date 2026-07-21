@@ -7,15 +7,14 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Load Razorpay script
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
+    // Load Cashfree JS SDK
+    if (!window.Cashfree) {
+      const script = document.createElement('script');
+      script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+      script.async = true;
+      document.body.appendChild(script);
+      return () => { document.body.removeChild(script); };
+    }
   }, []);
 
   const handlePayment = async () => {
@@ -25,80 +24,56 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
 
       console.log('💳 Initiating payment for course:', course.coursesId);
 
-      // Create order
+      // Create order via backend
       const orderResponse = await apiService.createPaymentOrder(course.coursesId);
       
       if (!orderResponse.success) {
         throw new Error(orderResponse.message || 'Failed to create payment order');
       }
 
-      const { orderId, amount, currency, razorpayKeyId, courseDetails } = orderResponse.data;
+      const { paymentSessionId, orderId } = orderResponse.data;
 
-      console.log('🔑 Razorpay Key ID:', razorpayKeyId);
+      if (!paymentSessionId) {
+        throw new Error('Payment session not created. Please try again.');
+      }
 
-      // Razorpay options
-      const options = {
-        key: razorpayKeyId,
-        amount: amount,
-        currency: currency,
-        name: 'Staffinn',
-        description: `Course: ${courseDetails.courseName}`,
-        order_id: orderId,
-        handler: async function (response) {
-          try {
-            console.log('✅ Payment successful:', response);
+      console.log('✅ Order created:', orderId);
 
-            // Verify payment with correct field names
-            const verifyResponse = await apiService.verifyPayment({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature
-            });
+      // Initialize Cashfree
+      const cashfree = window.Cashfree({ mode: 'production' });
 
-            if (verifyResponse.success) {
-              alert('Payment successful! You are now enrolled in the course.');
-              onSuccess();
-              onClose();
-            } else {
-              throw new Error(verifyResponse.message || 'Payment verification failed');
-            }
-          } catch (error) {
-            console.error('❌ Payment verification error:', error);
-            setError(error.message || 'Payment verification failed');
-            setLoading(false);
-          }
-        },
-        prefill: {
-          name: '',
-          email: '',
-          contact: ''
-        },
-        notes: {
-          courseId: course.coursesId,
-          courseName: courseDetails.courseName
-        },
-        theme: {
-          color: '#3399cc'
-        },
-        modal: {
-          ondismiss: function() {
-            console.log('Payment cancelled by user');
-            setLoading(false);
-          }
-        }
-      };
+      // Open Cashfree checkout
+      const result = await cashfree.checkout({ paymentSessionId, redirectTarget: '_modal' });
 
-      const razorpay = new window.Razorpay(options);
-      
-      razorpay.on('payment.failed', function (response) {
-        console.error('❌ Payment failed:', response.error);
-        setError(response.error.description || 'Payment failed');
+      if (result.error) {
+        console.error('❌ Cashfree error:', result.error);
+        setError(result.error.message || 'Payment failed');
         setLoading(false);
-      });
+        return;
+      }
 
-      razorpay.open();
+      if (result.redirect) {
+        // UPI redirect - will return via return_url
+        console.log('Payment redirected...');
+        return;
+      }
+
+      if (result.paymentDetails) {
+        console.log('✅ Payment completed:', result.paymentDetails);
+
+        // Verify payment with backend
+        const verifyResponse = await apiService.verifyPayment({ orderId });
+
+        if (verifyResponse.success) {
+          alert('Payment successful! You are now enrolled in the course.');
+          onSuccess();
+          onClose();
+        } else {
+          throw new Error(verifyResponse.message || 'Payment verification failed');
+        }
+      }
     } catch (error) {
-      console.error('❌ Payment initiation error:', error);
+      console.error('❌ Payment error:', error);
       setError(error.message || 'Failed to initiate payment');
       setLoading(false);
     }
@@ -131,25 +106,15 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
           </div>
 
           <div className="payment-info">
-            <p>✓ Secure payment powered by Razorpay</p>
+            <p>✓ Secure payment powered by Cashfree</p>
             <p>✓ Instant course access after payment</p>
-            <p>✓ Payment goes directly to course creator</p>
+            <p>✓ UPI, Cards, Net Banking supported</p>
           </div>
         </div>
 
         <div className="payment-modal-footer">
-          <button 
-            className="cancel-button" 
-            onClick={onClose}
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button 
-            className="pay-button" 
-            onClick={handlePayment}
-            disabled={loading}
-          >
+          <button className="cancel-button" onClick={onClose} disabled={loading}>Cancel</button>
+          <button className="pay-button" onClick={handlePayment} disabled={loading}>
             {loading ? 'Processing...' : `Pay ₹${course.fees}`}
           </button>
         </div>

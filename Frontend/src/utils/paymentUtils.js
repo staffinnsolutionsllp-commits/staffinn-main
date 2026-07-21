@@ -1,33 +1,32 @@
-// Frontend Payment Integration Utility
+// Frontend Payment Integration Utility - Cashfree
 // Location: Frontend/src/utils/paymentUtils.js
 
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.staffinn.com/api/v1';
 
-// Load Razorpay script
-export const loadRazorpayScript = () => {
+// Load Cashfree JS SDK
+export const loadCashfreeScript = () => {
   return new Promise((resolve) => {
+    if (window.Cashfree) {
+      resolve(true);
+      return;
+    }
     const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
 };
 
-// Create payment order
+// Create payment order via backend
 export const createPaymentOrder = async (courseId, token) => {
   try {
     const response = await axios.post(
       `${API_BASE_URL}/payments/create-order`,
       { courseId },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
     return response.data;
   } catch (error) {
@@ -35,18 +34,13 @@ export const createPaymentOrder = async (courseId, token) => {
   }
 };
 
-// Verify payment
+// Verify payment after completion
 export const verifyPayment = async (paymentData, token) => {
   try {
     const response = await axios.post(
       `${API_BASE_URL}/payments/verify`,
       paymentData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
     return response.data;
   } catch (error) {
@@ -58,12 +52,8 @@ export const verifyPayment = async (paymentData, token) => {
 export const checkPaymentStatus = async (courseId, token) => {
   try {
     const response = await axios.get(
-      `${API_BASE_URL}/payments/status/${courseId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
+      `${API_BASE_URL}/payments/check-status/${courseId}`,
+      { headers: { Authorization: `Bearer ${token}` } }
     );
     return response.data;
   } catch (error) {
@@ -71,65 +61,65 @@ export const checkPaymentStatus = async (courseId, token) => {
   }
 };
 
-// Main payment handler
+// Main payment handler - Cashfree Drop-in Checkout
 export const handlePayment = async (courseData, userData, token, onSuccess, onFailure) => {
   try {
-    // Load Razorpay script
-    const scriptLoaded = await loadRazorpayScript();
+    // Load Cashfree SDK
+    const scriptLoaded = await loadCashfreeScript();
     if (!scriptLoaded) {
-      throw new Error('Razorpay SDK failed to load');
+      throw new Error('Cashfree SDK failed to load');
     }
 
-    // Create order
+    // Create order via backend
     const orderData = await createPaymentOrder(courseData.courseId, token);
 
-    // Razorpay options
-    const options = {
-      key: 'rzp_test_SX0XfakI5RoVzw', // Your test key
-      amount: orderData.amount,
-      currency: orderData.currency,
-      name: 'Staffinn',
-      description: `Payment for ${courseData.courseName}`,
-      order_id: orderData.orderId,
-      handler: async function (response) {
-        try {
-          // Verify payment
-          const verificationData = {
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-            courseId: courseData.courseId
-          };
+    if (!orderData.success || !orderData.data?.paymentSessionId) {
+      throw new Error(orderData.message || 'Failed to create payment order');
+    }
 
-          const verifyResponse = await verifyPayment(verificationData, token);
-          
-          if (verifyResponse.success) {
-            onSuccess(verifyResponse);
-          } else {
-            onFailure(new Error('Payment verification failed'));
-          }
-        } catch (error) {
-          onFailure(error);
-        }
-      },
-      prefill: {
-        name: userData.name,
-        email: userData.email,
-        contact: userData.phone || ''
-      },
-      theme: {
-        color: '#3399cc'
-      },
-      modal: {
-        ondismiss: function() {
-          onFailure(new Error('Payment cancelled by user'));
-        }
-      }
+    const { paymentSessionId, orderId } = orderData.data;
+
+    // Initialize Cashfree checkout
+    const cashfree = window.Cashfree({ mode: 'production' });
+
+    const checkoutOptions = {
+      paymentSessionId: paymentSessionId,
+      redirectTarget: '_modal'
     };
 
-    const razorpay = new window.Razorpay(options);
-    razorpay.open();
+    // Open Cashfree checkout
+    const result = await cashfree.checkout(checkoutOptions);
+
+    if (result.error) {
+      console.error('Cashfree checkout error:', result.error);
+      onFailure(new Error(result.error.message || 'Payment failed'));
+      return;
+    }
+
+    if (result.redirect) {
+      // Payment was redirected (UPI intent, etc.) - verification will happen on return
+      console.log('Payment redirected, waiting for callback...');
+      return;
+    }
+
+    if (result.paymentDetails) {
+      // Payment completed in modal
+      console.log('Payment completed:', result.paymentDetails);
+
+      // Verify with backend
+      const verifyResponse = await verifyPayment({ orderId }, token);
+
+      if (verifyResponse.success) {
+        onSuccess(verifyResponse);
+      } else {
+        onFailure(new Error(verifyResponse.message || 'Payment verification failed'));
+      }
+    }
   } catch (error) {
+    console.error('Payment error:', error);
     onFailure(error);
   }
 };
+
+// Legacy exports for backward compatibility
+export const loadRazorpayScript = loadCashfreeScript;

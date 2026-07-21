@@ -97,7 +97,7 @@ const PaymentOptionModal = ({ course, onClose, onPayHere, onPayAtInstitute }) =>
             <div className="pom-option-icon pom-option-icon--online">💳</div>
             <div className="pom-option-body">
               <h4 className="pom-option-title">Pay Here <span className="pom-badge pom-badge--blue">Online</span></h4>
-              <p className="pom-option-desc">Pay securely using Razorpay</p>
+              <p className="pom-option-desc">Pay securely online (UPI, Cards, Net Banking)</p>
               <ul className="pom-perks">
                 <li><span className="pom-check">✓</span> Instant enrollment confirmation</li>
                 <li><span className="pom-check">✓</span> Secure payment gateway</li>

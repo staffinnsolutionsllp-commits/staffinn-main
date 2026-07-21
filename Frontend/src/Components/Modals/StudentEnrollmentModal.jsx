@@ -223,8 +223,8 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
       // After successful payment, enroll students
       const paymentDetails = {
         paymentStatus: 'completed',
-        paymentMethod: 'razorpay',
-        transactionId: `RAZORPAY-${Date.now()}`,
+        paymentMethod: 'cashfree',
+        transactionId: `CF-${Date.now()}`,
         paymentDate: new Date().toISOString(),
         amount: course.fees * selectedStudents.length
       };
@@ -599,7 +599,7 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
                   />
                   <div style={{ flex: 1 }}>
                     <h4 style={{ margin: 0, marginBottom: '5px' }}>💳 Pay Here (Online)</h4>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>Pay securely using Razorpay</p>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>Pay securely online</p>
                     <ul style={{ margin: '10px 0 0 20px', fontSize: '13px', color: '#666' }}>
                       <li>✓ Instant enrollment confirmation</li>
                       <li>✓ Secure payment gateway</li>

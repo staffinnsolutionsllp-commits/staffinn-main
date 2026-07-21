@@ -5385,7 +5385,7 @@ const apiService = {
     }
   },
 
-  // Payment API - Razorpay Integration
+  // Payment API - Cashfree Integration
   createPaymentOrder: async (courseId) => {
     try {
       const token = localStorage.getItem('token');

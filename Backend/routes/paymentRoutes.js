@@ -12,7 +12,7 @@ router.get('/check-status/:courseId', protect, paymentController.checkPaymentSta
 // Institute payment routes (require authentication)
 router.get('/institute/transactions', protect, paymentController.getInstituteTransactions);
 
-// Webhook route (no authentication - verified by signature)
-router.post('/webhook', express.raw({ type: 'application/json' }), paymentController.handleWebhook);
+// Webhook route (no authentication - verified by Cashfree signature)
+router.post('/webhook', express.json(), paymentController.handleWebhook);
 
 module.exports = router;
