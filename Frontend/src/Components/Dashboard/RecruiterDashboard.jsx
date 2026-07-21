@@ -13,6 +13,7 @@ import { AuthContext } from '../../context/AuthContext';
 import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
 import HiddenUser from '../HiddenUser/HiddenUser';
 import GovernmentSchemes from './GovernmentSchemes';
+import HRMS from '../HRMS/HRMS';
 import ContactHistory from '../Messages/ContactHistory';
 import './HiddenNotification.css';
 import CampusInviteEnvelope from './CampusInviteEnvelope';
@@ -1958,7 +1959,7 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'government-schemes' ? 'active' : ''} onClick={() => handleTabChange('government-schemes')}>
                         Government Schemes
                     </li>
-                    <li className={activeTab === 'hrms' ? 'active' : ''} onClick={handleHRMSAccess}>
+                    <li className={activeTab === 'hrms' ? 'active' : ''} onClick={() => handleTabChange('hrms')}>
                         HRMS
                     </li>
                 </ul>
@@ -1986,6 +1987,7 @@ const RecruiterDashboard = () => {
                     {activeTab === 'news' && 'News'}
                     {activeTab === 'contact-history' && 'Chat History'}
                     {activeTab === 'government-schemes' && 'Government Schemes'}
+                    {activeTab === 'hrms' && 'HRMS'}
                     {activeTab === 'profile' && 'My Profile'}
                 </h1>
 
@@ -3149,6 +3151,10 @@ const RecruiterDashboard = () => {
                     <div className="recruiter-government-schemes-tab">
                         <GovernmentSchemes />
                     </div>
+                )}
+
+                {activeTab === 'hrms' && (
+                    <HRMS />
                 )}
 
                 {activeTab === 'news' && (
