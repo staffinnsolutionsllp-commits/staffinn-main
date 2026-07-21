@@ -519,45 +519,19 @@ const getPlacementTracking = async (req, res) => {
     let students = [];
     let allApplications = [];
 
-    if (isMISInstitute) {
-      // Get MIS students for Staffinn Partner
-      console.log('📚 [PLACEMENT TRACKING] Fetching MIS students...');
-      students = await misStudentModel.getStudentsByInstitute(instituteId);
-      console.log('📊 [PLACEMENT TRACKING] MIS Students found:', students.length);
-      if (students.length > 0) {
-        console.log('📋 [PLACEMENT TRACKING] Sample MIS student:', {
-          studentsId: students[0].studentsId,
-          candidateName: students[0].candidateName,
-          fatherName: students[0].fatherName
-        });
-      }
-      
-      // Get MIS applications from MIS job applications table
-      console.log('📚 [PLACEMENT TRACKING] Fetching MIS applications...');
-      allApplications = await misJobApplicationModel.getByInstitute(instituteId);
-      console.log('📊 [PLACEMENT TRACKING] MIS Applications found:', allApplications.length);
-      if (allApplications.length > 0) {
-        console.log('📋 [PLACEMENT TRACKING] Sample MIS application:', {
-          misApplicationId: allApplications[0].misApplicationId,
-          studentId: allApplications[0].studentId,
-          jobId: allApplications[0].jobId,
-          status: allApplications[0].status
-        });
-      }
-    } else {
-      // Get regular institute students
-      console.log('📚 [PLACEMENT TRACKING] Fetching Institute students...');
-      students = await instituteStudentModel.getStudentsByInstitute(instituteId);
-      console.log('📊 [PLACEMENT TRACKING] Institute Students found:', students.length);
-      
-      const studentIds = students.map(s => s.instituteStudntsID);
-      
-      // Get regular applications from job applications table
-      console.log('📚 [PLACEMENT TRACKING] Fetching Institute applications...');
-      const allApps = await jobApplicationModel.getAllApplications();
-      allApplications = allApps.filter(app => studentIds.includes(app.studentID));
-      console.log('📊 [PLACEMENT TRACKING] Institute Applications found:', allApplications.length);
-    }
+    // ALWAYS get regular institute students and their applications
+    // Regular Placement Tracking section always shows regular institute students
+    console.log('📚 [PLACEMENT TRACKING] Fetching Institute students...');
+    students = await instituteStudentModel.getStudentsByInstitute(instituteId);
+    console.log('📊 [PLACEMENT TRACKING] Institute Students found:', students.length);
+    
+    const studentIds = students.map(s => s.instituteStudntsID);
+    
+    // Get regular applications from job applications table
+    console.log('📚 [PLACEMENT TRACKING] Fetching Institute applications...');
+    const allApps = await jobApplicationModel.getAllApplications();
+    allApplications = allApps.filter(app => studentIds.includes(app.studentID));
+    console.log('📊 [PLACEMENT TRACKING] Institute Applications found:', allApplications.length);
 
     // Enrich with student, job, and recruiter details
     const trackingData = await Promise.all(
@@ -565,19 +539,9 @@ const getPlacementTracking = async (req, res) => {
         let student;
         let studentName = 'Unknown Student';
         
-        if (isMISInstitute) {
-          // MIS applications use 'studentId' field, MIS students use 'studentsId' field
-          student = students.find(s => s.studentsId === app.studentId);
-          studentName = student?.candidateName || student?.fatherName || 'Unknown MIS Student';
-          console.log('🔍 [TRACKING] MIS Student match:', {
-            appStudentId: app.studentId,
-            foundStudent: !!student,
-            studentName: studentName
-          });
-        } else {
-          student = students.find(s => s.instituteStudntsID === app.studentID);
-          studentName = student?.fullName || 'Unknown Student';
-        }
+        // Regular institute students - match by instituteStudntsID
+        student = students.find(s => s.instituteStudntsID === app.studentID);
+        studentName = student?.fullName || 'Unknown Student';
 
         let job = null;
         let recruiter = null;
