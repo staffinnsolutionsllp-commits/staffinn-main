@@ -406,26 +406,32 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .header {
+    height: 56px;
+  }
+
   .header-container {
-    padding: 0.5rem 1rem;
+    padding: 0 12px;
+    height: 56px;
     position: relative;
   }
 
   .logo-image {
-    height: 45px;
+    height: 30px;
+  }
+
+  .logo {
+    margin-left: 42px;
+    flex: 1;
   }
 
   .mobile-menu-toggle {
     display: flex;
     position: absolute;
-    left: 15px;
+    left: 10px;
     top: 50%;
     transform: translateY(-50%);
     z-index: 1001;
-  }
-  
-  .logo {
-    margin-left: 60px;
   }
   
   .header-container.dashboard-header .mobile-menu-toggle {
@@ -434,16 +440,17 @@
 
   .nav-menu {
     position: absolute;
-    top: 100%;
+    top: 56px;
     left: 0;
     right: 0;
     background: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transform: translateY(-100%);
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s ease;
     z-index: 1000;
+    margin: 0;
   }
 
   .nav-menu.mobile-open {
@@ -455,7 +462,7 @@
   .nav-list {
     flex-direction: column;
     gap: 0;
-    padding: 1rem 0;
+    padding: 8px 0;
   }
 
   .nav-list li {
@@ -464,11 +471,12 @@
 
   .nav-link, .news-btn {
     display: block;
-    padding: 1rem 2rem;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 12px 20px;
+    border-bottom: 1px solid #f3f4f6;
     text-align: left;
     width: 100%;
     box-sizing: border-box;
+    font-size: 14px;
   }
 
   .news-btn {
@@ -478,23 +486,36 @@
     box-shadow: none;
     margin-left: 0;
     height: auto;
+    line-height: normal;
+    padding: 12px 20px;
   }
 
   .auth-buttons {
-    gap: 0.5rem;
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   .login-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    padding: 6px 14px;
+    font-size: 12px;
   }
 
   .profile-section {
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .profile-name {
+    display: none;
+  }
+
+  .profile-image-wrapper {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
   }
   
   .profile-dropdown {
-    width: 200px;
+    width: 180px;
     right: 0;
   }
   
