@@ -20,13 +20,14 @@
 .form-layout {
   display: flex;
   min-height: 600px;
+  gap: 0;
 }
 
 .left-section {
-  width: 200px;
+  width: 220px;
   background: #fff;
   border-right: 1px solid #e9ecef;
-  padding: 20px 15px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -45,13 +46,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   width: 100%;
 }
 
 .profile-photo-circle {
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: #e9ecef;
   display: flex;
@@ -115,8 +116,9 @@
   width: 100%;
   padding: 12px;
   background: #f8f9fa;
-  border-radius: 4px;
+  border-radius: 6px;
   border: 1px solid #e9ecef;
+  margin-top: 16px;
 }
 
 .contact-section h4 {
@@ -137,19 +139,20 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .tabs {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid #dee2e6;
+  gap: 6px;
+  border-bottom: 2px solid #e9ecef;
   background: #f8f9fa;
-  padding: 4px 4px 0;
+  padding: 8px 12px 0;
   flex-wrap: wrap;
 }
 
 .tab {
-  padding: 10px 18px;
+  padding: 10px 20px;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -160,6 +163,7 @@
   transition: all 0.2s;
   border-radius: 6px 6px 0 0;
   white-space: nowrap;
+  margin-bottom: -2px;
 }
 
 .tab:hover {
