@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiBarChart2, FiFileText } from 'react-icons/fi';
 import './FacultyList.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1';
@@ -50,7 +51,7 @@ const AssessedBatchesReport = () => {
 
   return (
     <div className="faculty-list-container">
-      <div className="faculty-header">Assessed Batches Report</div>
+      <div className="faculty-header"><FiBarChart2 style={{marginRight:'8px', verticalAlign:'middle'}}/> Assessed Batches Report</div>
       
       <div className="faculty-list-section">
         {loading ? (

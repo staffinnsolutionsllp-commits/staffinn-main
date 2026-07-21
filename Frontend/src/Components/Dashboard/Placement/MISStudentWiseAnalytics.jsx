@@ -26,7 +26,7 @@ const MISStudentWiseAnalytics = () => {
     return (
       <div className="placement-loading">
         <div className="placement-loading-spinner"></div>
-        <p>Loading MIS student wise analytics...</p>
+        <p>Loading Staffinn Partner student wise analytics...</p>
       </div>
     );
   }
@@ -35,8 +35,8 @@ const MISStudentWiseAnalytics = () => {
     return (
       <div className="placement-empty">
         <div className="placement-empty-icon">👨🎓</div>
-        <h3>No MIS Student Data Available</h3>
-        <p>No placement data found for MIS students yet.</p>
+        <h3>No Staffinn Partner Student Data Available</h3>
+        <p>No placement data found for Staffinn Partner students yet.</p>
       </div>
     );
   }
@@ -44,15 +44,15 @@ const MISStudentWiseAnalytics = () => {
   return (
     <div className="student-wise-analytics">
       <div className="analytics-header">
-        <h3>👨🎓 MIS Student Wise Placement Analytics</h3>
-        <p>Track individual MIS student placement performance and history</p>
+        <h3>👨🎓 Staffinn Partner Student Wise Placement Analytics</h3>
+        <p>Track individual Staffinn Partner student placement performance and history</p>
       </div>
 
       <div className="placement-dashboard-cards">
         <div className="placement-card success">
           <div className="placement-card-icon">👥</div>
           <div className="placement-card-value">{studentData.length}</div>
-          <div className="placement-card-label">Total MIS Students</div>
+          <div className="placement-card-label">Total Staffinn Partner Students</div>
         </div>
 
         <div className="placement-card info">

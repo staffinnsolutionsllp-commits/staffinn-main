@@ -68,7 +68,7 @@ const MISCenterWiseAnalytics = () => {
     return (
       <div className="placement-loading">
         <div className="placement-loading-spinner"></div>
-        <p>Loading MIS training centers...</p>
+        <p>Loading Staffinn Partner training centers...</p>
       </div>
     );
   }
@@ -76,8 +76,8 @@ const MISCenterWiseAnalytics = () => {
   return (
     <div className="center-wise-analytics">
       <div className="analytics-header">
-        <h3>🏢 MIS Center Wise Placement Analytics</h3>
-        <p>Select a training center to view MIS student placement analytics</p>
+        <h3>🏢 Staffinn Partner Center Wise Placement Analytics</h3>
+        <p>Select a training center to view Staffinn Partner student placement analytics</p>
       </div>
 
       <div className="center-selection" style={{ marginBottom: '30px' }}>
@@ -112,7 +112,7 @@ const MISCenterWiseAnalytics = () => {
             <div className="placement-card success">
               <div className="placement-card-icon">👥</div>
               <div className="placement-card-value">{studentData.length}</div>
-              <div className="placement-card-label">Total MIS Students</div>
+              <div className="placement-card-label">Total Staffinn Partner Students</div>
             </div>
 
             <div className="placement-card info">
@@ -137,7 +137,7 @@ const MISCenterWiseAnalytics = () => {
           {loadingStudents ? (
             <div className="placement-loading">
               <div className="placement-loading-spinner"></div>
-              <p>Loading MIS students for selected center...</p>
+              <p>Loading Staffinn Partner students for selected center...</p>
             </div>
           ) : studentData.length > 0 ? (
             <table className="placement-table">
@@ -184,8 +184,8 @@ const MISCenterWiseAnalytics = () => {
           ) : (
             <div className="placement-empty">
               <div className="placement-empty-icon">👥</div>
-              <h3>No MIS Students Found</h3>
-              <p>No MIS students found for the selected training center.</p>
+              <h3>No Staffinn Partner Students Found</h3>
+              <p>No Staffinn Partner students found for the selected training center.</p>
             </div>
           )}
         </>
@@ -195,7 +195,7 @@ const MISCenterWiseAnalytics = () => {
         <div className="placement-empty">
           <div className="placement-empty-icon">🏢</div>
           <h3>Select a Training Center</h3>
-          <p>Please select a training center from the dropdown above to view MIS student placement analytics.</p>
+          <p>Please select a training center from the dropdown above to view Staffinn Partner student placement analytics.</p>
         </div>
       )}
 

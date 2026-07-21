@@ -52,7 +52,7 @@ const MISSectorWiseAnalytics = () => {
     return (
       <div className="placement-loading">
         <div className="placement-loading-spinner"></div>
-        <p>Loading MIS sectors...</p>
+        <p>Loading Staffinn Partner sectors...</p>
       </div>
     );
   }
@@ -60,8 +60,8 @@ const MISSectorWiseAnalytics = () => {
   return (
     <div className="sector-wise-analytics">
       <div className="analytics-header">
-        <h3>🏭 MIS Sector Wise Placement Analytics</h3>
-        <p>Select a sector to view MIS students and their placement data</p>
+        <h3>🏭 Staffinn Partner Sector Wise Placement Analytics</h3>
+        <p>Select a sector to view Staffinn Partner students and their placement data</p>
       </div>
 
       <div className="sector-selection" style={{ marginBottom: '20px' }}>
@@ -91,18 +91,18 @@ const MISSectorWiseAnalytics = () => {
 
       {selectedSector && (
         <div className="sector-students">
-          <h4 style={{ marginBottom: '15px' }}>MIS Students in {selectedSector} Sector</h4>
+          <h4 style={{ marginBottom: '15px' }}>Staffinn Partner Students in {selectedSector} Sector</h4>
           
           {studentsLoading ? (
             <div className="placement-loading">
               <div className="placement-loading-spinner"></div>
-              <p>Loading MIS students...</p>
+              <p>Loading Staffinn Partner students...</p>
             </div>
           ) : studentData.length === 0 ? (
             <div className="placement-empty">
               <div className="placement-empty-icon">👥</div>
-              <h3>No MIS Students Found</h3>
-              <p>No MIS students found for the selected sector.</p>
+              <h3>No Staffinn Partner Students Found</h3>
+              <p>No Staffinn Partner students found for the selected sector.</p>
             </div>
           ) : (
             <table className="placement-table">
@@ -158,7 +158,7 @@ const MISSectorWiseAnalytics = () => {
         <div className="placement-empty">
           <div className="placement-empty-icon">🏭</div>
           <h3>Select a Sector</h3>
-          <p>Choose a sector from the dropdown above to view MIS students and their placement data.</p>
+          <p>Choose a sector from the dropdown above to view Staffinn Partner students and their placement data.</p>
         </div>
       )}
     </div>

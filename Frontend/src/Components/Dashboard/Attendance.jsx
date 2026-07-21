@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiCalendar, FiCheck, FiX, FiClock, FiDownload } from 'react-icons/fi';
 import './FacultyList.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1';
@@ -259,7 +260,7 @@ const Attendance = () => {
 
   return (
     <div className="faculty-list-container">
-      <div className="faculty-header">Attendance Management</div>
+      <div className="faculty-header"><FiCalendar style={{marginRight:'8px', verticalAlign:'middle'}}/> Attendance Management</div>
 
       <div className="form-grid" style={{ maxWidth: '1000px', marginBottom: '30px' }}>
         <div className="form-field">
@@ -315,7 +316,7 @@ const Attendance = () => {
             <div>
               {existingAttendance && (
                 <button onClick={downloadAttendance} className="save-btn" style={{ marginRight: '10px', backgroundColor: '#28a745' }}>
-                  Download Attendance
+                  <FiDownload style={{marginRight:'4px', verticalAlign:'middle'}}/> Download Attendance
                 </button>
               )}
               <button onClick={handleSubmit} className="save-btn" disabled={loading}>

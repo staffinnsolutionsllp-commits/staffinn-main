@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiUsers, FiSearch, FiPlus, FiEdit2, FiTrash2, FiDownload, FiUpload, FiCheck } from 'react-icons/fi';
 import './FacultyList.css';
 import { useStateCityAPI } from '../../hooks/useStateCityAPI';
 
@@ -295,7 +296,7 @@ const StudentManagement = () => {
 
   return (
     <div className="faculty-list-container">
-      <div className="faculty-header">Student Management</div>
+      <div className="faculty-header"><FiUsers style={{marginRight:'8px', verticalAlign:'middle'}}/> Student Management</div>
       
       <form onSubmit={handleSubmit} className="faculty-form">
         <div className="form-layout">
@@ -326,7 +327,7 @@ const StudentManagement = () => {
                   e.preventDefault();
                   e.target.previousElementSibling.click();
                 }} disabled={uploadingPhoto}>
-                  📤 {uploadingPhoto ? 'Uploading...' : 'Upload'}
+                  <FiUpload style={{marginRight:'4px', verticalAlign:'middle'}}/> {uploadingPhoto ? 'Uploading...' : 'Upload'}
                 </button>
               </label>
             </div>
@@ -472,7 +473,7 @@ const StudentManagement = () => {
                     <div className="form-field full-width">
                       <label>Upload Document *</label>
                       <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => handleDocumentUpload(e, 'tenth_documentUrl')} required={!editingId} />
-                      {formData.tenth_documentUrl && <small style={{color: 'green'}}>✓ Uploaded</small>}
+                      {formData.tenth_documentUrl && <small style={{color: 'green'}}><FiCheck style={{verticalAlign:'middle', marginRight:'2px'}}/> Uploaded</small>}
                     </div>
                   </div>
 
@@ -505,7 +506,7 @@ const StudentManagement = () => {
                     <div className="form-field full-width">
                       <label>Upload Document *</label>
                       <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => handleDocumentUpload(e, 'twelfth_documentUrl')} required={!editingId} />
-                      {formData.twelfth_documentUrl && <small style={{color: 'green'}}>✓ Uploaded</small>}
+                      {formData.twelfth_documentUrl && <small style={{color: 'green'}}><FiCheck style={{verticalAlign:'middle', marginRight:'2px'}}/> Uploaded</small>}
                     </div>
                   </div>
 
@@ -538,7 +539,7 @@ const StudentManagement = () => {
                     <div className="form-field full-width">
                       <label>Upload Document</label>
                       <input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => handleDocumentUpload(e, 'graduation_documentUrl')} />
-                      {formData.graduation_documentUrl && <small style={{color: 'green'}}>✓ Uploaded</small>}
+                      {formData.graduation_documentUrl && <small style={{color: 'green'}}><FiCheck style={{verticalAlign:'middle', marginRight:'2px'}}/> Uploaded</small>}
                     </div>
                   </div>
                 </>
@@ -578,7 +579,7 @@ const StudentManagement = () => {
                       />
                       {formData.aadharCardUrl && (
                         <div style={{marginTop: '10px'}}>
-                          <small style={{color: 'green'}}>✓ Uploaded</small>
+                          <small style={{color: 'green'}}><FiCheck style={{verticalAlign:'middle', marginRight:'2px'}}/> Uploaded</small>
                           <a 
                             href={formData.aadharCardUrl} 
                             target="_blank" 
@@ -594,7 +595,7 @@ const StudentManagement = () => {
                   </div>
                   <div className="form-actions">
                     <button type="submit" className="save-btn" disabled={loading || uploadingPhoto}>
-                      ➕ {loading ? 'Saving...' : editingId ? 'Update Student' : 'Add Student'}
+                      <FiPlus style={{marginRight:'4px', verticalAlign:'middle'}}/> {loading ? 'Saving...' : editingId ? 'Update Student' : 'Add Student'}
                     </button>
                     {editingId && (
                       <button type="button" className="save-btn" onClick={resetForm} style={{marginLeft: '10px', backgroundColor: '#6c757d'}}>
@@ -610,7 +611,7 @@ const StudentManagement = () => {
       </form>
 
       <div className="faculty-list-section">
-        <h3>Student List</h3>
+        <h3 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiUsers style={{flexShrink:0}}/> Student List</h3>
         {studentList.length === 0 ? (
           <p>No students added yet.</p>
         ) : (
@@ -669,8 +670,8 @@ const StudentManagement = () => {
                     )}
                   </td>
                   <td>
-                    <button onClick={() => handleEdit(student)} className="edit-btn">Edit</button>
-                    <button onClick={() => handleDelete(student.studentsId)} className="delete-btn">Delete</button>
+                    <button onClick={() => handleEdit(student)} className="edit-btn"><FiEdit2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Edit</button>
+                    <button onClick={() => handleDelete(student.studentsId)} className="delete-btn"><FiTrash2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Delete</button>
                   </td>
                 </tr>
               ))}

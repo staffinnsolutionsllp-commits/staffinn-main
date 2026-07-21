@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiCheckCircle } from 'react-icons/fi';
 import './FacultyList.css';
 import BatchTable from './BatchTable';
 
@@ -99,7 +100,7 @@ const ApprovedBatches = () => {
 
   return (
     <div className="faculty-list-container">
-      <div className="faculty-header">Approved Batches</div>
+      <div className="faculty-header"><FiCheckCircle style={{marginRight:'8px', verticalAlign:'middle'}}/> Approved Batches</div>
       
       <div className="faculty-list-section">
         {loading ? (

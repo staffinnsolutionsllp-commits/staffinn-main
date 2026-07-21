@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiBook, FiClock, FiTag, FiPlus, FiEdit2, FiTrash2, FiCheck } from 'react-icons/fi';
 import { SECTOR_COURSES } from '../../data/sectorCourses';
 import ErrorBoundary from '../common/ErrorBoundary';
 import './CourseDetail.css';
@@ -278,7 +279,7 @@ const CourseDetail = () => {
           </div>
         ) : (
           <>
-            <h2>Course Details</h2>
+            <h2 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiBook style={{flexShrink:0}}/> Course Details</h2>
       <form onSubmit={handleSubmit} className="course-detail-form">
         <div className="form-row">
           <label>Training Centre (Multi-Select) *</label>
@@ -329,7 +330,7 @@ const CourseDetail = () => {
 
             <div className="classroom-section">
               <h3>Classroom Details</h3>
-              <button type="button" onClick={addClassroom} className="add-btn">+ Add Classroom</button>
+              <button type="button" onClick={addClassroom} className="add-btn"><FiPlus style={{marginRight:'4px', verticalAlign:'middle'}}/> Add Classroom</button>
               
               {classrooms.length > 0 && (
                 <table className="classroom-table">
@@ -385,7 +386,7 @@ const CourseDetail = () => {
                             <div className="photo-upload-info">Max 3 photos, 10MB each</div>
                             {classroom.photoFiles && classroom.photoFiles.length > 0 && (
                               <div className="photo-upload-status selected">
-                                ✓ {classroom.photoFiles.length} photo(s) selected
+                                <FiCheck style={{verticalAlign:'middle', marginRight:'4px'}}/> {classroom.photoFiles.length} photo(s) selected
                               </div>
                             )}
                             {classroom.photos && classroom.photos.length > 0 && (
@@ -412,7 +413,7 @@ const CourseDetail = () => {
       </form>
 
       <div className="course-details-list">
-        <h3>List of Course Details</h3>
+        <h3 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiTag style={{flexShrink:0}}/> List of Course Details</h3>
         {Array.isArray(courseDetails) && courseDetails.length === 0 ? (
           <p>No course details added yet.</p>
         ) : (
@@ -420,8 +421,8 @@ const CourseDetail = () => {
             <div key={detail.id} className="detail-card">
               <div className="detail-header">
                 <div className="detail-actions">
-                  <button onClick={() => handleEdit(detail)} className="edit-btn">Edit</button>
-                  <button onClick={() => handleDelete(detail.id)} className="delete-btn">Delete</button>
+                  <button onClick={() => handleEdit(detail)} className="edit-btn"><FiEdit2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Edit</button>
+                  <button onClick={() => handleDelete(detail.id)} className="delete-btn"><FiTrash2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Delete</button>
                 </div>
               </div>
               <div className="detail-fields">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiPlusCircle, FiCalendar, FiUsers, FiBook } from 'react-icons/fi';
 import './FacultyList.css';
 import BatchTable from './BatchTable';
 
@@ -243,7 +244,7 @@ const CreateBatch = () => {
 
   return (
     <div className="faculty-list-container">
-      <div className="faculty-header">{editMode ? 'Edit Batch' : 'Create Batch'}</div>
+      <div className="faculty-header"><FiPlusCircle style={{marginRight:'8px', verticalAlign:'middle'}}/> {editMode ? 'Edit Batch' : 'Create Batch'}</div>
 
       <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '5px' }}>
         <p style={{ margin: '5px 0', color: '#856404', fontWeight: 'bold' }}>NOTE:</p>
@@ -274,7 +275,7 @@ const CreateBatch = () => {
 
       {step === 1 && (
         <>
-          <h3 style={{ color: '#dc3545', marginBottom: '15px' }}>Candidate List</h3>
+          <h3 style={{ color: '#dc3545', marginBottom: '15px', display:'flex', alignItems:'center', gap:'8px' }}><FiUsers style={{flexShrink:0}}/> Candidate List</h3>
           <p style={{ marginBottom: '15px' }}>Selected: {selectedStudents.length} students</p>
           
           {students.length === 0 ? (
@@ -341,7 +342,7 @@ const CreateBatch = () => {
 
       {step === 2 && (
         <>
-          <h3 style={{ color: '#dc3545', marginBottom: '15px' }}>Batch Details</h3>
+          <h3 style={{ color: '#dc3545', marginBottom: '15px', display:'flex', alignItems:'center', gap:'8px' }}><FiBook style={{flexShrink:0}}/> Batch Details</h3>
           
           <div className="form-grid" style={{ maxWidth: '800px' }}>
             <div className="form-field">
@@ -477,7 +478,7 @@ const CreateBatch = () => {
       )}
 
       <div className="faculty-list-section" style={{marginTop: '40px'}}>
-        <h3>All Created Batches</h3>
+        <h3 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiCalendar style={{flexShrink:0}}/> All Created Batches</h3>
         {allBatches.length === 0 ? (
           <p>No batches created yet.</p>
         ) : (

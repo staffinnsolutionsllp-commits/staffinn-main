@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiUser, FiPlus, FiEdit2, FiTrash2, FiBriefcase, FiUpload } from 'react-icons/fi';
 import './FacultyList.css';
 import { useStateCityAPI } from '../../hooks/useStateCityAPI';
 
@@ -262,7 +263,7 @@ const FacultyList = () => {
 
   return (
     <div className="faculty-list-container">
-      <div className="faculty-header">Faculty Details</div>
+      <div className="faculty-header"><FiUser style={{marginRight:'8px', verticalAlign:'middle'}}/> Faculty Details</div>
       
       <form onSubmit={handleSubmit} className="faculty-form">
         <div className="form-layout">
@@ -293,7 +294,7 @@ const FacultyList = () => {
                   e.preventDefault();
                   e.target.previousElementSibling.click();
                 }} disabled={uploadingPhoto}>
-                  📤 {uploadingPhoto ? 'Uploading...' : 'Upload'}
+                  <FiUpload style={{marginRight:'4px', verticalAlign:'middle'}}/> {uploadingPhoto ? 'Uploading...' : 'Upload'}
                 </button>
               </label>
             </div>
@@ -461,7 +462,7 @@ const FacultyList = () => {
                   </div>
                   <div className="form-actions">
                     <button type="submit" className="save-btn" disabled={loading || uploadingPhoto}>
-                      ➕ {loading ? 'Adding...' : 'Add Faculty'}
+                      <FiPlus style={{marginRight:'4px', verticalAlign:'middle'}}/> {loading ? 'Adding...' : 'Add Faculty'}
                     </button>
                   </div>
                 </>
@@ -472,7 +473,7 @@ const FacultyList = () => {
       </form>
 
       <div className="faculty-list-section">
-        <h3>Faculty List</h3>
+        <h3 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiBriefcase style={{flexShrink:0}}/> Faculty List</h3>
         {facultyList.length === 0 ? (
           <p>No faculty added yet.</p>
         ) : (
@@ -520,8 +521,8 @@ const FacultyList = () => {
                     ) : '-'}
                   </td>
                   <td>
-                    <button onClick={() => handleEdit(faculty)} className="edit-btn">Edit</button>
-                    <button onClick={() => handleDelete(faculty.id)} className="delete-btn">Delete</button>
+                    <button onClick={() => handleEdit(faculty)} className="edit-btn"><FiEdit2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Edit</button>
+                    <button onClick={() => handleDelete(faculty.id)} className="delete-btn"><FiTrash2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Delete</button>
                   </td>
                 </tr>
               ))}

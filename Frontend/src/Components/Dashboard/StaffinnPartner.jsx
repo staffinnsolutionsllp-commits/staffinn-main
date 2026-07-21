@@ -77,7 +77,7 @@ const StaffinnPartner = ({
             <div className="institute-partner-tab">
                 <div className="institute-tab-header">
                     <h1>Staffinn Partner</h1>
-                    <p>Complete the MIS approval process to access partner features</p>
+                    <p>Complete the Staffinn Partner approval process to access partner features</p>
                 </div>
                 
                 <div className="institute-partner-pre-approval">
@@ -92,7 +92,7 @@ const StaffinnPartner = ({
                                 <li>Upload the signed PDF using the upload section below</li>
                                 <li>Wait for admin approval (you will be notified via email)</li>
                             </ol>
-                            <p><strong>Note:</strong> Once approved, you will have access to advanced partner features including MIS requests, talent acquisition tools, and exclusive training programs.</p>
+                            <p><strong>Note:</strong> Once approved, you will have access to advanced partner features including Staffinn Partner requests, talent acquisition tools, and exclusive training programs.</p>
                         </div>
                     </div>
                     
@@ -220,7 +220,7 @@ const StaffinnPartner = ({
                                         const response = await apiService.uploadMisAgreement(agreementFile);
                                         
                                         if (response.success) {
-                                            alert('MIS agreement uploaded successfully! Your request has been sent for admin approval.');
+                                            alert('Agreement uploaded successfully! Your request has been sent for admin approval.');
                                             // Update the file to mark it as existing
                                             const updatedFile = {
                                                 ...agreementFile,
@@ -249,9 +249,9 @@ const StaffinnPartner = ({
                         
                         {misStatus === 'pending' && (
                             <div className="status-message pending">
-                                <p>📋 Your MIS request is pending admin approval. You will be notified once it's processed.</p>
+                                <p>Your Staffinn Partner request is pending admin approval. You will be notified once it's processed.</p>
                                 <div style={{marginTop: '10px', fontSize: '0.9rem', color: '#666'}}>
-                                    <p>📡 Status updates automatically in real-time via WebSocket connection</p>
+                                    <p>Status updates automatically in real-time via WebSocket connection</p>
                                     <button 
                                         onClick={async () => {
                                             console.log('🔄 Manual refresh triggered');
@@ -267,7 +267,7 @@ const StaffinnPartner = ({
                                             fontSize: '0.9rem'
                                         }}
                                     >
-                                        🔄 Refresh Status Now
+                                        Refresh Status Now
                                     </button>
                                 </div>
                             </div>
@@ -275,7 +275,7 @@ const StaffinnPartner = ({
                         
                         {misStatus === 'rejected' && (
                             <div className="status-message rejected">
-                                <p>❌ Your MIS request was rejected. Please contact support for more information.</p>
+                                <p>Your Staffinn Partner request was rejected. Please contact support for more information.</p>
                             </div>
                         )}
                     </div>
@@ -295,7 +295,7 @@ const StaffinnPartner = ({
                 
                 {activePartnerTab === 'infrastructure' && (
                     <div className="partner-infrastructure">
-                        <h2>🏢 Infrastructure Management</h2>
+                        <h2>Infrastructure Management</h2>
                         <div style={{backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', marginTop: '20px'}}>
                             <p>Manage and configure your institute's infrastructure details including:</p>
                             <ul style={{marginTop: '15px'}}>
@@ -323,7 +323,7 @@ const StaffinnPartner = ({
                 
                 {activePartnerTab === 'batches' && (
                     <div className="partner-batches">
-                        <h2>📋 Batch Overview</h2>
+                        <h2>Batch Overview</h2>
                         <div style={{backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', marginTop: '20px'}}>
                             <p>View and manage all your training batches:</p>
                             <ul style={{marginTop: '15px'}}>

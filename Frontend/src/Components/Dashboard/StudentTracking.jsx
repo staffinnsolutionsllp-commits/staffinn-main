@@ -205,7 +205,7 @@ const StudentTracking = () => {
             <select value={filterStudentType} onChange={(e) => setFilterStudentType(e.target.value)}>
               <option value="all">👥 All Student Types</option>
               <option value="institute">🏫 Institute Students</option>
-              <option value="mis">📊 MIS Students</option>
+              <option value="mis">📊 Staffinn Partner Students</option>
             </select>
           </div>
         )}
@@ -314,7 +314,7 @@ const StudentTracking = () => {
                           color: 'white'
                         }}
                       >
-                        {enrollment.studentType === 'mis' ? '📊 MIS Students' : '🏫 Institute Students'}
+                        {enrollment.studentType === 'mis' ? '📊 Staffinn Partner Students' : '🏫 Institute Students'}
                       </span>
                     )}
                   </div>

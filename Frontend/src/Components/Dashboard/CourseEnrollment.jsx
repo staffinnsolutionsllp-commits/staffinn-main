@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiHome, FiBook } from 'react-icons/fi';
 import apiService from '../../services/api';
 import './CourseEnrollment.css';
 
@@ -252,7 +253,7 @@ const CourseEnrollment = () => {
     return (
         <div className="course-enrollment-container">
             <div className="enrollment-header">
-                <h2>📚 Course Enrollment</h2>
+                <h2><FiBook style={{display:'inline', marginRight:'8px', verticalAlign:'middle'}}/> Course Enrollment</h2>
                 <p>Enroll your institute students in On-Campus courses</p>
             </div>
 
@@ -315,7 +316,7 @@ const CourseEnrollment = () => {
                         </div>
                         
                         <div className="modal-body">
-                            {/* Tabs for Institute vs MIS Students */}
+                            {/* Tabs for Institute vs Staffinn Partner Students */}
                             {isStaffinnPartner && (
                                 <div className="student-tabs">
                                     <button 
@@ -325,7 +326,7 @@ const CourseEnrollment = () => {
                                             setSelectedStudents([]);
                                         }}
                                     >
-                                        🏫 Institute Students ({students.length})
+                                        <FiHome style={{display:'inline', marginRight:'4px', verticalAlign:'middle'}}/> Institute Students ({students.length})
                                     </button>
                                     <button 
                                         className={`tab-button ${activeTab === 'mis' ? 'active' : ''}`}
@@ -334,7 +335,7 @@ const CourseEnrollment = () => {
                                             setSelectedStudents([]);
                                         }}
                                     >
-                                        📚 MIS Students ({misStudents.length})
+                                        <FiBook style={{display:'inline', marginRight:'4px', verticalAlign:'middle'}}/> Staffinn Partner Students ({misStudents.length})
                                     </button>
                                 </div>
                             )}
@@ -362,7 +363,7 @@ const CourseEnrollment = () => {
                                 {getFilteredStudents().length === 0 ? (
                                     <div className="no-students">
                                         {searchQuery ? 'No students found matching your search.' : 
-                                         activeTab === 'mis' ? 'No MIS students available.' : 'No students available.'}
+                                         activeTab === 'mis' ? 'No Staffinn Partner students available.' : 'No students available.'}
                                     </div>
                                 ) : (
                                     getFilteredStudents().map(student => {
@@ -387,7 +388,7 @@ const CourseEnrollment = () => {
                                                     <div className="student-name">
                                                         {studentName}
                                                         {activeTab === 'mis' && (
-                                                            <span className="mis-badge">MIS</span>
+                                                            <span className="mis-badge">Staffinn Partner</span>
                                                         )}
                                                     </div>
                                                     <div className="student-info">

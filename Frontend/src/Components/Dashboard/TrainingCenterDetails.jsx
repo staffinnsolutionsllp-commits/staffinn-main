@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiMapPin, FiPhone, FiMail, FiPlus, FiEdit2, FiTrash2, FiCheck, FiHome } from 'react-icons/fi';
 import { createTrainingCenter, updateTrainingCenter, getTrainingCenters, deleteTrainingCenter } from '../../services/api';
 import { useStateCityAPI } from '../../hooks/useStateCityAPI';
 import './TrainingCenterDetails.css';
@@ -107,7 +108,7 @@ const TrainingCenterDetails = () => {
 
   return (
     <div className="training-center-container">
-      <h2>Training Center Details</h2>
+      <h2 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiHome style={{flexShrink:0}}/> Training Center Details</h2>
       <form onSubmit={handleSubmit} className="training-center-form">
         <input name="trainingCentreName" value={formData.trainingCentreName} onChange={handleChange} placeholder="Training Centre Name *" required />
         <select name="stateUT" value={formData.stateUT} onChange={handleChange} required>
@@ -139,7 +140,7 @@ const TrainingCenterDetails = () => {
       </form>
 
       <div className="centers-list">
-        <h3>List of Centers <button onClick={fetchCenters} style={{marginLeft: '10px', padding: '5px 10px'}}>Refresh</button></h3>
+        <h3 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiMapPin style={{flexShrink:0}}/> List of Centers <button onClick={fetchCenters} style={{marginLeft: '10px', padding: '5px 10px'}}>Refresh</button></h3>
         <p style={{fontSize: '12px', color: '#999'}}>Total centers: {centers.length}</p>
         {centers.length === 0 ? (
           <p style={{textAlign: 'center', color: '#666', padding: '20px'}}>No training centers added yet. Click Refresh to load.</p>
@@ -164,8 +165,8 @@ const TrainingCenterDetails = () => {
                   <td>{center.tehsilMandalBlock}</td>
                   <td>{center.address}</td>
                   <td>
-                    <button onClick={() => handleEdit(center)} className="edit-btn">Edit</button>
-                    <button onClick={() => handleDelete(center.id)} className="delete-btn">Delete</button>
+                    <button onClick={() => handleEdit(center)} className="edit-btn"><FiEdit2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Edit</button>
+                    <button onClick={() => handleDelete(center.id)} className="delete-btn"><FiTrash2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Delete</button>
                   </td>
                 </tr>
               ))}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiFileText, FiBarChart2, FiDownload, FiCheck } from 'react-icons/fi';
 import apiService from '../../services/api';
 
 const PhysicalProgressReport = () => {
@@ -209,7 +210,7 @@ const PhysicalProgressReport = () => {
 
   return (
     <div className="physical-progress-report">
-      <h3>Physical Progress Report</h3>
+      <h3 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiFileText style={{flexShrink:0}}/> Physical Progress Report</h3>
       
       <div className="report-filters" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '30px' }}>
         <div>
@@ -270,7 +271,7 @@ const PhysicalProgressReport = () => {
                       <span>Uploading...</span>
                     ) : reportData[student.studentId]?.reportUrl ? (
                       <div>
-                        <span style={{ color: 'green' }}>✓ {reportData[student.studentId]?.reportFileName}</span>
+                        <span style={{ color: 'green' }}><FiCheck style={{verticalAlign:'middle', marginRight:'4px'}}/> {reportData[student.studentId]?.reportFileName}</span>
                         <input
                           type="file"
                           accept=".pdf"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiClock } from 'react-icons/fi';
 import './FacultyList.css';
 import BatchTable from './BatchTable';
 
@@ -94,7 +95,7 @@ const AppliedBatch = () => {
 
   return (
     <div className="faculty-list-container">
-      <div className="faculty-header">Applied Batch</div>
+      <div className="faculty-header"><FiClock style={{marginRight:'8px', verticalAlign:'middle'}}/> Applied Batch</div>
       
       <div className="faculty-list-section">
         {loading ? (

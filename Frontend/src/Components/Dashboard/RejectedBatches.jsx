@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiXCircle } from 'react-icons/fi';
 import './FacultyList.css';
 import BatchTable from './BatchTable';
 
@@ -73,7 +74,7 @@ const RejectedBatches = () => {
 
   return (
     <div className="faculty-list-container">
-      <div className="faculty-header">Rejected Batches</div>
+      <div className="faculty-header"><FiXCircle style={{marginRight:'8px', verticalAlign:'middle'}}/> Rejected Batches</div>
       
       <div className="faculty-list-section">
         {loading ? (

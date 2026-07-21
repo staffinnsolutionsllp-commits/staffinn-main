@@ -250,7 +250,7 @@ const CourseEnrollmentHistory = () => {
                           color: 'white'
                         }}
                       >
-                        {enrollment.studentType === 'mis' ? '📊 MIS' : '🏫 Institute'}
+                        {enrollment.studentType === 'mis' ? 'Staffinn Partner' : 'Institute'}
                       </span>
                     )}
                     <span className="admission-student-count">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiLayers, FiTool, FiMonitor, FiEdit2, FiTrash2, FiUpload, FiImage } from 'react-icons/fi';
 import { getTrainingCenters } from '../../services/api';
 import { createTrainingInfrastructure, getTrainingInfrastructures, updateTrainingInfrastructure, deleteTrainingInfrastructure, uploadInfrastructurePhotos } from '../../services/trainingInfrastructureApi';
 import './TrainingInfrastructure.css';
@@ -149,7 +150,7 @@ const TrainingInfrastructure = () => {
 
   return (
     <div className="training-infrastructure-container">
-      <h2>Training Infrastructure</h2>
+      <h2 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiLayers style={{flexShrink:0}}/> Training Infrastructure</h2>
       <form onSubmit={handleSubmit} className="infrastructure-form">
         <div className="form-row">
           <label>Select Training Center *</label>
@@ -241,7 +242,7 @@ const TrainingInfrastructure = () => {
       </form>
 
       <div className="infrastructure-list">
-        <h3>List of Infrastructure Centers</h3>
+        <h3 style={{display:'flex', alignItems:'center', gap:'8px'}}><FiMonitor style={{flexShrink:0}}/> List of Infrastructure Centers</h3>
         {infrastructures.length === 0 ? (
           <p>No infrastructure added yet.</p>
         ) : (
@@ -277,8 +278,8 @@ const TrainingInfrastructure = () => {
                       </button>
                     </td>
                     <td>
-                      <button onClick={() => handleEdit(infra)} className="edit-btn">Edit</button>
-                      <button onClick={() => handleDelete(infra.id)} className="delete-btn">Delete</button>
+                      <button onClick={() => handleEdit(infra)} className="edit-btn"><FiEdit2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Edit</button>
+                      <button onClick={() => handleDelete(infra.id)} className="delete-btn"><FiTrash2 style={{marginRight:'4px', verticalAlign:'middle'}}/> Delete</button>
                     </td>
                   </tr>
                   {showPhotos[infra.id] && (
