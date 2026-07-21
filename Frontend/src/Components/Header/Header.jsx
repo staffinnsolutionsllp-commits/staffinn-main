@@ -677,6 +677,11 @@ function Header({ onLoginClick, onRegisterClick, isLoggedIn, onLogout, currentUs
                             <li><a href="/recruiter" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}><span className="first-letter-green">R</span>ecruiter</a></li>
                             <li><Link to="/news" className="news-btn" onClick={() => setIsMobileMenuOpen(false)}>News</Link></li>
                         </ul>
+                        {isLoggedIn && (
+                            <div className="mobile-profile-btn">
+                                <button onClick={() => { setIsMobileMenuOpen(false); goToDashboard(); }}>My Profile</button>
+                            </div>
+                        )}
                     </nav>
 
                     <div className="auth-buttons">

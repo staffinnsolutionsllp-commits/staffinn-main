@@ -411,14 +411,16 @@
   }
 
   .header-container {
-    padding: 0 14px;
+    padding: 0 16px;
     height: 56px;
     position: relative;
+    display: flex;
+    align-items: center;
     justify-content: space-between;
   }
 
   .logo-image {
-    height: 30px;
+    height: 28px;
   }
 
   .logo {
@@ -427,30 +429,50 @@
     order: 1;
   }
 
+  /* Right side: bell + hamburger */
+  .auth-buttons {
+    order: 2;
+    margin-left: auto;
+    gap: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
   .mobile-menu-toggle {
     display: flex;
     position: static;
     order: 3;
     transform: none;
     z-index: 1001;
+    padding: 6px;
   }
 
   .mobile-menu-toggle span {
-    background-color: #333;
+    width: 22px;
+    height: 2px;
+    background-color: #374151;
+    margin: 3px 0;
   }
-  
+
   .header-container.dashboard-header .mobile-menu-toggle {
     display: none !important;
   }
 
-  .auth-buttons {
-    order: 2;
-    margin-left: auto;
-    margin-right: 12px;
-    gap: 8px;
-    flex-shrink: 0;
+  /* Hide My Profile text, show only bell */
+  .profile-name {
+    display: none;
   }
 
+  .profile-image-wrapper {
+    display: none;
+  }
+
+  .profile-section {
+    gap: 0;
+  }
+
+  /* Full screen slide-down menu */
   .nav-menu {
     position: fixed;
     top: 56px;
@@ -458,18 +480,20 @@
     right: 0;
     bottom: 0;
     background: #ffffff;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transform: translateX(100%);
+    transform: translateY(-100%);
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
-    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 999;
     margin: 0;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
   }
 
   .nav-menu.mobile-open {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
     visibility: visible;
   }
@@ -477,7 +501,8 @@
   .nav-list {
     flex-direction: column;
     gap: 0;
-    padding: 16px 0;
+    padding: 8px 0;
+    flex: 1;
   }
 
   .nav-list li {
@@ -486,7 +511,7 @@
 
   .nav-link {
     display: block;
-    padding: 14px 24px;
+    padding: 16px 24px;
     border-bottom: 1px solid #f3f4f6;
     text-align: left;
     width: 100%;
@@ -494,10 +519,11 @@
     font-size: 15px;
     font-weight: 500;
     color: #1f2937;
+    transition: background 0.15s;
   }
 
-  .nav-link:hover {
-    background: #f9fafb;
+  .nav-link:hover, .nav-link:active {
+    background: #fff7ed;
   }
 
   .news-btn {
@@ -509,7 +535,7 @@
     margin-left: 0;
     height: auto;
     line-height: normal;
-    padding: 14px 24px;
+    padding: 16px 24px;
     font-size: 15px;
     font-weight: 500;
     text-align: left;
@@ -517,34 +543,52 @@
     border-bottom: 1px solid #f3f4f6;
   }
 
+  /* My Profile button at bottom of menu */
+  .nav-menu.mobile-open::after {
+    content: '';
+    display: block;
+  }
+
   .login-btn {
-    padding: 6px 14px;
-    font-size: 12px;
+    padding: 8px 16px;
+    font-size: 13px;
   }
 
-  .profile-section {
-    gap: 8px;
-  }
-
-  .profile-name {
-    display: none;
-  }
-
-  .profile-image-wrapper {
-    width: 30px;
-    height: 30px;
-    min-width: 30px;
-  }
-  
   .profile-dropdown {
     width: 180px;
     right: 0;
   }
-  
+
   .login-error-toast,
   .dashboard-message {
     left: 10px;
     right: 10px;
     max-width: none;
+  }
+
+  /* My Profile button inside mobile menu */
+  .mobile-profile-btn {
+    padding: 16px 24px;
+    border-top: 1px solid #e5e7eb;
+    margin-top: auto;
+  }
+
+  .mobile-profile-btn button {
+    width: auto;
+    margin: 0 auto;
+    display: block;
+    padding: 10px 32px;
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .mobile-profile-btn button:hover {
+    background: #e5e7eb;
   }
 }
