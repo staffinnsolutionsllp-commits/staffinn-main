@@ -404,6 +404,11 @@
   }
 }
 
+/* Hide mobile-only elements on desktop */
+.mobile-profile-btn {
+  display: none;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .header {
@@ -416,7 +421,6 @@
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
   }
 
   .logo-image {
@@ -425,11 +429,11 @@
 
   .logo {
     margin-left: 0;
-    flex: 0 0 auto;
+    flex: 1;
     order: 1;
   }
 
-  /* Right side: bell + hamburger */
+  /* Right side: auth (bell) + hamburger */
   .auth-buttons {
     order: 2;
     margin-left: auto;
@@ -566,8 +570,9 @@
     max-width: none;
   }
 
-  /* My Profile button inside mobile menu */
+  /* My Profile / Sign In button inside mobile menu */
   .mobile-profile-btn {
+    display: block;
     padding: 16px 24px;
     border-top: 1px solid #e5e7eb;
     margin-top: auto;
