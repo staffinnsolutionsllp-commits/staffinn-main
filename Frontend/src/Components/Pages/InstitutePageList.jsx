@@ -72,7 +72,19 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin, currentUser }) => {
             profileImage: institute.profileImage,
             courses: courses,
             categories: institute.categories || [], // Add categories from API
-            isBrainaryVerified: institute.isLive || false,
+            isBrainaryVerified: (
+              institute.isLive &&
+              institute.instituteName &&
+              institute.address &&
+              institute.pincode &&
+              institute.phone &&
+              institute.email &&
+              institute.experience &&
+              institute.profileImage &&
+              institute.description &&
+              institute.website &&
+              institute.categories && institute.categories.length > 0
+            ) || false,
             isTrendingAchiever: institute.isLive || false
           };
         }));
