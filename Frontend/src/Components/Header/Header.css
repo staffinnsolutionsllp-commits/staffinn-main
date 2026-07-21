@@ -427,8 +427,8 @@
     height: 28px;
   }
 
-  .logo {
-    margin-left: 0;
+  .header-container .logo {
+    margin-left: 0 !important;
     flex: 1;
     order: 1;
   }
@@ -443,11 +443,13 @@
     align-items: center;
   }
 
-  .mobile-menu-toggle {
-    display: flex;
-    position: static;
+  .header-container .mobile-menu-toggle {
+    display: flex !important;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
     order: 3;
-    transform: none;
     z-index: 1001;
     padding: 6px;
   }
