@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiTrendingUp, FiUsers, FiDollarSign, FiFileText, FiBarChart2, FiClipboard, FiHome, FiPieChart, FiUser } from 'react-icons/fi';
 import './PlacementSection.css';
 import MISPlacementTracking from './MISPlacementTracking';
 import MISCenterWiseAnalytics from './MISCenterWiseAnalytics';
@@ -46,7 +47,7 @@ const MISPlacementSection = () => {
       {/* Dashboard Summary Cards */}
       <div className="mis-dashboard-summary">
         <div className="mis-summary-card">
-          <div className="mis-summary-icon">📊</div>
+          <div className="mis-summary-icon" style={{background:'#eff6ff',color:'#2563eb'}}><FiTrendingUp size={22}/></div>
           <div className="mis-summary-content">
             <div className="mis-summary-label">Placement Rate</div>
             <div className="mis-summary-value">{dashboardData.placementRate}%</div>
@@ -54,7 +55,7 @@ const MISPlacementSection = () => {
         </div>
 
         <div className="mis-summary-card">
-          <div className="mis-summary-icon">👨🎓</div>
+          <div className="mis-summary-icon" style={{background:'#ecfdf5',color:'#059669'}}><FiUsers size={22}/></div>
           <div className="mis-summary-content">
             <div className="mis-summary-label">Students Placed</div>
             <div className="mis-summary-value">{dashboardData.studentsPlaced}</div>
@@ -62,7 +63,7 @@ const MISPlacementSection = () => {
         </div>
 
         <div className="mis-summary-card">
-          <div className="mis-summary-icon">💰</div>
+          <div className="mis-summary-icon" style={{background:'#fef3c7',color:'#d97706'}}><FiDollarSign size={22}/></div>
           <div className="mis-summary-content">
             <div className="mis-summary-label">Avg. Salary Package</div>
             <div className="mis-summary-value">₹{dashboardData.avgSalaryPackage}L</div>
@@ -70,7 +71,7 @@ const MISPlacementSection = () => {
         </div>
 
         <div className="mis-summary-card">
-          <div className="mis-summary-icon">📝</div>
+          <div className="mis-summary-icon" style={{background:'#f5f3ff',color:'#7c3aed'}}><FiFileText size={22}/></div>
           <div className="mis-summary-content">
             <div className="mis-summary-label">Total Applications</div>
             <div className="mis-summary-value">{dashboardData.totalApplications}</div>
@@ -83,31 +84,31 @@ const MISPlacementSection = () => {
           className={`placement-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
           onClick={() => setActiveTab('dashboard')}
         >
-          📊 Dashboard
+          <FiBarChart2 style={{marginRight:'6px',verticalAlign:'middle'}}/> Dashboard
         </button>
         <button 
           className={`placement-nav-btn ${activeTab === 'placement-tracking' ? 'active' : ''}`}
           onClick={() => setActiveTab('placement-tracking')}
         >
-          📋 Placement Tracking
+          <FiClipboard style={{marginRight:'6px',verticalAlign:'middle'}}/> Placement Tracking
         </button>
         <button 
           className={`placement-nav-btn ${activeTab === 'center-wise' ? 'active' : ''}`}
           onClick={() => setActiveTab('center-wise')}
         >
-          🏢 Center Wise
+          <FiHome style={{marginRight:'6px',verticalAlign:'middle'}}/> Center Wise
         </button>
         <button 
           className={`placement-nav-btn ${activeTab === 'sector-wise' ? 'active' : ''}`}
           onClick={() => setActiveTab('sector-wise')}
         >
-          🏭 Sector Wise
+          <FiPieChart style={{marginRight:'6px',verticalAlign:'middle'}}/> Sector Wise
         </button>
         <button 
           className={`placement-nav-btn ${activeTab === 'student-wise' ? 'active' : ''}`}
           onClick={() => setActiveTab('student-wise')}
         >
-          👨🎓 Student Wise
+          <FiUser style={{marginRight:'6px',verticalAlign:'middle'}}/> Student Wise
         </button>
       </div>
 
@@ -177,65 +178,77 @@ const MISPlacementSection = () => {
       <style>{`
         .mis-dashboard-summary {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 20px;
-          margin-bottom: 30px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 16px;
+          margin-bottom: 28px;
         }
 
         .mis-summary-card {
           display: flex;
           align-items: center;
-          gap: 20px;
-          padding: 25px;
+          gap: 16px;
+          padding: 20px;
           background: white;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
           transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .mis-summary-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
 
         .mis-summary-icon {
-          font-size: 48px;
+          width: 48px;
+          height: 48px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           flex-shrink: 0;
         }
 
         .mis-summary-content {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 4px;
         }
 
         .mis-summary-label {
-          font-size: 14px;
+          font-size: 12px;
           color: #64748b;
           font-weight: 500;
         }
 
         .mis-summary-value {
-          font-size: 32px;
+          font-size: 24px;
           font-weight: 700;
           color: #1e293b;
         }
 
         @media (max-width: 768px) {
           .mis-dashboard-summary {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr 1fr;
           }
 
           .mis-summary-card {
-            padding: 20px;
+            padding: 16px;
           }
 
           .mis-summary-icon {
-            font-size: 40px;
+            width: 40px;
+            height: 40px;
           }
 
           .mis-summary-value {
-            font-size: 28px;
+            font-size: 20px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .mis-dashboard-summary {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
