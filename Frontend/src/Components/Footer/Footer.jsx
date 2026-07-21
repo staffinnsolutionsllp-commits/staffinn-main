@@ -49,9 +49,8 @@ const Footer = () => {
             <div className="footer-content-right">
                <h2>GET IN TOUCH</h2>
                <ul>
-                <li>9166621181</li>
-                <li>info@staffinn.com</li>
-                
+                <li><a href="tel:+919166621181" style={{color:'inherit',textDecoration:'none'}}>+91 - 9166621181</a></li>
+                <li><a href="mailto:info@staffinn.com" style={{color:'inherit',textDecoration:'none'}}>info@staffinn.com</a></li>
                </ul>
             </div>
         </div>    
