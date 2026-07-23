@@ -1,195 +1,292 @@
-.hrms-info-container {
-    padding: 24px;
-    max-width: 720px;
-    margin: 0 auto;
+.hrms-page {
+  padding: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.hrms-info-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    overflow: hidden;
+/* Hero Section */
+.hrms-hero {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f0f4ff 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
 }
 
-.hrms-info-header {
-    padding: 24px 28px;
-    border-bottom: 1px solid #f3f4f6;
+.hrms-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
-.hrms-info-header h2 {
-    font-size: 20px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
+.hrms-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: #fff;
+  padding: 6px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
 }
 
-.hrms-info-header p {
-    font-size: 13px;
-    color: #6b7280;
-    margin: 4px 0 0;
+.hrms-hero-text h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
 }
 
-/* Link Section */
-.hrms-link-section {
-    padding: 20px 28px;
-    background: #f0f9ff;
-    border-bottom: 1px solid #e0f2fe;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
+.hrms-hero-text p {
+  font-size: 13px;
+  color: #475569;
+  margin: 4px 0 0;
 }
 
-.hrms-link-box {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+.hrms-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+  white-space: nowrap;
 }
 
-.hrms-link-icon {
-    color: #2563eb;
-    font-size: 20px;
-    flex-shrink: 0;
+.hrms-cta-btn:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+/* Live Link Card */
+.hrms-link-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hrms-link-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hrms-live-dot {
+  width: 10px;
+  height: 10px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+  animation: pulse-dot 2s ease infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 12px rgba(34, 197, 94, 0.7); }
 }
 
 .hrms-link-label {
-    font-size: 12px;
-    color: #6b7280;
-    margin: 0;
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
 .hrms-link-url {
-    font-size: 14px;
-    font-weight: 600;
-    color: #2563eb;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.hrms-link-url:hover {
-    text-decoration: underline;
+.hrms-link-url:hover { text-decoration: underline; }
+
+/* Steps Section */
+.hrms-steps-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
 }
 
-.hrms-open-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 20px;
-    background: #2563eb;
-    color: #fff;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: background 0.2s;
-    white-space: nowrap;
+.hrms-steps-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 20px;
 }
 
-.hrms-open-btn:hover {
-    background: #1d4ed8;
+.hrms-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
-/* Instructions */
-.hrms-instructions {
-    padding: 24px 28px;
-    border-bottom: 1px solid #f3f4f6;
+.hrms-step-card {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 20px;
+  transition: all 0.2s;
 }
 
-.hrms-instructions h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-    margin: 0 0 16px;
+.hrms-step-card:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  transform: translateY(-2px);
 }
 
-.hrms-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+.hrms-step-number {
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 12px;
 }
 
-.hrms-step {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
+.hrms-step-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 6px;
 }
 
-.hrms-step-num {
-    width: 26px;
-    height: 26px;
-    background: #eff6ff;
-    color: #2563eb;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-    margin-top: 2px;
+.hrms-step-card p {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0;
 }
 
-.hrms-step-content strong {
-    font-size: 13px;
-    color: #1f2937;
-    display: block;
-    margin-bottom: 2px;
+/* Employee Portal Section */
+.hrms-emp-portal {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.hrms-step-content p {
-    font-size: 12px;
-    color: #6b7280;
-    margin: 0;
-    line-height: 1.5;
+.hrms-emp-portal-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
-/* Employee Portal */
-.hrms-employee-portal {
-    padding: 20px 28px;
-    background: #f0fdf4;
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
+.hrms-emp-icon { color: #059669; }
+
+.hrms-emp-portal-left h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #064e3b;
+  margin: 0;
 }
 
-.hrms-ep-icon {
-    color: #16a34a;
-    flex-shrink: 0;
-    margin-top: 2px;
+.hrms-emp-portal-left p {
+  font-size: 12px;
+  color: #047857;
+  margin: 2px 0 0;
 }
 
-.hrms-ep-info strong {
-    font-size: 13px;
-    color: #1f2937;
-    display: block;
+.hrms-emp-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: #059669;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #a7f3d0;
+  transition: all 0.2s;
 }
 
-.hrms-ep-info p {
-    font-size: 12px;
-    color: #6b7280;
-    margin: 4px 0;
+.hrms-emp-link:hover {
+  background: #059669;
+  color: #fff;
+  border-color: #059669;
 }
 
-.hrms-ep-link {
-    font-size: 13px;
-    font-weight: 600;
-    color: #16a34a;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+/* Features Section */
+.hrms-features {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
 }
 
-.hrms-ep-link:hover {
-    text-decoration: underline;
+.hrms-features h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 16px;
+}
+
+.hrms-features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.hrms-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.hrms-feature-check {
+  color: #2563eb;
+  flex-shrink: 0;
 }
 
 /* Responsive */
 @media (max-width: 640px) {
-    .hrms-info-container { padding: 16px; }
-    .hrms-link-section { flex-direction: column; align-items: flex-start; }
-    .hrms-info-header, .hrms-instructions, .hrms-employee-portal { padding: 16px 20px; }
-    .hrms-link-section { padding: 16px 20px; }
+  .hrms-page { padding: 16px; gap: 16px; }
+  .hrms-hero { padding: 20px; flex-direction: column; align-items: flex-start; }
+  .hrms-hero-content { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .hrms-logo { width: 48px; height: 48px; }
+  .hrms-hero-text h1 { font-size: 18px; }
+  .hrms-steps-grid { grid-template-columns: 1fr; }
+  .hrms-features-grid { grid-template-columns: 1fr; }
+  .hrms-emp-portal { flex-direction: column; align-items: flex-start; }
+  .hrms-cta-btn { width: 100%; justify-content: center; }
 }
