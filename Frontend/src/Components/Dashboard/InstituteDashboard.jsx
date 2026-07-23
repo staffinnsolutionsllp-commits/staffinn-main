@@ -3000,6 +3000,7 @@ const InstituteDashboard = () => {
                         <table className="institute-data-table full-width">
                             <thead>
                                 <tr>
+                                    <th>S.No</th>
                                     <th>Student Name</th>
                                     <th>Email</th>
                                     <th>Phone</th>
@@ -3008,8 +3009,9 @@ const InstituteDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredStudents.length > 0 ? filteredStudents.map(student => (
+                                {filteredStudents.length > 0 ? [...filteredStudents].sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '')).map((student, index) => (
                                     <tr key={student.instituteStudntsID}>
+                                        <td>{index + 1}</td>
                                         <td>{student.fullName}</td>
                                         <td>{student.email}</td>
                                         <td>{student.phoneNumber}</td>
