@@ -1987,7 +1987,7 @@ const RecruiterDashboard = () => {
                     {activeTab === 'news' && 'News'}
                     {activeTab === 'contact-history' && 'Chat History'}
                     {activeTab === 'government-schemes' && 'Government Schemes'}
-                    {activeTab === 'hrms' && 'HRMS'}
+                    {activeTab === 'hrms' && ''}
                     {activeTab === 'profile' && 'My Profile'}
                 </h1>
 

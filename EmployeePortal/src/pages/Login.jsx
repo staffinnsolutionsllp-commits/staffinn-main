@@ -47,9 +47,7 @@ export default function Login() {
 
         {/* Brand */}
         <div className="relative flex items-center gap-3 animate-fadeInLeft">
-          <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center border border-white/30">
-            <span className="text-white font-black text-xl tracking-tight">S</span>
-          </div>
+          <img src="/hrms-logo.jpeg" alt="Staffinn HRMS" className="w-11 h-11 rounded-xl object-contain bg-white/20 backdrop-blur border border-white/30 p-1" />
           <div>
             <p className="text-white font-bold text-xl leading-none">StaffInn</p>
             <p className="text-indigo-200 text-xs mt-0.5 font-medium">Employee Portal</p>

@@ -57,12 +57,10 @@ export default function LoginForm({ onToggleForm, onForgotPassword }: LoginFormP
     <div className="w-full max-w-md space-y-8">
       <div className="text-center">
         <div className="flex justify-center">
-          <div className="p-3 bg-blue-100 rounded-full">
-            <LogIn className="h-8 w-8 text-blue-600" />
-          </div>
+          <img src="/hrms-logo.jpeg" alt="Staffinn HRMS" className="h-14 w-14 rounded-xl object-contain shadow-sm" />
         </div>
-        <h2 className="mt-6 text-3xl font-bold text-gray-900">Welcome back</h2>
-        <p className="mt-2 text-sm text-gray-600">Sign in to your HRMS account</p>
+        <h2 className="mt-4 text-2xl font-bold text-gray-900">Welcome back</h2>
+        <p className="mt-1 text-sm text-gray-600">Sign in to your HRMS account</p>
       </div>
 
       <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
