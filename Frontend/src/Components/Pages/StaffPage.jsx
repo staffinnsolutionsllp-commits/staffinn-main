@@ -616,10 +616,9 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
         }
     };
 
-    // Handle register button click - directly go to Staff form
+    // Handle register button click - open signup modal
     const handleRegisterClick = () => {
-        setSelectedRole('Staff');
-        setShowRegistrationPopup(true);
+        onShowLogin();
     };
 
     // Handle registration popup close
