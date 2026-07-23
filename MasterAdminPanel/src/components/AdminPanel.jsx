@@ -501,7 +501,7 @@ const AdminPanel = ({ adminData, onLogout }) => {
           </div>
           )}
 
-          {/* MIS Requests Section */}
+          {/* Staffinn Partner Requests Section */}
           {isSectionAllowed('mis-requests') && (
           <div className="nav-section">
             <button
@@ -512,7 +512,7 @@ const AdminPanel = ({ adminData, onLogout }) => {
               }}
             >
               <i className="fas fa-file-contract"></i>
-              {!sidebarCollapsed && <span>MIS Requests</span>}
+              {!sidebarCollapsed && <span>Staffinn Partner Requests</span>}
             </button>
           </div>
           )}
@@ -562,7 +562,7 @@ const AdminPanel = ({ adminData, onLogout }) => {
       <div className="admin-main">
         <div className="main-header">
           <div className="breadcrumb">
-            <span className="breadcrumb-item">{activeSection === 'staffinn-partner-mis' ? 'Staffinn Partner MIS' : activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</span>
+            <span className="breadcrumb-item">{activeSection === 'staffinn-partner-mis' ? 'Staffinn Partner MIS' : activeSection === 'mis-requests' ? 'Staffinn Partner Requests' : activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}</span>
             {activeSubSection && (
               <>
                 <span className="breadcrumb-separator">›</span>

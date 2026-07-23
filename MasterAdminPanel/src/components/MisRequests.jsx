@@ -92,7 +92,7 @@ const MisRequests = () => {
   return (
     <div className="mis-requests">
       <div className="requests-header">
-        <h2>MIS Requests</h2>
+        <h2>Staffinn Partner Requests</h2>
         <p>Manage signed PDF submissions from Staffinn Partner institutes</p>
       </div>
 
@@ -106,13 +106,13 @@ const MisRequests = () => {
         {loading ? (
           <div className="loading-state">
             <div className="spinner"></div>
-            <p>Loading MIS requests...</p>
+            <p>Loading Staffinn Partner requests...</p>
           </div>
         ) : requests.length === 0 ? (
           <div className="empty-state">
             <i className="fas fa-file-pdf"></i>
-            <h3>No MIS requests found</h3>
-            <p>There are currently no MIS requests from Staffinn Partner institutes.</p>
+            <h3>No Staffinn Partner requests found</h3>
+            <p>There are currently no Staffinn Partner requests from institutes.</p>
           </div>
         ) : (
           <div className="requests-table">
