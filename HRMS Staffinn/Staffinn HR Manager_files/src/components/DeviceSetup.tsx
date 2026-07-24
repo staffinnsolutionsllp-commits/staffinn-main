@@ -66,7 +66,7 @@ export default function DeviceSetup({ companyId, apiKey }: DeviceSetupProps) {
   }
 
   const handleDownloadBridge = () => {
-    const downloadUrl = 'https://staffinn-files.s3.ap-south-1.amazonaws.com/downloads/StaffInn-Attendance-Bridge-Setup.exe';
+    const downloadUrl = 'https://staffinn-files.s3.ap-south-1.amazonaws.com/bridge/StaffInn-Attendance-Bridge-Setup.exe';
     window.open(downloadUrl, '_blank');
     
     setTimeout(() => {
