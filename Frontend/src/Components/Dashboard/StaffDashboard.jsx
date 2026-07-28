@@ -9,6 +9,7 @@ import HiddenUser from '../HiddenUser/HiddenUser';
 import StaffCourses from './StaffCourses';
 import GovernmentSchemes from './GovernmentSchemes';
 import ContactHistory from '../Messages/ContactHistory';
+import PortfolioContainer from '../Portfolio/PortfolioContainer';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import { FaLinkedin, FaXTwitter, FaInstagram, FaFacebook, FaYoutube, FaGithub, FaGlobe } from 'react-icons/fa6';
 import './HiddenNotification.css';
@@ -374,6 +375,8 @@ const StaffDashboard = ({ currentUser }) => {
                     role: profileData.role || '',
                     state: profileData.state || '',
                     city: profileData.city || '',
+                    professionalTitle: profileData.professionalTitle || '',
+                    about: profileData.about || '',
                     education: profileData.education || {
                         tenth: { percentage: '', year: '', school: '' },
                         twelfth: { percentage: '', year: '', school: '' },
@@ -591,6 +594,7 @@ const StaffDashboard = ({ currentUser }) => {
         try {
             setLoading(true);
             
+            // Step 1: Save editable profile fields through the generic update endpoint
             const updateData = {
                 fullName: profile.fullName,
                 phone: profile.phone,
@@ -602,52 +606,65 @@ const StaffDashboard = ({ currentUser }) => {
                 state: profile.state,
                 city: cityValue,
                 education: profile.education,
-                visibility: profile.visibility,
                 availability: profile.availability,
                 experiences: experiences.filter(exp => exp.role || exp.company),
-                isActiveStaff: true,
-                profileVisibility: 'public',
-                socialLinks: profile.socialLinks || {}
+                socialLinks: profile.socialLinks || {},
+                professionalTitle: profile.professionalTitle || '',
+                about: profile.about || ''
             };
             
-            console.log('📝 Sending update data:', updateData);
+            console.log('📝 Saving profile fields...');
             
-            const response = await api.updateStaffProfile(updateData);
-            console.log('📝 API response:', response);
+            const profileResponse = await api.updateStaffProfile(updateData);
+            console.log('📝 Profile save response:', profileResponse);
             
-            if (response.success) {
-                alert('Profile updated and is now live as Active Staff!');
-                
-                // Update user data
-                const updatedUserData = {
-                    ...userData,
-                    fullName: profile.fullName,
-                    email: profile.email,
-                    phone: profile.phone
-                };
-                sessionStorage.setItem('currentUser', JSON.stringify(updatedUserData));
-                localStorage.setItem('currentUser', JSON.stringify(updatedUserData));
-                
-                if (updateUser) {
-                    updateUser(updatedUserData);
-                }
-                
-                // Close popup and reload
-                if (showProfileCompletionPopup) {
-                    setShowProfileCompletionPopup(false);
-                    setIsFirstTimeToggle(false);
-                }
-                
-                await loadStaffProfile();
-                setActiveTab('dashboard');
-            } else {
-                console.error('❌ API returned failure:', response);
-                if (response.missingFields?.length > 0) {
-                    alert('Please complete all mandatory fields:\n\n' + response.missingFields.join('\n'));
+            if (!profileResponse.success) {
+                if (profileResponse.missingFields?.length > 0) {
+                    alert('Please complete all mandatory fields:\n\n' + profileResponse.missingFields.join('\n'));
                 } else {
-                    throw new Error(response.message || 'Unknown error occurred');
+                    throw new Error(profileResponse.message || 'Failed to save profile');
                 }
+                return;
             }
+            
+            // Step 2: Activate staff profile through the dedicated toggle endpoint
+            console.log('📝 Activating staff profile...');
+            const toggleResponse = await api.toggleProfileMode({ isActiveStaff: true });
+            console.log('📝 Toggle response:', toggleResponse);
+            
+            if (!toggleResponse.success) {
+                if (toggleResponse.missingFields?.length > 0) {
+                    alert('Please complete all mandatory fields:\n\n' + toggleResponse.missingFields.join('\n'));
+                } else {
+                    throw new Error(toggleResponse.message || 'Failed to activate staff profile');
+                }
+                return;
+            }
+            
+            alert('Profile updated and is now live as Active Staff!');
+                
+            // Update user data
+            const updatedUserData = {
+                ...userData,
+                fullName: profile.fullName,
+                email: profile.email,
+                phone: profile.phone
+            };
+            sessionStorage.setItem('currentUser', JSON.stringify(updatedUserData));
+            localStorage.setItem('currentUser', JSON.stringify(updatedUserData));
+            
+            if (updateUser) {
+                updateUser(updatedUserData);
+            }
+            
+            // Close popup and reload
+            if (showProfileCompletionPopup) {
+                setShowProfileCompletionPopup(false);
+                setIsFirstTimeToggle(false);
+            }
+            
+            await loadStaffProfile();
+            setActiveTab('dashboard');
         } catch (error) {
             console.error('❌ Update and go live error:', error);
             alert('Failed to update profile and go live: ' + error.message);
@@ -686,45 +703,51 @@ const StaffDashboard = ({ currentUser }) => {
         try {
             setLoading(true);
             
-            // Prepare update data
+            // Step 1: Update profile fields (name/phone only)
             const updateData = {
                 fullName: seekerProfile.fullName,
                 phone: seekerProfile.phone
             };
             
-            // Add password change if provided
-            if (seekerProfile.newPassword) {
-                updateData.password = seekerProfile.newPassword;
-                updateData.currentPassword = seekerProfile.currentPassword;
-            }
-            
             const response = await api.updateStaffProfile(updateData);
             
-            if (response.success) {
-                alert('Profile updated successfully!');
-                // Update user data in storage to prevent auth issues
-                const updatedUserData = {
-                    ...userData,
-                    fullName: seekerProfile.fullName,
-                    email: seekerProfile.email,
-                    phone: seekerProfile.phone
-                };
-                sessionStorage.setItem('currentUser', JSON.stringify(updatedUserData));
-                localStorage.setItem('currentUser', JSON.stringify(updatedUserData));
-                // Update context if available
-                if (updateUser) {
-                    updateUser(updatedUserData);
-                }
-                // Clear password fields
-                setSeekerProfile(prev => ({
-                    ...prev,
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: ''
-                }));
-            } else {
+            if (!response.success) {
                 throw new Error(response.message || 'Failed to update profile');
             }
+            
+            // Step 2: Change password through dedicated endpoint if requested
+            if (seekerProfile.newPassword) {
+                const passwordResponse = await api.changePassword(
+                    seekerProfile.currentPassword,
+                    seekerProfile.newPassword
+                );
+                
+                if (!passwordResponse.success) {
+                    throw new Error(passwordResponse.message || 'Failed to change password');
+                }
+            }
+            
+            alert('Profile updated successfully!');
+            // Update user data in storage to prevent auth issues
+            const updatedUserData = {
+                ...userData,
+                fullName: seekerProfile.fullName,
+                email: seekerProfile.email,
+                phone: seekerProfile.phone
+            };
+            sessionStorage.setItem('currentUser', JSON.stringify(updatedUserData));
+            localStorage.setItem('currentUser', JSON.stringify(updatedUserData));
+            // Update context if available
+            if (updateUser) {
+                updateUser(updatedUserData);
+            }
+            // Clear password fields
+            setSeekerProfile(prev => ({
+                ...prev,
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            }));
         } catch (error) {
             console.error('Profile update error:', error);
             alert('Failed to update profile: ' + error.message);
@@ -1078,6 +1101,16 @@ const StaffDashboard = ({ currentUser }) => {
                         <i className="fas fa-university"></i>
                         Government Schemes
                     </button>
+
+                    {import.meta.env.VITE_STAFF_PORTFOLIO_ENABLED === 'true' && (
+                        <button 
+                            className={`staff-nav-item ${activeTab === 'portfolio' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('portfolio')}
+                        >
+                            <i className="fas fa-briefcase"></i>
+                            Portfolio
+                        </button>
+                    )}
                 </nav>
             </div>
 
@@ -1540,6 +1573,30 @@ const StaffDashboard = ({ currentUser }) => {
                                                         value={profile.fullName} 
                                                         onChange={handleProfileChange}
                                                     />
+                                                </div>
+                                                <div className="staff-form-group">
+                                                    <label>Professional Title <span className="staff-form-hint">(max 100 chars)</span></label>
+                                                    <input 
+                                                        type="text" 
+                                                        name="professionalTitle" 
+                                                        value={profile.professionalTitle || ''} 
+                                                        onChange={handleProfileChange}
+                                                        maxLength={100}
+                                                        placeholder="e.g. Full Stack Developer, Electrician, Photographer"
+                                                    />
+                                                    <span className="staff-form-counter">{(profile.professionalTitle || '').length}/100</span>
+                                                </div>
+                                                <div className="staff-form-group">
+                                                    <label>About <span className="staff-form-hint">(max 1000 chars)</span></label>
+                                                    <textarea 
+                                                        name="about" 
+                                                        value={profile.about || ''} 
+                                                        onChange={handleProfileChange}
+                                                        maxLength={1000}
+                                                        rows={4}
+                                                        placeholder="Tell recruiters about yourself, your expertise and work style..."
+                                                    />
+                                                    <span className="staff-form-counter">{(profile.about || '').length}/1000</span>
                                                 </div>
                                                 <div className="staff-form-grid">
                                                     <div className="staff-form-group">
@@ -2207,6 +2264,11 @@ const StaffDashboard = ({ currentUser }) => {
                     <div className="staff-contact-history-section">
                         <ContactHistory />
                     </div>
+                )}
+
+                {/* Portfolio Tab (Phase 2) */}
+                {import.meta.env.VITE_STAFF_PORTFOLIO_ENABLED === 'true' && activeTab === 'portfolio' && (
+                    <PortfolioContainer />
                 )}
             </div>
         </div>
