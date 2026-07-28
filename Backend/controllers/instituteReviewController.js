@@ -20,11 +20,26 @@ const addInstituteReview = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
     }
 
+    // Determine reviewer name based on role
+    let userName = 'Anonymous';
+    const userRole = req.user?.role || 'unknown';
+    
+    if (userRole === 'staff') {
+      userName = req.user?.fullName || req.user?.name || 'Staff Member';
+    } else if (userRole === 'recruiter') {
+      userName = req.user?.companyName || req.user?.name || 'Recruiter';
+    } else if (userRole === 'institute') {
+      userName = req.user?.instituteName || req.user?.name || 'Institute';
+    } else {
+      userName = req.user?.fullName || req.user?.companyName || req.user?.instituteName || req.user?.name || 'Anonymous';
+    }
+
     const reviewData = {
       instituteId,
       userId: req.user?.userId || 'anonymous',
-      userName: req.user?.fullName || req.user?.name || 'Anonymous',
-      userType: userType || 'Student',
+      userName,
+      userType: userType || userRole || 'Student',
+      userRole: userRole,
       rating: parsedRating,
       title: title || '',
       review: review || ''

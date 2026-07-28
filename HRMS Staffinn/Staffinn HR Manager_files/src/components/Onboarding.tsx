@@ -411,8 +411,19 @@ export default function Onboarding() {
         position: formData.designation,
         designation: formData.designation,
         department: formData.department,
-        salary: parseFloat(formData.annualCTC) || 0,
-        annualCTC: formData.annualCTC,
+        // Auto-calculate Annual CTC: (Basic + Allowances - Deductions) × 12
+        salary: (() => {
+          const basic = parseFloat(formData.basicSalary) || 0
+          const totalAllow = allowances.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0)
+          const totalDeduct = deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+          return (basic + totalAllow - totalDeduct) * 12
+        })(),
+        annualCTC: (() => {
+          const basic = parseFloat(formData.basicSalary) || 0
+          const totalAllow = allowances.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0)
+          const totalDeduct = deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+          return String((basic + totalAllow - totalDeduct) * 12)
+        })(),
         basicSalary: parseFloat(formData.basicSalary) || 0,
         basicPay: formData.basicSalary,
         salaryType: formData.salaryType,
@@ -842,6 +853,13 @@ export default function Onboarding() {
         )
 
       case 4:
+        // Real-time salary calculations
+        const totalAllowances = allowances.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0)
+        const totalDeductions = deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+        const basicSalaryNum = parseFloat(formData.basicSalary) || 0
+        const totalMonthlySalary = basicSalaryNum + totalAllowances - totalDeductions
+        const calculatedAnnualCTC = totalMonthlySalary * 12
+
         return (
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -851,72 +869,53 @@ export default function Onboarding() {
             
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-700">
-                💡 Define complete salary structure for automated payroll processing.
+                💡 Define complete salary structure for automated payroll processing. Enter Monthly Basic Salary, add allowances/deductions — Total Monthly Salary & Annual CTC will be auto-calculated.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Annual CTC — drives auto-calc */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Annual CTC (₹) *</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">₹</span>
-                  <input
-                    type="number"
-                    placeholder="e.g. 600000"
-                    value={formData.annualCTC}
-                    onChange={(e) => {
-                      const ctc = e.target.value
-                      handleInputChange('annualCTC', ctc)
-                      // Auto-calc: Monthly Basic = Annual CTC ÷ 12
-                      const monthly = ctc ? Math.round(parseFloat(ctc) / 12) : ''
-                      handleInputChange('basicSalary', monthly ? String(monthly) : '')
-                    }}
-                    className="w-full pl-8 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
+            {/* Monthly Basic Salary — primary input */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Monthly Basic Salary (₹) *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">₹</span>
+                <input
+                  type="number"
+                  placeholder="e.g. 25000"
+                  value={formData.basicSalary}
+                  onChange={(e) => {
+                    handleInputChange('basicSalary', e.target.value)
+                    // Auto-update Annual CTC based on new basic + allowances - deductions
+                    const newBasic = parseFloat(e.target.value) || 0
+                    const newTotal = newBasic + totalAllowances - totalDeductions
+                    handleInputChange('annualCTC', newTotal > 0 ? String(newTotal * 12) : '')
+                  }}
+                  className="w-full pl-8 pr-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
               </div>
-
-              {/* Monthly Basic Salary — auto-filled, still editable */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Monthly Basic Salary (₹) *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">₹</span>
-                  <input
-                    type="number"
-                    placeholder="Auto-calculated"
-                    value={formData.basicSalary}
-                    onChange={(e) => handleInputChange('basicSalary', e.target.value)}
-                    className="w-full pl-8 pr-3 py-3 border rounded-lg bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                {formData.annualCTC && formData.basicSalary && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Annual CTC ÷ 12 = ₹{Number(formData.basicSalary).toLocaleString('en-IN')}/month
-                  </p>
-                )}
-              </div>
-
-              <select value={formData.salaryType} onChange={(e) => handleInputChange('salaryType', e.target.value)}
-                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="Monthly">Salary Type - Monthly</option>
-                <option value="Daily">Salary Type - Daily</option>
-                <option value="Hourly">Salary Type - Hourly</option>
-              </select>
-              <select value={formData.paymentCycle} onChange={(e) => handleInputChange('paymentCycle', e.target.value)}
-                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="Monthly">Payment Cycle - Monthly</option>
-              </select>
-              <input type="number" placeholder="Overtime Rate (Per Hour) ₹" value={formData.overtimeRate}
-                onChange={(e) => handleInputChange('overtimeRate', e.target.value)}
-                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
-            <div className="mt-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Salary Type</label>
+                <select value={formData.salaryType} onChange={(e) => handleInputChange('salaryType', e.target.value)}
+                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="Monthly">Monthly</option>
+                  <option value="Daily">Daily</option>
+                  <option value="Hourly">Hourly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Payment Cycle</label>
+                <select value={formData.paymentCycle} onChange={(e) => handleInputChange('paymentCycle', e.target.value)}
+                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="Monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Allowances Section */}
+            <div className="mt-4">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-semibold text-gray-900">Allowances</h4>
                 <button
@@ -927,20 +926,27 @@ export default function Onboarding() {
                   <Plus size={14} /> Add Allowance
                 </button>
               </div>
+              {allowances.length === 0 && (
+                <p className="text-sm text-gray-400 italic">No allowances added. Click "Add Allowance" to include HRA, DA, etc.</p>
+              )}
               {allowances.map((allowance, idx) => (
-                <div key={idx} className="grid grid-cols-6 gap-2 mb-2 p-3 bg-gray-50 rounded">
-                  <input type="text" placeholder="Name" value={allowance.name}
+                <div key={idx} className="grid grid-cols-6 gap-2 mb-2 p-3 bg-green-50 rounded border border-green-100">
+                  <input type="text" placeholder="Name (HRA, DA...)" value={allowance.name}
                     onChange={(e) => {
                       const updated = [...allowances]
                       updated[idx].name = e.target.value
                       setAllowances(updated)
                     }}
                     className="p-2 border rounded text-sm" />
-                  <input type="number" placeholder="Amount" value={allowance.amount}
+                  <input type="number" placeholder="Amount ₹" value={allowance.amount}
                     onChange={(e) => {
                       const updated = [...allowances]
                       updated[idx].amount = e.target.value
                       setAllowances(updated)
+                      // Recalculate Annual CTC
+                      const newTotalAllowances = allowances.reduce((sum, a, i) => sum + (i === idx ? (parseFloat(e.target.value) || 0) : (parseFloat(a.amount) || 0)), 0)
+                      const newTotal = basicSalaryNum + newTotalAllowances - totalDeductions
+                      handleInputChange('annualCTC', newTotal > 0 ? String(newTotal * 12) : '')
                     }}
                     className="p-2 border rounded text-sm" />
                   <select value={allowance.type}
@@ -975,16 +981,29 @@ export default function Onboarding() {
                   </select>
                   <button
                     type="button"
-                    onClick={() => setAllowances(allowances.filter((_, i) => i !== idx))}
+                    onClick={() => {
+                      const updated = allowances.filter((_, i) => i !== idx)
+                      setAllowances(updated)
+                      // Recalculate Annual CTC
+                      const newTotalAllowances = updated.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0)
+                      const newTotal = basicSalaryNum + newTotalAllowances - totalDeductions
+                      handleInputChange('annualCTC', newTotal > 0 ? String(newTotal * 12) : '')
+                    }}
                     className="p-2 text-red-600 hover:bg-red-50 rounded"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               ))}
+              {allowances.length > 0 && (
+                <div className="text-right mt-1">
+                  <span className="text-sm font-medium text-green-700">Total Allowances: ₹{totalAllowances.toLocaleString('en-IN')}/month</span>
+                </div>
+              )}
             </div>
 
-            <div className="mt-6">
+            {/* Deductions Section */}
+            <div className="mt-4">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-semibold text-gray-900">Deductions</h4>
                 <button
@@ -995,20 +1014,27 @@ export default function Onboarding() {
                   <Plus size={14} /> Add Deduction
                 </button>
               </div>
+              {deductions.length === 0 && (
+                <p className="text-sm text-gray-400 italic">No deductions added. Click "Add Deduction" to include PF, ESI, Tax, etc.</p>
+              )}
               {deductions.map((deduction, idx) => (
-                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 p-3 bg-gray-50 rounded">
-                  <input type="text" placeholder="Name (PF, ESI, Tax, etc.)" value={deduction.name}
+                <div key={idx} className="grid grid-cols-4 gap-2 mb-2 p-3 bg-red-50 rounded border border-red-100">
+                  <input type="text" placeholder="Name (PF, ESI, Tax...)" value={deduction.name}
                     onChange={(e) => {
                       const updated = [...deductions]
                       updated[idx].name = e.target.value
                       setDeductions(updated)
                     }}
                     className="p-2 border rounded text-sm" />
-                  <input type="number" placeholder="Amount" value={deduction.amount}
+                  <input type="number" placeholder="Amount ₹" value={deduction.amount}
                     onChange={(e) => {
                       const updated = [...deductions]
                       updated[idx].amount = e.target.value
                       setDeductions(updated)
+                      // Recalculate Annual CTC
+                      const newTotalDeductions = deductions.reduce((sum, d, i) => sum + (i === idx ? (parseFloat(e.target.value) || 0) : (parseFloat(d.amount) || 0)), 0)
+                      const newTotal = basicSalaryNum + totalAllowances - newTotalDeductions
+                      handleInputChange('annualCTC', newTotal > 0 ? String(newTotal * 12) : '')
                     }}
                     className="p-2 border rounded text-sm" />
                   <select value={deduction.type}
@@ -1023,13 +1049,66 @@ export default function Onboarding() {
                   </select>
                   <button
                     type="button"
-                    onClick={() => setDeductions(deductions.filter((_, i) => i !== idx))}
+                    onClick={() => {
+                      const updated = deductions.filter((_, i) => i !== idx)
+                      setDeductions(updated)
+                      // Recalculate Annual CTC
+                      const newTotalDeductions = updated.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+                      const newTotal = basicSalaryNum + totalAllowances - newTotalDeductions
+                      handleInputChange('annualCTC', newTotal > 0 ? String(newTotal * 12) : '')
+                    }}
                     className="p-2 text-red-600 hover:bg-red-50 rounded"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               ))}
+              {deductions.length > 0 && (
+                <div className="text-right mt-1">
+                  <span className="text-sm font-medium text-red-700">Total Deductions: ₹{totalDeductions.toLocaleString('en-IN')}/month</span>
+                </div>
+              )}
+            </div>
+
+            {/* Salary Summary — Auto-Calculated */}
+            <div className="mt-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-5">
+              <h4 className="font-semibold text-gray-900 mb-4">💰 Salary Summary (Auto-Calculated)</h4>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Monthly Basic Salary</span>
+                  <span className="text-sm font-medium">₹{basicSalaryNum.toLocaleString('en-IN')}</span>
+                </div>
+                {totalAllowances > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-green-700">(+) Total Allowances</span>
+                    <span className="text-sm font-medium text-green-700">+ ₹{totalAllowances.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                {totalDeductions > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-red-700">(−) Total Deductions</span>
+                    <span className="text-sm font-medium text-red-700">− ₹{totalDeductions.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <hr className="border-gray-300" />
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-gray-900">Total Monthly Salary (Net)</span>
+                  <span className="font-bold text-lg text-gray-900">₹{totalMonthlySalary > 0 ? totalMonthlySalary.toLocaleString('en-IN') : '0'}</span>
+                </div>
+                <div className="flex justify-between items-center bg-white rounded-lg p-3 border">
+                  <span className="font-semibold text-blue-900">Annual CTC</span>
+                  <span className="font-bold text-xl text-blue-700">₹{calculatedAnnualCTC > 0 ? calculatedAnnualCTC.toLocaleString('en-IN') : '0'}</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Annual CTC = (Basic + Allowances − Deductions) × 12</p>
+              </div>
+            </div>
+
+            {/* Overtime Rate */}
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Overtime Rate (Per Hour) ₹</label>
+              <input type="number" placeholder="e.g. 200" value={formData.overtimeRate}
+                onChange={(e) => handleInputChange('overtimeRate', e.target.value)}
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">

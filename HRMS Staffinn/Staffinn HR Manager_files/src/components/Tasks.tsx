@@ -199,11 +199,8 @@ export default function Tasks() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Task & Project Management</h1>
-          <p className="text-gray-600">Assign, track and manage department tasks</p>
+          <p className="text-gray-600">Track and manage department tasks (Task assignment is done from Employee Portal by TLs/RMs)</p>
         </div>
-        <button onClick={() => setShowAddForm(true)} className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          <Plus size={16} /><span>Assign Task</span>
-        </button>
       </div>
 
       {/* Stats */}

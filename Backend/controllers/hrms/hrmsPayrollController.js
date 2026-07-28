@@ -91,7 +91,7 @@ const fetchApprovedLeaves = async (employeeId, startDate, endDate) => {
 
 /* ─── Core Payroll Engine ─────────────────────────────────────── */
 
-const computePayroll = async (employee, startDate, endDate, recruiterId, runId) => {
+const computePayroll = async (employee, startDate, endDate, recruiterId, runId, adjustments = null) => {
   const workingDays = getEmployeeWorkingDays(employee);
   const holidays = await getHolidaysForPeriod(recruiterId, startDate, endDate);
   const holidaySet = new Set(holidays);
@@ -224,7 +224,20 @@ const computePayroll = async (employee, startDate, endDate, recruiterId, runId) 
 
   const bonus = parseFloat(employee.bonus || 0);
   const overtimePay = parseFloat((overtimeHours * parseFloat(employee.overtimeRate || 0)).toFixed(2));
-  const totalEarnings = basicSalary + totalAllowances + bonus + overtimePay;
+
+  // Ad-hoc incentives from adjustments
+  let adHocIncentives = [];
+  let totalAdHocIncentives = 0;
+  if (adjustments && adjustments.incentives && Array.isArray(adjustments.incentives)) {
+    adHocIncentives = adjustments.incentives.filter(i => i.name && parseFloat(i.amount) > 0).map(i => ({
+      name: i.name,
+      amount: parseFloat(i.amount) || 0,
+      type: 'Ad-hoc'
+    }));
+    totalAdHocIncentives = adHocIncentives.reduce((sum, i) => sum + i.amount, 0);
+  }
+
+  const totalEarnings = basicSalary + totalAllowances + bonus + overtimePay + totalAdHocIncentives;
 
   // Configured deductions
   const deductionsArr = employee.deductions || [];
@@ -246,7 +259,22 @@ const computePayroll = async (employee, startDate, endDate, recruiterId, runId) 
     });
   }
 
-  const totalDeductions = totalConfiguredDeductions + lwpAmount;
+  // Ad-hoc deductions from adjustments
+  let adHocDeductions = [];
+  let totalAdHocDeductions = 0;
+  if (adjustments && adjustments.deductions && Array.isArray(adjustments.deductions)) {
+    adHocDeductions = adjustments.deductions.filter(d => d.name && parseFloat(d.amount) > 0).map(d => ({
+      name: d.name,
+      amount: parseFloat(d.amount) || 0,
+      type: 'Ad-hoc'
+    }));
+    totalAdHocDeductions = adHocDeductions.reduce((sum, d) => sum + d.amount, 0);
+    for (const d of adHocDeductions) {
+      deductionBreakdown.push(d);
+    }
+  }
+
+  const totalDeductions = totalConfiguredDeductions + lwpAmount + totalAdHocDeductions;
   const netSalary = Math.max(0, parseFloat((totalEarnings - totalDeductions).toFixed(2)));
 
   return {
@@ -279,6 +307,8 @@ const computePayroll = async (employee, startDate, endDate, recruiterId, runId) 
     perDaySalary: parseFloat(perDaySalary.toFixed(2)),
     // Earnings
     allowances: allowanceBreakdown,
+    incentives: adHocIncentives,
+    totalIncentives: parseFloat(totalAdHocIncentives.toFixed(2)),
     bonus: parseFloat(bonus.toFixed(2)),
     overtimePay,
     totalEarnings: parseFloat(totalEarnings.toFixed(2)),
@@ -302,7 +332,8 @@ const runPayroll = async (req, res) => {
     const recruiterId = req.user?.recruiterId;
     if (!recruiterId) return res.status(400).json(errorResponse('Recruiter ID not found'));
 
-    const { startDate, endDate, employeeId: filterEmployeeId } = req.body;
+    const { startDate, endDate, employeeId: filterEmployeeId, adjustments } = req.body;
+    // adjustments: { [employeeId]: { incentives: [{name, amount}], deductions: [{name, amount}] } }
 
     if (!startDate || !endDate) {
       return res.status(400).json(errorResponse('startDate and endDate are required (YYYY-MM-DD)'));
@@ -324,7 +355,8 @@ const runPayroll = async (req, res) => {
     let totalGross = 0, totalDed = 0, totalNet = 0;
 
     for (const emp of employees) {
-      const rec = await computePayroll(emp, startDate, endDate, recruiterId, runId);
+      const empAdjustments = (adjustments && adjustments[emp.employeeId]) || null;
+      const rec = await computePayroll(emp, startDate, endDate, recruiterId, runId, empAdjustments);
       records.push(rec);
       totalGross += rec.totalEarnings;
       totalDed   += rec.totalDeductions;

@@ -38,10 +38,12 @@ export default function GrievanceManagement() {
   const [filters,           setFilters]            = useState({employeeId:'',category:'',status:'',department:'',startDate:'',endDate:''})
   const [showFilters,       setShowFilters]        = useState(false)
   // Warning / flagged
-  const [activeView,        setActiveView]         = useState<'grievances'|'flagged'>('grievances')
+  const [activeView,        setActiveView]         = useState<'grievances'|'warnings'|'flagged'>('grievances')
   const [flaggedEmployees,  setFlaggedEmployees]   = useState<any[]>([])
   const [flaggedLoading,    setFlaggedLoading]     = useState(false)
   const [selectedFlagged,   setSelectedFlagged]    = useState<any>(null)
+  const [allWarnings,       setAllWarnings]        = useState<any[]>([])
+  const [warningsLoading,   setWarningsLoading]    = useState(false)
 
   useEffect(() => { loadData() }, [filters])
 
@@ -63,19 +65,19 @@ export default function GrievanceManagement() {
   const loadFlagged = async () => {
     setFlaggedLoading(true)
     try {
-      const token = Object.keys(localStorage)
-        .filter(k => k.startsWith('hrms_token_'))
-        .map(k => localStorage.getItem(k))
-        .find(Boolean)
-      if (!token) { setFlaggedEmployees([]); return }
-      const base = (import.meta as any).env?.VITE_API_URL || 'https://api.staffinn.com/api/v1'
-      const res = await fetch(`${base}/employee/warnings/flagged`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = await res.json()
-      if (data.success) setFlaggedEmployees(data.data || [])
+      const res = await apiService.request('/grievance-management/warnings/flagged')
+      if (res.success) setFlaggedEmployees(res.data || [])
     } catch(e) { console.error('loadFlagged error:', e) }
     finally { setFlaggedLoading(false) }
+  }
+
+  const loadAllWarnings = async () => {
+    setWarningsLoading(true)
+    try {
+      const res = await apiService.request('/grievance-management/warnings')
+      if (res.success) setAllWarnings(res.data || [])
+    } catch(e) { console.error('loadAllWarnings error:', e) }
+    finally { setWarningsLoading(false) }
   }
 
   const handleUpdateStatus = async () => {
@@ -120,7 +122,7 @@ export default function GrievanceManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Grievance Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Grievances & Warnings</h1>
           <p className="text-gray-500 text-sm mt-0.5">View and manage all employee grievances and warnings</p>
         </div>
         <div className="flex gap-2">
@@ -139,6 +141,11 @@ export default function GrievanceManagement() {
         <button onClick={()=>setActiveView('grievances')}
           className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all -mb-px ${activeView==='grievances'?'border-blue-600 text-blue-600':'border-transparent text-gray-500 hover:text-gray-800'}`}>
           <MessageSquare size={15}/> Grievances
+        </button>
+        <button onClick={()=>{setActiveView('warnings');loadAllWarnings();}}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all -mb-px ${activeView==='warnings'?'border-amber-600 text-amber-600':'border-transparent text-gray-500 hover:text-gray-800'}`}>
+          <ShieldAlert size={15}/> Warnings
+          {allWarnings.length>0 && <span className="px-1.5 py-0.5 text-xs font-bold bg-amber-100 text-amber-700 rounded-full">{allWarnings.length}</span>}
         </button>
         <button onClick={()=>{setActiveView('flagged');loadFlagged();}}
           className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all -mb-px ${activeView==='flagged'?'border-red-600 text-red-600':'border-transparent text-gray-500 hover:text-gray-800'}`}>
@@ -245,6 +252,65 @@ export default function GrievanceManagement() {
           </div>
         </div>
       </>}
+
+      {/* ── ALL WARNINGS VIEW ── */}
+      {activeView==='warnings' && (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <ShieldAlert size={18} className="text-amber-600 flex-shrink-0 mt-0.5"/>
+            <div>
+              <p className="text-sm font-bold text-amber-900">All Employee Warnings</p>
+              <p className="text-xs text-amber-700 mt-0.5">All warnings issued by TLs/RMs to their subordinates appear here in real-time.</p>
+            </div>
+          </div>
+
+          {warningsLoading ? (
+            <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-600"></div></div>
+          ) : allWarnings.length===0 ? (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col items-center py-16 gap-3">
+              <ShieldAlert size={36} className="text-gray-200"/>
+              <p className="text-sm text-gray-500">No warnings issued yet</p>
+              <p className="text-xs text-gray-400">Warnings issued by managers will appear here</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    {['Date','Issued To','Issued By','Warning Title','Severity','Status'].map(h=>(
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {allWarnings.map((w: any)=>(
+                    <tr key={w.warningId} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 text-xs text-gray-600">{fmt(w.warningDate||w.createdAt)}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-gray-900 text-sm">{w.issuedToName}</p>
+                        <p className="text-xs text-gray-400">{w.issuedToEmployeeId}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-gray-700">{w.issuedByName}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-900 text-sm">{w.warningTitle}</p>
+                        {w.warningDescription && <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[200px]">{w.warningDescription}</p>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${SEVERITY_COLORS[w.severity]||'bg-gray-100 text-gray-600'}`}>{w.severity}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${w.status==='Active'?'bg-red-100 text-red-700':'bg-gray-100 text-gray-600'}`}>{w.status||'Active'}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── FLAGGED EMPLOYEES VIEW ── */}
       {activeView==='flagged' && (

@@ -1474,23 +1474,40 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                     {/* Reviews List */}
                                     <div className="reviews-list">
                                         <h5>Previous Reviews ({reviews.length})</h5>
-                                        {reviewsLoading && <p>Loading reviews...</p>}
+                                        {reviewsLoading && <p className="reviews-loading-text">Loading reviews...</p>}
                                         {reviews.length > 0 ? (
                                             <>
                                                 {reviews.map((review) => (
                                                     <div key={review.reviewId} className="review-item">
-                                                        <div className="review-header">
-                                                            <span className="reviewer-name">{review.reviewerName}</span>
-                                                            <div className="review-rating">
-                                                                {[1, 2, 3, 4, 5].map((star) => (
-                                                                    <span key={star} className={star <= review.rating ? 'star-filled' : 'star-empty'}>
-                                                                        ⭐
-                                                                    </span>
-                                                                ))}
+                                                        <div className="review-item-top">
+                                                            <div className="reviewer-avatar">
+                                                                {(review.reviewerName || 'A').charAt(0).toUpperCase()}
                                                             </div>
-                                                            <span className="review-date">
-                                                                {new Date(review.createdAt).toLocaleDateString()}
-                                                            </span>
+                                                            <div className="reviewer-info">
+                                                                <div className="reviewer-name-row">
+                                                                    <span className="reviewer-name">{review.reviewerName || 'User'}</span>
+                                                                    {review.reviewerRole && (
+                                                                        <span className={`reviewer-role-tag role-${review.reviewerRole}`}>
+                                                                            {review.reviewerRole === 'recruiter' ? 'Recruiter' : 
+                                                                             review.reviewerRole === 'staff' ? 'Staff' : 
+                                                                             review.reviewerRole === 'institute' ? 'Institute' : 
+                                                                             review.reviewerRole === 'seeker' ? 'Seeker' : 'User'}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="review-meta">
+                                                                    <div className="review-rating">
+                                                                        {[1, 2, 3, 4, 5].map((star) => (
+                                                                            <span key={star} className={star <= review.rating ? 'star-filled' : 'star-empty'}>
+                                                                                ★
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                    <span className="review-date">
+                                                                        {new Date(review.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         {review.feedback && (
                                                             <p className="review-feedback">{review.feedback}</p>
@@ -1508,7 +1525,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                                 )}
                                             </>
                                         ) : (
-                                            <p>No reviews yet. Be the first to review!</p>
+                                            <p className="no-reviews-text">No reviews yet. Be the first to review!</p>
                                         )}
                                     </div>
                                 </div>

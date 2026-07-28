@@ -159,7 +159,7 @@ const StudentApplicationModal = ({
 
       console.log('Apply response:', response);
       if (response.success) {
-        const studentTypeText = selectedType === 'mis' ? 'MIS students' : 'institute students';
+        const studentTypeText = selectedType === 'mis' ? 'Staffinn Partner students' : 'institute students';
         alert(`Successfully applied ${selectedStudents.size} ${studentTypeText} to ${selectedJob.title}!`);
         onClose();
       } else {
@@ -219,8 +219,8 @@ const StudentApplicationModal = ({
                     onClick={() => handleOptionSelect('mis')}
                   >
                     <div className="option-content">
-                      <h4>Apply Students of MIS</h4>
-                      <p>Apply students from MIS (Management Information System)</p>
+                      <h4>Apply Students of Staffinn Partner</h4>
+                      <p>Apply students from Staffinn Partner</p>
                     </div>
                   </button>
                 )}
@@ -228,7 +228,7 @@ const StudentApplicationModal = ({
               
               {!isStaffinnPartner && (
                 <div className="mis-info">
-                  <p><strong>Note:</strong> MIS student application is only available for Staffinn Partner institutes.</p>
+                  <p><strong>Note:</strong> Staffinn Partner student application is only available for Staffinn Partner institutes.</p>
                 </div>
               )}
             </div>
@@ -237,7 +237,7 @@ const StudentApplicationModal = ({
               <div className="selected-type-header">
                 <button className="back-btn" onClick={handleBack}>← Back</button>
                 <h3>
-                  {selectedType === 'mis' ? 'MIS Students' : 'Institute Students'}
+                  {selectedType === 'mis' ? 'Staffinn Partner Students' : 'Institute Students'}
                 </h3>
               </div>
 
@@ -249,7 +249,7 @@ const StudentApplicationModal = ({
                 <>
                   {students.length === 0 ? (
                     <div className="no-students">
-                      <p>No students found in your {selectedType === 'mis' ? 'MIS' : 'Student Management'}.</p>
+                      <p>No students found in your {selectedType === 'mis' ? 'Staffinn Partner' : 'Student Management'}.</p>
                       <p>Please add students first before applying to jobs.</p>
                     </div>
                   ) : (
@@ -313,7 +313,7 @@ const StudentApplicationModal = ({
 
                       {availableStudents.length === 0 && appliedStudents.length > 0 && (
                         <div className="no-available-students">
-                          <p>All your {selectedType === 'mis' ? 'MIS' : 'institute'} students have already been applied to this job.</p>
+                          <p>All your {selectedType === 'mis' ? 'Staffinn Partner' : 'institute'} students have already been applied to this job.</p>
                         </div>
                       )}
                     </div>

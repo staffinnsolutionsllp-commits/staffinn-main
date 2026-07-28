@@ -26,10 +26,25 @@ const addReview = async (req, res) => {
       });
     }
     
+    // Determine reviewer name based on role
+    let reviewerName = 'Anonymous User';
+    const userRole = req.user?.role || 'unknown';
+    
+    if (userRole === 'staff') {
+      reviewerName = req.user?.fullName || req.user?.name || 'Staff Member';
+    } else if (userRole === 'recruiter') {
+      reviewerName = req.user?.companyName || req.user?.name || 'Recruiter';
+    } else if (userRole === 'institute') {
+      reviewerName = req.user?.instituteName || req.user?.name || 'Institute';
+    } else {
+      reviewerName = req.user?.fullName || req.user?.companyName || req.user?.instituteName || req.user?.name || 'Anonymous User';
+    }
+
     const reviewData = {
       staffId,
       reviewerId: req.user?.userId || 'anonymous',
-      reviewerName: req.user?.fullName || req.user?.name || 'Anonymous User',
+      reviewerName,
+      reviewerRole: userRole,
       rating: parseInt(rating),
       feedback: feedback || ''
     };

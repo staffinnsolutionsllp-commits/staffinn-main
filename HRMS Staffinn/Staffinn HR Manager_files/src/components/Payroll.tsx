@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react'
 import {
   Play, Download, CreditCard, Calendar, Users, TrendingUp,
   AlertCircle, FileText, Eye, History, Search, X, RefreshCw,
-  IndianRupee, Clock, CheckCircle, XCircle, Briefcase
+  IndianRupee, Clock, CheckCircle, XCircle, Briefcase, Plus, Trash2
 } from 'lucide-react'
 import { apiService } from '../services/api'
 
@@ -22,7 +22,8 @@ interface PayrollRecord {
   paidLeaves: number; unpaidLeaves: number; weeklyOffs: number
   holidays: number; compOffs: number; overtimeHours: number
   lateHalfDayDeductions: number; lwpDays: number; perDaySalary: number
-  allowances: any[]; bonus: number; overtimePay: number; totalEarnings: number
+  allowances: any[]; incentives: any[]; totalIncentives: number
+  bonus: number; overtimePay: number; totalEarnings: number
   deductions: any[]; totalDeductions: number; netSalary: number
   paymentStatus: string; isFrozen: boolean; createdAt: string
 }
@@ -52,6 +53,8 @@ export default function Payroll() {
   const firstDay = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`
   const lastDay  = new Date(today.getFullYear(), today.getMonth()+1, 0).toISOString().split('T')[0]
   const [runForm, setRunForm] = useState({ startDate: firstDay, endDate: lastDay, employeeId: '' })
+  // Adjustments: { [employeeId]: { incentives: [{name, amount}], deductions: [{name, amount}] } }
+  const [adjustments, setAdjustments] = useState<{[key: string]: { incentives: {name: string, amount: string}[], deductions: {name: string, amount: string}[] }}>({})
 
   useEffect(() => {
     loadRuns()
@@ -81,9 +84,24 @@ export default function Payroll() {
 
     try {
       setLoading(true); setError(''); setSuccess('')
-      const res = await apiService.runPayroll(runForm.startDate, runForm.endDate, runForm.employeeId || null)
+      // Build adjustments payload — only include non-empty entries
+      const cleanAdjustments: any = {}
+      for (const [empId, adj] of Object.entries(adjustments)) {
+        const incentives = adj.incentives.filter(i => i.name.trim() && parseFloat(i.amount) > 0)
+        const deductions = adj.deductions.filter(d => d.name.trim() && parseFloat(d.amount) > 0)
+        if (incentives.length > 0 || deductions.length > 0) {
+          cleanAdjustments[empId] = { incentives, deductions }
+        }
+      }
+      const hasAdjustments = Object.keys(cleanAdjustments).length > 0
+      const res = await apiService.runPayroll(
+        runForm.startDate, runForm.endDate,
+        runForm.employeeId || null,
+        hasAdjustments ? cleanAdjustments : null
+      )
       if (res.success) {
         setSuccess(`✅ Payroll generated for ${res.data.totalEmployees} employees (${runForm.startDate} → ${runForm.endDate})`)
+        setAdjustments({})
         await loadRuns()
         setViewMode('runs')
       } else { setError(res.message || 'Failed to run payroll') }
@@ -126,7 +144,8 @@ export default function Payroll() {
       {/* ── NEW RUN VIEW ── */}
       {viewMode === 'new-run' && (
         <NewRunView runForm={runForm} setRunForm={setRunForm} employees={employees}
-          loading={loading} onRun={handleRunPayroll} onBack={()=>setViewMode('runs')} />
+          loading={loading} onRun={handleRunPayroll} onBack={()=>setViewMode('runs')}
+          adjustments={adjustments} setAdjustments={setAdjustments} />
       )}
 
       {/* ── RUN DETAIL VIEW ── */}
@@ -231,7 +250,7 @@ function RunsView({ runs, loading, onNewRun, onOpenRun, onRefresh, fmt }: any) {
 }
 
 /* ─── NewRunView ────────────────────────────────────────────────── */
-function NewRunView({ runForm, setRunForm, employees, loading, onRun, onBack }: any) {
+function NewRunView({ runForm, setRunForm, employees, loading, onRun, onBack, adjustments, setAdjustments }: any) {
   const monthStart = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-01`
   const monthEnd   = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).toISOString().split('T')[0]
 
@@ -241,13 +260,101 @@ function NewRunView({ runForm, setRunForm, employees, loading, onRun, onBack }: 
       end: (() => { const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), 0).toISOString().split('T')[0] })() },
   ]
 
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
+  const [adjSearchTerm, setAdjSearchTerm] = useState('')
+
+  const filteredEmployees = employees.filter((e: any) =>
+    !adjSearchTerm ||
+    (e.fullName || e.name || '').toLowerCase().includes(adjSearchTerm.toLowerCase()) ||
+    e.employeeId?.toLowerCase().includes(adjSearchTerm.toLowerCase()) ||
+    e.department?.toLowerCase().includes(adjSearchTerm.toLowerCase())
+  )
+
+  const toggleEmployee = (empId: string) => {
+    if (selectedEmployees.includes(empId)) {
+      setSelectedEmployees(selectedEmployees.filter(id => id !== empId))
+      // Remove adjustments for this employee
+      const newAdj = { ...adjustments }
+      delete newAdj[empId]
+      setAdjustments(newAdj)
+    } else {
+      setSelectedEmployees([...selectedEmployees, empId])
+      // Initialize adjustments for this employee
+      if (!adjustments[empId]) {
+        setAdjustments({ ...adjustments, [empId]: { incentives: [], deductions: [] } })
+      }
+    }
+  }
+
+  const selectAllEmployees = () => {
+    const allIds = employees.map((e: any) => e.employeeId)
+    setSelectedEmployees(allIds)
+    const newAdj = { ...adjustments }
+    for (const id of allIds) {
+      if (!newAdj[id]) newAdj[id] = { incentives: [], deductions: [] }
+    }
+    setAdjustments(newAdj)
+  }
+
+  const clearAllEmployees = () => {
+    setSelectedEmployees([])
+    setAdjustments({})
+  }
+
+  const addIncentive = (empId: string) => {
+    const newAdj = { ...adjustments }
+    if (!newAdj[empId]) newAdj[empId] = { incentives: [], deductions: [] }
+    newAdj[empId] = { ...newAdj[empId], incentives: [...newAdj[empId].incentives, { name: '', amount: '' }] }
+    setAdjustments(newAdj)
+  }
+
+  const addDeduction = (empId: string) => {
+    const newAdj = { ...adjustments }
+    if (!newAdj[empId]) newAdj[empId] = { incentives: [], deductions: [] }
+    newAdj[empId] = { ...newAdj[empId], deductions: [...newAdj[empId].deductions, { name: '', amount: '' }] }
+    setAdjustments(newAdj)
+  }
+
+  const updateIncentive = (empId: string, idx: number, field: string, value: string) => {
+    const newAdj = { ...adjustments }
+    const incentives = [...newAdj[empId].incentives]
+    incentives[idx] = { ...incentives[idx], [field]: value }
+    newAdj[empId] = { ...newAdj[empId], incentives }
+    setAdjustments(newAdj)
+  }
+
+  const updateDeduction = (empId: string, idx: number, field: string, value: string) => {
+    const newAdj = { ...adjustments }
+    const deductions = [...newAdj[empId].deductions]
+    deductions[idx] = { ...deductions[idx], [field]: value }
+    newAdj[empId] = { ...newAdj[empId], deductions }
+    setAdjustments(newAdj)
+  }
+
+  const removeIncentive = (empId: string, idx: number) => {
+    const newAdj = { ...adjustments }
+    newAdj[empId] = { ...newAdj[empId], incentives: newAdj[empId].incentives.filter((_: any, i: number) => i !== idx) }
+    setAdjustments(newAdj)
+  }
+
+  const removeDeduction = (empId: string, idx: number) => {
+    const newAdj = { ...adjustments }
+    newAdj[empId] = { ...newAdj[empId], deductions: newAdj[empId].deductions.filter((_: any, i: number) => i !== idx) }
+    setAdjustments(newAdj)
+  }
+
+  // Count total adjustments
+  const totalAdjCount = Object.values(adjustments).reduce((sum: number, adj: any) => {
+    return sum + (adj.incentives?.length || 0) + (adj.deductions?.length || 0)
+  }, 0)
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500"><X size={20}/></button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Run Payroll</h1>
-          <p className="text-sm text-gray-500">Generate a frozen payroll snapshot for the selected period</p>
+          <p className="text-sm text-gray-500">Generate a frozen payroll snapshot with attendance-linked calculations, overtime, incentives & deductions</p>
         </div>
       </div>
 
@@ -299,27 +406,177 @@ function NewRunView({ runForm, setRunForm, employees, loading, onRun, onBack }: 
 
         {/* Policy reminder */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 space-y-1">
-          <p className="font-semibold">Payroll Calculation Policy (as configured)</p>
+          <p className="font-semibold">Payroll Calculation Policy</p>
           <ul className="list-disc list-inside space-y-0.5 text-amber-700 text-xs">
-            <li>Workweek: Mon–Sat (Sunday = weekly off by default)</li>
-            <li>CL / ML approved leaves = no deduction</li>
-            <li>LWP / unpaid absences = full-day deduction per day</li>
+            <li>Attendance linked — present/absent/half-day from biometric data</li>
+            <li>Overtime = hours worked beyond shift × overtime rate (from employee profile)</li>
+            <li>CL / ML approved leaves = no deduction; LWP = per-day deduction</li>
             <li>Late arrival → half-day deduction per policy</li>
-            <li>Holidays declared in Holiday Management = no deduction</li>
-            <li>This snapshot is <strong>frozen on generation</strong> — attendance changes won't affect it</li>
+            <li>Holidays from Holiday Management = no deduction</li>
+            <li>Allowances & fixed deductions from employee salary structure</li>
+            <li>Ad-hoc incentives & deductions can be added below per employee</li>
+            <li>This snapshot is <strong>frozen on generation</strong></li>
           </ul>
         </div>
+      </div>
 
-        <div className="flex gap-3">
-          <button onClick={onBack} className="flex-1 py-2.5 border rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            Cancel
-          </button>
-          <button onClick={onRun} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 shadow-md">
-            {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Processing…</>
-              : <><Play size={16}/> Generate Payroll</>}
-          </button>
+      {/* ── ADJUSTMENTS SECTION ── */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <IndianRupee size={20}/>
+              Ad-hoc Incentives & Deductions
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Add one-time incentives (bonus, performance, referral) or deductions (advance recovery, penalty) per employee before generating payroll
+            </p>
+          </div>
+          {totalAdjCount > 0 && (
+            <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
+              {totalAdjCount} adjustment{totalAdjCount > 1 ? 's' : ''}
+            </span>
+          )}
         </div>
+
+        {/* Employee selection */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+              <input type="text" placeholder="Search employees by name, ID or department..."
+                value={adjSearchTerm} onChange={e => setAdjSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"/>
+            </div>
+            <button onClick={selectAllEmployees}
+              className="px-3 py-2 text-xs font-medium border rounded-lg hover:bg-green-50 hover:border-green-300 text-green-700 whitespace-nowrap">
+              Select All
+            </button>
+            <button onClick={clearAllEmployees}
+              className="px-3 py-2 text-xs font-medium border rounded-lg hover:bg-red-50 hover:border-red-300 text-red-700 whitespace-nowrap">
+              Clear All
+            </button>
+          </div>
+
+          {/* Employee chips for selection */}
+          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-gray-50 rounded-xl border">
+            {filteredEmployees.map((emp: any) => {
+              const isSelected = selectedEmployees.includes(emp.employeeId)
+              return (
+                <button key={emp.employeeId} onClick={() => toggleEmployee(emp.employeeId)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                    isSelected
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                  }`}>
+                  {isSelected && <CheckCircle size={12}/>}
+                  {emp.fullName || emp.name} <span className="opacity-70">({emp.employeeId})</span>
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-xs text-gray-400">{selectedEmployees.length} employee(s) selected for adjustments</p>
+        </div>
+
+        {/* Per-employee adjustment entries */}
+        {selectedEmployees.length > 0 && (
+          <div className="space-y-4 max-h-[500px] overflow-y-auto">
+            {selectedEmployees.map(empId => {
+              const emp = employees.find((e: any) => e.employeeId === empId)
+              if (!emp) return null
+              const empAdj = adjustments[empId] || { incentives: [], deductions: [] }
+              return (
+                <div key={empId} className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">
+                        {(emp.fullName || emp.name || '?')[0]}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 text-sm">{emp.fullName || emp.name}</p>
+                        <p className="text-xs text-gray-400">{emp.department} · {emp.employeeId}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => toggleEmployee(empId)}
+                      className="text-xs text-red-500 hover:text-red-700 px-2 py-1 hover:bg-red-50 rounded">
+                      Remove
+                    </button>
+                  </div>
+
+                  {/* Incentives */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">Incentives</span>
+                      <button onClick={() => addIncentive(empId)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700">
+                        <Plus size={12}/> Add
+                      </button>
+                    </div>
+                    {empAdj.incentives.length === 0 && (
+                      <p className="text-xs text-gray-400 italic">No incentives added</p>
+                    )}
+                    {empAdj.incentives.map((inc: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2 mb-2">
+                        <input type="text" placeholder="Reason (Bonus, Performance...)" value={inc.name}
+                          onChange={e => updateIncentive(empId, idx, 'name', e.target.value)}
+                          className="flex-1 px-2 py-1.5 text-xs border rounded-lg focus:ring-1 focus:ring-green-400"/>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                          <input type="number" placeholder="Amount" value={inc.amount}
+                            onChange={e => updateIncentive(empId, idx, 'amount', e.target.value)}
+                            className="w-28 pl-5 pr-2 py-1.5 text-xs border rounded-lg focus:ring-1 focus:ring-green-400"/>
+                        </div>
+                        <button onClick={() => removeIncentive(empId, idx)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 size={14}/></button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Deductions */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Deductions</span>
+                      <button onClick={() => addDeduction(empId)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">
+                        <Plus size={12}/> Add
+                      </button>
+                    </div>
+                    {empAdj.deductions.length === 0 && (
+                      <p className="text-xs text-gray-400 italic">No deductions added</p>
+                    )}
+                    {empAdj.deductions.map((ded: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2 mb-2">
+                        <input type="text" placeholder="Reason (Advance, Penalty...)" value={ded.name}
+                          onChange={e => updateDeduction(empId, idx, 'name', e.target.value)}
+                          className="flex-1 px-2 py-1.5 text-xs border rounded-lg focus:ring-1 focus:ring-red-400"/>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                          <input type="number" placeholder="Amount" value={ded.amount}
+                            onChange={e => updateDeduction(empId, idx, 'amount', e.target.value)}
+                            className="w-28 pl-5 pr-2 py-1.5 text-xs border rounded-lg focus:ring-1 focus:ring-red-400"/>
+                        </div>
+                        <button onClick={() => removeDeduction(empId, idx)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 size={14}/></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Generate button */}
+      <div className="flex gap-3">
+        <button onClick={onBack} className="flex-1 py-2.5 border rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50">
+          Cancel
+        </button>
+        <button onClick={onRun} disabled={loading}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 shadow-md">
+          {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Processing…</>
+            : <><Play size={16}/> Generate Payroll</>}
+        </button>
       </div>
     </div>
   )
@@ -526,8 +783,9 @@ function PayslipModal({ record: r, onClose, fmt }: any) {
       <div class="ed-box-header ed-earn-header">Earnings</div>
       <div class="ed-item"><span>Basic Salary</span><span>${fmt(r.basicSalary)}</span></div>
       ${(r.allowances||[]).map((a:any) => `<div class="ed-item"><span>${a.name}</span><span>${fmt(a.amount)}</span></div>`).join('')}
+      ${(r.incentives||[]).map((i:any) => `<div class="ed-item"><span>🎯 ${i.name}</span><span>${fmt(i.amount)}</span></div>`).join('')}
       ${r.bonus > 0 ? `<div class="ed-item"><span>Bonus</span><span>${fmt(r.bonus)}</span></div>` : ''}
-      ${r.overtimePay > 0 ? `<div class="ed-item"><span>Overtime (${r.overtimeHours?.toFixed(1)}h)</span><span>${fmt(r.overtimePay)}</span></div>` : ''}
+      ${r.overtimePay > 0 ? `<div class="ed-item"><span>Overtime (${r.overtimeHours?.toFixed(1)}h × ₹${(r.overtimePay / (r.overtimeHours || 1)).toFixed(0)}/hr)</span><span>${fmt(r.overtimePay)}</span></div>` : ''}
       <div class="ed-total"><span>Total Earnings</span><span style="color:#059669">${fmt(r.totalEarnings)}</span></div>
     </div>
     <div class="ed-box">
@@ -625,8 +883,11 @@ function PayslipModal({ record: r, onClose, fmt }: any) {
                 {(r.allowances||[]).map((a:any,i:number) => (
                   <div key={i} className="flex justify-between px-4 py-2 text-sm"><span className="text-gray-600">{a.name}</span><span className="font-medium">{fmt(a.amount)}</span></div>
                 ))}
+                {(r.incentives||[]).map((inc:any,i:number) => (
+                  <div key={`inc-${i}`} className="flex justify-between px-4 py-2 text-sm bg-green-50"><span className="text-green-700">🎯 {inc.name}</span><span className="font-medium text-green-700">{fmt(inc.amount)}</span></div>
+                ))}
                 {r.bonus > 0 && <div className="flex justify-between px-4 py-2 text-sm"><span className="text-gray-600">Bonus</span><span className="font-medium">{fmt(r.bonus)}</span></div>}
-                {r.overtimePay > 0 && <div className="flex justify-between px-4 py-2 text-sm"><span className="text-gray-600">Overtime</span><span className="font-medium">{fmt(r.overtimePay)}</span></div>}
+                {r.overtimePay > 0 && <div className="flex justify-between px-4 py-2 text-sm"><span className="text-gray-600">Overtime ({r.overtimeHours?.toFixed(1)}h × ₹{(r.overtimePay / (r.overtimeHours || 1)).toFixed(0)}/hr)</span><span className="font-medium">{fmt(r.overtimePay)}</span></div>}
               </div>
               <div className="flex justify-between px-4 py-3 bg-emerald-100 font-bold text-sm border-t border-emerald-200">
                 <span>Total Earnings</span><span className="text-emerald-700">{fmt(r.totalEarnings)}</span>

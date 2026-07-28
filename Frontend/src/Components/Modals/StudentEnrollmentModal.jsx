@@ -337,7 +337,7 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
                   cursor: 'pointer'
                 }}
               >
-                📊 MIS Students
+                📊 Staffinn Partner Students
               </button>
             </div>
           </div>
@@ -356,7 +356,7 @@ const StudentEnrollmentModal = ({ isOpen, onClose, course, instituteId }) => {
               <h2>Enroll Students in Course</h2>
               {selectedStudentType && (
                 <p style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
-                  {selectedStudentType === 'institute' ? '🏫 Institute Students' : '📊 MIS Students'}
+                  {selectedStudentType === 'institute' ? '🏫 Institute Students' : '📊 Staffinn Partner Students'}
                 </p>
               )}
             </div>

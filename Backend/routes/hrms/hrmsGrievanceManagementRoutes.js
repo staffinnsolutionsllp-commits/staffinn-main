@@ -31,6 +31,79 @@ router.use((req, res, next) => {
 router.post('/', createGrievance);
 router.get('/', getGrievances);
 router.get('/stats', getGrievanceStats);
+
+// ── Warnings endpoint for HRMS admin ─────────────────────────────────────────
+const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
+const { dynamoClient } = require('../../config/dynamodb-wrapper');
+const WARNINGS_TABLE = 'staffinn-hrms-warnings';
+
+router.get('/warnings', async (req, res) => {
+  try {
+    const recruiterId = req.user?.recruiterId || req.user?.userId;
+    if (!recruiterId) {
+      return res.status(400).json({ success: false, message: 'Recruiter ID not found' });
+    }
+
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: WARNINGS_TABLE,
+      FilterExpression: 'companyId = :cid',
+      ExpressionAttributeValues: { ':cid': recruiterId }
+    }));
+
+    const allWarnings = (result.Items || []).sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    res.json({ success: true, data: allWarnings });
+  } catch (error) {
+    console.error('Get all warnings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.get('/warnings/flagged', async (req, res) => {
+  try {
+    const recruiterId = req.user?.recruiterId || req.user?.userId;
+    if (!recruiterId) {
+      return res.status(400).json({ success: false, message: 'Recruiter ID not found' });
+    }
+
+    const result = await dynamoClient.send(new ScanCommand({
+      TableName: WARNINGS_TABLE,
+      FilterExpression: 'companyId = :cid AND #st = :active',
+      ExpressionAttributeNames: { '#st': 'status' },
+      ExpressionAttributeValues: { ':cid': recruiterId, ':active': 'Active' }
+    }));
+    const allWarnings = result.Items || [];
+
+    // Group by employee
+    const byEmployee = {};
+    allWarnings.forEach(w => {
+      if (!byEmployee[w.issuedToEmployeeId]) {
+        byEmployee[w.issuedToEmployeeId] = {
+          employeeId: w.issuedToEmployeeId,
+          employeeName: w.issuedToName,
+          warningCount: 0,
+          warnings: []
+        };
+      }
+      byEmployee[w.issuedToEmployeeId].warningCount++;
+      byEmployee[w.issuedToEmployeeId].warnings.push(w);
+    });
+
+    // Keep only employees with 3+ warnings
+    const flagged = Object.values(byEmployee).filter(e => e.warningCount >= 3);
+    flagged.forEach(f => {
+      f.warnings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    });
+
+    res.json({ success: true, data: flagged });
+  } catch (error) {
+    console.error('Get flagged employees error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 router.get('/:grievanceId', getGrievanceById);
 router.put('/:grievanceId/status', authorizeRoles('admin', 'hr', 'manager'), updateGrievanceStatus);
 router.post('/:grievanceId/remarks', addRemark);

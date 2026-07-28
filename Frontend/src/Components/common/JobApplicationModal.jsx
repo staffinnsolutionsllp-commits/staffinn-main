@@ -173,7 +173,7 @@ const JobApplicationModal = ({ job, onClose, onApplicationSuccess }) => {
                   onClick={() => handleOptionSelect('mis')}
                 >
                   <div className="option-icon">✅</div>
-                  <h5>Apply Students of MIS</h5>
+                  <h5>Apply Students of Staffinn Partner</h5>
                   <p>Select and apply Staffinn Partner (MIS) students</p>
                   <div className="staffinn-verified-badge">✓ Staffinn Verified</div>
                 </div>
@@ -188,7 +188,7 @@ const JobApplicationModal = ({ job, onClose, onApplicationSuccess }) => {
                   ← Back to Options
                 </button>
                 <h4>
-                  {applicationType === 'mis' ? 'MIS Students' : 'Institute Students'}
+                  {applicationType === 'mis' ? 'Staffinn Partner Students' : 'Institute Students'}
                   {applicationType === 'mis' && (
                     <span className="verified-badge">✓ Staffinn Verified</span>
                   )}
@@ -259,7 +259,7 @@ const JobApplicationModal = ({ job, onClose, onApplicationSuccess }) => {
                 </>
               ) : (
                 <div className="no-students">
-                  <p>No {applicationType === 'mis' ? 'MIS' : 'institute'} students available for application.</p>
+                  <p>No {applicationType === 'mis' ? 'Staffinn Partner' : 'institute'} students available for application.</p>
                 </div>
               )}
             </div>

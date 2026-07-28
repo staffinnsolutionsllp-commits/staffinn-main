@@ -29,10 +29,22 @@ const addCourseReview = async (req, res) => {
     // Get user profile data
     let userPhoto = null;
     let userName = 'Anonymous User';
+    const userRole = req.user?.role || 'unknown';
     
     if (req.user?.userId) {
       try {
-        // Find user profile using dynamoService
+        // Determine name based on role first from req.user
+        if (userRole === 'staff') {
+          userName = req.user?.fullName || req.user?.name || 'Staff Member';
+        } else if (userRole === 'recruiter') {
+          userName = req.user?.companyName || req.user?.name || 'Recruiter';
+        } else if (userRole === 'institute') {
+          userName = req.user?.instituteName || req.user?.name || 'Institute';
+        } else {
+          userName = req.user?.fullName || req.user?.companyName || req.user?.instituteName || req.user?.name || 'Anonymous User';
+        }
+
+        // Try to get profile photo from staff profiles table
         const userProfiles = await dynamoService.scanItems(STAFF_TABLE, {
           FilterExpression: 'userId = :userId',
           ExpressionAttributeValues: {
@@ -42,14 +54,14 @@ const addCourseReview = async (req, res) => {
         
         if (userProfiles && userProfiles.length > 0) {
           const profile = userProfiles[0];
-          userName = profile.fullName || profile.name || 'Anonymous User';
+          // Override name with profile name if available (more complete)
+          if (profile.fullName) {
+            userName = profile.fullName;
+          }
           userPhoto = profile.profilePhoto || null;
-        } else {
-          userName = req.user?.fullName || req.user?.name || 'Anonymous User';
         }
       } catch (profileError) {
         console.log('Could not fetch user profile:', profileError.message);
-        userName = req.user?.fullName || req.user?.name || 'Anonymous User';
       }
     }
     
@@ -59,6 +71,7 @@ const addCourseReview = async (req, res) => {
       courseId,
       userId: req.user?.userId || 'anonymous',
       userName,
+      userRole,
       userPhoto,
       rating: parseInt(rating),
       review: review || '',

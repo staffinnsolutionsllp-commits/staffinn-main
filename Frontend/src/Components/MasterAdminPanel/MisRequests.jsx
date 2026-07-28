@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+                                                                                           import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api';
 import './MisRequests.css';
 
@@ -30,7 +30,7 @@ const MisRequests = () => {
   };
 
   const handleApprove = async (requestId) => {
-    if (!window.confirm('Are you sure you want to approve this MIS request?')) {
+    if (!window.confirm('Are you sure you want to approve this Staffinn Partner request?')) {
       return;
     }
 
@@ -38,21 +38,21 @@ const MisRequests = () => {
     try {
       const response = await apiService.approveMisRequest(requestId);
       if (response.success) {
-        alert('MIS request approved successfully!');
+        alert('Staffinn Partner request approved successfully!');
         fetchMisRequests(); // Refresh the list
       } else {
-        alert('Failed to approve MIS request: ' + response.message);
+        alert('Failed to approve Staffinn Partner request: ' + response.message);
       }
     } catch (error) {
       console.error('Error approving MIS request:', error);
-      alert('Failed to approve MIS request. Please try again.');
+      alert('Failed to approve Staffinn Partner request. Please try again.');
     } finally {
       setProcessingId(null);
     }
   };
 
   const handleReject = async (requestId) => {
-    if (!window.confirm('Are you sure you want to reject this MIS request?')) {
+    if (!window.confirm('Are you sure you want to reject this Staffinn Partner request?')) {
       return;
     }
 
@@ -60,21 +60,21 @@ const MisRequests = () => {
     try {
       const response = await apiService.rejectMisRequest(requestId);
       if (response.success) {
-        alert('MIS request rejected successfully!');
+        alert('Staffinn Partner request rejected successfully!');
         fetchMisRequests(); // Refresh the list
       } else {
-        alert('Failed to reject MIS request: ' + response.message);
+        alert('Failed to reject Staffinn Partner request: ' + response.message);
       }
     } catch (error) {
       console.error('Error rejecting MIS request:', error);
-      alert('Failed to reject MIS request. Please try again.');
+      alert('Failed to reject Staffinn Partner request. Please try again.');
     } finally {
       setProcessingId(null);
     }
   };
 
   const handleDelete = async (requestId) => {
-    if (!window.confirm('Are you sure you want to delete this MIS request? This action cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this Staffinn Partner request? This action cannot be undone.')) {
       return;
     }
 
@@ -82,14 +82,14 @@ const MisRequests = () => {
     try {
       const response = await apiService.deleteMisRequest(requestId);
       if (response.success) {
-        alert('MIS request deleted successfully!');
+        alert('Staffinn Partner request deleted successfully!');
         fetchMisRequests(); // Refresh the list
       } else {
-        alert('Failed to delete MIS request: ' + response.message);
+        alert('Failed to delete Staffinn Partner request: ' + response.message);
       }
     } catch (error) {
       console.error('Error deleting MIS request:', error);
-      alert('Failed to delete MIS request. Please try again.');
+      alert('Failed to delete Staffinn Partner request. Please try again.');
     } finally {
       setProcessingId(null);
     }
@@ -128,21 +128,21 @@ const MisRequests = () => {
   return (
     <div className="mis-requests">
       <div className="requests-header">
-        <h2>MIS Requests</h2>
-        <p>Manage MIS agreement requests from Staffinn Partner institutes</p>
+        <h2>Staffinn Partner Requests</h2>
+        <p>Manage Staffinn Partner agreement requests from Staffinn Partner institutes</p>
       </div>
 
       <div className="requests-content">
         {loading ? (
           <div className="loading-state">
             <div className="spinner"></div>
-            <p>Loading MIS requests...</p>
+            <p>Loading Staffinn Partner requests...</p>
           </div>
         ) : requests.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">📋</div>
-            <h3>No MIS requests found</h3>
-            <p>There are currently no MIS agreement requests from Staffinn Partner institutes.</p>
+            <h3>No Staffinn Partner requests found</h3>
+            <p>There are currently no Staffinn Partner agreement requests from Staffinn Partner institutes.</p>
           </div>
         ) : (
           <div className="requests-table">
@@ -202,7 +202,7 @@ const MisRequests = () => {
                         className="approve-btn"
                         onClick={() => handleApprove(request.requestId)}
                         disabled={processingId === request.requestId}
-                        title="Approve MIS request"
+                        title="Approve Staffinn Partner request"
                       >
                         {processingId === request.requestId ? (
                           <span className="btn-spinner"></span>
@@ -214,7 +214,7 @@ const MisRequests = () => {
                         className="reject-btn"
                         onClick={() => handleReject(request.requestId)}
                         disabled={processingId === request.requestId}
-                        title="Reject MIS request"
+                        title="Reject Staffinn Partner request"
                       >
                         {processingId === request.requestId ? (
                           <span className="btn-spinner"></span>
@@ -226,7 +226,7 @@ const MisRequests = () => {
                         className="delete-btn"
                         onClick={() => handleDelete(request.requestId)}
                         disabled={processingId === request.requestId}
-                        title="Delete MIS request"
+                        title="Delete Staffinn Partner request"
                       >
                         {processingId === request.requestId ? (
                           <span className="btn-spinner"></span>
@@ -244,7 +244,7 @@ const MisRequests = () => {
                         className="delete-btn small"
                         onClick={() => handleDelete(request.requestId)}
                         disabled={processingId === request.requestId}
-                        title="Delete MIS request"
+                        title="Delete Staffinn Partner request"
                       >
                         🗑️
                       </button>

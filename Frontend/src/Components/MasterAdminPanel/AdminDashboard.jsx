@@ -8,7 +8,7 @@ const AdminDashboard = () => {
 
   const tabs = [
     { id: 'registration', label: 'Registration Requests', component: RegistrationRequests },
-    { id: 'mis', label: 'MIS Requests', component: MisRequests }
+    { id: 'mis', label: 'Staffinn Partner Requests', component: MisRequests }
   ];
 
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component || RegistrationRequests;

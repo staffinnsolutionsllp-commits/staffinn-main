@@ -19,7 +19,7 @@ const menuItems = [
   { id: 'payroll', label: 'Payroll', icon: CreditCard },
   { id: 'claims', label: 'Claim Management', icon: CreditCard },
   { id: 'tasks-performance', label: 'Tasks & Performance', icon: TrendingUp },
-  { id: 'grievances', label: 'Grievances', icon: MessageSquare },
+  { id: 'grievance-management', label: 'Grievances & Warnings', icon: MessageSquare },
   { id: 'separation', label: 'Separation', icon: LogOut }
 ]
 
