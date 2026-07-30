@@ -91,8 +91,8 @@ function AppContent() {
     };
 
     return (
+        <>
         <div className="app">
-            <Toaster position="top-right" richColors closeButton />
             {/* Header Section with Prop Drilling */}
             <Header 
                 onLoginClick={handleLoginClick} 
@@ -169,6 +169,8 @@ function AppContent() {
                 </Routes>
             </main>
         </div>
+        <Toaster position="top-right" richColors closeButton />
+        </>
     );
 }
 
