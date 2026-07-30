@@ -299,7 +299,6 @@
   background: var(--pf-surface);
   border: 1px solid var(--pf-border);
   border-radius: var(--pf-radius-md);
-  overflow: hidden;
   transition: all var(--pf-transition);
   display: flex;
   flex-direction: column;
@@ -316,6 +315,7 @@
   aspect-ratio: 16 / 9;
   background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   overflow: hidden;
+  border-radius: var(--pf-radius-md) var(--pf-radius-md) 0 0;
 }
 
 .pf-card-cover img {
