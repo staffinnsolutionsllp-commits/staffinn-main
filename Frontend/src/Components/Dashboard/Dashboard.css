@@ -1,13 +1,16 @@
 /* StaffDashboard.css - Complete Updated CSS */
 
 /* Main Dashboard Layout */
-.staff-dashboard {
+.staff-dashboard,
+.recruiter-dashboard,
+.institute-dashboard {
   display: flex;
   min-height: 100vh;
   background-color: #f5f7ff;
   color: #2d3748;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   position: relative;
+  margin-top: -24px;
 }
 
 /* Mobile Hamburger Button */
