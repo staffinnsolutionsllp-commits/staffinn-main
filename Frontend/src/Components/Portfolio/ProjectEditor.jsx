@@ -79,7 +79,7 @@ const ProjectEditor = ({ projectId, onNavigate }) => {
     if (form.liveUrl && !form.liveUrl.startsWith('https://')) e.liveUrl = 'Must be a valid HTTPS URL';
     if (form.repositoryUrl && !form.repositoryUrl.startsWith('https://')) e.repositoryUrl = 'Must be a valid HTTPS URL';
     if (form.videoUrl && !form.videoUrl.startsWith('https://')) e.videoUrl = 'Must be a valid HTTPS URL';
-    if (form.videoUrl && !/^https:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com|loom\.com|www\.loom\.com)/.test(form.videoUrl)) {
+    if (form.videoUrl && form.videoUrl.startsWith('https://') && !/^https:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com|loom\.com|www\.loom\.com)/.test(form.videoUrl)) {
       e.videoUrl = 'Must be YouTube, Vimeo, or Loom URL';
     }
     if (form.startDate && form.endDate && form.startDate > form.endDate) e.endDate = 'End date must be after start date';
@@ -94,20 +94,20 @@ const ProjectEditor = ({ projectId, onNavigate }) => {
     try {
       if (isEdit) {
         const fields = {};
-        if (form.title.trim() !== project.title) fields.title = form.title.trim();
+        if (form.title.trim() !== (project.title || '')) fields.title = form.title.trim();
         if (form.shortDescription !== (project.shortDescription || '')) fields.shortDescription = form.shortDescription;
         if (form.detailedDescription !== (project.detailedDescription || '')) fields.detailedDescription = form.detailedDescription;
-        if (form.projectType !== (project.projectType || null)) fields.projectType = form.projectType || null;
+        if ((form.projectType || null) !== (project.projectType || null)) fields.projectType = form.projectType || null;
         if (form.roleOrContribution !== (project.roleOrContribution || '')) fields.roleOrContribution = form.roleOrContribution;
         if (JSON.stringify(form.technologies) !== JSON.stringify(project.technologies || [])) fields.technologies = form.technologies;
-        if (form.liveUrl !== (project.liveUrl || '')) fields.liveUrl = form.liveUrl || null;
-        if (form.repositoryUrl !== (project.repositoryUrl || '')) fields.repositoryUrl = form.repositoryUrl || null;
-        if (form.videoUrl !== (project.videoUrl || '')) fields.videoUrl = form.videoUrl || null;
+        if ((form.liveUrl || null) !== (project.liveUrl || null)) fields.liveUrl = form.liveUrl || null;
+        if ((form.repositoryUrl || null) !== (project.repositoryUrl || null)) fields.repositoryUrl = form.repositoryUrl || null;
+        if ((form.videoUrl || null) !== (project.videoUrl || null)) fields.videoUrl = form.videoUrl || null;
         if (form.showLiveUrl !== (project.showLiveUrl !== false)) fields.showLiveUrl = form.showLiveUrl;
         if (form.showRepositoryUrl !== (project.showRepositoryUrl !== false)) fields.showRepositoryUrl = form.showRepositoryUrl;
         if (form.showVideoUrl !== (project.showVideoUrl !== false)) fields.showVideoUrl = form.showVideoUrl;
-        if (form.startDate !== (project.startDate || '')) fields.startDate = form.startDate || null;
-        if (form.endDate !== (project.endDate || '')) fields.endDate = form.endDate || null;
+        if ((form.startDate || null) !== (project.startDate || null)) fields.startDate = form.startDate || null;
+        if ((form.endDate || null) !== (project.endDate || null)) fields.endDate = form.endDate || null;
         if (form.isOngoing !== (project.isOngoing || false)) fields.isOngoing = form.isOngoing;
 
         if (Object.keys(fields).length === 0) { toast.success('No changes to save'); setSaving(false); return; }

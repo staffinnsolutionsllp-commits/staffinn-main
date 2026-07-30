@@ -27,6 +27,7 @@ const passwordResetRoutes = require('./routes/passwordResetRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const recruiterRoutes = require('./routes/recruiterRoutes');
 const staffRoutes = require('./routes/staffRoutes');
+const projectRoutes = require('./routes/projectRoutes');
 const instituteRoutes = require('./routes/instituteRoutes');
 const instituteManagementRoutes = require('./routes/instituteManagementRoutes');
 const instituteCourseEnrollmentRoutes = require('./routes/instituteCourseEnrollmentRoutes');
@@ -126,7 +127,7 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires', 'x-company-id', 'x-api-key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires', 'x-company-id', 'x-api-key', 'Idempotency-Key'],
   exposedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -195,6 +196,13 @@ app.use(`${API_PREFIX}/auth/forgot-password`, passwordResetRoutes);
 app.use(`${API_PREFIX}/jobs`, jobRoutes);
 app.use(`${API_PREFIX}/recruiter`, recruiterRoutes);
 app.use(`${API_PREFIX}/staff`, staffRoutes);
+app.use(`${API_PREFIX}/projects`, projectRoutes);
+// Phase 2: Public portfolio routes (profile-facing)
+const { portfolioFeatureGuard } = require('./middleware/projectFeatureFlag');
+const { authenticate } = require('./middleware/auth');
+const projectController = require('./controllers/projectController');
+app.get(`${API_PREFIX}/staff/:profileSlug/projects`, portfolioFeatureGuard, authenticate, projectController.getPublicPortfolio);
+app.get(`${API_PREFIX}/staff/:profileSlug/projects/:projectSlug`, portfolioFeatureGuard, authenticate, projectController.getPublicProjectBySlug);
 app.use(`${API_PREFIX}/institute`, instituteRoutes);
 app.use(`${API_PREFIX}/institutes`, instituteRoutes); // Add plural route for frontend compatibility
 app.use(`${API_PREFIX}/progress`, progressRoutes); // Progress routes

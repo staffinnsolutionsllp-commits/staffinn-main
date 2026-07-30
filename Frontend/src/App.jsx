@@ -7,9 +7,11 @@ import Home from "./Components/Home/Home.jsx";
 import StaffDashboard from "./Components/Dashboard/StaffDashboard.jsx";
 import RecruiterDashboard from "./Components/Dashboard/RecruiterDashboard.jsx";
 import InstituteDashboard from "./Components/Dashboard/InstituteDashboard.jsx";
-import StaffPage from "./Components/Pages/StaffPage.jsx"; // Import the StaffPage component
+import StaffPage from "./Components/Pages/StaffPage.jsx";
+import StaffProfilePage from "./Components/Pages/StaffProfilePage.jsx";
+import ProfileLoginRedirect from "./Components/Pages/StaffProfile/ProfileLoginRedirect.jsx";
 import InstitutePage from './Components/Pages/InstitutePage.jsx';
-import InstitutePageList from './Components/Pages/InstitutePageList.jsx'; // Added this import
+import InstitutePageList from './Components/Pages/InstitutePageList.jsx';
 import NewsPage from './Components/Pages/NewsPage.jsx';
 import RecruiterPage from './Components/Pages/RecruiterPage.jsx';
 import JobsPage from './Components/Pages/JobsPage.jsx';
@@ -27,6 +29,7 @@ import apiService from './services/api';
 
 import { useLenis } from './hooks/useLenis';
 import { showLoginWithMessage } from './utils/authGuard';
+import { Toaster } from 'sonner';
 import './App.css';
 
 function AppContent() {
@@ -89,6 +92,7 @@ function AppContent() {
 
     return (
         <div className="app">
+            <Toaster position="top-right" richColors closeButton />
             {/* Header Section with Prop Drilling */}
             <Header 
                 onLoginClick={handleLoginClick} 
@@ -103,7 +107,13 @@ function AppContent() {
             <main>
                 <Routes>
                     <Route path="/" element={<Home isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
-                    <Route path="/staff" element={<StaffPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} /> 
+                    <Route path="/staff" element={<StaffPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    {import.meta.env.VITE_STAFF_PROFILE_PAGE_ENABLED === 'true' && (
+                        <Route 
+                            path="/staff/:profileSlug" 
+                            element={isLoggedIn ? <StaffProfilePage /> : <ProfileLoginRedirect onShowLogin={openLoginPopupWithMessage} />}
+                        />
+                    )} 
                     <Route path="/institute" element={<InstitutePageList isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} currentUser={currentUser} />} />
                     <Route path="/institute/:id" element={<InstitutePage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/news" element={<NewsPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
