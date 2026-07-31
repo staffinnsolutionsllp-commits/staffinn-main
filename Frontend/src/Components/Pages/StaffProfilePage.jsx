@@ -9,6 +9,7 @@ import StaffProfileReviews from './StaffProfile/StaffProfileReviews';
 import StaffProfileContact from './StaffProfile/StaffProfileContact';
 import StaffProfileNotFound from './StaffProfile/StaffProfileNotFound';
 import ProfilePortfolioSection from '../Portfolio/ProfilePortfolioSection';
+import ProfileServicesTab from '../Services/ProfileServicesTab';
 import './StaffProfile/StaffProfilePage.css';
 
 const StaffProfilePage = () => {
@@ -27,7 +28,7 @@ const StaffProfilePage = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab === 'reviews' || tab === 'overview') setActiveTab(tab);
+    if (tab === 'reviews' || tab === 'overview' || tab === 'services') setActiveTab(tab);
   }, []);
 
   const handleTabChange = (tab) => {
@@ -125,6 +126,16 @@ const StaffProfilePage = () => {
               >
                 Overview
               </button>
+              {import.meta.env.VITE_STAFF_SERVICES_ENABLED === 'true' && (
+                <button
+                  className={`sp-tab ${activeTab === 'services' ? 'sp-tab--active' : ''}`}
+                  onClick={() => handleTabChange('services')}
+                  role="tab"
+                  aria-selected={activeTab === 'services'}
+                >
+                  Services
+                </button>
+              )}
               <button
                 className={`sp-tab ${activeTab === 'reviews' ? 'sp-tab--active' : ''}`}
                 onClick={() => handleTabChange('reviews')}
@@ -139,6 +150,13 @@ const StaffProfilePage = () => {
             <div className="sp-tab-content">
               {activeTab === 'overview' && (
                 <StaffProfileOverview profile={profile} />
+              )}
+              {import.meta.env.VITE_STAFF_SERVICES_ENABLED === 'true' && activeTab === 'services' && (
+                <ProfileServicesTab
+                  profileSlug={profileSlug}
+                  profile={profile}
+                  isOwner={currentUser?.userId === profile.userId}
+                />
               )}
               {activeTab === 'reviews' && (
                 <StaffProfileReviews

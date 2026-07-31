@@ -28,6 +28,7 @@ const jobRoutes = require('./routes/jobRoutes');
 const recruiterRoutes = require('./routes/recruiterRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const projectRoutes = require('./routes/projectRoutes');
+const serviceRoutes = require('./routes/serviceRoutes');
 const instituteRoutes = require('./routes/instituteRoutes');
 const instituteManagementRoutes = require('./routes/instituteManagementRoutes');
 const instituteCourseEnrollmentRoutes = require('./routes/instituteCourseEnrollmentRoutes');
@@ -197,12 +198,17 @@ app.use(`${API_PREFIX}/jobs`, jobRoutes);
 app.use(`${API_PREFIX}/recruiter`, recruiterRoutes);
 app.use(`${API_PREFIX}/staff`, staffRoutes);
 app.use(`${API_PREFIX}/projects`, projectRoutes);
+app.use(`${API_PREFIX}/services`, serviceRoutes);
 // Phase 2: Public portfolio routes (profile-facing)
 const { portfolioFeatureGuard } = require('./middleware/projectFeatureFlag');
 const { authenticate } = require('./middleware/auth');
 const projectController = require('./controllers/projectController');
 app.get(`${API_PREFIX}/staff/:profileSlug/projects`, portfolioFeatureGuard, authenticate, projectController.getPublicPortfolio);
 app.get(`${API_PREFIX}/staff/:profileSlug/projects/:projectSlug`, portfolioFeatureGuard, authenticate, projectController.getPublicProjectBySlug);
+// Phase 2F: Public service routes (profile-facing)
+const serviceController = require('./controllers/serviceController');
+app.get(`${API_PREFIX}/staff/:profileSlug/services`, serviceController.serviceFeatureGuard, authenticate, serviceController.getPublicServices);
+app.get(`${API_PREFIX}/services/:serviceSlug`, serviceController.serviceFeatureGuard, serviceController.getPublicServiceDetail);
 app.use(`${API_PREFIX}/institute`, instituteRoutes);
 app.use(`${API_PREFIX}/institutes`, instituteRoutes); // Add plural route for frontend compatibility
 app.use(`${API_PREFIX}/progress`, progressRoutes); // Progress routes

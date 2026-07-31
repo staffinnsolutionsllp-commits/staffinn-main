@@ -1,0 +1,163 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Staff Services — Phase 2E/2I CSS
+   Uses existing Staffinn design tokens (--sp-* and --pf-*)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.sv-tab-loading {
+  padding: 8px 0;
+}
+
+.sv-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 56px 24px;
+}
+
+.sv-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--pf-primary-light, #eef1ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pf-primary, #4863f7);
+  font-size: 1.5rem;
+  margin-bottom: 18px;
+}
+
+.sv-empty-state h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pf-text-primary, #1a1a2e);
+  margin: 0 0 8px;
+}
+
+.sv-empty-state p {
+  font-size: 0.85rem;
+  color: var(--pf-text-secondary, #4a5568);
+  margin: 0 0 22px;
+  max-width: 360px;
+  line-height: 1.6;
+}
+
+.sv-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.sv-tab-count {
+  font-size: 0.82rem;
+  color: var(--pf-text-muted, #94a3b8);
+  font-weight: 500;
+}
+
+.sv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+/* ─── Service Card (Preview) ──────────────────────────────────────── */
+
+.sv-card {
+  background: var(--pf-surface, #ffffff);
+  border: 1px solid var(--pf-border, #e2e8f0);
+  border-radius: var(--pf-radius-md, 12px);
+  overflow: hidden;
+  transition: all 200ms ease;
+}
+
+.sv-card:hover {
+  border-color: var(--pf-border-hover, #cbd5e1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+.sv-card-cover {
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  overflow: hidden;
+}
+
+.sv-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sv-card-body {
+  padding: 16px 18px;
+}
+
+.sv-card-title {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--pf-text-primary, #1a1a2e);
+  margin: 0 0 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sv-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sv-card-rating {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--pf-text-primary, #1a1a2e);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sv-card-rating .star { color: #f59e0b; }
+
+.sv-card-reviews {
+  font-size: 0.75rem;
+  color: var(--pf-text-muted, #94a3b8);
+}
+
+.sv-card-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--pf-border, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sv-card-price {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--pf-text-primary, #1a1a2e);
+}
+
+.sv-card-price .label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--pf-text-muted, #94a3b8);
+  display: block;
+}
+
+.sv-card-mode {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--pf-background, #f8fafc);
+  color: var(--pf-text-secondary, #4a5568);
+}
+
+@media (max-width: 640px) {
+  .sv-grid { grid-template-columns: 1fr; }
+}
