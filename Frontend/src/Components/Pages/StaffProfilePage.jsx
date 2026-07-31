@@ -23,6 +23,20 @@ const StaffProfilePage = () => {
   const [contactedStaff, setContactedStaff] = useState(false);
   const [hiredStaff, setHiredStaff] = useState(false);
 
+  // URL-aware tab state
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'reviews' || tab === 'overview') setActiveTab(tab);
+  }, []);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url);
+  };
+
   useEffect(() => {
     if (!isLoggedIn) return;
     if (!profileSlug || !isValidSlug(profileSlug)) {
@@ -105,7 +119,7 @@ const StaffProfilePage = () => {
             <div className="sp-tabs" role="tablist">
               <button
                 className={`sp-tab ${activeTab === 'overview' ? 'sp-tab--active' : ''}`}
-                onClick={() => setActiveTab('overview')}
+                onClick={() => handleTabChange('overview')}
                 role="tab"
                 aria-selected={activeTab === 'overview'}
               >
@@ -113,7 +127,7 @@ const StaffProfilePage = () => {
               </button>
               <button
                 className={`sp-tab ${activeTab === 'reviews' ? 'sp-tab--active' : ''}`}
-                onClick={() => setActiveTab('reviews')}
+                onClick={() => handleTabChange('reviews')}
                 role="tab"
                 aria-selected={activeTab === 'reviews'}
               >
@@ -140,6 +154,8 @@ const StaffProfilePage = () => {
                 profileSlug={profileSlug}
                 isOwner={currentUser?.userId === profile.userId}
                 onManage={() => navigate('/dashboard/staff?tab=portfolio')}
+                staffName={profile.fullName}
+                staffAvatar={profile.profilePhoto}
               />
             )}
           </div>
