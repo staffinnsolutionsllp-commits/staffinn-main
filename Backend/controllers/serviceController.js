@@ -18,6 +18,18 @@ function serviceFeatureGuard(req, res, next) {
 const createService = async (req, res) => {
   try {
     if (req.user.role !== 'staff') return res.status(403).json({ success: false, message: 'Staff only' });
+
+    // Idempotency check
+    const idempotencyKey = req.headers['idempotency-key'];
+    if (idempotencyKey) {
+      // Check if service was already created with this key
+      const existing = await sm.listServicesByOwner(req.user.userId);
+      const duplicate = existing.find(s => s.idempotencyKey === idempotencyKey);
+      if (duplicate) {
+        return res.status(201).json({ success: true, data: sm.serviceOwnerDTO(duplicate) });
+      }
+    }
+
     const { title, shortDescription, sector, category, workMode, pricingMode, startingPrice, currency, deliveryTime, deliveryUnit, tags } = req.body;
     if (!title || !title.trim()) return res.status(400).json({ success: false, message: 'Title is required' });
     if (title.trim().length > 150) return res.status(400).json({ success: false, message: 'Title max 150 characters' });
@@ -25,7 +37,8 @@ const createService = async (req, res) => {
     const service = await sm.createService(req.user.userId, {
       title: title.trim(), shortDescription: shortDescription?.trim() || '',
       sector, category, workMode, pricingMode, startingPrice, currency,
-      deliveryTime, deliveryUnit, tags: tags || []
+      deliveryTime, deliveryUnit, tags: tags || [],
+      idempotencyKey: idempotencyKey || null
     });
     res.status(201).json({ success: true, data: sm.serviceOwnerDTO(service) });
   } catch (err) {
@@ -229,6 +242,88 @@ const updateMyServiceAvailability = async (req, res) => {
   }
 };
 
+// ─── Service Media Upload ─────────────────────────────────────────────
+const mediaService = require('../services/projectMediaService');
+const { buildMediaUrl } = require('../services/projectMediaUrlService');
+
+const uploadServiceCover = async (req, res) => {
+  try {
+    if (req.user.role !== 'staff') return res.status(403).json({ success: false, message: 'Staff only' });
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file provided' });
+    const { version } = req.body;
+    if (!version || Number(version) < 1) return res.status(400).json({ success: false, message: 'Valid version required' });
+    const existing = await sm.getServiceById(req.user.userId, req.params.serviceId);
+    if (!existing || existing.userId !== req.user.userId) return res.status(404).json({ success: false, message: 'Service not found' });
+
+    const mediaMeta = await mediaService.processAndUpload(req.file.buffer, req.params.serviceId, req.user.userId, 'service-cover');
+    const coverUrl = buildMediaUrl(mediaMeta.variants.detail?.storageKey || mediaMeta.variants.card?.storageKey);
+
+    const updated = await sm.updateService(req.user.userId, req.params.serviceId, { coverMediaUrl: coverUrl }, Number(version));
+    await mediaService.tagObjectsAttached(mediaMeta.uploadedKeys);
+
+    res.status(201).json({ success: true, data: sm.serviceOwnerDTO(updated) });
+  } catch (err) {
+    if (err.code === 'FILE_TOO_LARGE') return res.status(413).json({ success: false, message: err.message });
+    if (err.code === 'INVALID_IMAGE' || err.code === 'IMAGE_DIMENSIONS_EXCEEDED') return res.status(400).json({ success: false, message: err.message });
+    if (err.code === 'VERSION_CONFLICT') return res.status(409).json({ success: false, code: 'VERSION_CONFLICT', message: 'Version conflict' });
+    console.error('Service cover upload error:', err.message);
+    res.status(500).json({ success: false, message: 'Upload failed' });
+  }
+};
+
+const uploadServiceGallery = async (req, res) => {
+  try {
+    if (req.user.role !== 'staff') return res.status(403).json({ success: false, message: 'Staff only' });
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file provided' });
+    const { version } = req.body;
+    if (!version || Number(version) < 1) return res.status(400).json({ success: false, message: 'Valid version required' });
+    const existing = await sm.getServiceById(req.user.userId, req.params.serviceId);
+    if (!existing || existing.userId !== req.user.userId) return res.status(404).json({ success: false, message: 'Service not found' });
+    const currentGallery = existing.galleryMediaUrls || [];
+    if (currentGallery.length >= 6) return res.status(422).json({ success: false, message: 'Maximum 6 gallery images' });
+
+    const mediaMeta = await mediaService.processAndUpload(req.file.buffer, req.params.serviceId, req.user.userId, 'service-gallery');
+    const imageUrl = buildMediaUrl(mediaMeta.variants.detail?.storageKey || mediaMeta.variants.card?.storageKey);
+
+    const updated = await sm.updateService(req.user.userId, req.params.serviceId, { galleryMediaUrls: [...currentGallery, imageUrl] }, Number(version));
+    await mediaService.tagObjectsAttached(mediaMeta.uploadedKeys);
+
+    res.status(201).json({ success: true, data: sm.serviceOwnerDTO(updated) });
+  } catch (err) {
+    if (err.code === 'FILE_TOO_LARGE') return res.status(413).json({ success: false, message: err.message });
+    if (err.code === 'INVALID_IMAGE' || err.code === 'IMAGE_DIMENSIONS_EXCEEDED') return res.status(400).json({ success: false, message: err.message });
+    if (err.code === 'VERSION_CONFLICT') return res.status(409).json({ success: false, code: 'VERSION_CONFLICT', message: 'Version conflict' });
+    console.error('Service gallery upload error:', err.message);
+    res.status(500).json({ success: false, message: 'Upload failed' });
+  }
+};
+
+const deleteServiceMedia = async (req, res) => {
+  try {
+    if (req.user.role !== 'staff') return res.status(403).json({ success: false, message: 'Staff only' });
+    const versionRaw = req.body?.version ?? req.query?.version;
+    const version = Number(versionRaw);
+    if (!version || version < 1) return res.status(400).json({ success: false, message: 'Valid version required' });
+    const existing = await sm.getServiceById(req.user.userId, req.params.serviceId);
+    if (!existing || existing.userId !== req.user.userId) return res.status(404).json({ success: false, message: 'Service not found' });
+
+    const { mediaIndex, mediaType } = req.params;
+    let updateFields = {};
+    if (mediaType === 'cover') {
+      updateFields.coverMediaUrl = null;
+    } else {
+      const gallery = existing.galleryMediaUrls || [];
+      updateFields.galleryMediaUrls = gallery.filter((_, i) => i !== Number(mediaIndex));
+    }
+
+    const updated = await sm.updateService(req.user.userId, req.params.serviceId, updateFields, version);
+    res.status(200).json({ success: true, data: sm.serviceOwnerDTO(updated) });
+  } catch (err) {
+    if (err.code === 'VERSION_CONFLICT') return res.status(409).json({ success: false, code: 'VERSION_CONFLICT', message: 'Version conflict' });
+    res.status(500).json({ success: false, message: 'Failed to delete media' });
+  }
+};
+
 // ─── Public Routes ────────────────────────────────────────────────────
 
 const getPublicServices = async (req, res) => {
@@ -256,5 +351,6 @@ module.exports = {
   archiveMyService, deleteMyService,
   updateMyServicePackages, updateMyServiceFaqs,
   updateMyServiceAddons, updateMyServiceRequirements, updateMyServiceAvailability,
+  uploadServiceCover, uploadServiceGallery, deleteServiceMedia,
   getPublicServices, getPublicServiceDetail
 };

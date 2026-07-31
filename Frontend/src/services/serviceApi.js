@@ -33,9 +33,11 @@ export async function getMyService(serviceId) {
   return handleResponse(response);
 }
 
-export async function createService(data) {
+export async function createService(data, idempotencyKey) {
+  const headers = getAuthHeaders();
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
   const response = await fetch(`${API_URL}/services`, {
-    method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data)
+    method: 'POST', headers, body: JSON.stringify(data)
   });
   return handleResponse(response);
 }
@@ -113,6 +115,37 @@ export async function updateRequirements(serviceId, requirements, version) {
 export async function updateAvailability(serviceId, availability, version) {
   const response = await fetch(`${API_URL}/services/${serviceId}/availability`, {
     method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ availability, version })
+  });
+  return handleResponse(response);
+}
+
+// ─── Media ────────────────────────────────────────────────────────────
+
+export async function uploadServiceCover(serviceId, file, version) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('version', String(version));
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/services/${serviceId}/media/cover`, {
+    method: 'POST', headers: token ? { 'Authorization': `Bearer ${token}` } : {}, body: formData
+  });
+  return handleResponse(response);
+}
+
+export async function uploadServiceGallery(serviceId, file, version) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('version', String(version));
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/services/${serviceId}/media/gallery`, {
+    method: 'POST', headers: token ? { 'Authorization': `Bearer ${token}` } : {}, body: formData
+  });
+  return handleResponse(response);
+}
+
+export async function deleteServiceMedia(serviceId, mediaType, mediaIndex, version) {
+  const response = await fetch(`${API_URL}/services/${serviceId}/media/${mediaType}/${mediaIndex}?version=${version}`, {
+    method: 'DELETE', headers: getAuthHeaders()
   });
   return handleResponse(response);
 }

@@ -158,7 +158,7 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
         setLastSaved(new Date());
         if (!silent) toast.success('Service saved');
       } else {
-        const res = await serviceApi.createService({ title: form.title.trim(), shortDescription: form.shortDescription, sector: form.sector || null, category: form.category || null, workMode: form.workMode, pricingMode: form.pricingMode, startingPrice: form.startingPrice ? Number(form.startingPrice) : null, currency: form.currency, deliveryTime: form.deliveryTime ? Number(form.deliveryTime) : null, deliveryUnit: form.deliveryUnit, tags: form.tags });
+        const res = await serviceApi.createService({ title: form.title.trim(), shortDescription: form.shortDescription, sector: form.sector || null, category: form.category || null, workMode: form.workMode, pricingMode: form.pricingMode, startingPrice: form.startingPrice ? Number(form.startingPrice) : null, currency: form.currency, deliveryTime: form.deliveryTime ? Number(form.deliveryTime) : null, deliveryUnit: form.deliveryUnit, tags: form.tags }, idempotencyKeyRef.current);
         if (res.success) { setDirty(false); idempotencyKeyRef.current = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2); toast.success('Service created'); onNavigate('edit', res.data.serviceId); }
       }
     } catch (err) {
@@ -242,7 +242,7 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
           {currentStep === 5 && <AddonsBuilder addons={form.addons} onChange={addons => updateField('addons', addons)} />}
           {currentStep === 6 && <StepDescription form={form} updateField={updateField} />}
           {currentStep === 7 && <RequirementsBuilder requirements={form.requirements} onChange={reqs => updateField('requirements', reqs)} />}
-          {currentStep === 8 && <ServiceMediaBuilder coverMediaUrl={form.coverMediaUrl} galleryMediaUrls={form.galleryMediaUrls} videoUrl={form.videoUrl} onChange={({ coverMediaUrl, galleryMediaUrls, videoUrl }) => { updateField('coverMediaUrl', coverMediaUrl); updateField('galleryMediaUrls', galleryMediaUrls); updateField('videoUrl', videoUrl); }} />}
+          {currentStep === 8 && <ServiceMediaBuilder serviceId={serviceId} service={service} onServiceUpdated={(updated) => { setService(updated); setForm(prev => ({ ...prev, coverMediaUrl: updated.coverMediaUrl, galleryMediaUrls: updated.galleryMediaUrls || [], videoUrl: updated.videoUrl || '' })); }} />}
           {currentStep === 9 && <AvailabilityBuilder availability={form.availability} onChange={avail => updateField('availability', avail)} />}
           {currentStep === 10 && <FAQBuilder faqs={form.faqs} onChange={faqs => updateField('faqs', faqs)} />}
           {currentStep === 11 && <SEOBuilder seo={form.seo} title={form.title} shortDescription={form.shortDescription} onChange={seo => updateField('seo', seo)} />}
