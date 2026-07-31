@@ -10,6 +10,7 @@ import StaffCourses from './StaffCourses';
 import GovernmentSchemes from './GovernmentSchemes';
 import ContactHistory from '../Messages/ContactHistory';
 import PortfolioContainer from '../Portfolio/PortfolioContainer';
+import ServicesContainer from '../Services/ServicesContainer';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import { FaLinkedin, FaXTwitter, FaInstagram, FaFacebook, FaYoutube, FaGithub, FaGlobe } from 'react-icons/fa6';
 import './HiddenNotification.css';
@@ -1109,6 +1110,16 @@ const StaffDashboard = ({ currentUser }) => {
                         >
                             <i className="fas fa-briefcase"></i>
                             Portfolio
+                        </button>
+                    )}
+
+                    {import.meta.env.VITE_STAFF_SERVICES_ENABLED === 'true' && (
+                        <button 
+                            className={`staff-nav-item ${activeTab === 'services' ? 'active' : ''}`}
+                            onClick={() => handleTabChange('services')}
+                        >
+                            <i className="fas fa-concierge-bell"></i>
+                            Services
                         </button>
                     )}
                 </nav>
@@ -2269,6 +2280,11 @@ const StaffDashboard = ({ currentUser }) => {
                 {/* Portfolio Tab (Phase 2) */}
                 {import.meta.env.VITE_STAFF_PORTFOLIO_ENABLED === 'true' && activeTab === 'portfolio' && (
                     <PortfolioContainer />
+                )}
+
+                {/* Services Tab (Phase 2G) */}
+                {import.meta.env.VITE_STAFF_SERVICES_ENABLED === 'true' && activeTab === 'services' && (
+                    <ServicesContainer />
                 )}
             </div>
         </div>
