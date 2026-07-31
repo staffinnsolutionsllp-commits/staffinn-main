@@ -18,6 +18,7 @@ import JobsPage from './Components/Pages/JobsPage.jsx';
 import CoursesPage from './Components/Pages/CoursesPage.jsx';
 
 import CourseLearningPage from './Components/Pages/CourseLearningPage.jsx';
+import ServiceDetailPage from './Components/Services/ServiceDetailPage.jsx';
 import LoadingExample from './Components/common/LoadingExample.jsx';
 import MessageCenter from './Components/Messages/MessageCenter.jsx';
 import ChatWindow from './Components/Messages/ChatWindow.jsx';
@@ -121,6 +122,9 @@ function AppContent() {
                     <Route path="/recruiter/:recruiterId" element={<RecruiterPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/jobs" element={<JobsPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
                     <Route path="/courses" element={<CoursesPage isLoggedIn={isLoggedIn} onShowLogin={openLoginPopupWithMessage} />} />
+                    {import.meta.env.VITE_STAFF_SERVICES_ENABLED === 'true' && (
+                        <Route path="/services/:serviceSlug" element={<ServiceDetailPage />} />
+                    )}
                     <Route path="/course-learning/:courseId" element={<CourseLearningPage />} />
                     <Route path="/loading-demo" element={<LoadingExample />} />
                     <Route 
