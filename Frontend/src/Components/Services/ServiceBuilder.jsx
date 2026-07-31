@@ -6,6 +6,9 @@ import * as serviceApi from '../../services/serviceApi';
 import { getSectors, getRolesForSector } from '../../utils/sectorRoleData';
 import PackageBuilder from './PackageBuilder';
 import FAQBuilder from './FAQBuilder';
+import RequirementsBuilder from './RequirementsBuilder';
+import AddonsBuilder from './AddonsBuilder';
+import AvailabilityBuilder from './AvailabilityBuilder';
 import './services.css';
 
 const STEPS = [
@@ -14,9 +17,13 @@ const STEPS = [
   { key: 'workmode', label: 'Work Mode', icon: <FiMapPin size={14} /> },
   { key: 'pricing', label: 'Pricing', icon: <FiDollarSign size={14} /> },
   { key: 'packages', label: 'Packages', icon: <FiPackage size={14} /> },
+  { key: 'addons', label: 'Add-Ons', icon: <FiPackage size={14} /> },
   { key: 'description', label: 'Description', icon: <FiFileText size={14} /> },
+  { key: 'requirements', label: 'Requirements', icon: <FiHelpCircle size={14} /> },
+  { key: 'availability', label: 'Availability', icon: <FiCalendar size={14} /> },
   { key: 'faqs', label: 'FAQs', icon: <FiHelpCircle size={14} /> },
   { key: 'delivery', label: 'Delivery', icon: <FiClock size={14} /> },
+  { key: 'preview', label: 'Preview', icon: <FiEye size={14} /> },
 ];
 
 const PRICING_MODES = [
@@ -41,7 +48,8 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
     pricingMode: 'fixed', startingPrice: '', currency: 'INR',
     customQuoteEnabled: false, deliveryTime: '', deliveryUnit: 'days',
     location: '', serviceRadius: '', tags: [],
-    packages: [], faqs: []
+    packages: [], faqs: [], addons: [], requirements: [],
+    availability: { acceptingOrders: true, workingDays: ['Monday','Tuesday','Wednesday','Thursday','Friday'], startTime: '09:00', endTime: '18:00', timeZone: 'Asia/Kolkata', queueLimit: '', bookingNotice: '', responseTime: '', holidayMode: false, holidayStart: '', holidayEnd: '' }
   });
   const [errors, setErrors] = useState({});
   const [tagInput, setTagInput] = useState('');
@@ -65,7 +73,9 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
             customQuoteEnabled: res.data.customQuoteEnabled || false,
             deliveryTime: res.data.deliveryTime || '', deliveryUnit: res.data.deliveryUnit || 'days',
             location: res.data.location || '', serviceRadius: res.data.serviceRadius || '',
-            tags: res.data.tags || [], packages: res.data.packages || [], faqs: res.data.faqs || []
+            tags: res.data.tags || [], packages: res.data.packages || [], faqs: res.data.faqs || [],
+            addons: res.data.addons || [], requirements: res.data.requirements || [],
+            availability: res.data.availability || { acceptingOrders: true, workingDays: ['Monday','Tuesday','Wednesday','Thursday','Friday'], startTime: '09:00', endTime: '18:00', timeZone: 'Asia/Kolkata', queueLimit: '', bookingNotice: '', responseTime: '', holidayMode: false, holidayStart: '', holidayEnd: '' }
           });
         }
       } catch { toast.error('Failed to load service'); }
@@ -174,9 +184,13 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
           {currentStep === 2 && <StepWorkMode form={form} updateField={updateField} />}
           {currentStep === 3 && <StepPricing form={form} updateField={updateField} errors={errors} />}
           {currentStep === 4 && <PackageBuilder packages={form.packages} pricingMode={form.pricingMode} onChange={pkgs => updateField('packages', pkgs)} />}
-          {currentStep === 5 && <StepDescription form={form} updateField={updateField} />}
-          {currentStep === 6 && <FAQBuilder faqs={form.faqs} onChange={faqs => updateField('faqs', faqs)} />}
-          {currentStep === 7 && <StepDelivery form={form} updateField={updateField} />}
+          {currentStep === 5 && <AddonsBuilder addons={form.addons} onChange={addons => updateField('addons', addons)} />}
+          {currentStep === 6 && <StepDescription form={form} updateField={updateField} />}
+          {currentStep === 7 && <RequirementsBuilder requirements={form.requirements} onChange={reqs => updateField('requirements', reqs)} />}
+          {currentStep === 8 && <AvailabilityBuilder availability={form.availability} onChange={avail => updateField('availability', avail)} />}
+          {currentStep === 9 && <FAQBuilder faqs={form.faqs} onChange={faqs => updateField('faqs', faqs)} />}
+          {currentStep === 10 && <StepDelivery form={form} updateField={updateField} />}
+          {currentStep === 11 && <StepPreview form={form} service={service} />}
 
           {/* Navigation */}
           <div className="sv-builder-nav">
@@ -230,6 +244,68 @@ const StepDescription = ({ form, updateField }) => (
 const StepDelivery = ({ form, updateField }) => (
   <div><h2 className="sv-step-title">Delivery</h2><p className="sv-step-desc">How long does it take to complete this service?</p>
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}><div className="pf-form-group"><label className="pf-label">Delivery Time</label><input className="pf-input" type="number" value={form.deliveryTime} onChange={e => updateField('deliveryTime', e.target.value)} placeholder="e.g., 7" min={1} /></div><div className="pf-form-group"><label className="pf-label">Unit</label><select className="pf-select" style={{ width: '100%' }} value={form.deliveryUnit} onChange={e => updateField('deliveryUnit', e.target.value)}><option value="hours">Hours</option><option value="days">Days</option><option value="weeks">Weeks</option><option value="months">Months</option></select></div></div>
+  </div>
+);
+
+const StepPreview = ({ form, service }) => {
+  const priceDisplay = form.startingPrice ? `₹${Number(form.startingPrice).toLocaleString('en-IN')}` : 'Custom Quote';
+  return (
+    <div>
+      <h2 className="sv-step-title">Preview & Submit</h2>
+      <p className="sv-step-desc">Review how your service will appear to clients.</p>
+      <div className="sv-preview-card">
+        <div className="sv-preview-header">
+          <h3>{form.title || 'Untitled Service'}</h3>
+          {form.category && <span className="pf-badge pf-badge-published">{form.category}</span>}
+          {form.workMode && <span className="sv-mgmt-mode">{form.workMode.replace('_', '-')}</span>}
+        </div>
+        <p className="sv-preview-desc">{form.shortDescription || 'No short description provided.'}</p>
+        <div className="sv-preview-price">
+          <strong>{priceDisplay}</strong>
+          {form.pricingMode !== 'custom_quote' && form.pricingMode !== 'fixed' && <span> / {form.pricingMode.replace('_', ' ')}</span>}
+          {form.deliveryTime && <span style={{ marginLeft: 16, color: 'var(--pf-text-muted)' }}>Delivery: {form.deliveryTime} {form.deliveryUnit}</span>}
+        </div>
+        {form.packages.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <strong style={{ fontSize: '0.82rem' }}>Packages:</strong>
+            <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+              {form.packages.map((pkg, i) => (
+                <div key={i} style={{ padding: '10px 16px', border: '1px solid var(--pf-border)', borderRadius: 8, flex: '1 1 0', minWidth: 140 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>{pkg.displayName || 'Package'}</div>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', marginTop: 4 }}>₹{Number(pkg.price || 0).toLocaleString('en-IN')}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--pf-text-muted)' }}>{pkg.deliveryValue} {pkg.deliveryUnit || 'days'} delivery</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {form.faqs.length > 0 && <div style={{ marginTop: 16, fontSize: '0.82rem', color: 'var(--pf-text-muted)' }}>{form.faqs.length} FAQ{form.faqs.length !== 1 ? 's' : ''} configured</div>}
+        {form.addons.length > 0 && <div style={{ fontSize: '0.82rem', color: 'var(--pf-text-muted)' }}>{form.addons.length} add-on{form.addons.length !== 1 ? 's' : ''} available</div>}
+        {form.requirements.length > 0 && <div style={{ fontSize: '0.82rem', color: 'var(--pf-text-muted)' }}>{form.requirements.length} client requirement{form.requirements.length !== 1 ? 's' : ''}</div>}
+      </div>
+
+      {/* Readiness Checklist */}
+      <div style={{ marginTop: 24 }}>
+        <h4 style={{ fontSize: '0.9rem', marginBottom: 12 }}>Publish Readiness</h4>
+        <div className="sv-checklist">
+          <CheckItem done={!!form.title.trim()} label="Service title" />
+          <CheckItem done={!!form.shortDescription} label="Short description" />
+          <CheckItem done={!!form.sector} label="Sector selected" />
+          <CheckItem done={!!form.category} label="Category selected" />
+          <CheckItem done={form.pricingMode === 'custom_quote' || !!form.startingPrice} label="Pricing configured" />
+          <CheckItem done={form.pricingMode !== 'tiered' || form.packages.length > 0} label="Packages defined (if tiered)" />
+          <CheckItem done={!!form.detailedDescription} label="Detailed description" />
+          <CheckItem done={!!form.deliveryTime} label="Delivery time set" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CheckItem = ({ done, label }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', fontSize: '0.82rem' }}>
+    <span style={{ width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? 'var(--pf-success-light)' : 'var(--pf-background)', color: done ? 'var(--pf-success)' : 'var(--pf-text-muted)', border: `1px solid ${done ? 'var(--pf-success)' : 'var(--pf-border)'}`, fontSize: '0.7rem' }}>{done ? '✓' : '−'}</span>
+    <span style={{ color: done ? 'var(--pf-text-primary)' : 'var(--pf-text-muted)' }}>{label}</span>
   </div>
 );
 

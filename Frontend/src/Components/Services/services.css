@@ -358,3 +358,19 @@
   .sv-builder-header { flex-direction: column; align-items: stretch; }
   .sv-pkg-feature-row { flex-wrap: wrap; }
 }
+
+
+/* ─── Preview Card ────────────────────────────────────────────────── */
+.sv-preview-card {
+  background: var(--pf-background, #f8fafc);
+  border: 1px solid var(--pf-border, #e2e8f0);
+  border-radius: var(--pf-radius-md, 12px);
+  padding: 24px;
+}
+.sv-preview-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.sv-preview-header h3 { font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--pf-text-primary); }
+.sv-preview-desc { font-size: 0.85rem; color: var(--pf-text-secondary); line-height: 1.6; margin: 0 0 12px; }
+.sv-preview-price { font-size: 1rem; font-weight: 700; color: var(--pf-text-primary); }
+
+/* ─── Readiness Checklist ─────────────────────────────────────────── */
+.sv-checklist { background: var(--pf-surface, #fff); border: 1px solid var(--pf-border); border-radius: var(--pf-radius-sm); padding: 16px 20px; }
