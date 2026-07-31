@@ -68,6 +68,7 @@ function ownerMediaDTO(media) {
 
 function publicProjectCardDTO(project) {
   if (!project) return null;
+  const coverUrls = resolveMediaUrls(project.coverMedia);
   return {
     projectId: project.projectId,
     slug: project.slug,
@@ -76,7 +77,8 @@ function publicProjectCardDTO(project) {
     projectType: project.projectType || null,
     roleOrContribution: project.roleOrContribution || '',
     technologies: project.technologies || [],
-    coverImageUrl: project.coverMedia?.thumbnailUrl || null,
+    coverImageUrl: coverUrls.thumbnailUrl || coverUrls.detailUrl || null,
+    galleryCount: (project.galleryMedia || []).length,
     startDate: project.startDate || null,
     endDate: project.endDate || null,
     isOngoing: project.isOngoing || false,
@@ -88,6 +90,11 @@ function publicProjectCardDTO(project) {
 
 function publicProjectDetailDTO(project) {
   if (!project) return null;
+  const coverUrls = resolveMediaUrls(project.coverMedia);
+  const galleryWithUrls = (project.galleryMedia || []).map(m => {
+    const urls = resolveMediaUrls(m);
+    return { url: urls.detailUrl, fullUrl: urls.fullUrl, width: m.width, height: m.height };
+  });
   return {
     projectId: project.projectId,
     slug: project.slug,
@@ -97,10 +104,8 @@ function publicProjectDetailDTO(project) {
     projectType: project.projectType || null,
     roleOrContribution: project.roleOrContribution || '',
     technologies: project.technologies || [],
-    coverImageUrl: project.coverMedia?.fullUrl || null,
-    galleryImages: (project.galleryMedia || []).map(m => ({
-      url: m.detailUrl || null, fullUrl: m.fullUrl || null, width: m.width, height: m.height
-    })),
+    coverImageUrl: coverUrls.fullUrl || coverUrls.detailUrl || null,
+    galleryImages: galleryWithUrls,
     videoEmbedUrl: (project.showVideoUrl !== false && project.videoUrl) ? buildVideoEmbed(project.videoUrl) : null,
     liveUrl: (project.showLiveUrl !== false && project.liveUrl) ? project.liveUrl : null,
     repositoryUrl: (project.showRepositoryUrl !== false && project.repositoryUrl) ? project.repositoryUrl : null,
