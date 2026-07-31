@@ -70,7 +70,7 @@ const updateMyService = async (req, res) => {
     if (!existing || existing.userId !== req.user.userId) return res.status(404).json({ success: false, message: 'Service not found' });
 
     // Allowlist
-    const allowed = ['title', 'shortDescription', 'detailedDescription', 'sector', 'category', 'subcategory', 'workMode', 'pricingMode', 'startingPrice', 'currency', 'customQuoteEnabled', 'deliveryTime', 'deliveryUnit', 'location', 'serviceRadius', 'tags', 'acceptingOrders', 'coverMediaUrl', 'galleryMediaUrls', 'addons', 'requirements', 'availability', 'seo'];
+    const allowed = ['title', 'shortDescription', 'detailedDescription', 'sector', 'category', 'subcategory', 'workMode', 'pricingMode', 'startingPrice', 'currency', 'customQuoteEnabled', 'deliveryTime', 'deliveryUnit', 'location', 'serviceRadius', 'tags', 'acceptingOrders', 'coverMediaUrl', 'galleryMediaUrls', 'addons', 'requirements', 'availability', 'seo', 'videoUrl'];
     const safe = {};
     for (const key of allowed) { if (fields[key] !== undefined) safe[key] = fields[key]; }
     if (Object.keys(safe).length === 0) return res.status(400).json({ success: false, message: 'No valid fields to update' });
