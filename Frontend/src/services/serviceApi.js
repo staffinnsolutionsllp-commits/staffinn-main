@@ -96,6 +96,27 @@ export async function updateFaqs(serviceId, faqs, version) {
   return handleResponse(response);
 }
 
+export async function updateAddons(serviceId, addons, version) {
+  const response = await fetch(`${API_URL}/services/${serviceId}/addons`, {
+    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ addons, version })
+  });
+  return handleResponse(response);
+}
+
+export async function updateRequirements(serviceId, requirements, version) {
+  const response = await fetch(`${API_URL}/services/${serviceId}/requirements`, {
+    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ requirements, version })
+  });
+  return handleResponse(response);
+}
+
+export async function updateAvailability(serviceId, availability, version) {
+  const response = await fetch(`${API_URL}/services/${serviceId}/availability`, {
+    method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ availability, version })
+  });
+  return handleResponse(response);
+}
+
 // ─── Public ───────────────────────────────────────────────────────────
 
 export async function getProfileServices(profileSlug) {

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { useState } from 'react';
 import ServicesDashboard from './ServicesDashboard';
-import ServiceEditor from './ServiceEditor';
+import ServiceBuilder from './ServiceBuilder';
 
 /**
  * Services Container: manages internal navigation between
@@ -17,9 +17,9 @@ const ServicesContainer = () => {
 
   switch (view.page) {
     case 'create':
-      return <ServiceEditor serviceId={null} onNavigate={handleNavigate} />;
+      return <ServiceBuilder serviceId={null} onNavigate={handleNavigate} />;
     case 'edit':
-      return <ServiceEditor serviceId={view.serviceId} onNavigate={handleNavigate} />;
+      return <ServiceBuilder serviceId={view.serviceId} onNavigate={handleNavigate} />;
     default:
       return <ServicesDashboard onNavigate={handleNavigate} />;
   }

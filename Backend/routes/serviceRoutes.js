@@ -23,8 +23,11 @@ router.put('/:serviceId/actions/pause', authenticate, sc.pauseMyService);
 router.put('/:serviceId/actions/reactivate', authenticate, sc.reactivateMyService);
 router.put('/:serviceId/actions/archive', authenticate, sc.archiveMyService);
 
-// Packages & FAQs
+// Packages, FAQs, Add-ons, Requirements, Availability
 router.put('/:serviceId/packages', authenticate, sc.updateMyServicePackages);
 router.put('/:serviceId/faqs', authenticate, sc.updateMyServiceFaqs);
+router.put('/:serviceId/addons', authenticate, sc.updateMyServiceAddons);
+router.put('/:serviceId/requirements', authenticate, sc.updateMyServiceRequirements);
+router.put('/:serviceId/availability', authenticate, sc.updateMyServiceAvailability);
 
 module.exports = router;

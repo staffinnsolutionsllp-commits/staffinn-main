@@ -70,7 +70,7 @@ const updateMyService = async (req, res) => {
     if (!existing || existing.userId !== req.user.userId) return res.status(404).json({ success: false, message: 'Service not found' });
 
     // Allowlist
-    const allowed = ['title', 'shortDescription', 'detailedDescription', 'sector', 'category', 'subcategory', 'workMode', 'pricingMode', 'startingPrice', 'currency', 'customQuoteEnabled', 'deliveryTime', 'deliveryUnit', 'location', 'serviceRadius', 'tags', 'acceptingOrders', 'coverMediaUrl', 'galleryMediaUrls'];
+    const allowed = ['title', 'shortDescription', 'detailedDescription', 'sector', 'category', 'subcategory', 'workMode', 'pricingMode', 'startingPrice', 'currency', 'customQuoteEnabled', 'deliveryTime', 'deliveryUnit', 'location', 'serviceRadius', 'tags', 'acceptingOrders', 'coverMediaUrl', 'galleryMediaUrls', 'addons', 'requirements', 'availability', 'seo'];
     const safe = {};
     for (const key of allowed) { if (fields[key] !== undefined) safe[key] = fields[key]; }
     if (Object.keys(safe).length === 0) return res.status(400).json({ success: false, message: 'No valid fields to update' });
@@ -182,6 +182,53 @@ const updateMyServiceFaqs = async (req, res) => {
   }
 };
 
+const updateMyServiceAddons = async (req, res) => {
+  try {
+    if (req.user.role !== 'staff') return res.status(403).json({ success: false, message: 'Staff only' });
+    const { version, addons } = req.body;
+    if (!Array.isArray(addons)) return res.status(400).json({ success: false, message: 'Addons must be an array' });
+    if (addons.length > 10) return res.status(400).json({ success: false, message: 'Maximum 10 add-ons' });
+    const existing = await sm.getServiceById(req.user.userId, req.params.serviceId);
+    if (!existing || existing.userId !== req.user.userId) return res.status(404).json({ success: false, message: 'Service not found' });
+    const updated = await sm.updateService(req.user.userId, req.params.serviceId, { addons }, version);
+    res.status(200).json({ success: true, data: sm.serviceOwnerDTO(updated) });
+  } catch (err) {
+    if (err.code === 'VERSION_CONFLICT') return res.status(409).json({ success: false, code: 'VERSION_CONFLICT', message: 'Version conflict' });
+    res.status(500).json({ success: false, message: 'Failed to update add-ons' });
+  }
+};
+
+const updateMyServiceRequirements = async (req, res) => {
+  try {
+    if (req.user.role !== 'staff') return res.status(403).json({ success: false, message: 'Staff only' });
+    const { version, requirements } = req.body;
+    if (!Array.isArray(requirements)) return res.status(400).json({ success: false, message: 'Requirements must be an array' });
+    if (requirements.length > 20) return res.status(400).json({ success: false, message: 'Maximum 20 requirements' });
+    const existing = await sm.getServiceById(req.user.userId, req.params.serviceId);
+    if (!existing || existing.userId !== req.user.userId) return res.status(404).json({ success: false, message: 'Service not found' });
+    const updated = await sm.updateRequirements(req.user.userId, req.params.serviceId, requirements, version);
+    res.status(200).json({ success: true, data: sm.serviceOwnerDTO(updated) });
+  } catch (err) {
+    if (err.code === 'VERSION_CONFLICT') return res.status(409).json({ success: false, code: 'VERSION_CONFLICT', message: 'Version conflict' });
+    res.status(500).json({ success: false, message: 'Failed to update requirements' });
+  }
+};
+
+const updateMyServiceAvailability = async (req, res) => {
+  try {
+    if (req.user.role !== 'staff') return res.status(403).json({ success: false, message: 'Staff only' });
+    const { version, availability } = req.body;
+    if (!availability || typeof availability !== 'object') return res.status(400).json({ success: false, message: 'Availability object required' });
+    const existing = await sm.getServiceById(req.user.userId, req.params.serviceId);
+    if (!existing || existing.userId !== req.user.userId) return res.status(404).json({ success: false, message: 'Service not found' });
+    const updated = await sm.updateService(req.user.userId, req.params.serviceId, { availability }, version);
+    res.status(200).json({ success: true, data: sm.serviceOwnerDTO(updated) });
+  } catch (err) {
+    if (err.code === 'VERSION_CONFLICT') return res.status(409).json({ success: false, code: 'VERSION_CONFLICT', message: 'Version conflict' });
+    res.status(500).json({ success: false, message: 'Failed to update availability' });
+  }
+};
+
 // ─── Public Routes ────────────────────────────────────────────────────
 
 const getPublicServices = async (req, res) => {
@@ -208,5 +255,6 @@ module.exports = {
   publishMyService, pauseMyService, reactivateMyService,
   archiveMyService, deleteMyService,
   updateMyServicePackages, updateMyServiceFaqs,
+  updateMyServiceAddons, updateMyServiceRequirements, updateMyServiceAvailability,
   getPublicServices, getPublicServiceDetail
 };
