@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiArrowLeft, FiSave, FiCheck, FiPackage, FiMapPin, FiDollarSign, FiClock, FiTag, FiFileText, FiHelpCircle, FiImage, FiCalendar, FiEye } from 'react-icons/fi';
 import { toast } from 'sonner';
 import * as serviceApi from '../../services/serviceApi';
@@ -9,6 +9,8 @@ import FAQBuilder from './FAQBuilder';
 import RequirementsBuilder from './RequirementsBuilder';
 import AddonsBuilder from './AddonsBuilder';
 import AvailabilityBuilder from './AvailabilityBuilder';
+import UnsavedChangesDialog from './UnsavedChangesDialog';
+import VersionConflictDialog from './VersionConflictDialog';
 import './services.css';
 
 const STEPS = [
@@ -42,6 +44,12 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
   const [service, setService] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
+  const idempotencyKeyRef = useRef(crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+  const autosaveTimerRef = useRef(null);
+  const pendingNavigateRef = useRef(null);
   const [form, setForm] = useState({
     title: '', shortDescription: '', detailedDescription: '',
     sector: '', category: '', workMode: 'remote',
@@ -88,8 +96,8 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
   const addTag = (val) => { const t = val.trim(); if (!t || form.tags.includes(t) || form.tags.length >= 10) return; updateField('tags', [...form.tags, t]); setTagInput(''); };
   const removeTag = (tag) => { updateField('tags', form.tags.filter(t => t !== tag)); };
 
-  const handleSave = useCallback(async () => {
-    if (!form.title.trim()) { setErrors({ title: 'Title is required' }); setCurrentStep(0); toast.error('Title is required'); return; }
+  const handleSave = useCallback(async (silent = false) => {
+    if (!form.title.trim()) { if (!silent) { setErrors({ title: 'Title is required' }); setCurrentStep(0); toast.error('Title is required'); } return; }
     setSaving(true);
     try {
       if (isEdit) {
@@ -110,8 +118,12 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
         compare('location', form.location || null, service.location);
         compare('serviceRadius', form.serviceRadius ? Number(form.serviceRadius) : null, service.serviceRadius);
         compare('tags', form.tags, service.tags || []);
+        // Include structured data in main update
+        compare('addons', form.addons, service.addons || []);
+        compare('requirements', form.requirements, service.requirements || []);
+        compare('availability', form.availability, service.availability || {});
         if (Object.keys(fields).length === 0 && JSON.stringify(form.packages) === JSON.stringify(service.packages || []) && JSON.stringify(form.faqs) === JSON.stringify(service.faqs || [])) {
-          toast.success('No changes to save'); setSaving(false); return;
+          if (!silent) toast.success('No changes to save'); setSaving(false); return;
         }
         // Save main fields
         if (Object.keys(fields).length > 0) {
@@ -129,24 +141,55 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
           const latestService = await serviceApi.getMyService(serviceId);
           if (latestService.success) {
             await serviceApi.updateFaqs(serviceId, form.faqs, latestService.data.version);
-            setService(latestService.data);
           }
         }
-        setDirty(false); toast.success('Service saved');
         // Refresh
         const refreshed = await serviceApi.getMyService(serviceId);
         if (refreshed.success) setService(refreshed.data);
+        setDirty(false);
+        setLastSaved(new Date());
+        if (!silent) toast.success('Service saved');
       } else {
         const res = await serviceApi.createService({ title: form.title.trim(), shortDescription: form.shortDescription, sector: form.sector || null, category: form.category || null, workMode: form.workMode, pricingMode: form.pricingMode, startingPrice: form.startingPrice ? Number(form.startingPrice) : null, currency: form.currency, deliveryTime: form.deliveryTime ? Number(form.deliveryTime) : null, deliveryUnit: form.deliveryUnit, tags: form.tags });
-        if (res.success) { setDirty(false); toast.success('Service created'); onNavigate('edit', res.data.serviceId); }
+        if (res.success) { setDirty(false); idempotencyKeyRef.current = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2); toast.success('Service created'); onNavigate('edit', res.data.serviceId); }
       }
     } catch (err) {
-      if (err.code === 'VERSION_CONFLICT') { toast.error('Service updated elsewhere. Refreshing...'); const r = await serviceApi.getMyService(serviceId); if (r.success) setService(r.data); }
-      else toast.error(err.message || 'Save failed');
+      if (err.code === 'VERSION_CONFLICT') {
+        if (!silent) setShowConflictDialog(true);
+        else toast.error('Save conflict — please save manually');
+      } else if (!silent) { toast.error(err.message || 'Save failed'); }
     } finally { setSaving(false); }
   }, [form, service, isEdit, serviceId, onNavigate]);
 
-  const handleBack = () => { if (dirty && !window.confirm('You have unsaved changes. Leave anyway?')) return; onNavigate('dashboard'); };
+  const handleBack = () => {
+    if (dirty) {
+      pendingNavigateRef.current = 'dashboard';
+      setShowUnsavedDialog(true);
+    } else {
+      onNavigate('dashboard');
+    }
+  };
+
+  const handleUnsavedStay = () => { setShowUnsavedDialog(false); pendingNavigateRef.current = null; };
+  const handleUnsavedDiscard = () => { setShowUnsavedDialog(false); setDirty(false); onNavigate(pendingNavigateRef.current || 'dashboard'); };
+
+  const handleConflictReload = async () => {
+    setShowConflictDialog(false);
+    if (isEdit) {
+      const r = await serviceApi.getMyService(serviceId);
+      if (r.success) { setService(r.data); toast.success('Loaded latest version'); }
+    }
+  };
+  const handleConflictCopy = () => { navigator.clipboard?.writeText(JSON.stringify(form, null, 2)); toast.success('Form data copied to clipboard'); };
+  const handleConflictDismiss = () => { setShowConflictDialog(false); };
+
+  // Autosave (debounced 5s after last change, only in edit mode)
+  useEffect(() => {
+    if (!isEdit || !dirty || saving) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => { handleSave(true); }, 5000);
+    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
+  }, [form, isEdit, dirty, saving]);
 
   if (loading) return (<div className="pf-editor-page"><div className="pf-skeleton" style={{ width: 200, height: 28, marginBottom: 24 }} />{[1,2,3].map(i => <div key={i} className="pf-skeleton" style={{ height: 160, marginBottom: 16 }} />)}</div>);
 
@@ -158,11 +201,15 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
           <button className="pf-back-btn" onClick={handleBack} aria-label="Back"><FiArrowLeft /></button>
           <div>
             <h1 className="sv-builder-title">{isEdit ? 'Edit Service' : 'Create Service'}</h1>
-            {service && <span className="sv-builder-status">{service.status} · v{service.version}</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {service && <span className="sv-builder-status">{service.status} · v{service.version}</span>}
+              {lastSaved && <span className="sv-builder-status">Saved {lastSaved.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>}
+              {saving && <span className="sv-builder-status" style={{ color: 'var(--pf-primary)' }}>Saving...</span>}
+            </div>
           </div>
         </div>
         <div className="sv-builder-header-actions">
-          <button className="pf-btn pf-btn-primary" onClick={handleSave} disabled={saving}><FiSave size={14} /> {saving ? 'Saving...' : 'Save Draft'}</button>
+          <button className="pf-btn pf-btn-primary" onClick={() => handleSave(false)} disabled={saving}><FiSave size={14} /> {saving ? 'Saving...' : 'Save Draft'}</button>
         </div>
       </div>
 
@@ -196,10 +243,14 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
           <div className="sv-builder-nav">
             {currentStep > 0 && <button className="pf-btn pf-btn-secondary" onClick={() => setCurrentStep(s => s - 1)}>Previous</button>}
             {currentStep < STEPS.length - 1 && <button className="pf-btn pf-btn-primary" onClick={() => setCurrentStep(s => s + 1)}>Continue</button>}
-            {currentStep === STEPS.length - 1 && <button className="pf-btn pf-btn-primary" onClick={handleSave} disabled={saving}><FiSave size={14} /> {saving ? 'Saving...' : 'Save Service'}</button>}
+            {currentStep === STEPS.length - 1 && <button className="pf-btn pf-btn-primary" onClick={() => handleSave(false)} disabled={saving}><FiSave size={14} /> {saving ? 'Saving...' : 'Save Service'}</button>}
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      {showUnsavedDialog && <UnsavedChangesDialog onStay={handleUnsavedStay} onDiscard={handleUnsavedDiscard} />}
+      {showConflictDialog && <VersionConflictDialog onReload={handleConflictReload} onCopy={handleConflictCopy} onDismiss={handleConflictDismiss} />}
     </div>
   );
 };
