@@ -187,6 +187,26 @@ const ProjectModal = ({ project, projects, onClose, onNavigate, staffName, staff
   const currentIdx = projects.findIndex(p => p.projectId === project.projectId);
   const hasPrev = currentIdx > 0;
   const hasNext = currentIdx < projects.length - 1;
+  const [fullProject, setFullProject] = useState(project);
+
+  useEffect(() => {
+    // Fetch full project detail with gallery
+    const fetchDetail = async () => {
+      if (project.slug) {
+        try {
+          // Use the profileSlug from URL
+          const pathParts = window.location.pathname.split('/');
+          const profileSlug = pathParts[pathParts.indexOf('staff') + 1];
+          if (profileSlug) {
+            const res = await portfolioApi.getProfileProject(profileSlug, project.slug);
+            if (res.success) { setFullProject(res.data); return; }
+          }
+        } catch {}
+      }
+      setFullProject(project);
+    };
+    fetchDetail();
+  }, [project]);
 
   useEffect(() => {
     document.body.classList.add('modal-open');
@@ -213,17 +233,49 @@ const ProjectModal = ({ project, projects, onClose, onNavigate, staffName, staff
         </div>
         {/* Body */}
         <div className="sv-project-modal-body">
-          {project.startDate && <div className="sv-project-modal-date">From: {new Date(project.startDate + 'T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</div>}
-          <h2 className="sv-project-modal-title">{project.title}</h2>
-          <p className="sv-project-modal-desc">{project.shortDescription || ''}</p>
-          {project.technologies?.length > 0 && <div className="sv-project-modal-techs">Language: {project.technologies.join(', ')}</div>}
+          {fullProject.startDate && <div className="sv-project-modal-date"><FiCalendar size={13} /> From: {new Date(fullProject.startDate + 'T00:00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</div>}
+          <h2 className="sv-project-modal-title">{fullProject.title}</h2>
+          {fullProject.shortDescription && <p className="sv-project-modal-desc">{fullProject.shortDescription}</p>}
+
+          {/* Project Type & Role */}
+          {(fullProject.projectType || fullProject.roleOrContribution) && (
+            <div className="sv-project-modal-meta">
+              {fullProject.projectType && <span className="sv-project-modal-chip">{fullProject.projectType}</span>}
+              {fullProject.roleOrContribution && <span className="sv-project-modal-role">{fullProject.roleOrContribution}</span>}
+            </div>
+          )}
+
+          {/* Technologies as chips */}
+          {fullProject.technologies?.length > 0 && (
+            <div className="sv-project-modal-tech-section">
+              <h4>Technologies</h4>
+              <div className="sv-project-modal-tech-chips">
+                {fullProject.technologies.map(t => <span key={t} className="sv-project-modal-tech-chip">{t}</span>)}
+              </div>
+            </div>
+          )}
+
           {/* Cover Image */}
-          {project.coverImageUrl && <div className="sv-project-modal-cover"><img src={project.coverImageUrl} alt={project.title} /></div>}
+          {(fullProject.coverImageUrl || project.coverImageUrl) && <div className="sv-project-modal-cover"><img src={fullProject.coverImageUrl || project.coverImageUrl} alt={fullProject.title} /></div>}
+
+          {/* Gallery Images (same size as cover, one below another) */}
+          {fullProject.galleryImages?.length > 0 && (
+            <div className="sv-project-modal-gallery">
+              {fullProject.galleryImages.map((img, i) => (
+                <div key={i} className="sv-project-modal-gallery-item">
+                  <img src={img.fullUrl || img.url} alt={`Gallery ${i + 1}`} />
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Links */}
-          <div className="sv-project-modal-links">
-            {project.liveUrl && <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" className="pf-btn pf-btn-primary pf-btn-sm"><FiExternalLink size={13} /> Live</a>}
-            {project.repositoryUrl && <a href={project.repositoryUrl} target="_blank" rel="noopener noreferrer" className="pf-btn pf-btn-secondary pf-btn-sm"><FiGithub size={13} /> Code</a>}
-          </div>
+          {(fullProject.liveUrl || fullProject.repositoryUrl) && (
+            <div className="sv-project-modal-links">
+              {fullProject.liveUrl && <a href={fullProject.liveUrl} target="_blank" rel="noopener noreferrer" className="pf-btn pf-btn-primary pf-btn-sm"><FiExternalLink size={13} /> View Live</a>}
+              {fullProject.repositoryUrl && <a href={fullProject.repositoryUrl} target="_blank" rel="noopener noreferrer" className="pf-btn pf-btn-secondary pf-btn-sm"><FiGithub size={13} /> Source Code</a>}
+            </div>
+          )}
         </div>
       </div>
     </div>
