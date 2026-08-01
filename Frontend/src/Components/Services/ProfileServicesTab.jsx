@@ -174,7 +174,7 @@ const ServiceInlineDetail = ({ service, profile, portfolioProjects, onProjectCli
               {(currentPkg.features || []).length > 0 && (<div className="sv-pricing-included"><button className="sv-pricing-included-toggle" onClick={() => setShowIncluded(!showIncluded)}>What's Included {showIncluded ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}</button>{showIncluded && (<div className="sv-pricing-included-list">{currentPkg.features.filter(f => f.included !== false).map((f, i) => (<div key={i} className="sv-pricing-feature"><FiCheck size={12} /> {f.label}{f.value ? `: ${f.value}` : ''}</div>))}</div>)}</div>)}
             </>) : (<><div className="sv-pricing-price">{priceDisplay(service.startingPrice)}</div>{service.deliveryTime && <div className="sv-pricing-details"><span><FiClock size={13} /> {service.deliveryTime} {service.deliveryUnit} delivery</span></div>}</>)}
           </div>
-          <div className="sv-pricing-cta"><button className="pf-btn pf-btn-primary pf-btn-full pf-btn-lg sv-continue-btn">Continue <span>→</span></button><ChatButton recipientId={profile?.userId} recipientName={profile?.fullName} buttonClass="pf-btn pf-btn-secondary pf-btn-full sv-contact-btn" buttonText="💬 Contact me" /></div>
+          <div className="sv-pricing-cta"><button className="pf-btn pf-btn-primary pf-btn-full pf-btn-lg sv-continue-btn">Continue <span>→</span></button><ChatButton recipientId={profile?.userId} recipientName={profile?.fullName} buttonClass="pf-btn pf-btn-secondary pf-btn-full sv-contact-btn" buttonText="Contact me" /></div>
         </div>
       </aside>
     </div>
