@@ -10,6 +10,9 @@ const sc = require('../controllers/serviceController');
 // Feature flag guard
 router.use(sc.serviceFeatureGuard);
 
+// Public service detail (no auth - must be before authenticated routes)
+router.get('/detail/:serviceSlug', sc.getPublicServiceDetail);
+
 // Owner routes (Staff, authenticated)
 router.get('/my', authenticate, sc.getMyServices);
 router.post('/', authenticate, sc.createService);

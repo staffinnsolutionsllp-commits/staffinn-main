@@ -158,6 +158,6 @@ export async function getProfileServices(profileSlug) {
 }
 
 export async function getServiceDetail(serviceSlug) {
-  const response = await fetch(`${API_URL}/services/${serviceSlug}`, { headers: getAuthHeaders() });
+  const response = await fetch(`${API_URL}/services/detail/${serviceSlug}`, { headers: getAuthHeaders() });
   return handleResponse(response);
 }
