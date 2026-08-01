@@ -166,8 +166,8 @@ const StaffProfilePage = () => {
               )}
             </div>
 
-            {/* Portfolio Section (Phase 2) */}
-            {import.meta.env.VITE_STAFF_PORTFOLIO_ENABLED === 'true' && (
+            {/* Portfolio Section (Phase 2) - hidden on services tab since portfolio shows inline there */}
+            {import.meta.env.VITE_STAFF_PORTFOLIO_ENABLED === 'true' && activeTab !== 'services' && (
               <ProfilePortfolioSection
                 profileSlug={profileSlug}
                 isOwner={currentUser?.userId === profile.userId}

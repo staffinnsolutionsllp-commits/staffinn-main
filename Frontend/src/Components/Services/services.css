@@ -714,3 +714,69 @@
   .sv-inline-sidebar { max-width: 100%; }
   .sv-compare-table-wrap { font-size: 0.75rem; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MY PORTFOLIO SHOWCASE (Fiverr-style horizontal card in Services)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.sv-portfolio-showcase { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--pf-border); border-radius: var(--pf-radius-md, 12px); overflow: hidden; cursor: pointer; transition: box-shadow 200ms ease; min-height: 220px; }
+.sv-portfolio-showcase:hover { box-shadow: var(--pf-shadow-md, 0 4px 12px rgba(0,0,0,0.06)); }
+.sv-portfolio-showcase-img { position: relative; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); overflow: hidden; min-height: 220px; }
+.sv-portfolio-showcase-img img { width: 100%; height: 100%; object-fit: cover; }
+.sv-portfolio-showcase-placeholder { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--pf-text-muted); }
+.sv-portfolio-img-count { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 3px 9px; border-radius: 14px; font-size: 0.7rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.sv-portfolio-showcase-content { padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.sv-portfolio-date { font-size: 0.78rem; color: var(--pf-text-muted); display: flex; align-items: center; gap: 5px; }
+.sv-portfolio-showcase-title { font-size: 1.15rem; font-weight: 700; color: var(--pf-text-primary); margin: 0; line-height: 1.35; }
+.sv-portfolio-showcase-desc { font-size: 0.88rem; color: var(--pf-text-secondary); line-height: 1.6; margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sv-portfolio-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.sv-portfolio-tag { padding: 4px 10px; background: var(--pf-background); border: 1px solid var(--pf-border); border-radius: 16px; font-size: 0.72rem; color: var(--pf-text-secondary); font-weight: 500; }
+.sv-portfolio-tag-more { padding: 4px 8px; background: var(--pf-primary-light); color: var(--pf-primary); border-radius: 16px; font-size: 0.72rem; font-weight: 600; }
+
+/* Thumbnail Nav */
+.sv-portfolio-thumbs { display: flex; gap: 8px; margin-top: 14px; overflow-x: auto; padding-bottom: 4px; }
+.sv-portfolio-thumb { width: 70px; height: 50px; border-radius: 6px; overflow: hidden; border: 2px solid transparent; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--pf-background); transition: border-color 200ms; }
+.sv-portfolio-thumb.active { border-color: var(--pf-primary); }
+.sv-portfolio-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Project Modal */
+.sv-project-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(5px); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 24px; animation: pf-fadeIn 200ms ease; }
+.sv-project-modal { background: #fff; border-radius: var(--pf-radius-lg, 16px); width: 100%; max-width: 720px; max-height: 85vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.2); animation: pf-scaleIn 200ms ease; }
+.sv-project-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--pf-border); position: sticky; top: 0; background: #fff; z-index: 5; }
+.sv-project-modal-maker { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--pf-text-secondary); }
+.sv-project-modal-maker img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.sv-project-modal-maker strong { color: var(--pf-text-primary); }
+.sv-project-modal-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(145deg, #4863f7, #6c63ff); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+.sv-project-modal-nav { display: flex; align-items: center; gap: 6px; }
+.sv-project-modal-nav button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--pf-border); background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--pf-text-secondary); transition: all 200ms; }
+.sv-project-modal-nav button:hover:not(:disabled) { border-color: var(--pf-primary); color: var(--pf-primary); }
+.sv-project-modal-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+.sv-project-modal-nav span { font-size: 0.78rem; color: var(--pf-text-muted); min-width: 50px; text-align: center; }
+.sv-project-modal-close { margin-left: 8px; border: none !important; background: var(--pf-background) !important; border-radius: 50% !important; width: 34px !important; height: 34px !important; }
+.sv-project-modal-body { padding: 32px; }
+.sv-project-modal-date { font-size: 0.82rem; color: var(--pf-text-muted); margin-bottom: 8px; }
+.sv-project-modal-title { font-size: 1.5rem; font-weight: 800; color: var(--pf-text-primary); margin: 0 0 12px; line-height: 1.3; }
+.sv-project-modal-desc { font-size: 0.95rem; color: var(--pf-text-secondary); line-height: 1.7; margin: 0 0 16px; }
+.sv-project-modal-techs { font-size: 0.85rem; color: var(--pf-text-secondary); margin-bottom: 20px; }
+.sv-project-modal-cover { border-radius: var(--pf-radius-md); overflow: hidden; margin-bottom: 20px; }
+.sv-project-modal-cover img { width: 100%; display: block; }
+.sv-project-modal-links { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Size improvements */
+.sv-inline-title { font-size: 1.65rem; }
+.sv-inline-section h3 { font-size: 1.2rem; }
+.sv-inline-desc { font-size: 0.95rem; }
+.sv-inline-info-value { font-size: 0.95rem; }
+
+/* Fix pricing panel position */
+.sv-inline-sidebar { top: 100px; }
+
+@media (max-width: 768px) {
+  .sv-portfolio-showcase { grid-template-columns: 1fr; }
+  .sv-portfolio-showcase-img { min-height: 180px; max-height: 200px; }
+  .sv-portfolio-showcase-content { padding: 18px; }
+  .sv-project-modal { max-width: 95vw; max-height: 90vh; }
+  .sv-project-modal-body { padding: 20px; }
+  .sv-project-modal-title { font-size: 1.2rem; }
+}
