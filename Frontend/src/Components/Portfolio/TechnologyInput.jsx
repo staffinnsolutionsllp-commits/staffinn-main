@@ -15,6 +15,17 @@ const TechnologyInput = ({ technologies = [], onChange, error }) => {
     setInput('');
   };
 
+  const addMultiple = (text) => {
+    const items = text.split(',').map(s => s.trim()).filter(s => s && s.length <= 40);
+    const newTechs = [...technologies];
+    for (const item of items) {
+      if (newTechs.length >= 15) break;
+      if (!newTechs.includes(item)) newTechs.push(item);
+    }
+    onChange(newTechs);
+    setInput('');
+  };
+
   const removeTech = (tech) => {
     onChange(technologies.filter(t => t !== tech));
   };
@@ -22,10 +33,34 @@ const TechnologyInput = ({ technologies = [], onChange, error }) => {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
-      addTech(input);
+      if (input.includes(',')) {
+        addMultiple(input);
+      } else {
+        addTech(input);
+      }
     }
     if (e.key === 'Backspace' && !input && technologies.length > 0) {
       onChange(technologies.slice(0, -1));
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text');
+    if (pasted.includes(',')) {
+      addMultiple(pasted);
+    } else {
+      setInput(prev => prev + pasted);
+    }
+  };
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    // If user types a comma, immediately add what's before it
+    if (val.includes(',')) {
+      addMultiple(val);
+    } else {
+      setInput(val);
     }
   };
 
@@ -44,15 +79,16 @@ const TechnologyInput = ({ technologies = [], onChange, error }) => {
           ref={inputRef}
           className="pf-tag-input"
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
-          onBlur={() => { if (input.trim()) addTech(input); }}
-          placeholder={technologies.length === 0 ? 'Type and press Enter...' : ''}
+          onPaste={handlePaste}
+          onBlur={() => { if (input.trim()) { if (input.includes(',')) addMultiple(input); else addTech(input); } }}
+          placeholder={technologies.length === 0 ? 'Type and press Enter, or paste comma-separated...' : ''}
           disabled={technologies.length >= 15}
           aria-label="Add technology"
         />
       </div>
-      <div className="pf-helper">{technologies.length}/15 technologies. Press Enter or comma to add.</div>
+      <div className="pf-helper">{technologies.length}/15 technologies. Press Enter, comma, or paste comma-separated list.</div>
       {error && <div className="pf-error-text">{error}</div>}
     </div>
   );
