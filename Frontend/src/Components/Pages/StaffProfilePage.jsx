@@ -114,7 +114,7 @@ const StaffProfilePage = () => {
       <div className="sp-container">
         <StaffProfileHero profile={profile} />
 
-        <div className="sp-body">
+        <div className={`sp-body ${activeTab === 'services' ? 'sp-body--full' : ''}`}>
           <div className="sp-main">
             {/* Tabs */}
             <div className="sp-tabs" role="tablist">
@@ -178,17 +178,19 @@ const StaffProfilePage = () => {
             )}
           </div>
 
-          {/* Contact Sidebar (desktop) */}
-          <aside className="sp-sidebar">
-            <StaffProfileContact
-              profile={profile}
-              currentUser={currentUser}
-              contactedStaff={contactedStaff}
-              hiredStaff={hiredStaff}
-              onContactMade={handleContactMade}
-              onHired={handleHired}
-            />
-          </aside>
+          {/* Contact Sidebar (desktop) - hidden when services tab active */}
+          {activeTab !== 'services' && (
+            <aside className="sp-sidebar">
+              <StaffProfileContact
+                profile={profile}
+                currentUser={currentUser}
+                contactedStaff={contactedStaff}
+                hiredStaff={hiredStaff}
+                onContactMade={handleContactMade}
+                onHired={handleHired}
+              />
+            </aside>
+          )}
         </div>
 
         {/* Mobile Bottom Bar */}
