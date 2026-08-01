@@ -1,5 +1,6 @@
 const MessageModel = require('../models/messageModel');
 const UserModel = require('../models/userModel');
+const { sendMessageNotification } = require('../services/messageNotificationService');
 
 class MessageController {
   static async sendMessage(req, res) {
@@ -59,6 +60,14 @@ class MessageController {
         message: 'Message sent successfully',
         data: newMessage
       });
+
+      // Send email notification (non-blocking, after response)
+      try {
+        const sender = await UserModel.getUserById(senderId);
+        sendMessageNotification(receiver, sender || { fullName: 'Someone' }, message);
+      } catch (emailErr) {
+        console.error('Email notification error (non-blocking):', emailErr.message);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       res.status(500).json({
