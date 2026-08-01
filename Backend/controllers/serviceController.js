@@ -22,7 +22,6 @@ const createService = async (req, res) => {
     // Idempotency check
     const idempotencyKey = req.headers['idempotency-key'];
     if (idempotencyKey) {
-      // Check if service was already created with this key
       const existing = await sm.listServicesByOwner(req.user.userId);
       const duplicate = existing.find(s => s.idempotencyKey === idempotencyKey);
       if (duplicate) {
@@ -30,14 +29,17 @@ const createService = async (req, res) => {
       }
     }
 
-    const { title, shortDescription, sector, category, workMode, pricingMode, startingPrice, currency, deliveryTime, deliveryUnit, tags } = req.body;
+    const { title, shortDescription, detailedDescription, sector, category, workMode, pricingMode, startingPrice, currency, customQuoteEnabled, deliveryTime, deliveryUnit, location, serviceRadius, tags } = req.body;
     if (!title || !title.trim()) return res.status(400).json({ success: false, message: 'Title is required' });
     if (title.trim().length > 150) return res.status(400).json({ success: false, message: 'Title max 150 characters' });
 
     const service = await sm.createService(req.user.userId, {
       title: title.trim(), shortDescription: shortDescription?.trim() || '',
+      detailedDescription: detailedDescription?.trim() || '',
       sector, category, workMode, pricingMode, startingPrice, currency,
-      deliveryTime, deliveryUnit, tags: tags || [],
+      customQuoteEnabled: customQuoteEnabled || false,
+      deliveryTime, deliveryUnit, location, serviceRadius,
+      tags: tags || [],
       idempotencyKey: idempotencyKey || null
     });
     res.status(201).json({ success: true, data: sm.serviceOwnerDTO(service) });

@@ -158,8 +158,27 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
         setLastSaved(new Date());
         if (!silent) toast.success('Service saved');
       } else {
-        const res = await serviceApi.createService({ title: form.title.trim(), shortDescription: form.shortDescription, sector: form.sector || null, category: form.category || null, workMode: form.workMode, pricingMode: form.pricingMode, startingPrice: form.startingPrice ? Number(form.startingPrice) : null, currency: form.currency, deliveryTime: form.deliveryTime ? Number(form.deliveryTime) : null, deliveryUnit: form.deliveryUnit, tags: form.tags }, idempotencyKeyRef.current);
-        if (res.success) { setDirty(false); idempotencyKeyRef.current = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2); toast.success('Service created'); onNavigate('edit', res.data.serviceId); }
+        const res = await serviceApi.createService({ title: form.title.trim(), shortDescription: form.shortDescription, sector: form.sector || null, category: form.category || null, workMode: form.workMode, pricingMode: form.pricingMode, startingPrice: form.startingPrice ? Number(form.startingPrice) : null, currency: form.currency, deliveryTime: form.deliveryTime ? Number(form.deliveryTime) : null, deliveryUnit: form.deliveryUnit, tags: form.tags, detailedDescription: form.detailedDescription || null, customQuoteEnabled: form.customQuoteEnabled, location: form.location || null, serviceRadius: form.serviceRadius ? Number(form.serviceRadius) : null }, idempotencyKeyRef.current);
+        if (res.success) {
+          const newServiceId = res.data.serviceId;
+          // Save structured data that create endpoint doesn't handle
+          const structuredFields = {};
+          if (form.addons.length > 0) structuredFields.addons = form.addons;
+          if (form.requirements.length > 0) structuredFields.requirements = form.requirements;
+          if (form.availability && Object.keys(form.availability).length > 0) structuredFields.availability = form.availability;
+          if (form.seo && Object.keys(form.seo).length > 0) structuredFields.seo = form.seo;
+          if (Object.keys(structuredFields).length > 0) {
+            try { await serviceApi.updateService(newServiceId, structuredFields, res.data.version); } catch {}
+          }
+          if (form.packages.length > 0) {
+            try { await serviceApi.updatePackages(newServiceId, form.packages, res.data.version + (Object.keys(structuredFields).length > 0 ? 1 : 0)); } catch {}
+          }
+          if (form.faqs.length > 0) {
+            const latestVer = res.data.version + (Object.keys(structuredFields).length > 0 ? 1 : 0) + (form.packages.length > 0 ? 1 : 0);
+            try { await serviceApi.updateFaqs(newServiceId, form.faqs, latestVer); } catch {}
+          }
+          setDirty(false); idempotencyKeyRef.current = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2); toast.success('Service created'); onNavigate('edit', newServiceId);
+        }
       }
     } catch (err) {
       if (err.code === 'VERSION_CONFLICT') {
@@ -201,6 +220,27 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
 
   if (loading) return (<div className="pf-editor-page"><div className="pf-skeleton" style={{ width: 200, height: 28, marginBottom: 24 }} />{[1,2,3].map(i => <div key={i} className="pf-skeleton" style={{ height: 160, marginBottom: 16 }} />)}</div>);
 
+  // Step completion checks — only show green tick when fields are actually filled
+  function isStepCompleted(stepKey, f) {
+    switch (stepKey) {
+      case 'overview': return !!f.title.trim() && !!f.shortDescription;
+      case 'category': return !!f.sector && !!f.category;
+      case 'workmode': return !!f.workMode;
+      case 'pricing': return f.pricingMode === 'custom_quote' || !!f.startingPrice;
+      case 'packages': return f.pricingMode !== 'tiered' || f.packages.length > 0;
+      case 'addons': return f.addons.length > 0;
+      case 'description': return !!f.detailedDescription;
+      case 'requirements': return f.requirements.length > 0;
+      case 'media': return !!f.coverMediaUrl;
+      case 'availability': return (f.availability?.workingDays || []).length > 0;
+      case 'faqs': return f.faqs.length > 0;
+      case 'seo': return !!(f.seo?.title || f.seo?.description);
+      case 'delivery': return !!f.deliveryTime;
+      case 'preview': return false; // Preview is never "completed"
+      default: return false;
+    }
+  }
+
   return (
     <div className="sv-builder">
       {/* Header */}
@@ -224,12 +264,15 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
       <div className="sv-builder-layout">
         {/* Step Navigation */}
         <nav className="sv-builder-steps" aria-label="Builder steps">
-          {STEPS.map((step, idx) => (
-            <button key={step.key} className={`sv-step ${idx === currentStep ? 'active' : ''} ${idx < currentStep ? 'completed' : ''}`} onClick={() => setCurrentStep(idx)} aria-current={idx === currentStep ? 'step' : undefined}>
-              <span className="sv-step-icon">{idx < currentStep ? <FiCheck size={12} /> : step.icon}</span>
-              <span className="sv-step-label">{step.label}</span>
-            </button>
-          ))}
+          {STEPS.map((step, idx) => {
+            const isCompleted = isStepCompleted(step.key, form);
+            return (
+              <button key={step.key} className={`sv-step ${idx === currentStep ? 'active' : ''} ${isCompleted ? 'completed' : ''}`} onClick={() => setCurrentStep(idx)} aria-current={idx === currentStep ? 'step' : undefined}>
+                <span className="sv-step-icon">{isCompleted ? <FiCheck size={12} /> : step.icon}</span>
+                <span className="sv-step-label">{step.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
         {/* Step Content */}

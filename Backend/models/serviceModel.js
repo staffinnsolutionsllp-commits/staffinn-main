@@ -52,6 +52,8 @@ async function createService(userId, data) {
     coverMediaUrl: null,
     galleryMediaUrls: [],
     videoUrl: null,
+    seo: null,
+    availability: null,
     idempotencyKey: data.idempotencyKey || null,
     status: 'draft',
     acceptingOrders: true,
