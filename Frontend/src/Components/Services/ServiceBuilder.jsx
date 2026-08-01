@@ -11,6 +11,7 @@ import AddonsBuilder from './AddonsBuilder';
 import AvailabilityBuilder from './AvailabilityBuilder';
 import ServiceMediaBuilder from './ServiceMediaBuilder';
 import SEOBuilder from './SEOBuilder';
+import ProjectsSelector from './ProjectsSelector';
 import UnsavedChangesDialog from './UnsavedChangesDialog';
 import VersionConflictDialog from './VersionConflictDialog';
 import './services.css';
@@ -27,6 +28,7 @@ const STEPS = [
   { key: 'media', label: 'Media', icon: <FiImage size={14} /> },
   { key: 'availability', label: 'Availability', icon: <FiCalendar size={14} /> },
   { key: 'faqs', label: 'FAQs', icon: <FiHelpCircle size={14} /> },
+  { key: 'projects', label: 'Projects', icon: <FiImage size={14} /> },
   { key: 'seo', label: 'SEO', icon: <FiTag size={14} /> },
   { key: 'delivery', label: 'Delivery', icon: <FiClock size={14} /> },
   { key: 'preview', label: 'Preview', icon: <FiEye size={14} /> },
@@ -62,7 +64,7 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
     location: '', serviceRadius: '', tags: [],
     packages: [], faqs: [], addons: [], requirements: [],
     availability: { acceptingOrders: true, workingDays: ['Monday','Tuesday','Wednesday','Thursday','Friday'], startTime: '09:00', endTime: '18:00', timeZone: 'Asia/Kolkata', queueLimit: '', bookingNotice: '', responseTime: '', holidayMode: false, holidayStart: '', holidayEnd: '' },
-    coverMediaUrl: null, galleryMediaUrls: [], videoUrl: '', seo: {}
+    coverMediaUrl: null, galleryMediaUrls: [], videoUrl: '', seo: {}, selectedProjects: []
   });
   const [errors, setErrors] = useState({});
   const [tagInput, setTagInput] = useState('');
@@ -89,7 +91,7 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
             tags: res.data.tags || [], packages: res.data.packages || [], faqs: res.data.faqs || [],
             addons: res.data.addons || [], requirements: res.data.requirements || [],
             availability: res.data.availability || { acceptingOrders: true, workingDays: ['Monday','Tuesday','Wednesday','Thursday','Friday'], startTime: '09:00', endTime: '18:00', timeZone: 'Asia/Kolkata', queueLimit: '', bookingNotice: '', responseTime: '', holidayMode: false, holidayStart: '', holidayEnd: '' },
-            coverMediaUrl: res.data.coverMediaUrl || null, galleryMediaUrls: res.data.galleryMediaUrls || [], videoUrl: res.data.videoUrl || '', seo: res.data.seo || {}
+            coverMediaUrl: res.data.coverMediaUrl || null, galleryMediaUrls: res.data.galleryMediaUrls || [], videoUrl: res.data.videoUrl || '', seo: res.data.seo || {}, selectedProjects: res.data.selectedProjects || []
           });
         }
       } catch { toast.error('Failed to load service'); }
@@ -130,6 +132,7 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
         compare('seo', form.seo, service.seo || {});
         compare('coverMediaUrl', form.coverMediaUrl, service.coverMediaUrl);
         compare('galleryMediaUrls', form.galleryMediaUrls, service.galleryMediaUrls || []);
+        compare('selectedProjects', form.selectedProjects, service.selectedProjects || []);
         if (Object.keys(fields).length === 0 && JSON.stringify(form.packages) === JSON.stringify(service.packages || []) && JSON.stringify(form.faqs) === JSON.stringify(service.faqs || [])) {
           if (!silent) toast.success('No changes to save'); setSaving(false); return;
         }
@@ -234,6 +237,7 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
       case 'media': return !!f.coverMediaUrl;
       case 'availability': return (f.availability?.workingDays || []).length > 0;
       case 'faqs': return f.faqs.length > 0;
+      case 'projects': return (f.selectedProjects || []).length > 0;
       case 'seo': return !!(f.seo?.title || f.seo?.description);
       case 'delivery': return !!f.deliveryTime;
       case 'preview': return false; // Preview is never "completed"
@@ -288,9 +292,10 @@ const ServiceBuilder = ({ serviceId, onNavigate }) => {
           {currentStep === 8 && <ServiceMediaBuilder serviceId={serviceId} service={service} onServiceUpdated={(updated) => { setService(updated); setForm(prev => ({ ...prev, coverMediaUrl: updated.coverMediaUrl, galleryMediaUrls: updated.galleryMediaUrls || [], videoUrl: updated.videoUrl || '' })); }} />}
           {currentStep === 9 && <AvailabilityBuilder availability={form.availability} onChange={avail => updateField('availability', avail)} />}
           {currentStep === 10 && <FAQBuilder faqs={form.faqs} onChange={faqs => updateField('faqs', faqs)} />}
-          {currentStep === 11 && <SEOBuilder seo={form.seo} title={form.title} shortDescription={form.shortDescription} onChange={seo => updateField('seo', seo)} />}
-          {currentStep === 12 && <StepDelivery form={form} updateField={updateField} />}
-          {currentStep === 13 && <StepPreview form={form} service={service} />}
+          {currentStep === 11 && <ProjectsSelector selectedProjects={form.selectedProjects} onChange={projs => updateField('selectedProjects', projs)} userId={service?.userId} />}
+          {currentStep === 12 && <SEOBuilder seo={form.seo} title={form.title} shortDescription={form.shortDescription} onChange={seo => updateField('seo', seo)} />}
+          {currentStep === 13 && <StepDelivery form={form} updateField={updateField} />}
+          {currentStep === 14 && <StepPreview form={form} service={service} />}
 
           {/* Navigation */}
           <div className="sv-builder-nav">

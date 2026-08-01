@@ -234,6 +234,7 @@ function serviceOwnerDTO(service) {
     addons: service.addons || [],
     availability: service.availability || null,
     seo: service.seo || null,
+    selectedProjects: service.selectedProjects || [],
     coverMediaUrl: service.coverMediaUrl,
     galleryMediaUrls: service.galleryMediaUrls || [],
     status: service.status,
@@ -275,6 +276,7 @@ function servicePublicDTO(service) {
     faqs: (service.faqs || []).filter(f => f.active !== false),
     coverMediaUrl: service.coverMediaUrl,
     galleryMediaUrls: service.galleryMediaUrls || [],
+    selectedProjects: service.selectedProjects || [],
     acceptingOrders: service.acceptingOrders,
     rating: service.rating || 0,
     reviewCount: service.reviewCount || 0

@@ -66,7 +66,7 @@ const ProfileServicesTab = ({ profileSlug, profile, isOwner }) => {
       </div>
       {detailLoading && <div className="pf-skeleton" style={{ height: 500, marginTop: 20 }} />}
       {!detailLoading && serviceDetail && (
-        <ServiceInlineDetail service={serviceDetail} profile={profile} portfolioProjects={portfolioProjects} onProjectClick={setProjectModal} />
+        <ServiceInlineDetail service={serviceDetail} profile={profile} portfolioProjects={serviceDetail.selectedProjects?.length > 0 ? portfolioProjects.filter(p => serviceDetail.selectedProjects.includes(p.projectId)) : portfolioProjects} onProjectClick={setProjectModal} />
       )}
       {/* Project Detail Modal */}
       {projectModal && <ProjectModal project={projectModal} projects={portfolioProjects} onClose={() => setProjectModal(null)} onNavigate={setProjectModal} staffName={profile?.fullName} staffAvatar={profile?.profilePhoto} />}
