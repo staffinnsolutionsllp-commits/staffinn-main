@@ -81,7 +81,7 @@ async function sendMessageNotification(receiver, sender, messagePreview) {
 
   try {
     await resend.emails.send({
-      from: `Staffinn <${FROM_EMAIL}>`,
+      from: `Staffinn <noreply@staffinn.com>`,
       to: receiver.email,
       subject: `You've got a new message from ${senderName}`,
       html
