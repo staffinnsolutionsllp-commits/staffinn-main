@@ -477,22 +477,6 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin, currentUser }) => {
             <div className="results-count">
               Showing <span>{filteredInstitutes.length}</span> Institutes
             </div>
-            <div className="view-toggle">
-              <button 
-                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                onClick={() => setViewMode('grid')}
-                title="Grid View"
-              >
-                <FaTh />
-              </button>
-              <button 
-                className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => setViewMode('list')}
-                title="List View"
-              >
-                <FaList />
-              </button>
-            </div>
           </div>
         {loading ? (
           <div className="loading-message">

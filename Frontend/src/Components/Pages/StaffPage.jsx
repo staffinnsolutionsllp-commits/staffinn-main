@@ -9,7 +9,7 @@ import './StaffPage.css';
 import Footer from '../Footer/Footer';
 // import RegistrationPopup from '../Register/RegistrationPopup'; // File does not exist
 import ChatButton from '../Messages/ChatButton';
-import { FaEnvelope, FaWhatsapp } from 'react-icons/fa';
+import { FaEnvelope, FaWhatsapp, FaUsers, FaStar, FaCheckCircle } from 'react-icons/fa';
 import { FaLinkedin, FaXTwitter, FaInstagram, FaFacebook, FaYoutube, FaGithub, FaGlobe } from 'react-icons/fa6';
 import StaffpageImage from '../../assets/Staffpage.jpg';
 
@@ -761,27 +761,22 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                     </div>
             </section>
 
-            {/* Advanced Filters Section - replaced with category filter */}
+            {/* Category Filter - Professional Form Style */}
             <section className="staff-category-filter-section">
-                <div className="staff-category-tabs">
-                    <button 
-                        className={`staff-category-tab ${!selectedCategory || selectedCategory === 'all' ? 'active' : ''}`}
-                        onClick={() => setSelectedCategory('all')}
+                <div className="staff-filter-form">
+                    <label className="staff-filter-label">
+                        <FaUsers className="staff-filter-icon" />
+                        Show:
+                    </label>
+                    <select 
+                        className="staff-filter-select"
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
                     >
-                        All Staff
-                    </button>
-                    <button 
-                        className={`staff-category-tab ${selectedCategory === 'top-rated' ? 'active' : ''}`}
-                        onClick={() => setSelectedCategory('top-rated')}
-                    >
-                        ⭐ Top Rated
-                    </button>
-                    <button 
-                        className={`staff-category-tab ${selectedCategory === 'verified' ? 'active' : ''}`}
-                        onClick={() => setSelectedCategory('verified')}
-                    >
-                        ✔ Verified
-                    </button>
+                        <option value="all">All Staff</option>
+                        <option value="top-rated">Top Rated</option>
+                        <option value="verified">Verified Profiles</option>
+                    </select>
                 </div>
             </section>
 
@@ -948,124 +943,6 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                 <p>No staff members match your search criteria. Try adjusting your filters.</p>
                             </div>
                         )}
-                    </div>
-                </section>
-            )}
-            
-            {/* Top Rated Staff Section - shows when category is 'all' and there are top rated staff */}
-            {!loading && selectedCategory === 'all' && trendingStaff.length > 0 && (
-                <section className="staff-listing-section">
-                    <div className="section-header">
-                        <h2>⭐ Top Rated Staff ({trendingStaff.length})</h2>
-                        <button className="view-all-btn" onClick={() => setSelectedCategory('top-rated')}>View All →</button>
-                    </div>
-                    <div className="staff-cards-container">
-                        {trendingStaff.map(staff => (
-                            <div className="clean-staff-card" key={staff.userId}>
-                                <div className="clean-card-header">
-                                    <span className="header-text">STAFFINN STAFF</span>
-                                    {staff.availability && (
-                                        <span className={`status-badge ${staff.availability?.toLowerCase()?.replace(' ', '-') || 'available'}`}>
-                                            {staff.availability?.charAt(0)?.toUpperCase() + staff.availability?.slice(1) || 'Available'}
-                                        </span>
-                                    )}
-                                    <div className="clean-avatar">
-                                        {staff.profilePhoto ? (
-                                            <img src={staff.profilePhoto} alt={staff.fullName} className="avatar-img" />
-                                        ) : (
-                                            <div className="avatar-placeholder">{staff.fullName?.charAt(0) || 'S'}</div>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="clean-info">
-                                    <h3 className="clean-name">{staff.fullName}</h3>
-                                    <p className="clean-profession">{staff.skills?.split(',')[0] || 'Professional'}</p>
-                                    {staff.sector && staff.role && (
-                                        <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
-                                    )}
-                                </div>
-                                <div className="clean-stats-row">
-                                    <div className="clean-stat-item">
-                                        <div className="stat-value">{staff.rating ? parseFloat(staff.rating).toFixed(1) : '0.0'}</div>
-                                        <div className="stat-label" style={{ color: '#000' }}>Rating</div>
-                                    </div>
-                                    <div className="stat-divider"></div>
-                                    <div className="clean-stat-item">
-                                        <div className="stat-value">{staff.reviewCount || 0}</div>
-                                        <div className="stat-label" style={{ color: '#000' }}>Clients</div>
-                                    </div>
-                                </div>
-                                <div className="clean-actions">
-                                    <button className="clean-view-btn" onClick={() => {
-                                        if (PROFILE_PAGE_ENABLED && staff.profileSlug) {
-                                            if (!isLoggedIn) { onShowLogin(); } else { navigate(`/staff/${staff.profileSlug}`); }
-                                        } else { handleViewProfile(staff); }
-                                    }}>View Profile</button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            {/* Verified Staff Section - shows when category is 'all' and there are verified staff */}
-            {!loading && selectedCategory === 'all' && staffMembers.filter(s => s.isProfileComplete).length > 0 && (
-                <section className="staff-listing-section">
-                    <div className="section-header">
-                        <h2>✔ Verified Profiles ({staffMembers.filter(s => s.isProfileComplete).length})</h2>
-                        <button className="view-all-btn" onClick={() => setSelectedCategory('verified')}>View All →</button>
-                    </div>
-                    <div className="staff-cards-container">
-                        {staffMembers.filter(s => s.isProfileComplete).slice(0, 4).map(staff => (
-                            <div className="clean-staff-card" key={staff.userId}>
-                                <div className="clean-card-header">
-                                    <span className="header-text">STAFFINN STAFF</span>
-                                    {staff.availability && (
-                                        <span className={`status-badge ${staff.availability?.toLowerCase()?.replace(' ', '-') || 'available'}`}>
-                                            {staff.availability?.charAt(0)?.toUpperCase() + staff.availability?.slice(1) || 'Available'}
-                                        </span>
-                                    )}
-                                    <div className="clean-avatar">
-                                        {staff.profilePhoto ? (
-                                            <img src={staff.profilePhoto} alt={staff.fullName} className="avatar-img" />
-                                        ) : (
-                                            <div className="avatar-placeholder">{staff.fullName?.charAt(0) || 'S'}</div>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="clean-info">
-                                    <h3 className="clean-name">
-                                        {staff.fullName}
-                                        <span className="staff-blue-tick" data-tooltip="This staff's profile is fully complete" aria-label="Verified">✔</span>
-                                    </h3>
-                                    <p className="clean-profession">{staff.skills?.split(',')[0] || 'Professional'}</p>
-                                    {staff.sector && staff.role && (
-                                        <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
-                                    )}
-                                    {staff.employmentType && (
-                                        <div className="staff-employment-badge">{staff.employmentType}</div>
-                                    )}
-                                </div>
-                                <div className="clean-stats-row">
-                                    <div className="clean-stat-item">
-                                        <div className="stat-value">{staff.rating ? parseFloat(staff.rating).toFixed(1) : '0.0'}</div>
-                                        <div className="stat-label" style={{ color: '#000' }}>Rating</div>
-                                    </div>
-                                    <div className="stat-divider"></div>
-                                    <div className="clean-stat-item">
-                                        <div className="stat-value">{staff.reviewCount || 0}</div>
-                                        <div className="stat-label" style={{ color: '#000' }}>Clients</div>
-                                    </div>
-                                </div>
-                                <div className="clean-actions">
-                                    <button className="clean-view-btn" onClick={() => {
-                                        if (PROFILE_PAGE_ENABLED && staff.profileSlug) {
-                                            if (!isLoggedIn) { onShowLogin(); } else { navigate(`/staff/${staff.profileSlug}`); }
-                                        } else { handleViewProfile(staff); }
-                                    }}>View Profile</button>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </section>
             )}

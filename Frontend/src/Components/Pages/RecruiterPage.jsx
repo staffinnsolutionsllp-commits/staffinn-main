@@ -508,6 +508,18 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
             companyDescription: truncatedDescription,
             officeImages: cardOfficeImages,
             officeLocations: recruiter.officeLocations || [],
+            // Computed: is recruiter profile fully complete?
+            isProfileComplete: !!(
+              recruiter.companyName && recruiter.companyName.trim() !== '' &&
+              recruiter.industry && recruiter.industry.trim() !== '' &&
+              recruiter.location && recruiter.location.trim() !== '' &&
+              recruiter.recruiterName && recruiter.recruiterName.trim() !== '' &&
+              recruiter.experience &&
+              recruiter.companyDescription && recruiter.companyDescription.trim() !== '' &&
+              recruiter.profilePhoto && recruiter.profilePhoto.trim() !== '' &&
+              recruiter.website && recruiter.website.trim() !== '' &&
+              recruiter.phone && recruiter.phone.trim() !== ''
+            ),
             // Store full data for detail view
             fullData: recruiter
           };
@@ -1849,7 +1861,12 @@ const RecruiterPage = ({ isLoggedIn, onShowLogin }) => {
                     </div>
                     <div className="recruiter-header-info">
                       <div className="recruiter-name-row">
-                        <h3 className="recruiter-name-new">{recruiter.name}</h3>
+                        <h3 className="recruiter-name-new">
+                          {recruiter.name}
+                          {recruiter.isProfileComplete && (
+                            <span className="recruiter-blue-tick" title="This recruiter's profile is fully complete">✔</span>
+                          )}
+                        </h3>
                         <span className="openings-badge">{recruiter.openJobs} Openings</span>
                       </div>
                       <span className="industry-badge">{recruiter.industry}</span>
