@@ -40,6 +40,9 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [skillsInput, setSkillsInput] = useState('');
     const [availableRoles, setAvailableRoles] = useState([]);
+    
+    // Category filter state (All / Top Rated / Verified)
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
     // Loading and error states
     const [loading, setLoading] = useState(false);
@@ -386,8 +389,16 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
             );
         }
 
+        // Category filter (All / Top Rated / Verified)
+        if (selectedCategory === 'top-rated') {
+            filtered = filtered.filter(staff => (staff.rating || 0) >= 4.0);
+            filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        } else if (selectedCategory === 'verified') {
+            filtered = filtered.filter(staff => staff.isProfileComplete === true);
+        }
+
         setFilteredStaff(filtered);
-    }, [staffMembers, searchTerm, selectedState, selectedCity, skillsInput, selectedSector, selectedRole, selectedExperience, selectedAvailability, minimumRating, states, cities]);
+    }, [staffMembers, searchTerm, selectedState, selectedCity, skillsInput, selectedSector, selectedRole, selectedExperience, selectedAvailability, minimumRating, selectedCategory, states, cities]);
 
     // Get experience level from staff data
     const getExperienceLevel = (staff) => {
@@ -750,59 +761,27 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                     </div>
             </section>
 
-            {/* Advanced Filters Section */}
-            <section className="advanced-filters-section">
-                <div className="filters-container">
-                    <div className="filter-group">
-                        <input 
-                            type="text" 
-                            placeholder="Search by name or skills" 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="search-input"
-                        />
-                    </div>
-                    
-                    <div className="filter-group">
-                        <select 
-                            value={selectedExperience}
-                            onChange={(e) => setSelectedExperience(e.target.value)}
-                            className="filter-select"
-                        >
-                            <option value="">Any Experience</option>
-                            {experienceLevels.map((level, index) => (
-                                <option key={index} value={level.split(' ')[0]}>{level}</option>
-                            ))}
-                        </select>
-                    </div>
-                    
-                    <div className="filter-group">
-                        <select 
-                            value={selectedAvailability}
-                            onChange={(e) => setSelectedAvailability(e.target.value)}
-                            className="filter-select"
-                        >
-                            <option value="">Any Availability</option>
-                            {availabilityOptions.map((option, index) => (
-                                <option key={index} value={option}>
-                                    {option.charAt(0).toUpperCase() + option.slice(1).replace('-', ' ')}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    
-                    <div className="filter-group">
-                        <select 
-                            value={minimumRating}
-                            onChange={(e) => setMinimumRating(e.target.value)}
-                            className="filter-select"
-                        >
-                            <option value="">Any Rating</option>
-                            {ratingOptions.map((rating, index) => (
-                                <option key={index} value={rating}>{rating}+ Stars</option>
-                            ))}
-                        </select>
-                    </div>
+            {/* Advanced Filters Section - replaced with category filter */}
+            <section className="staff-category-filter-section">
+                <div className="staff-category-tabs">
+                    <button 
+                        className={`staff-category-tab ${!selectedCategory || selectedCategory === 'all' ? 'active' : ''}`}
+                        onClick={() => setSelectedCategory('all')}
+                    >
+                        All Staff
+                    </button>
+                    <button 
+                        className={`staff-category-tab ${selectedCategory === 'top-rated' ? 'active' : ''}`}
+                        onClick={() => setSelectedCategory('top-rated')}
+                    >
+                        ⭐ Top Rated
+                    </button>
+                    <button 
+                        className={`staff-category-tab ${selectedCategory === 'verified' ? 'active' : ''}`}
+                        onClick={() => setSelectedCategory('verified')}
+                    >
+                        ✔ Verified
+                    </button>
                 </div>
             </section>
 
@@ -825,7 +804,11 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
             {/* Staff Listing Section */}
             {!loading && !error && (
                 <section className="staff-listing-section">
-                    <h2>Available Staff ({filteredStaff.length})</h2>
+                    <h2>
+                        {selectedCategory === 'top-rated' ? 'Top Rated Staff' : 
+                         selectedCategory === 'verified' ? 'Verified Staff' : 
+                         'Available Staff'} ({filteredStaff.length})
+                    </h2>
                     
                     <div className="staff-cards-container">
                         {filteredStaff.length > 0 ? (
@@ -858,7 +841,7 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                             {staff.isProfileComplete && (
                                                 <span
                                                     className="staff-blue-tick"
-                                                    title="This staff's profile is fully complete"
+                                                    data-tooltip="This staff's profile is fully complete"
                                                     aria-label="Profile complete - Blue Tick"
                                                 >
                                                     ✔
@@ -969,11 +952,12 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                 </section>
             )}
             
-            {/* Trending Staff Section */}
-            {!loading && trendingStaff.length > 0 && (
+            {/* Top Rated Staff Section - shows when category is 'all' and there are top rated staff */}
+            {!loading && selectedCategory === 'all' && trendingStaff.length > 0 && (
                 <section className="trending-staff-section">
                     <div className="section-header">
-                        <h2>Top Rated Staff</h2>
+                        <h2>⭐ Top Rated Staff</h2>
+                        <button className="view-all-btn" onClick={() => setSelectedCategory('top-rated')}>View All →</button>
                     </div>
                     <div className="trending-staff-container">
                         {trendingStaff.map((staff, index) => (
@@ -1000,104 +984,38 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                 </section>
             )}
 
-            {/* Industry Insights Section */}
-            <section className="insights-section">
-                <h2>Industry Insights</h2>
-                <div className="insights-container">
-                    <div className="insight-card">
-                        <h3>Trending Skills</h3>
-                        <ul className="trending-skills">
-                            <li>
-                                <span className="skill-name">Web Development</span>
-                                <div className="skill-demand">
-                                    <div className="demand-bar" style={{ width: '85%' }}></div>
-                                </div>
-                            </li>
-                            <li>
-                                <span className="skill-name">Mobile Development</span>
-                                <div className="skill-demand">
-                                    <div className="demand-bar" style={{ width: '78%' }}></div>
-                                </div>
-                            </li>
-                            <li>
-                                <span className="skill-name">Data Science</span>
-                                <div className="skill-demand">
-                                    <div className="demand-bar" style={{ width: '90%' }}></div>
-                                </div>
-                            </li>
-                            <li>
-                                <span className="skill-name">Electrical Work</span>
-                                <div className="skill-demand">
-                                    <div className="demand-bar" style={{ width: '65%' }}></div>
-                                </div>
-                            </li>
-                        </ul>
+            {/* Verified Staff Section - shows when category is 'all' and there are verified staff */}
+            {!loading && selectedCategory === 'all' && staffMembers.filter(s => s.isProfileComplete).length > 0 && (
+                <section className="trending-staff-section verified-staff-section">
+                    <div className="section-header">
+                        <h2>✔ Verified Profiles</h2>
+                        <button className="view-all-btn" onClick={() => setSelectedCategory('verified')}>View All →</button>
                     </div>
-                    
-                    <div className="insight-card">
-                        <h3>Earning Potential</h3>
-                        <div className="earning-potential">
-                            <div className="earning-category">
-                                <h4>Technical Staff</h4>
-                                <div className="salary-range">
-                                    <span>₹40,000</span>
-                                    <div className="range-bar">
-                                        <div className="range-fill"></div>
-                                    </div>
-                                    <span>₹120,000</span>
+                    <div className="trending-staff-container">
+                        {staffMembers.filter(s => s.isProfileComplete).slice(0, 4).map((staff, index) => (
+                            <div key={index} className="trending-staff-card">
+                                <div className="profile-placeholder">
+                                    {staff.profilePhoto ? (
+                                        <img src={staff.profilePhoto} alt={staff.fullName} className="trending-avatar" />
+                                    ) : (
+                                        <span>{staff.fullName?.charAt(0) || 'S'}</span>
+                                    )}
+                                    <span className="verified-mini-badge">✔</span>
                                 </div>
+                                <h3>{staff.fullName}</h3>
+                                <p>{staff.skills?.split(',')[0] || 'Professional'}</p>
+                                <p className="staff-rating">Rating: {staff.rating || 'New'}⭐</p>
+                                <button 
+                                    className="view-profile-btn"
+                                    onClick={() => handleViewProfile(staff)}
+                                >
+                                    View Profile
+                                </button>
                             </div>
-                            
-                            <div className="earning-category">
-                                <h4>Healthcare</h4>
-                                <div className="salary-range">
-                                    <span>₹35,000</span>
-                                    <div className="range-bar">
-                                        <div className="range-fill"></div>
-                                    </div>
-                                    <span>₹80,000</span>
-                                </div>
-                            </div>
-                            
-                            <div className="earning-category">
-                                <h4>Skilled Labor</h4>
-                                <div className="salary-range">
-                                    <span>₹20,000</span>
-                                    <div className="range-bar">
-                                        <div className="range-fill"></div>
-                                    </div>
-                                    <span>₹45,000</span>
-                                </div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
-                    
-                    <div className="insight-card">
-                        <h3>Career Guidance</h3>
-                        <div className="career-guidance">
-                            <div className="guidance-tip">
-                                <h4>Boost Your Tech Career</h4>
-                                <p>Add these certifications to increase hiring chances:</p>
-                                <ul>
-                                    <li>AWS Certified Solutions Architect</li>
-                                    <li>Google Cloud Professional</li>
-                                    <li>Microsoft Azure Fundamentals</li>
-                                </ul>
-                            </div>
-                            
-                            <div className="guidance-tip">
-                                <h4>Skilled Trade Enhancement</h4>
-                                <p>Get these certifications for higher pay:</p>
-                                <ul>
-                                    <li>Advanced Electrical Licensing</li>
-                                    <li>Commercial Plumbing Certification</li>
-                                    <li>Industrial HVAC Specialist</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+                </section>
+            )}
             
             {/* Call to Action Section - Only show if user is not registered as staff */}
             {!checkingStaffProfile && !hasStaffProfile && (
