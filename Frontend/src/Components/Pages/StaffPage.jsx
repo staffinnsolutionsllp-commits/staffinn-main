@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useContext, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from "../../context/AuthContext";
 import apiWithLoading from "../../services/apiWithLoading";
@@ -12,8 +13,12 @@ import { FaEnvelope, FaWhatsapp } from 'react-icons/fa';
 import { FaLinkedin, FaXTwitter, FaInstagram, FaFacebook, FaYoutube, FaGithub, FaGlobe } from 'react-icons/fa6';
 import StaffpageImage from '../../assets/Staffpage.jpg';
 
+const PROFILE_PAGE_ENABLED = import.meta.env.VITE_STAFF_PROFILE_PAGE_ENABLED === 'true';
+// Phase 1 profile page v2
+
 function StaffPage({ isLoggedIn, onShowLogin }) {
     const { user, isStaff } = useContext(AuthContext);
+    const navigate = useNavigate();
     
     // State to track if user has staff profile
     const [hasStaffProfile, setHasStaffProfile] = useState(false);
@@ -848,11 +853,26 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                     </div>
                                     
                                     <div className="clean-info">
-                                        <h3 className="clean-name">{staff.fullName}</h3>
+                                        <h3 className="clean-name">
+                                            {staff.fullName}
+                                            {staff.isProfileComplete && (
+                                                <span
+                                                    className="staff-blue-tick"
+                                                    title="This staff's profile is fully complete"
+                                                    aria-label="Profile complete - Blue Tick"
+                                                >
+                                                    ✔
+                                                </span>
+                                            )}
+                                        </h3>
                                         <p className="clean-profession">{staff.skills?.split(',')[0] || 'Professional'}</p>
                                         
                                         {staff.sector && staff.role && (
                                             <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
+                                        )}
+                                        
+                                        {staff.employmentType && (
+                                            <div className="staff-employment-badge">{staff.employmentType}</div>
                                         )}
                                         
                                         <div className="clean-skills">
@@ -919,9 +939,23 @@ function StaffPage({ isLoggedIn, onShowLogin }) {
                                         )}
                                         <button 
                                             className="clean-view-btn"
-                                            onClick={() => handleViewProfile(staff)}
+                                            onClick={() => {
+                                                if (PROFILE_PAGE_ENABLED && staff.profileSlug) {
+                                                    if (!isLoggedIn) {
+                                                        sessionStorage.setItem('staffinn_profile_redirect', JSON.stringify({
+                                                            slug: staff.profileSlug,
+                                                            createdAt: Date.now()
+                                                        }));
+                                                        onShowLogin();
+                                                    } else {
+                                                        navigate(`/staff/${staff.profileSlug}`);
+                                                    }
+                                                } else {
+                                                    handleViewProfile(staff);
+                                                }
+                                            }}
                                         >
-                                            Get In Touch
+                                            {PROFILE_PAGE_ENABLED && staff.profileSlug ? 'View Profile' : 'Get In Touch'}
                                         </button>
                                     </div>
                                 </div>

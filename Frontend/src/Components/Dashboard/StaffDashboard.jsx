@@ -130,6 +130,7 @@ const StaffDashboard = ({ currentUser }) => {
         availability: 'available',
         isActiveStaff: false,
         profileVisibility: 'private',
+        employmentType: '',
         socialLinks: {
             linkedin: '',
             twitter: '',
@@ -387,6 +388,7 @@ const StaffDashboard = ({ currentUser }) => {
                     availability: profileData.availability || 'available',
                     isActiveStaff: Boolean(profileData.isActiveStaff),
                     profileVisibility: profileData.profileVisibility || 'private',
+                    employmentType: profileData.employmentType || '',
                     socialLinks: profileData.socialLinks || {
                         linkedin: '',
                         twitter: '',
@@ -611,7 +613,8 @@ const StaffDashboard = ({ currentUser }) => {
                 experiences: experiences.filter(exp => exp.role || exp.company),
                 socialLinks: profile.socialLinks || {},
                 professionalTitle: profile.professionalTitle || '',
-                about: profile.about || ''
+                about: profile.about || '',
+                employmentType: profile.employmentType || ''
             };
             
             console.log('📝 Saving profile fields...');
@@ -1733,6 +1736,41 @@ const StaffDashboard = ({ currentUser }) => {
                                                         required
                                                     />
                                                 </div>
+
+                                                <div className="staff-form-group">
+                                                    <label>Employment Type / Purpose <span className="staff-form-hint">(How you want to work)</span></label>
+                                                    <select
+                                                        name="employmentType"
+                                                        value={profile.employmentType || ''}
+                                                        onChange={handleProfileChange}
+                                                    >
+                                                        <option value="">Select Employment Type</option>
+                                                        <option value="Full Time">Full Time</option>
+                                                        <option value="Part Time">Part Time</option>
+                                                        <option value="Contract">Contract</option>
+                                                        <option value="Freelancing">Freelancing</option>
+                                                        <option value="Internship">Internship</option>
+                                                    </select>
+                                                    <span className="staff-form-hint">💡 This helps recruiters understand your work preference.</span>
+                                                </div>
+
+                                                {/* Blue Tick Hint */}
+                                                {!profile.isProfileComplete && (
+                                                    <div className="staff-blue-tick-hint">
+                                                        <span className="staff-blue-tick-hint__icon">✔</span>
+                                                        <span className="staff-blue-tick-hint__text">
+                                                            Want a <strong>Blue Tick ✔</strong> on your profile? Complete all profile fields — Full Name, Phone, Professional Title, About, Profile Photo, Address, State, City, Pincode, Sector, Role, Skills, and Employment Type.
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {profile.isProfileComplete && (
+                                                    <div className="staff-blue-tick-hint staff-blue-tick-hint--earned">
+                                                        <span className="staff-blue-tick-hint__icon">✔</span>
+                                                        <span className="staff-blue-tick-hint__text">
+                                                            You have a <strong>Blue Tick ✔</strong>! Your profile is 100% complete and verified.
+                                                        </span>
+                                                    </div>
+                                                )}
 
                                                 <div className="staff-section-with-actions">
                                                     <h3>Experience</h3>

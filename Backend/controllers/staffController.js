@@ -11,6 +11,167 @@ const s3Service = require('../services/s3Service');
 const multer = require('multer');
 const path = require('path');
 
+// ─── PHASE 0.5 SECURITY: Field Allowlist & Response Sanitization ──────────
+
+/**
+ * Fields that Staff may update through the generic profile-update endpoint.
+ * Any field NOT in this list will be rejected with 400.
+ */
+const ALLOWED_PROFILE_UPDATE_FIELDS = [
+  'fullName',
+  'phone',
+  'address',
+  'state',
+  'city',
+  'pincode',
+  'sector',
+  'role',
+  'skills',
+  'availability',
+  'education',
+  'experiences',
+  'socialLinks',
+  'professionalTitle',
+  'about',
+  'employmentType'
+];
+
+/**
+ * Fields that are NEVER allowed through the generic update endpoint.
+ * If any of these appear in the request, the request is rejected.
+ */
+const BLOCKED_FIELDS = [
+  'staffId',
+  'userId',
+  'email',
+  'password',
+  'currentPassword',
+  'newPassword',
+  'confirmPassword',
+  'rating',
+  'reviewCount',
+  'reviews',
+  'profileViews',
+  'createdAt',
+  'updatedAt',
+  'isActiveStaff',
+  'profileVisibility',
+  'visibility',
+  'certificates',
+  'profilePhoto',
+  'resumeUrl'
+];
+
+/**
+ * Check if a staff profile is fully complete (all required fields filled).
+ * Returns true only when every required field is non-empty.
+ * This is used for the blue tick badge on public profile cards and full profile view.
+ */
+const isStaffProfileComplete = (profile) => {
+  if (!profile) return false;
+  return !!(
+    profile.address && profile.address.trim() !== '' &&
+    profile.state && profile.state.trim() !== '' &&
+    profile.city && profile.city.trim() !== '' &&
+    profile.pincode && profile.pincode.trim() !== '' &&
+    profile.sector && profile.sector.trim() !== '' &&
+    profile.role && profile.role.trim() !== '' &&
+    profile.skills && profile.skills.trim() !== '' &&
+    profile.fullName && profile.fullName.trim() !== '' &&
+    profile.phone && profile.phone.trim() !== '' &&
+    profile.professionalTitle && profile.professionalTitle.trim() !== '' &&
+    profile.about && profile.about.trim() !== '' &&
+    profile.employmentType && profile.employmentType.trim() !== '' &&
+    profile.profilePhoto && profile.profilePhoto.trim() !== ''
+  );
+};
+
+/**
+ * Sanitize a staff profile for owner response (own profile).
+ * Strips credentials and internal system fields not needed by frontend.
+ */
+const sanitizeProfileForOwner = (profile) => {
+  if (!profile) return null;
+  const sanitized = { ...profile };
+  delete sanitized.password;
+  delete sanitized.currentPassword;
+  delete sanitized.newPassword;
+  delete sanitized.confirmPassword;
+  // Add computed isProfileComplete for owner view
+  sanitized.isProfileComplete = isStaffProfileComplete(profile);
+  return sanitized;
+};
+
+/**
+ * Sanitize a staff profile for public/other-user response.
+ * Strips credentials, salary from experiences, full address, pincode.
+ */
+const sanitizeProfileForPublic = (profile) => {
+  if (!profile) return null;
+  const sanitized = { ...profile };
+  // Remove credential fields
+  delete sanitized.password;
+  delete sanitized.currentPassword;
+  delete sanitized.newPassword;
+  delete sanitized.confirmPassword;
+  // Remove private location details
+  delete sanitized.address;
+  delete sanitized.pincode;
+  // Remove internal/system fields
+  delete sanitized.profileViews;
+  delete sanitized.recentActivity;
+  delete sanitized.isActiveStaff;
+  delete sanitized.profileVisibility;
+  delete sanitized.visibility;
+  // Ensure rating/reviewCount have safe defaults
+  sanitized.rating = sanitized.rating || 0;
+  sanitized.reviewCount = sanitized.reviewCount || 0;
+  // Add computed isProfileComplete for public view
+  sanitized.isProfileComplete = isStaffProfileComplete(profile);
+  // Remove salary from experiences
+  if (Array.isArray(sanitized.experiences)) {
+    sanitized.experiences = sanitized.experiences.map(exp => {
+      const { salary, ...rest } = exp;
+      return rest;
+    });
+  }
+  return sanitized;
+};
+
+/**
+ * Produce card-level data for the public staff listing.
+ * Only returns fields needed by the listing card UI.
+ */
+const toCardDTO = (profile) => {
+  if (!profile) return null;
+  return {
+    userId: profile.userId,
+    staffId: profile.staffId,
+    profileSlug: profile.profileSlug || null,
+    fullName: profile.fullName,
+    profilePhoto: profile.profilePhoto,
+    sector: profile.sector,
+    role: profile.role,
+    skills: profile.skills,
+    state: profile.state,
+    city: profile.city,
+    availability: profile.availability,
+    rating: profile.rating || 0,
+    reviewCount: profile.reviewCount || 0,
+    experiences: Array.isArray(profile.experiences)
+      ? profile.experiences.map(exp => ({
+          startDate: exp.startDate,
+          endDate: exp.endDate
+        }))
+      : [],
+    socialLinks: profile.socialLinks,
+    employmentType: profile.employmentType || null,
+    isProfileComplete: isStaffProfileComplete(profile)
+  };
+};
+
+// ─── END SECURITY DEFINITIONS ────────────────────────────────────────────
+
 // Configure multer for file upload
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -56,7 +217,6 @@ const upload = multer({
  */
 const registerStaff = async (req, res) => {
   try {
-    console.log('Staff registration request:', req.body);
     
     // Validate staff registration data
     const { error, value } = validateStaffRegistration(req.body);
@@ -121,6 +281,7 @@ const registerStaff = async (req, res) => {
       city: '',
       availability: 'available',
       visibility: 'public',
+      employmentType: '',
       experiences: [],
       certificates: [],
       education: {
@@ -180,8 +341,6 @@ const registerStaff = async (req, res) => {
  */
 const getStaffProfile = async (req, res) => {
   try {
-    // Add debugging and validation
-    console.log('Get profile request user:', req.user);
     
     if (!req.user || !req.user.userId) {
       return res.status(401).json({
@@ -205,7 +364,7 @@ const getStaffProfile = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      data: staffProfile
+      data: sanitizeProfileForOwner(staffProfile)
     });
     
   } catch (error) {
@@ -223,12 +382,7 @@ const getStaffProfile = async (req, res) => {
  */
 const updateStaffProfile = async (req, res) => {
   try {
-    console.log('🔄 Update profile request received');
-    console.log('User:', req.user ? { userId: req.user.userId, role: req.user.role } : 'No user');
-    console.log('Body keys:', Object.keys(req.body));
-    
     if (!req.user || !req.user.userId) {
-      console.error('❌ Authentication failed - no user or userId');
       return res.status(401).json({
         success: false,
         message: 'User not authenticated or userId missing'
@@ -236,46 +390,48 @@ const updateStaffProfile = async (req, res) => {
     }
     
     const userId = req.user.userId;
-    const updateData = { ...req.body };
+    const rawBody = req.body;
     
-    // Remove sensitive fields
-    delete updateData.userId;
-    delete updateData.createdAt;
-    updateData.updatedAt = new Date().toISOString();
+    // PHASE 0.5 SECURITY: Reject requests containing blocked or unknown fields
+    const requestKeys = Object.keys(rawBody);
+    const blockedFound = requestKeys.filter(key => BLOCKED_FIELDS.includes(key));
+    const unknownFound = requestKeys.filter(key => 
+      !ALLOWED_PROFILE_UPDATE_FIELDS.includes(key) && !BLOCKED_FIELDS.includes(key)
+    );
     
-    console.log('📝 Processing update for userId:', userId);
-    console.log('📝 Update data:', updateData);
-    
-    // Validate mandatory fields if going live
-    if (updateData.isActiveStaff === true) {
-      const missingFields = [];
-      
-      if (!updateData.address?.trim()) missingFields.push('Address');
-      if (!updateData.state?.trim()) missingFields.push('State');
-      if (!updateData.city?.trim()) missingFields.push('City');
-      if (!updateData.pincode?.trim()) missingFields.push('Pincode');
-      if (!updateData.sector?.trim()) missingFields.push('Sector');
-      if (!updateData.role?.trim()) missingFields.push('Role');
-      if (!updateData.skills?.trim()) missingFields.push('Skills');
-      
-      if (missingFields.length > 0) {
-        console.log('❌ Missing mandatory fields:', missingFields);
-        return res.status(400).json({
-          success: false,
-          message: 'Please complete all mandatory fields',
-          missingFields
-        });
-      }
-      
-      updateData.profileVisibility = 'public';
+    if (blockedFound.length > 0 || unknownFound.length > 0) {
+      const invalidFields = [...blockedFound, ...unknownFound];
+      return res.status(400).json({
+        success: false,
+        message: 'Request contains fields that cannot be updated through this endpoint.',
+        invalidFields: invalidFields
+      });
     }
     
-    console.log('🔄 Calling staffModel.updateStaffProfile...');
+    // Build update data from allowlist only
+    const updateData = {};
+    for (const key of ALLOWED_PROFILE_UPDATE_FIELDS) {
+      if (rawBody[key] !== undefined) {
+        updateData[key] = rawBody[key];
+      }
+    }
+    
+    // Validate string fields
+    if (updateData.fullName !== undefined && typeof updateData.fullName === 'string') {
+      updateData.fullName = updateData.fullName.trim().substring(0, 100);
+    }
+    if (updateData.professionalTitle !== undefined && typeof updateData.professionalTitle === 'string') {
+      updateData.professionalTitle = updateData.professionalTitle.trim().substring(0, 100);
+    }
+    if (updateData.about !== undefined && typeof updateData.about === 'string') {
+      updateData.about = updateData.about.trim().substring(0, 1000);
+    }
+    
+    updateData.updatedAt = new Date().toISOString();
+    
     const updatedProfile = await staffModel.updateStaffProfile(userId, updateData);
-    console.log('✅ Profile updated successfully:', updatedProfile ? 'Yes' : 'No');
     
     if (!updatedProfile) {
-      console.error('❌ No profile returned from update');
       return res.status(404).json({
         success: false,
         message: 'Staff profile not found or update failed'
@@ -285,12 +441,11 @@ const updateStaffProfile = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Staff profile updated successfully',
-      data: updatedProfile
+      data: sanitizeProfileForOwner(updatedProfile)
     });
     
   } catch (error) {
-    console.error('❌ Update staff profile error:', error.message);
-    console.error('❌ Stack trace:', error.stack);
+    console.error('Update staff profile error:', error.message);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update staff profile'
@@ -305,8 +460,7 @@ const updateStaffProfile = async (req, res) => {
 const toggleProfileMode = async (req, res) => {
   try {
     // Add debugging and validation
-    console.log('Toggle request user:', req.user);
-    console.log('Toggle request body:', req.body);
+    console.log('Toggle request for user:', req.user?.userId);
     
     if (!req.user || !req.user.userId) {
       return res.status(401).json({
@@ -427,7 +581,7 @@ const toggleProfileMode = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `Profile mode updated to ${isActiveStaff ? 'Active Staff' : 'Seeker'}`,
-      data: updatedProfile
+      data: sanitizeProfileForOwner(updatedProfile)
     });
     
   } catch (error) {
@@ -445,13 +599,14 @@ const toggleProfileMode = async (req, res) => {
  */
 const getActiveStaffProfiles = async (req, res) => {
   try {
-    console.log('Getting active staff profiles...');
     const activeStaffProfiles = await staffModel.getActiveStaffProfiles();
-    console.log('Found active staff profiles:', activeStaffProfiles.length);
+    
+    // PHASE 0.5: Return card-level DTO only — not full records
+    const cardData = activeStaffProfiles.map(toCardDTO);
     
     res.status(200).json({
       success: true,
-      data: activeStaffProfiles
+      data: cardData
     });
     
   } catch (error) {
@@ -470,7 +625,6 @@ const getActiveStaffProfiles = async (req, res) => {
 const getStaffProfileById = async (req, res) => {
   try {
     const { staffId } = req.params;
-    console.log('Getting staff profile by ID:', staffId);
     
     const staffProfile = await staffModel.getStaffProfile(staffId);
     
@@ -481,9 +635,10 @@ const getStaffProfileById = async (req, res) => {
       });
     }
     
+    // PHASE 0.5: Return sanitized public profile (no salary, address, pincode, credentials)
     res.status(200).json({
       success: true,
-      data: staffProfile
+      data: sanitizeProfileForPublic(staffProfile)
     });
     
   } catch (error) {
@@ -496,20 +651,77 @@ const getStaffProfileById = async (req, res) => {
 };
 
 /**
+ * Get staff profile by profileSlug (Authenticated)
+ * @route GET /api/staff/slug/:profileSlug
+ */
+const getStaffProfileBySlug = async (req, res) => {
+  try {
+    const { profileSlug } = req.params;
+    
+    // Validate slug format
+    if (!profileSlug || typeof profileSlug !== 'string' || profileSlug.length > 100) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile not found'
+      });
+    }
+    
+    const staffProfile = await staffModel.getStaffProfileBySlug(profileSlug.trim());
+    
+    if (!staffProfile) {
+      return res.status(404).json({
+        success: false,
+        message: 'Profile not found'
+      });
+    }
+    
+    // Build role-based DTO
+    const dto = sanitizeProfileForPublic(staffProfile);
+    
+    // Remove staffId from public DTO (userId is the operational identifier)
+    delete dto.staffId;
+    
+    // Role-based field restriction
+    if (req.user.role !== 'recruiter') {
+      delete dto.phone;
+      delete dto.resumeUrl;
+    }
+    
+    // Add fields that may be new/missing with safe defaults
+    dto.professionalTitle = dto.professionalTitle || '';
+    dto.about = dto.about || '';
+    
+    res.status(200).json({
+      success: true,
+      data: dto
+    });
+    
+  } catch (error) {
+    // Do not expose internal error details
+    console.error('Get staff profile by slug error:', error.message);
+    res.status(503).json({
+      success: false,
+      message: 'Service temporarily unavailable. Please try again.'
+    });
+  }
+};
+
+/**
  * Get trending staff profiles based on profile views (Public)
  * @route GET /api/staff/trending
  */
 const getTrendingStaff = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 6;
-    console.log('Getting trending staff profiles with limit:', limit);
     
     const trendingStaffProfiles = await staffModel.getTrendingStaffProfiles(limit);
-    console.log('Found trending staff profiles:', trendingStaffProfiles.length);
+    
+    // PHASE 0.5: Return card-level DTO only
+    const cardData = trendingStaffProfiles.map(toCardDTO);
     
     res.status(200).json({
       success: true,
-      data: trendingStaffProfiles
+      data: cardData
     });
     
   } catch (error) {
@@ -548,8 +760,6 @@ const uploadFiles = (req, res) => {
       const uploadResults = {};
       
       console.log('Upload request for user:', userId);
-      console.log('Files received:', req.files);
-      console.log('Body received:', req.body);
       
       // Upload profile photo
       if (req.files && req.files.profilePhoto) {
@@ -829,13 +1039,14 @@ const searchStaff = async (req, res) => {
       city: req.query.city
     };
     
-    console.log('Search staff with params:', searchParams);
-    
     const staffProfiles = await staffModel.searchStaffProfiles(searchParams);
+    
+    // PHASE 0.5: Return card-level DTO only
+    const cardData = staffProfiles.map(toCardDTO);
     
     res.status(200).json({
       success: true,
-      data: staffProfiles
+      data: cardData
     });
     
   } catch (error) {
@@ -921,6 +1132,7 @@ module.exports = {
   toggleProfileMode,
   getActiveStaffProfiles,
   getStaffProfileById,
+  getStaffProfileBySlug,
   getTrendingStaff,
   uploadFiles,
   removeProfilePhoto,

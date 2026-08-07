@@ -2616,3 +2616,73 @@ select:focus {
 .modal-social-link.youtube   { background: #fde8e8; color: #FF0000; border-color: #f7bdbd; }
 .modal-social-link.github    { background: #f0f0f0; color: #24292e; border-color: #d1d5db; }
 .modal-social-link.portfolio { background: #eef1ff; color: #4863f7; border-color: #c7ccf9; }
+
+
+/* ─── Employment Type Dropdown ──────────────────────────────────── */
+.staff-form-group select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.staff-form-group select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+/* ─── Blue Tick Hint Banner ──────────────────────────────────────── */
+.staff-blue-tick-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 10px;
+  margin: 12px 0 18px 0;
+}
+
+.staff-blue-tick-hint--earned {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+}
+
+.staff-blue-tick-hint__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.staff-blue-tick-hint--earned .staff-blue-tick-hint__icon {
+  background: #059669;
+}
+
+.staff-blue-tick-hint__text {
+  font-size: 13px;
+  color: #1e40af;
+  line-height: 1.5;
+}
+
+.staff-blue-tick-hint--earned .staff-blue-tick-hint__text {
+  color: #065f46;
+}

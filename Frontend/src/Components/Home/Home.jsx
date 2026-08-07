@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Home.css';
 import Footer from '../Footer/Footer';
@@ -16,6 +17,7 @@ import { FaLinkedin, FaXTwitter, FaInstagram, FaFacebook, FaYoutube, FaGithub, F
 
 function Home({ isLoggedIn, onShowLogin }) {
    const { user } = useContext(AuthContext);
+   const navigate = useNavigate();
    const [states, setStates] = useState([]);
    const [cities, setCities] = useState([]);
    const [areas, setAreas] = useState([]);
@@ -219,6 +221,7 @@ function Home({ isLoggedIn, onShowLogin }) {
                    experience: staff.experiences?.length ? `${staff.experiences.length} Years` : 'Fresher',
                    availability: staff.availability || 'Available',
                    userId: staff.userId,
+                   profileSlug: staff.profileSlug,
                    sector: staff.sector,
                    role: staff.role,
                    state: staff.state,
@@ -791,11 +794,26 @@ function Home({ isLoggedIn, onShowLogin }) {
                                    </div>
                                    
                                    <div className="clean-info">
-                                       <h3 className="clean-name">{staff.name}</h3>
+                                       <h3 className="clean-name">
+                                           {staff.name}
+                                           {staff.isProfileComplete && (
+                                               <span
+                                                   className="staff-blue-tick"
+                                                   title="This staff's profile is fully complete"
+                                                   aria-label="Profile complete - Blue Tick"
+                                               >
+                                                   ✔
+                                               </span>
+                                           )}
+                                       </h3>
                                        <p className="clean-profession">{staff.profession}</p>
                                        
                                        {staff.sector && staff.role && (
                                            <div className="clean-sector-role">{staff.sector} - {staff.role}</div>
+                                       )}
+                                       
+                                       {staff.employmentType && (
+                                           <div className="staff-employment-badge">{staff.employmentType}</div>
                                        )}
                                        
                                        <div className="clean-skills">
@@ -849,9 +867,23 @@ function Home({ isLoggedIn, onShowLogin }) {
                                        )}
                                        <button 
                                            className="clean-view-btn"
-                                           onClick={() => handleViewProfile(staff)}
+                                           onClick={() => {
+                                               if (staff.profileSlug) {
+                                                   if (!isLoggedIn) {
+                                                       sessionStorage.setItem('staffinn_profile_redirect', JSON.stringify({
+                                                           slug: staff.profileSlug,
+                                                           createdAt: Date.now()
+                                                       }));
+                                                       onShowLogin();
+                                                   } else {
+                                                       navigate(`/staff/${staff.profileSlug}`);
+                                                   }
+                                               } else {
+                                                   handleViewProfile(staff);
+                                               }
+                                           }}
                                        >
-                                           Get In Touch
+                                           {staff.profileSlug ? 'View Profile' : 'Get In Touch'}
                                        </button>
                                    </div>
                                </div>

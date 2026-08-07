@@ -7,6 +7,80 @@ const { v4: uuidv4 } = require('uuid');
 
 const STAFF_TABLE = process.env.STAFF_TABLE || 'staffinn-staff-profiles';
 
+// ─── PHASE 1: Slug Generation Utility ────────────────────────────────────────
+
+/**
+ * Generate a URL-safe profile slug from fullName + staffId.
+ * Format: slugified-name-{first 8 chars of staffId}
+ * @param {string} fullName - Staff member's full name
+ * @param {string} staffId - Immutable staff UUID
+ * @returns {string} - Generated slug
+ */
+const generateProfileSlug = (fullName, staffId) => {
+  // Step 1: NFD normalize and strip combining diacritical marks
+  let name = (fullName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // Step 2: Remove remaining non-ASCII
+  name = name.replace(/[^\x00-\x7F]/g, '');
+  // Step 3: Lowercase
+  name = name.toLowerCase();
+  // Step 4: Replace non-alphanumeric sequences with single hyphen
+  name = name.replace(/[^a-z0-9]+/g, '-');
+  // Step 5: Trim leading/trailing hyphens
+  name = name.replace(/^-+|-+$/g, '');
+  // Step 6: Fallback for empty result
+  if (!name) name = 'staff';
+  // Step 7: Append 8-char staffId prefix
+  const suffix = staffId.substring(0, 8);
+  return `${name}-${suffix}`;
+};
+
+/**
+ * Get staff profile by profileSlug using profileSlug-index GSI.
+ * Returns null if not found or not active/public.
+ * @param {string} slug - Profile slug to look up
+ * @returns {Promise<object|null>} - Staff profile or null
+ */
+const getStaffProfileBySlug = async (slug) => {
+  try {
+    if (!slug || typeof slug !== 'string') return null;
+    
+    // Query the profileSlug-index (KEYS_ONLY) to get the base-table key
+    const queryParams = {
+      IndexName: 'profileSlug-index',
+      KeyConditionExpression: 'profileSlug = :slug',
+      ExpressionAttributeValues: { ':slug': slug }
+    };
+    
+    const results = await dynamoService.queryItems(STAFF_TABLE, queryParams);
+    
+    if (!results || results.length === 0) return null;
+    
+    // GSI may return multiple (shouldn't happen but defensive)
+    // Get full record from base table using staffId
+    const staffId = results[0].staffId;
+    const profile = await dynamoService.getItem(STAFF_TABLE, { staffId });
+    
+    if (!profile) return null;
+    
+    // Validate active + public
+    if (profile.isActiveStaff !== true || profile.profileVisibility !== 'public') {
+      return null;
+    }
+    
+    // Check user is not blocked
+    const userModel = require('./userModel');
+    const user = await userModel.findUserById(profile.userId);
+    if (!user || user.isBlocked) return null;
+    
+    return profile;
+  } catch (error) {
+    console.error('getStaffProfileBySlug error:', error.message);
+    throw error;
+  }
+};
+
+// ─── END PHASE 1 SLUG UTILITIES ──────────────────────────────────────────────
+
 /**
  * Create a new staff profile
  * @param {object} staffData - Staff profile data
@@ -105,6 +179,7 @@ const getStaffProfile = async (userId) => {
       city: '',
       availability: 'available',
       visibility: 'public',
+      employmentType: '',
       experiences: [],
       certificates: [],
       education: {
@@ -116,7 +191,7 @@ const getStaffProfile = async (userId) => {
       updatedAt: new Date().toISOString()
     };
     
-    console.log('🔧 Creating staff profile with data:', defaultProfile);
+    console.log('🔧 Creating default staff profile for userId:', userId);
     const createdProfile = await createStaffProfile(defaultProfile);
     console.log('✅ Created default staff profile:', createdProfile ? 'Success' : 'Failed');
     
@@ -136,7 +211,6 @@ const getStaffProfile = async (userId) => {
 const updateStaffProfile = async (userId, updateData) => {
   try {
     console.log('🔄 Staff Model: updateStaffProfile called for userId:', userId);
-    console.log('📝 Staff Model: Update data:', updateData);
     
     // Get current profile
     const currentProfile = await getStaffProfile(userId);
@@ -629,5 +703,7 @@ module.exports = {
   bulkUpdateProfiles,
   addExperience,
   removeExperience,
-  searchStaffProfiles
+  searchStaffProfiles,
+  generateProfileSlug,
+  getStaffProfileBySlug
 };
