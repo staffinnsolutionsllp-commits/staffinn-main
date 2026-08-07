@@ -2093,6 +2093,13 @@ const CourseLearningPage = () => {
   // Otherwise show the existing marketing/preview UI
   return (
     <div className="course-learning-page">
+      {/* Back Button */}
+      <div className="course-back-bar">
+        <button className="course-back-btn" onClick={() => navigate(-1)}>
+          <FaArrowLeft /> Back
+        </button>
+      </div>
+      
       {/* Hero Header */}
       <div className="course-header">
         <div className="course-header-content">
