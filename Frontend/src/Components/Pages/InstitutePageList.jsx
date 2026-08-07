@@ -498,7 +498,7 @@ const InstitutePageList = ({ isLoggedIn, onShowLogin, currentUser }) => {
                 <div className="institute-name-section">
                   <h2>{institute.name}</h2>
                   {institute.isBrainaryVerified && (
-                    <div className="brainary-verified">
+                    <div className="brainary-verified" title="This institute's profile is fully complete and verified by Staffinn">
                       <FaCheckCircle /> Staffinn Verified
                     </div>
                   )}
