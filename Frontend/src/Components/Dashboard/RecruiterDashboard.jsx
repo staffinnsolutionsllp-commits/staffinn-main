@@ -14,6 +14,7 @@ import useProfilePhotoSync from '../../hooks/useProfilePhotoSync';
 import HiddenUser from '../HiddenUser/HiddenUser';
 import GovernmentSchemes from './GovernmentSchemes';
 import HRMS from '../HRMS/HRMS';
+import CourseLicenses from './CourseLicenses';
 import ContactHistory from '../Messages/ContactHistory';
 import './HiddenNotification.css';
 import CampusInviteEnvelope from './CampusInviteEnvelope';
@@ -1962,6 +1963,9 @@ const RecruiterDashboard = () => {
                     <li className={activeTab === 'hrms' ? 'active' : ''} onClick={() => handleTabChange('hrms')}>
                         HRMS
                     </li>
+                    <li className={activeTab === 'course-licenses' ? 'active' : ''} onClick={() => handleTabChange('course-licenses')}>
+                        Course Licenses
+                    </li>
                 </ul>
             </div>
 
@@ -1988,6 +1992,7 @@ const RecruiterDashboard = () => {
                     {activeTab === 'contact-history' && 'Chat History'}
                     {activeTab === 'government-schemes' && 'Government Schemes'}
                     {activeTab === 'hrms' && ''}
+                    {activeTab === 'course-licenses' && 'Course Licenses'}
                     {activeTab === 'profile' && 'My Profile'}
                 </h1>
 
@@ -3155,6 +3160,10 @@ const RecruiterDashboard = () => {
 
                 {activeTab === 'hrms' && (
                     <HRMS />
+                )}
+
+                {activeTab === 'course-licenses' && (
+                    <CourseLicenses />
                 )}
 
                 {activeTab === 'news' && (

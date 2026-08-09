@@ -1308,6 +1308,35 @@ const apiService = {
     }
   },
 
+  getStaffProfileBySlug: async (slug) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        return { success: false, status: 401, message: 'Authentication required' };
+      }
+
+      const encodedSlug = encodeURIComponent(slug.trim());
+      const response = await fetch(`${API_URL}/staff/slug/${encodedSlug}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return { success: false, status: response.status, message: data.message || 'Failed to load profile' };
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Get staff profile by slug error:', error);
+      return { success: false, status: 500, message: 'Failed to load profile' };
+    }
+  },
+
   getTrendingStaff: async (limit = 6) => {
     try {
       const response = await fetch(`${API_URL}/staff/trending?limit=${limit}`, {
@@ -6474,5 +6503,65 @@ apiService.respondToRecruiterInvite = async (inviteId, responseData) => {
   } catch (error) {
     console.error('Respond to recruiter invite error:', error);
     return { success: false, message: 'Failed to respond to invite' };
+  }
+};
+
+// ─── Course License APIs (Recruiter) ─────────────────────────────────────────
+
+apiService.getMyCourseLicenses = async () => {
+  try {
+    const response = await fetch(`${API_URL}/course-licenses`, {
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Failed to get course licenses' };
+  }
+};
+
+apiService.getCourseLicenseDetails = async (licenseId) => {
+  try {
+    const response = await fetch(`${API_URL}/course-licenses/${licenseId}`, {
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Failed to get license details' };
+  }
+};
+
+apiService.getAvailableEmployees = async (licenseId) => {
+  try {
+    const response = await fetch(`${API_URL}/course-licenses/${licenseId}/available-employees`, {
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Failed to get available employees' };
+  }
+};
+
+apiService.assignCourseToEmployees = async (licenseId, employeeIds) => {
+  try {
+    const response = await fetch(`${API_URL}/course-licenses/${licenseId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ employeeIds })
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Failed to assign course' };
+  }
+};
+
+apiService.revokeAssignment = async (assignmentId) => {
+  try {
+    const response = await fetch(`${API_URL}/course-licenses/assignments/${assignmentId}/revoke`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() }
+    });
+    return await response.json();
+  } catch (error) {
+    return { success: false, message: 'Failed to revoke assignment' };
   }
 };
