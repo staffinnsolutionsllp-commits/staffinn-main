@@ -183,6 +183,9 @@ const CourseLearningPage = () => {
     }
   };
 
+  // Quantity state for recruiter multi-seat purchase
+  const [purchaseQuantity, setPurchaseQuantity] = useState(1);
+
   const handleEnroll = async () => {
     try {
       console.log('🚀 Attempting to enroll in course:', courseId);
@@ -229,6 +232,13 @@ const CourseLearningPage = () => {
       if (course.mode === 'Online' && parseFloat(course.fees) > 0) {
         console.log('💰 Paid course detected, checking payment status...');
         
+        // For recruiters purchasing licenses (multi-seat)
+        if (userProfile?.role === 'recruiter' && purchaseQuantity >= 1) {
+          console.log('🏢 Recruiter license purchase - quantity:', purchaseQuantity);
+          setShowPaymentModal(true);
+          return;
+        }
+        
         // Check if user has already paid
         try {
           const paymentStatus = await apiService.checkPaymentStatus(courseId);
@@ -243,7 +253,6 @@ const CourseLearningPage = () => {
           console.log('✅ Payment verified, proceeding with enrollment');
         } catch (paymentError) {
           console.error('❌ Payment check error:', paymentError);
-          // If payment check fails, try to enroll anyway (backend will validate)
         }
       }
       
@@ -2898,7 +2907,7 @@ const CourseLearningPage = () => {
             <>
               <div className="enrollment-section">
                 <div className="price-section">
-                  <span className="current-price">₹{course.fees}</span>
+                  <span className="current-price">₹{userProfile?.role === 'recruiter' ? (parseFloat(course.fees) * purchaseQuantity).toLocaleString() : course.fees}</span>
                   {course.originalFees && (
                     <>
                       <span className="original-price">₹{course.originalFees}</span>
@@ -2906,11 +2915,37 @@ const CourseLearningPage = () => {
                     </>
                   )}
                 </div>
+
+                {/* Quantity selector for recruiters */}
+                {userProfile?.role === 'recruiter' && (
+                  <div className="license-quantity-section">
+                    <label className="quantity-label">Seats / Licenses:</label>
+                    <div className="quantity-control">
+                      <button 
+                        className="qty-btn" 
+                        onClick={() => setPurchaseQuantity(q => Math.max(1, q - 1))}
+                        disabled={purchaseQuantity <= 1}
+                      >−</button>
+                      <span className="qty-value">{purchaseQuantity}</span>
+                      <button 
+                        className="qty-btn" 
+                        onClick={() => setPurchaseQuantity(q => Math.min(100, q + 1))}
+                      >+</button>
+                    </div>
+                    <p className="quantity-hint">
+                      {purchaseQuantity} seat{purchaseQuantity > 1 ? 's' : ''} × ₹{parseFloat(course.fees).toLocaleString()} = ₹{(parseFloat(course.fees) * purchaseQuantity).toLocaleString()}
+                    </p>
+                    <p className="quantity-hint" style={{ fontSize: '11px', color: '#64748b' }}>
+                      Assign purchased seats to your HRMS employees from your dashboard.
+                    </p>
+                  </div>
+                )}
+
                 <button className="enroll-btn" onClick={handleEnroll}>
                   Enroll Now
                 </button>
                 <button className="buy-now-btn" onClick={handleEnroll}>
-                  Buy Now - ₹{course.fees}
+                  Buy Now - ₹{userProfile?.role === 'recruiter' ? (parseFloat(course.fees) * purchaseQuantity).toLocaleString() : course.fees}
                 </button>
               </div>
               
@@ -3120,6 +3155,8 @@ const CourseLearningPage = () => {
             duration: course.duration,
             fees: course.fees
           }}
+          purchaseType={userProfile?.role === 'recruiter' ? 'license' : undefined}
+          quantity={userProfile?.role === 'recruiter' ? purchaseQuantity : undefined}
           onClose={() => setShowPaymentModal(false)}
           onSuccess={handlePaymentSuccess}
         />

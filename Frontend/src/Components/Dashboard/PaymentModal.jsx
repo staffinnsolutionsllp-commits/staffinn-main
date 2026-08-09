@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiService from '../../services/api';
 import './PaymentModal.css';
 
-const PaymentModal = ({ course, onClose, onSuccess }) => {
+const PaymentModal = ({ course, onClose, onSuccess, purchaseType, quantity }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,10 +22,10 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
       setLoading(true);
       setError('');
 
-      console.log('💳 Initiating payment for course:', course.coursesId);
+      console.log('💳 Initiating payment for course:', course.coursesId, 'purchaseType:', purchaseType, 'quantity:', quantity);
 
-      // Create order via backend
-      const orderResponse = await apiService.createPaymentOrder(course.coursesId);
+      // Create order via backend (pass purchaseType and quantity for license purchases)
+      const orderResponse = await apiService.createPaymentOrder(course.coursesId, purchaseType, quantity);
       
       if (!orderResponse.success) {
         throw new Error(orderResponse.message || 'Failed to create payment order');
@@ -37,7 +37,7 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
         throw new Error('Payment session not created. Please try again.');
       }
 
-      console.log('✅ Order created:', orderId);
+      console.log('✅ Order created:', orderId, orderResponse.data.purchaseType ? `(License: ${orderResponse.data.quantity} seats)` : '');
 
       // Initialize Cashfree
       const cashfree = window.Cashfree({ mode: 'production' });
@@ -53,7 +53,6 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
       }
 
       if (result.redirect) {
-        // UPI redirect - will return via return_url
         console.log('Payment redirected...');
         return;
       }
@@ -65,7 +64,11 @@ const PaymentModal = ({ course, onClose, onSuccess }) => {
         const verifyResponse = await apiService.verifyPayment({ orderId });
 
         if (verifyResponse.success) {
-          alert('Payment successful! You are now enrolled in the course.');
+          if (verifyResponse.data?.purchaseType === 'license') {
+            alert(`Payment successful! ${verifyResponse.data.quantityPurchased} course seat(s) purchased. Manage assignments from your Dashboard → Course Licenses.`);
+          } else {
+            alert('Payment successful! You are now enrolled in the course.');
+          }
           onSuccess();
           onClose();
         } else {

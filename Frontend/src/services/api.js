@@ -5415,21 +5415,25 @@ const apiService = {
   },
 
   // Payment API - Cashfree Integration
-  createPaymentOrder: async (courseId) => {
+  createPaymentOrder: async (courseId, purchaseType, quantity) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found. Please login again.');
       }
 
-      console.log('💳 Creating payment order for course:', courseId);
+      console.log('💳 Creating payment order for course:', courseId, 'type:', purchaseType, 'qty:', quantity);
+      const body = { courseId };
+      if (purchaseType) body.purchaseType = purchaseType;
+      if (quantity) body.quantity = quantity;
+
       const response = await fetch(`${API_URL}/payments/create-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ courseId })
+        body: JSON.stringify(body)
       });
       
       const result = await response.json();
