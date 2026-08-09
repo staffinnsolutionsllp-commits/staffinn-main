@@ -129,7 +129,6 @@ const createPaymentOrder = async (req, res) => {
     }
 
     const amount = baseAmount;
-    }
 
     // Calculate platform fee
     const platformFeePercentage = parseFloat(process.env.PLATFORM_FEE_PERCENTAGE) || 10;
