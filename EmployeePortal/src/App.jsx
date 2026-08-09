@@ -16,6 +16,7 @@ import Grievances from './pages/Grievances';
 import Organogram from './pages/Organogram';
 import Resignation from './pages/Resignation';
 import NoDuesClearance from './pages/NoDuesClearance';
+import MyCourses from './pages/MyCourses';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -43,6 +44,7 @@ function App() {
           <Route path="/organogram" element={<ProtectedRoute><Organogram /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/resignation" element={<ProtectedRoute><Resignation /></ProtectedRoute>} />
+          <Route path="/courses" element={<ProtectedRoute><MyCourses /></ProtectedRoute>} />
           <Route path="/separation/:separationId/ndc" element={<ProtectedRoute><NoDuesClearance /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>

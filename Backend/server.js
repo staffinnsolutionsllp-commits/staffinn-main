@@ -88,6 +88,7 @@ const biometricAuthRoutes = require('./routes/hrms/biometricAuthRoutes');
 const biometricWebhookRoutes = require('./routes/hrms/biometricWebhookRoutes');
 const employeePortalRoutes = require('./routes/hrms/employeePortalRoutes');
 const hrmsNotificationRoutes = require('./routes/hrms/hrmsNotificationRoutes');
+const hrmsAdminNotificationRoutes = require('./routes/hrms/hrmsAdminNotificationRoutes');
 const hrmsAccessRoutes = require('./routes/hrmsAccessRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const instituteBankDetailsRoutes = require('./routes/instituteBankDetailsRoutes');
@@ -231,6 +232,17 @@ app.use(`${API_PREFIX}/government-schemes`, governmentSchemesRoutes);
 app.use(`${API_PREFIX}/registration-requests`, registrationRequestRoutes);
 app.use(`${API_PREFIX}/messages`, messageRoutes);
 app.use(`${API_PREFIX}/admin/chats`, adminChatRoutes);
+
+// Presence check endpoint — no auth needed, just a quick online-status lookup
+app.get(`${API_PREFIX}/presence/:userId`, (req, res) => {
+  try {
+    const { getUserPresence } = require('./websocket/websocketServer');
+    const result = getUserPresence(req.params.userId);
+    res.json({ success: true, ...result });
+  } catch (_) {
+    res.json({ success: true, isOnline: false, lastSeen: null });
+  }
+});
 app.use(`${API_PREFIX}/training-centers`, trainingCenterRoutes);
 app.use(`${API_PREFIX}/training-infrastructure`, trainingInfrastructureRoutes);
 app.use(`${API_PREFIX}/course-details`, courseDetailRoutes);
@@ -274,7 +286,9 @@ app.use(`${API_PREFIX}/biometric/auth`, biometricAuthRoutes);
 app.use(`${API_PREFIX}/biometric`, biometricWebhookRoutes);
 app.use(`${API_PREFIX}/employee`, employeePortalRoutes);
 app.use(`${API_PREFIX}/hrms/notifications`, hrmsNotificationRoutes);
+app.use(`${API_PREFIX}/hrms/admin-notifications`, hrmsAdminNotificationRoutes);
 app.use(`${API_PREFIX}/payments`, paymentRoutes);
+app.use(`${API_PREFIX}/course-licenses`, require('./routes/courseLicenseRoutes'));
 app.use(`${API_PREFIX}/institute`, instituteBankDetailsRoutes);
 app.use(`${API_PREFIX}/campus-requests`, campusRequestRoutes);
 app.use(`${API_PREFIX}/campus-planner`, campusPlannerRoutes);

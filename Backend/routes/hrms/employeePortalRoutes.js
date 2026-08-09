@@ -95,6 +95,9 @@ const claimV2 = require('../../controllers/hrms/hrmsClaimV2Controller');
 router.get   ('/v2/claim-types',                            authenticateEmployee, claimV2.getClaimTypes);
 router.get   ('/v2/claims/my',                              authenticateEmployee, claimV2.getMyClaims);
 router.get   ('/v2/claims/stats',                           authenticateEmployee, claimV2.getClaimStats);
+router.get   ('/v2/claims/team-pending',                    authenticateEmployee, claimV2.getPendingApprovals);
+router.get   ('/v2/claims/my-actions',                      authenticateEmployee, claimV2.getMyActions);
+router.post  ('/v2/claims/:claimId/action',                 authenticateEmployee, claimV2.processClaimAction);
 router.get   ('/v2/claims/:claimId',                        authenticateEmployee, claimV2.getClaimById);
 router.post  ('/v2/claims',                                 authenticateEmployee, claimV2.createClaim);
 router.put   ('/v2/claims/:claimId',                        authenticateEmployee, claimV2.updateClaim);
@@ -335,5 +338,10 @@ router.post('/separation/resign',                       authenticateEmployee, em
 router.get ('/separation/my',                           authenticateEmployee, getMyResignation);
 router.get ('/separation/:separationId/ndc',            authenticateEmployee, getMyNDC);
 router.put ('/separation/:separationId/declaration',    authenticateEmployee, submitEmployeeDeclaration);
+
+// ─── Course Assignment Routes (Employee Portal) ─────────────────────────────
+const courseLicenseController = require('../../controllers/courseLicenseController');
+router.get('/courses', authenticateEmployee, courseLicenseController.getEmployeeCourses);
+router.put('/courses/:assignmentId/progress', authenticateEmployee, courseLicenseController.updateCourseProgress);
 
 module.exports = router;

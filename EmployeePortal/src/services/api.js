@@ -66,6 +66,10 @@ export const claimAPI = {
   submitClaimV2: (id) => api.post(`/employee/v2/claims/${id}/submit`),
   addLineItem: (claimId, data) => api.post(`/employee/v2/claims/${claimId}/line-items`, data),
   deleteLineItem: (claimId, lineItemId) => api.delete(`/employee/v2/claims/${claimId}/line-items/${lineItemId}`),
+  // Team Approvals (TL/RM)
+  getTeamPending: () => api.get('/employee/v2/claims/team-pending'),
+  getMyActions: () => api.get('/employee/v2/claims/my-actions'),
+  processAction: (claimId, data) => api.post(`/employee/v2/claims/${claimId}/action`, data),
   // Attachment upload
   uploadAttachment: (claimId, formData) => api.post(
     `/employee/claims/${claimId}/upload`,
@@ -132,6 +136,11 @@ export const notificationAPI = {
   getUnreadCount: () => api.get('/employee/notifications/unread-count'),
   markAsRead: (notificationId) => api.put(`/employee/notifications/${notificationId}/read`),
   markAllAsRead: () => api.put('/employee/notifications/mark-all-read')
+};
+
+export const courseAPI = {
+  getMyCourses: () => api.get('/employee/courses'),
+  updateProgress: (assignmentId, progress) => api.put(`/employee/courses/${assignmentId}/progress`, { progress })
 };
 
 export const separationAPI = {

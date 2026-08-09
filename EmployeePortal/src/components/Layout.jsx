@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, CalendarDays, PlaneTakeoff, IndianRupee,
   CreditCard, ClipboardList, MessageSquare, Network, User,
-  LogOut, Building2, FileText, Menu, X
+  LogOut, Building2, FileText, Menu, X, BookOpen
 } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
@@ -18,6 +18,7 @@ const PAGE_TITLES = {
   '/dtr':        'Daily Task Report',
   '/grievances': 'Grievances',
   '/organogram': 'Organization Chart',
+  '/courses':    'My Courses',
   '/profile':    'My Profile',
   '/resignation':'My Resignation',
 };
@@ -30,6 +31,7 @@ const NAV = [
   { path: '/claims',     icon: CreditCard,       label: 'Claims' },
   { path: '/tasks',      icon: ClipboardList,    label: 'Tasks' },
   { path: '/dtr',        icon: FileText,         label: 'Daily Task Report' },
+  { path: '/courses',    icon: BookOpen,         label: 'My Courses' },
   { path: '/grievances', icon: MessageSquare,    label: 'Grievances' },
   { path: '/organogram', icon: Network,          label: 'Organogram' },
   { path: '/resignation',icon: LogOut,           label: 'Resignation' },

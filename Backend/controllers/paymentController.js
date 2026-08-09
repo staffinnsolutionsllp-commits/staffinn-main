@@ -9,13 +9,14 @@ const COURSE_ENROLLMENTS_TABLE = 'course-enrolled-user';
 /**
  * Create Payment Order (Cashfree)
  * POST /api/payment/create-order
+ * Supports: individual enrollment (default) OR license purchase (purchaseType='license' + quantity)
  */
 const createPaymentOrder = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { courseId } = req.body;
+    const { courseId, purchaseType, quantity } = req.body;
 
-    console.log('📦 Creating payment order for:', { userId, courseId });
+    console.log('📦 Creating payment order for:', { userId, courseId, purchaseType, quantity });
 
     if (!courseId) {
       return res.status(400).json({ success: false, message: 'Course ID is required' });
@@ -29,6 +30,88 @@ const createPaymentOrder = async (req, res) => {
 
     console.log('📚 Course:', { courseName: course.courseName, fees: course.fees });
 
+    const baseAmount = parseFloat(course.fees) || 0;
+    if (baseAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid course fee amount' });
+    }
+
+    // ─── LICENSE PURCHASE FLOW ─────────────────────────────────────────
+    if (purchaseType === 'license') {
+      const seatCount = parseInt(quantity) || 1;
+      if (seatCount < 1 || seatCount > 500) {
+        return res.status(400).json({ success: false, message: 'Quantity must be between 1 and 500' });
+      }
+
+      const totalAmount = baseAmount * seatCount;
+      const platformFeePercentage = parseFloat(process.env.PLATFORM_FEE_PERCENTAGE) || 10;
+      const platformFee = (totalAmount * platformFeePercentage) / 100;
+      const instituteAmount = totalAmount - platformFee;
+
+      const orderId = `license_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+
+      const orderResult = await cashfreeService.createOrder({
+        orderId,
+        amount: totalAmount,
+        currency: 'INR',
+        customerDetails: {
+          customer_id: userId,
+          customer_name: req.user.name || req.user.fullName || 'Customer',
+          customer_email: req.user.email || '',
+          customer_phone: req.user.phone || '9999999999'
+        },
+        orderMeta: {
+          return_url: `${process.env.FRONTEND_URL || 'https://staffinn.com'}/payment/callback?order_id={order_id}`,
+          notify_url: `${process.env.API_BASE_URL || 'https://api.staffinn.com'}/api/v1/payments/webhook`
+        },
+        orderNote: JSON.stringify({ courseId, courseName: course.courseName, userId, instituteId: course.instituteId, purchaseType: 'license', quantity: seatCount })
+      });
+
+      if (!orderResult.success) {
+        return res.status(500).json({ success: false, message: orderResult.message || 'Failed to create payment order' });
+      }
+
+      // Create transaction record
+      const transaction = await paymentTransactionModel.createTransaction({
+        userId,
+        instituteId: course.instituteId,
+        courseId,
+        courseName: course.courseName,
+        amount: totalAmount,
+        currency: 'INR',
+        razorpayOrderId: orderId,
+        paymentStatus: 'pending',
+        platformFee,
+        instituteAmount,
+        metadata: {
+          courseName: course.courseName,
+          instructor: course.instructor,
+          duration: course.duration,
+          paymentGateway: 'cashfree',
+          purchaseType: 'license',
+          quantity: seatCount,
+          pricePerSeat: baseAmount
+        }
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'License payment order created',
+        data: {
+          orderId: orderResult.data.orderId,
+          paymentSessionId: orderResult.data.paymentSessionId,
+          amount: totalAmount,
+          quantity: seatCount,
+          pricePerSeat: baseAmount,
+          currency: 'INR',
+          transactionId: transaction.transactionId,
+          purchaseType: 'license',
+          courseDetails: { courseId, courseName: course.courseName },
+          cfAppId: process.env.CASHFREE_APP_ID
+        }
+      });
+    }
+
+    // ─── INDIVIDUAL ENROLLMENT FLOW (existing, unchanged) ──────────────
     // Check duplicate payment
     const hasPaid = await paymentTransactionModel.hasUserPaidForCourse(userId, courseId);
     if (hasPaid) {
@@ -45,9 +128,7 @@ const createPaymentOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'You are already enrolled in this course' });
     }
 
-    const amount = parseFloat(course.fees) || 0;
-    if (amount <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid course fee amount' });
+    const amount = baseAmount;
     }
 
     // Calculate platform fee
@@ -191,7 +272,37 @@ const verifyPayment = async (req, res) => {
       }
     });
 
-    // Enroll user in course
+    // ─── LICENSE PURCHASE: create license instead of enrollment ──────────
+    if (transaction.metadata?.purchaseType === 'license') {
+      const courseLicenseModel = require('../models/courseLicenseModel');
+      const license = await courseLicenseModel.createLicense({
+        recruiterId: userId,
+        courseId: transaction.courseId,
+        courseName: transaction.courseName,
+        instituteId: transaction.instituteId,
+        quantityPurchased: transaction.metadata.quantity,
+        pricePerSeat: transaction.metadata.pricePerSeat,
+        totalAmount: transaction.amount,
+        transactionId: transaction.transactionId,
+        paymentStatus: 'success'
+      });
+      console.log('✅ License created:', license.licenseId, 'Seats:', license.quantityPurchased);
+
+      return res.status(200).json({
+        success: true,
+        message: `Payment verified! ${license.quantityPurchased} course seat(s) purchased successfully.`,
+        data: {
+          transactionId: transaction.transactionId,
+          courseId: transaction.courseId,
+          courseName: transaction.courseName,
+          licenseId: license.licenseId,
+          quantityPurchased: license.quantityPurchased,
+          purchaseType: 'license'
+        }
+      });
+    }
+
+    // ─── INDIVIDUAL ENROLLMENT (existing flow) ──────────────────────────
     const { v4: uuidv4 } = require('uuid');
     const enrollment = {
       enrolledID: uuidv4(),
