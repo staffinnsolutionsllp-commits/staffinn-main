@@ -60,17 +60,55 @@ const createLicense = async (req, res) => {
 
 /**
  * Get all licenses for the authenticated recruiter
+ * Also includes existing individual enrollments as single-seat licenses
  * GET /api/v1/course-licenses
  */
 const getMyLicenses = async (req, res) => {
   try {
     const recruiterId = req.user.userId;
+    
+    // Get actual license purchases
     const licenses = await courseLicenseModel.getLicensesByRecruiter(recruiterId);
 
-    // Sort by purchase date (newest first)
-    licenses.sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate));
+    // Also get existing individual enrollments (pre-license system)
+    // These are courses the recruiter personally enrolled in — show them as 1-seat licenses
+    const enrollmentParams = {
+      FilterExpression: 'userId = :uid AND (#status = :active OR #status = :paid)',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: { ':uid': recruiterId, ':active': 'active', ':paid': 'paid' }
+    };
+    const existingEnrollments = await dynamoService.scanItems('course-enrolled-user', enrollmentParams);
+    
+    // Convert existing enrollments to license format (if not already covered by a license)
+    const licenseCourseIds = new Set(licenses.map(l => l.courseId));
+    const legacyLicenses = (existingEnrollments || [])
+      .filter(e => !licenseCourseIds.has(e.courseId) && (e.paymentStatus === 'paid' || e.paymentStatus === 'free'))
+      .map(e => ({
+        licenseId: `legacy_${e.enrolledID}`,
+        recruiterId,
+        courseId: e.courseId,
+        courseName: e.courseName || 'Course',
+        instituteId: e.instituteId || null,
+        quantityPurchased: 1,
+        quantityAssigned: 0,
+        quantityRemaining: 1,
+        pricePerSeat: e.amountPaid || 0,
+        totalAmount: e.amountPaid || 0,
+        transactionId: e.transactionId || null,
+        paymentStatus: 'success',
+        purchaseDate: e.enrollmentDate,
+        status: 'active',
+        isLegacy: true,
+        createdAt: e.enrollmentDate,
+        updatedAt: e.enrollmentDate
+      }));
 
-    res.status(200).json({ success: true, data: licenses });
+    const allLicenses = [...licenses, ...legacyLicenses];
+    
+    // Sort by purchase date (newest first)
+    allLicenses.sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate));
+
+    res.status(200).json({ success: true, data: allLicenses });
   } catch (error) {
     console.error('Get licenses error:', error);
     res.status(500).json({ success: false, message: 'Failed to get licenses' });
@@ -85,6 +123,34 @@ const getLicenseDetails = async (req, res) => {
   try {
     const recruiterId = req.user.userId;
     const { licenseId } = req.params;
+
+    // Handle legacy license IDs (convert to real license on first access)
+    if (licenseId.startsWith('legacy_')) {
+      const enrolledID = licenseId.replace('legacy_', '');
+      // Get the enrollment record
+      const enrollment = await dynamoService.getItem('course-enrolled-user', { enrolledID });
+      if (!enrollment || enrollment.userId !== recruiterId) {
+        return res.status(404).json({ success: false, message: 'License not found' });
+      }
+      
+      // Create a real license from this enrollment
+      const newLicense = await courseLicenseModel.createLicense({
+        recruiterId,
+        courseId: enrollment.courseId,
+        courseName: enrollment.courseName || 'Course',
+        instituteId: enrollment.instituteId || null,
+        quantityPurchased: 1,
+        pricePerSeat: enrollment.amountPaid || 0,
+        totalAmount: enrollment.amountPaid || 0,
+        transactionId: enrollment.transactionId || null,
+        paymentStatus: 'success'
+      });
+      
+      return res.status(200).json({
+        success: true,
+        data: { ...newLicense, assignments: [] }
+      });
+    }
 
     const license = await courseLicenseModel.getLicenseById(licenseId);
     if (!license) {
