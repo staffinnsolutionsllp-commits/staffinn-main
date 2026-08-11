@@ -140,7 +140,8 @@ export const notificationAPI = {
 
 export const courseAPI = {
   getMyCourses: () => api.get('/employee/courses'),
-  updateProgress: (assignmentId, progress) => api.put(`/employee/courses/${assignmentId}/progress`, { progress })
+  updateProgress: (assignmentId, progress) => api.put(`/employee/courses/${assignmentId}/progress`, { progress }),
+  getAccessToken: (assignmentId) => api.post(`/employee/courses/${assignmentId}/access-token`)
 };
 
 export const separationAPI = {

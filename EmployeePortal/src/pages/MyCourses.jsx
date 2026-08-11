@@ -4,6 +4,7 @@ import { courseAPI } from '../services/api';
 function MyCourses() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [accessingCourse, setAccessingCourse] = useState(null);
 
   useEffect(() => {
     loadCourses();
@@ -20,6 +21,24 @@ function MyCourses() {
       console.error('Error loading courses:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAccessCourse = async (course) => {
+    try {
+      setAccessingCourse(course.assignmentId);
+      const response = await courseAPI.getAccessToken(course.assignmentId);
+      if (response.data.success) {
+        // Open course in new tab with access token
+        window.open(response.data.data.courseUrl, '_blank');
+      } else {
+        alert(response.data.message || 'Failed to access course');
+      }
+    } catch (error) {
+      console.error('Error accessing course:', error);
+      alert('Failed to access course. Please try again.');
+    } finally {
+      setAccessingCourse(null);
     }
   };
 
@@ -127,20 +146,23 @@ function MyCourses() {
                 </div>
 
                 {/* Action */}
-                <a
-                  href={`https://staffinn.com/course-learning/${course.courseId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => handleAccessCourse(course)}
+                  disabled={accessingCourse === course.assignmentId}
                   style={{
-                    display: 'block', marginTop: '14px', textAlign: 'center',
+                    display: 'block', width: '100%', marginTop: '14px', textAlign: 'center',
                     padding: '10px', background: course.status === 'completed' ? '#f0fdf4' : '#eff6ff',
                     color: course.status === 'completed' ? '#059669' : '#2563eb',
                     borderRadius: '8px', fontWeight: '600', fontSize: '13px',
-                    textDecoration: 'none', border: `1px solid ${course.status === 'completed' ? '#bbf7d0' : '#bfdbfe'}`
+                    border: `1px solid ${course.status === 'completed' ? '#bbf7d0' : '#bfdbfe'}`,
+                    cursor: accessingCourse === course.assignmentId ? 'wait' : 'pointer',
+                    opacity: accessingCourse === course.assignmentId ? 0.7 : 1
                   }}
                 >
-                  {course.status === 'completed' ? '✓ Review Course' : course.progress > 0 ? '▶ Continue Learning' : '▶ Start Course'}
-                </a>
+                  {accessingCourse === course.assignmentId ? '⏳ Opening...' : 
+                   course.status === 'completed' ? '✓ Review Course' : 
+                   course.progress > 0 ? '▶ Continue Learning' : '▶ Start Course'}
+                </button>
               </div>
             </div>
           ))}

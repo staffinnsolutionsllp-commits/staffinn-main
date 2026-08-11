@@ -343,5 +343,6 @@ router.put ('/separation/:separationId/declaration',    authenticateEmployee, su
 const courseLicenseController = require('../../controllers/courseLicenseController');
 router.get('/courses', authenticateEmployee, courseLicenseController.getEmployeeCourses);
 router.put('/courses/:assignmentId/progress', authenticateEmployee, courseLicenseController.updateCourseProgress);
+router.post('/courses/:assignmentId/access-token', authenticateEmployee, courseLicenseController.generateCourseAccessToken);
 
 module.exports = router;

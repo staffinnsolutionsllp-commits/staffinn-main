@@ -44,6 +44,9 @@ const CourseLearningPage = () => {
   const [currentLearningTab, setCurrentLearningTab] = useState('overview');
   const [moduleExpanded, setModuleExpanded] = useState({});
 
+  // Check for employee access token in URL
+  const [isEmployeeAccess, setIsEmployeeAccess] = useState(false);
+
   useEffect(() => {
     if (courseId) {
       fetchCourseData();
@@ -150,6 +153,31 @@ const CourseLearningPage = () => {
 
   const checkEnrollmentStatus = async () => {
     try {
+      // Check if there's an employee access token in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const employeeAccessToken = urlParams.get('eat');
+      
+      if (employeeAccessToken) {
+        // Validate employee access token with backend
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api/v1';
+        const tokenResponse = await fetch(`${API_URL}/course-access/validate?token=${encodeURIComponent(employeeAccessToken)}&courseId=${courseId}`);
+        const tokenResult = await tokenResponse.json();
+        
+        if (tokenResult.success && tokenResult.data?.enrolled) {
+          console.log('✅ Employee access token validated:', tokenResult.data.employeeName);
+          setIsEmployeeAccess(true);
+          setEnrollmentStatus({
+            enrolled: true,
+            hasStarted: tokenResult.data.hasStarted,
+            progressPercentage: tokenResult.data.progressPercentage
+          });
+          return;
+        } else {
+          console.log('❌ Employee access token invalid:', tokenResult.message);
+        }
+      }
+
+      // Normal enrollment check (for logged-in StaffInn users)
       const response = await apiService.checkEnrollmentStatus(courseId);
       console.log('🔍 Enrollment status response:', response);
       if (response.success) {

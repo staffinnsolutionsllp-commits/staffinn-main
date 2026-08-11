@@ -289,6 +289,8 @@ app.use(`${API_PREFIX}/hrms/notifications`, hrmsNotificationRoutes);
 app.use(`${API_PREFIX}/hrms/admin-notifications`, hrmsAdminNotificationRoutes);
 app.use(`${API_PREFIX}/payments`, paymentRoutes);
 app.use(`${API_PREFIX}/course-licenses`, require('./routes/courseLicenseRoutes'));
+// Employee course access token validation (public - no auth, token self-validates)
+app.get(`${API_PREFIX}/course-access/validate`, require('./controllers/courseLicenseController').validateCourseAccessToken);
 app.use(`${API_PREFIX}/institute`, instituteBankDetailsRoutes);
 app.use(`${API_PREFIX}/campus-requests`, campusRequestRoutes);
 app.use(`${API_PREFIX}/campus-planner`, campusPlannerRoutes);

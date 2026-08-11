@@ -406,6 +406,113 @@ const getEmployeeCourses = async (req, res) => {
 };
 
 /**
+ * Generate a temporary course access token for an employee
+ * This allows the employee to access the course on staffinn.com without a separate account
+ * POST /api/v1/employee/courses/:assignmentId/access-token
+ */
+const generateCourseAccessToken = async (req, res) => {
+  try {
+    const employeeId = req.user.employeeId;
+    const companyId = req.user.companyId;
+    const { assignmentId } = req.params;
+
+    // Get assignment and validate
+    const assignment = await courseLicenseModel.getAssignmentById(assignmentId);
+    if (!assignment) {
+      return res.status(404).json({ success: false, message: 'Assignment not found' });
+    }
+    if (assignment.employeeId !== employeeId || assignment.recruiterId !== companyId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    if (assignment.status === 'revoked') {
+      return res.status(403).json({ success: false, message: 'Course access has been revoked' });
+    }
+
+    // Generate a JWT token specifically for course access (valid 8 hours)
+    const jwt = require('jsonwebtoken');
+    const courseAccessToken = jwt.sign(
+      {
+        type: 'employee_course_access',
+        employeeId,
+        companyId,
+        assignmentId,
+        courseId: assignment.courseId,
+        employeeName: assignment.employeeName
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    const courseUrl = `https://staffinn.com/course-learning/${assignment.courseId}?eat=${courseAccessToken}`;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        accessToken: courseAccessToken,
+        courseUrl,
+        courseId: assignment.courseId,
+        courseName: assignment.courseName,
+        expiresIn: '8 hours'
+      }
+    });
+  } catch (error) {
+    console.error('Generate course access token error:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate access token' });
+  }
+};
+
+/**
+ * Validate employee course access token (called by StaffInn frontend)
+ * GET /api/v1/course-access/validate?token=xxx&courseId=yyy
+ */
+const validateCourseAccessToken = async (req, res) => {
+  try {
+    const { token, courseId } = req.query;
+
+    if (!token || !courseId) {
+      return res.status(400).json({ success: false, message: 'Token and courseId required' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired access token' });
+    }
+
+    if (decoded.type !== 'employee_course_access') {
+      return res.status(401).json({ success: false, message: 'Invalid token type' });
+    }
+
+    if (decoded.courseId !== courseId) {
+      return res.status(403).json({ success: false, message: 'Token not valid for this course' });
+    }
+
+    // Verify assignment still exists and is active
+    const assignment = await courseLicenseModel.getAssignmentById(decoded.assignmentId);
+    if (!assignment || assignment.status === 'revoked') {
+      return res.status(403).json({ success: false, message: 'Course access has been revoked' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        enrolled: true,
+        hasStarted: assignment.progress > 0,
+        progressPercentage: assignment.progress || 0,
+        employeeName: decoded.employeeName,
+        assignmentId: decoded.assignmentId,
+        isEmployeeAccess: true
+      }
+    });
+  } catch (error) {
+    console.error('Validate course access token error:', error);
+    res.status(500).json({ success: false, message: 'Failed to validate token' });
+  }
+};
+
+/**
  * Update course progress for an employee
  * PUT /api/v1/employee/courses/:assignmentId/progress
  */
@@ -450,5 +557,7 @@ module.exports = {
   revokeAssignment,
   getAvailableEmployees,
   getEmployeeCourses,
+  generateCourseAccessToken,
+  validateCourseAccessToken,
   updateCourseProgress
 };
