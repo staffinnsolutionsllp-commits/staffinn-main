@@ -194,6 +194,14 @@ const CourseLearningPage = () => {
       console.log('👤 User role:', userProfile?.role);
       console.log('🏢 Institute type:', userProfile?.instituteType);
       
+      // ─── RECRUITER LICENSE PURCHASE (takes priority) ───────────────────
+      // If user is a recruiter and course is paid, always go to license purchase
+      if (userProfile?.role === 'recruiter' && parseFloat(course.fees) > 0 && purchaseQuantity >= 1) {
+        console.log('🏢 Recruiter license purchase - quantity:', purchaseQuantity, 'amount:', parseFloat(course.fees) * purchaseQuantity);
+        setShowPaymentModal(true);
+        return;
+      }
+      
       // Check if user is an institute (any type)
       const isInstitute = userProfile?.role === 'institute';
       
@@ -231,13 +239,6 @@ const CourseLearningPage = () => {
       // Check if course is paid online course
       if (course.mode === 'Online' && parseFloat(course.fees) > 0) {
         console.log('💰 Paid course detected, checking payment status...');
-        
-        // For recruiters purchasing licenses (multi-seat)
-        if (userProfile?.role === 'recruiter' && purchaseQuantity >= 1) {
-          console.log('🏢 Recruiter license purchase - quantity:', purchaseQuantity);
-          setShowPaymentModal(true);
-          return;
-        }
         
         // Check if user has already paid
         try {
