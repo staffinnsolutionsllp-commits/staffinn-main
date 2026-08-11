@@ -26,13 +26,15 @@ const CourseLicenses = () => {
     setSelectedLicense(null);
     setSelectedEmployees([]);
 
-    const [detailRes, empRes] = await Promise.all([
-      apiService.getCourseLicenseDetails(license.licenseId),
-      apiService.getAvailableEmployees(license.licenseId)
-    ]);
-
-    if (detailRes.success) setSelectedLicense(detailRes.data);
-    if (empRes.success) setAvailableEmployees(empRes.data.available || []);
+    // First get license details (this converts legacy to real license)
+    const detailRes = await apiService.getCourseLicenseDetails(license.licenseId);
+    if (detailRes.success) {
+      setSelectedLicense(detailRes.data);
+      // Now get available employees using the REAL license ID
+      const realLicenseId = detailRes.data.licenseId;
+      const empRes = await apiService.getAvailableEmployees(realLicenseId);
+      if (empRes.success) setAvailableEmployees(empRes.data.available || []);
+    }
     setDetailLoading(false);
   };
 
